@@ -36,12 +36,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -53,6 +50,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -934,643 +932,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3768,6 +3317,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3805,8 +3355,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3875,7 +3425,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3889,6 +3439,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3903,7 +3454,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8041,15 +7592,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13856,3 +13400,525 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 84, ru 84, en 84; всего знаков 30723. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening o'yinlar do'konimning sayti. Qarang, kartochkalar qanday chiroyli: burchaklari yumaloq, ostida yumshoq soya, chap tomonida to'q sariq chiziq. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! CSS kodi o'chib ketdi. Kartochkalar oddiy oq to'rtburchaklarga aylanib qoldi, yorliqlar ham o'chdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] joyida, kartochkalar ham turibdi, faqat bezak yo'q. O'tgan darsda kartochkalarni bezashni o'rgandik: yumaloq burchaklar, soya va bir tomondagi chiziq. Endi beshta sahifani birma-bir tiklaymiz, kodni esa o'zingiz yozasiz. Beshinchi sahifada o'z o'yiningizning kartochkasi bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi sahifa: yangi o'yinlar. Bu yerda bitta qoida qolgan, lekin burchaklar o'tkir, chunki unda nol piksel turibdi. Kartochkalarning burchagi o'n olti piksel yumaloq bo'lsin: qoidadagi sonni almashtiring.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Burchaklar yumshoq bo'ldi, yangi o'yinlar sahifasi jonlandi!", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga qarang: border-radius xususiyatidan keyin qanday son turibdi? Aynan u burchakni yumaloqlaydi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozir u nol piksel. Uni o'n olti qiling, px esa joyida qolsin.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u abzas burchaklarini sakkiz piksel yumaloqlaydi. Xuddi shunday, kartochka uchun o'n olti yozing va Tekshirishni bosing.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchaklar yumaloqlandi, lekin boshqacha. O'n olti piksel kerak.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi o'yinlar tayyor! Endi sport sahifasi. Burchaklar yumaloq, lekin kartochkalar fonga yopishib qolgandek. Ularga soya bering, faqat u pastga tushsin: bo'sh qoidaga xususiyat va qiymatni yozing.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Kartochkalar fondan ko'tarilib turgandek. Sport sahifasi tayyor!", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Soya qaysi xususiyat bilan beriladi? Uning qiymatida to'rtta qism bor, esingizdami?", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu box-shadow. Birinchi son o'ngga siljitadi, u nol bo'lsin. Ikkinchisi pastga, masalan olti piksel. Keyin xiralik va rang keladi.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u sarlavhaga faqat pastki soya beradi. Kartochkalar uchun ham xuddi shunday yozing va Tekshirishni bosing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa yondi! Uchinchisi: xitlar. Bu yerda uchta o'yin bor, lekin eng mashhuri bittasi. Uni chap tomondagi to'q sariq chiziq bilan belgilang, qoidani esa boshidan oxirigacha o'zingiz yozing. Diqqat qiling: xitning o'z id atributi bor, u [English pronunciation] HTML [O'zbekcha tallaffuz] kodda ko'rinib turibdi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu xit! Endi uni darrov ko'rasiz. Xitlar sahifasi ham tayyor.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin selektor: faqat xitni qaysi nom tanlaydi? [English pronunciation] HTML [O'zbekcha tallaffuz] kodga qarang. Keyin bitta tomon uchun xususiyat kerak.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor xit, oldida panjara belgisi. Xususiyat border-left, qiymatida uch qism: qalinlik, chiziq turi va rang, masalan olti piksel, solid va orange.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u boshqa o'yinni binafsha chiziq bilan belgilaydi. Xit uchun ham xuddi shunday yozing, faqat orange bilan.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: chegirmalar. Bu kodni men shoshib yozgan edim, unda ikkita joy buzilgan. Brauzer buzilgan qiymatlarni tashlab yuboradi, shuning uchun burchaklar o'tkir, soya esa yo'q. Ikkala buzilgan joyni toping va tuzating, sonlarni esa o'zgartirmang.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, tuzaldi! Burchaklar yumaloq, soya joyida. Chegirmalar sahifasi ham yondi.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Darsdagi qoidalar bilan solishtiring: son yonida nima bo'lishi kerak? Soya qismlari nima bilan ajratiladi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] border-radius qiymatida o'n ikkidan keyin px yo'q. box-shadow qiymatida esa vergullar ortiqcha: qismlar faqat bo'sh joy bilan ajratiladi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: px bilan va vergulsiz to'g'ri qoida. Xuddi shunday tuzating va Tekshirishni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta sahifa yonib turibdi! Oxirgisi sizniki: bu sizning o'yiningiz kartochkasi. Uni o'zingizcha bezang: burchaklarni yumaloqlang, soya bering va bir tomoniga chiziq qo'ying. Kartochkaning klassi tanish: karta. Qiymatlarni istalganicha tanlang, oyna ostida esa nima tayyorligi ko'rinib turadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! O'yiningiz kartochkasi tayyor, xuddi haqiqiy do'kondagidek!", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bitta qoidadan boshlang: selektor karta, oldida nuqta. Qavslar ichiga uchta xususiyat yozasiz.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta xususiyat kerak: border-radius, box-shadow va bitta tomon uchun, masalan border-left. Har biridan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: boshqa qiymatlar bilan uchta xususiyat. O'zingizga yoqqan qiymatlarni tanlang.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'konning beshta sahifasi ham yana chiroyli! Kartochkalarni esa siz o'zingiz yozgan CSS bezadi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] border-radius burchaklarni yumaloqlaydi: son qancha katta bo'lsa, burchak shuncha yumaloq.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] box-shadow soya beradi: o'ngga, pastga, xiralik va rang. Faqat pastki soya uchun birinchi son nol bo'ladi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] border-left va boshqa tomonlar chiziqni bitta tomonga chizadi, id esa uni faqat bitta kartochkaga beradi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buzilgan joylarni ham topasiz: unutilgan px, soyadagi vergullar va chiziq turisiz chiziq.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyingi darsda elementlar sahifada qanday turishini o'rganamiz: ba'zilari butun qatorni egallaydi, ba'zilari esa yonma-yon turadi. Ko'rishguncha!", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. CSS kodini shu yerga yozing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchaklar hali o'tkir. Nol o'rniga o'n olti piksel yozing.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Banner burchaklari hali boshqacha. Yigirma to'rt piksel kerak.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalarda hali soya yo'q. Soyani box-shadow beradi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Soya yon tomonga ham siljidi. Birinchi son o'ngga siljitadi: soya faqat pastda bo'lishi uchun u nol bo'lsin.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Soya pastga tushmayapti. Ikkinchi son pastga siljitadi: u noldan katta bo'lsin.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bannerda hali pastki soya yo'q. Birinchi son nol, ikkinchisi esa noldan katta bo'lsin.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziq hamma kartochkada chiqdi. Bizga faqat xit kerak: selektorga uning id atributini yozing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziq xitning hamma tomonida. border hamma tomonga chizadi, chap tomon uchun esa border-left kerak.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xitda hali chap chiziq yo'q. Chiziq ko'rinishi uchun border-left qiymatida qalinlik, chiziq turi va rang bo'ladi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziq bor, lekin to'q sariq emas. To'q sariq inglizchada orange.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha ostida hali to'q sariq chiziq yo'q. Pastki tomon border-bottom bo'ladi, selektor esa [English pronunciation] H one [O'zbekcha tallaffuz].", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozuv to'g'ri, lekin sonlar boshqa. Sonlarni o'zgartirmang: burchak o'n ikki piksel, soya nol, olti, o'n ikki va gray.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chap chiziq hali ko'rinmayapti, chunki unda chiziq turi yo'q. Qalinlik va rang o'rtasiga solid qo'ying.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchaklar hali o'tkir: border-radius yozing, son va px.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkada hali soya yo'q: box-shadow yozing.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir tomonda chiziq yo'q: masalan, border-left yozing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziq yozildi, lekin ko'rinmayapti, chunki unda chiziq turi yo'q. solid, dashed yoki dotted qo'shing.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziq to'rtala tomonda. Bizga bitta tomon kerak: border o'rniga, masalan, border-left yozing.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi o'yin chiqdi!", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tez kunda chiqadi!", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего магазина игр. Смотри, какие красивые карточки: круглые углы, мягкая тень снизу, оранжевая полоса слева. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS-код стёрся. Карточки превратились в простые белые прямоугольники, а вкладки погасли.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] на месте, карточки тоже, пропало только оформление. На прошлом уроке мы научились украшать карточки: круглые углы, тень и полоса с одной стороны. Теперь вернём пять страниц по одной, а код будешь писать ты. На пятой странице будет карточка твоей игры.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая страница: новинки. Здесь осталось одно правило, но углы острые, потому что в нём ноль пикселей. Пусть углы карточек скруглятся на шестнадцать пикселей: замени в правиле число.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Углы стали мягкими, страница новинок ожила!", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на правило: какое число стоит после border-radius? Именно оно скругляет угол.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сейчас там ноль пикселей. Сделай шестнадцать, а px пусть останется.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом скругляет углы абзаца на восемь пикселей. Так же напиши шестнадцать для карточек и нажми Проверить.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Углы скруглились, но не так. Нужно шестнадцать пикселей.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новинки готовы! Теперь страница спорта. Углы круглые, но карточки будто прилипли к фону. Дай им тень, и пусть она падает только вниз: впиши в пустое правило свойство и значение.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Карточки будто приподнялись над фоном. Страница спорта готова!", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каким свойством задают тень? В её значении четыре части, помнишь?", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это box-shadow. Первое число сдвигает вправо, пусть будет ноль. Второе, вниз, например шесть пикселей. Потом размытие и цвет.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом даёт заголовку тень только снизу. Для карточек напиши так же и нажми Проверить.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы горят! Третья: хиты. Здесь три игры, но самая популярная, одна. Отметь её оранжевой полосой слева, а правило напиши целиком. Обрати внимание: у хита свой id, он виден в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот это хит! Теперь его видно сразу. Страница хитов тоже готова.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала селектор: какое имя выбирает только хит? Посмотри в [English pronunciation] HTML [Русское произношение]-код. Потом нужно свойство для одной стороны.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор xit, перед ним решётка. Свойство border-left, в значении три части: толщина, вид линии и цвет, например шесть пикселей, solid и orange.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом отмечает другую игру фиолетовой полосой. Для хита напиши так же, только с orange.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: скидки. Этот код я писал в спешке, и в нём две поломки. Браузер сломанные значения выбрасывает, поэтому углы острые, а тени нет. Найди и почини обе поломки, а числа не меняй.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот, починено! Углы круглые, тень на месте. Страница скидок тоже горит.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни с правилами из урока: что должно стоять рядом с числом? Чем разделяют части тени?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В значении border-radius после двенадцати нет px. А в значении box-shadow лишние запятые: части разделяют только пробелами.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, верное правило: с px и без запятых. Почини так же и нажми Проверить.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре страницы горят! Последняя, твоя: это карточка твоей игры. Укрась её по-своему: скругли углы, дай тень и проведи полосу с одной стороны. Класс карточки знакомый: karta. Значения выбирай любые, а под окном видно, что уже готово.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Карточка твоей игры готова, прямо как в настоящем магазине!", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начни с одного правила: селектор karta, перед ним точка. В скобках будут три свойства.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны три свойства: border-radius, box-shadow и одна сторона, например border-left. После каждого ставь точку с запятой.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, три свойства с другими значениями. Выбери свои.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять страниц магазина снова красивые! А карточки украсил CSS, написанный твоими руками.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] border-radius скругляет углы: чем больше число, тем круглее угол.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] box-shadow даёт тень: вправо, вниз, размытие и цвет. Для тени только снизу первое число, ноль.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] border-left и другие стороны рисуют линию с одной стороны, а id даёт её только одной карточке.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И находишь поломки: забытый px, запятые в тени и полосу без вида линии.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] На следующем уроке узнаем, как элементы ведут себя на странице: одни занимают всю строку, а другие стоят рядом. До встречи!", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши CSS-код здесь.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужна открывающая фигурная скобка: она стоит после селектора.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило не закрыто: в конце поставь закрывающую фигурную скобку.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед скобкой нет селектора: напиши, что оформляем.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто: впиши нужное в рамку.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только значение: имя свойства уже стоит слева.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только селектор: скобки и остальной код уже на месте.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только свойство и значение: селектор и скобки уже на месте.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код работает, но страница пока не такая, как нужно. Перечитай задание.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Углы всё ещё острые. Вместо нуля напиши шестнадцать пикселей.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Углы баннера пока не те. Нужно двадцать четыре пикселя.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У карточек пока нет тени. Тень задаёт box-shadow.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тень ушла и вбок. Первое число сдвигает вправо: чтобы тень была только снизу, оно должно быть ноль.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тень не опускается вниз. Второе число сдвигает вниз: оно должно быть больше нуля.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У баннера пока нет тени снизу. Первое число, ноль, а второе, больше нуля.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полоса появилась у всех карточек. А нужна только у хита: возьми в селектор его id.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Линия у хита со всех сторон. border рисует со всех сторон, а для левой нужен border-left.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У хита пока нет полосы слева. Чтобы линия была видна, в значении border-left нужны толщина, вид линии и цвет.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полоса есть, но не оранжевая. Оранжевый по-английски, orange.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под заголовком пока нет оранжевой линии. Нижняя сторона, это border-bottom, а селектор, [English pronunciation] H one [Русское произношение].", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запись верная, но числа другие. Не меняй числа: углы двенадцать пикселей, тень ноль, шесть, двенадцать и gray.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полосы слева всё ещё не видно, потому что у неё нет вида линии. Поставь solid между толщиной и цветом.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Углы пока острые: напиши border-radius, число и px.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У карточки пока нет тени: напиши box-shadow.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет полосы с одной стороны: напиши, например, border-left.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полоса записана, но её не видно, потому что нет вида линии. Добавь solid, dashed или dotted.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Линия со всех четырёх сторон. А нужна одна сторона: вместо border напиши, например, border-left.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вышла новая игра!", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скоро выйдет!", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my game store’s website. Look how nice the cards are: round corners, a soft shadow below, an orange stripe on the left. The site has five pages. I’m about to update it, tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The CSS code got erased. The cards turned into plain white rectangles, and the tabs went dark.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L is fine and the cards are there, only the styling is gone. Last lesson we learned to decorate cards: round corners, a shadow and a stripe on one side. Now let’s bring back the five pages one by one, and you’ll write the code. The fifth page will have your own game’s card.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first page is new games. One rule is left here, but the corners are sharp, because it says zero pixels. Let’s round the card corners by sixteen pixels: change the number in the rule.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The corners got soft, and the new games page is back to life!", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the rule: what number comes after border-radius? That’s what rounds the corner.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right now it’s zero pixels. Make it sixteen, and keep the px.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code rounds a paragraph’s corners by eight pixels. Write sixteen for the cards the same way and tap Check.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The corners got round, but not like that. We need sixteen pixels.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] New games are done! Now the sports page. The corners are round, but the cards look stuck to the background. Give them a shadow that falls only down: write a property and a value in the empty rule.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The cards seem to float above the background. The sports page is ready!", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property sets a shadow? Its value has four parts, remember?", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s box-shadow. The first number moves it right, make it zero. The second moves it down, like six pixels. Then come the blur and the color.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code gives the heading a shadow only below. Write the same for the cards and tap Check.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are lit! The third is hits. There are three games here, but only one is the most popular. Mark it with an orange stripe on the left, and write the whole rule yourself. Notice: the hit has its own id, you can see it in the H T M L code.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now that’s a hit! You can spot it right away. The hits page is ready too.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First the selector: which name picks only the hit? Look at the H T M L code. Then you need a property for one side.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is xit with a hash sign before it. The property is border-left, and its value has three parts: thickness, line style and color, like six pixels, solid and orange.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code marks another game with a purple stripe. Write the same for the hit, only with orange.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is the sale. I wrote this code in a hurry, and it has two broken spots. The browser throws broken values away, so the corners are sharp and there’s no shadow. Find and fix both, but don’t change the numbers.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There, it’s fixed! Round corners, the shadow is back. The sale page is lit too.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare with the rules from the lesson: what goes next to a number? What separates the parts of a shadow?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the border-radius value there’s no px after twelve. And the box-shadow value has extra commas: the parts are separated only by spaces.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code is a correct rule: with px and without commas. Fix yours the same way and tap Check.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four pages are lit! The last one is yours: it’s your game’s card. Decorate it your way: round the corners, add a shadow and draw a stripe on one side. The card’s class is the familiar karta. Pick any values, and under the window you can see what’s done.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your game’s card is ready, just like in a real store!", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Start with one rule: the selector is karta with a dot before it. Three properties go inside the braces.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You need three properties: border-radius, box-shadow and one side, for example border-left. Put a semicolon after each.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has three properties with other values. Pick your own.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five store pages look great again! And the CSS you wrote yourself decorated the cards.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] border-radius rounds the corners: the bigger the number, the rounder the corner.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] box-shadow gives a shadow: right, down, blur and color. For a shadow only below, the first number is zero.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] border-left and the other sides draw a line on one side, and an id gives it to just one card.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And you find broken spots: a forgotten px, commas in a shadow and a stripe with no line style.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Next lesson we’ll learn how elements behave on a page: some take the whole line, others sit side by side. See you!", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the CSS code here.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs an opening curly brace: it goes after the selector.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule isn’t closed: put a closing curly brace at the end.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an extra closing brace. Each opening brace gets one closing brace.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no selector before the brace: write what we’re styling.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no semicolon between two properties. Put one after every value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far: type what’s needed into the box.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the value goes in the box: the property name is already on the left.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the selector goes in the box: the braces and the rest are already there.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the property and value go in the box: the selector and braces are already there.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code works, but the page isn’t quite right yet. Read the task again.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The corners are still sharp. Write sixteen pixels instead of zero.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The banner corners aren’t right yet. We need twenty-four pixels.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards have no shadow yet. box-shadow sets the shadow.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The shadow moved sideways too. The first number moves it right: for a shadow only below, make it zero.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The shadow doesn’t go down. The second number moves it down: make it bigger than zero.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The banner has no shadow below yet. The first number is zero, and the second is bigger than zero.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The stripe appeared on every card. We need only the hit: use its id as the selector.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The line is on every side of the hit. border draws on all sides, but the left side needs border-left.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The hit has no stripe on the left yet. For the line to show, the border-left value needs a thickness, a line style and a color.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The stripe is there, but it isn’t orange. Use the word orange.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no orange line under the heading yet. The bottom side is border-bottom, and the selector is H one.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The writing is fine, but the numbers changed. Keep the numbers: corners twelve pixels, shadow zero, six, twelve and gray.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The left stripe still doesn’t show, because it has no line style. Put solid between the thickness and the color.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The corners are still sharp: write border-radius, a number and px.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The card has no shadow yet: write box-shadow.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no stripe on one side: write, for example, border-left.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The stripe is written, but it doesn’t show, because there’s no line style. Add solid, dashed or dotted.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The line is on all four sides. We need just one side: instead of border, write, for example, border-left.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A new game is out!", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Coming soon!", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening o'yinlar do'konimning sayti. Qarang, kartochkalar qanday chiroyli: burchaklari yumaloq, ostida yumshoq soya, chap tomonida to'q sariq chiziq. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.": "uz001",
+    "Voy! CSS kodi o'chib ketdi. Kartochkalar oddiy oq to'rtburchaklarga aylanib qoldi, yorliqlar ham o'chdi.": "uz002",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] joyida, kartochkalar ham turibdi, faqat bezak yo'q. O'tgan darsda kartochkalarni bezashni o'rgandik: yumaloq burchaklar, soya va bir tomondagi chiziq. Endi beshta sahifani birma-bir tiklaymiz, kodni esa o'zingiz yozasiz. Beshinchi sahifada o'z o'yiningizning kartochkasi bo'ladi.": "uz003",
+    "Birinchi sahifa: yangi o'yinlar. Bu yerda bitta qoida qolgan, lekin burchaklar o'tkir, chunki unda nol piksel turibdi. Kartochkalarning burchagi o'n olti piksel yumaloq bo'lsin: qoidadagi sonni almashtiring.": "uz004",
+    "Ajoyib! Burchaklar yumshoq bo'ldi, yangi o'yinlar sahifasi jonlandi!": "uz005",
+    "Qoidaga qarang: border-radius xususiyatidan keyin qanday son turibdi? Aynan u burchakni yumaloqlaydi.": "uz006",
+    "Hozir u nol piksel. Uni o'n olti qiling, px esa joyida qolsin.": "uz007",
+    "Namuna kod ostida: u abzas burchaklarini sakkiz piksel yumaloqlaydi. Xuddi shunday, kartochka uchun o'n olti yozing va Tekshirishni bosing.": "uz008",
+    "Burchaklar yumaloqlandi, lekin boshqacha. O'n olti piksel kerak.": "uz009",
+    "Yangi o'yinlar tayyor! Endi sport sahifasi. Burchaklar yumaloq, lekin kartochkalar fonga yopishib qolgandek. Ularga soya bering, faqat u pastga tushsin: bo'sh qoidaga xususiyat va qiymatni yozing.": "uz010",
+    "Zo'r! Kartochkalar fondan ko'tarilib turgandek. Sport sahifasi tayyor!": "uz011",
+    "Soya qaysi xususiyat bilan beriladi? Uning qiymatida to'rtta qism bor, esingizdami?": "uz012",
+    "Bu box-shadow. Birinchi son o'ngga siljitadi, u nol bo'lsin. Ikkinchisi pastga, masalan olti piksel. Keyin xiralik va rang keladi.": "uz013",
+    "Namuna kod ostida: u sarlavhaga faqat pastki soya beradi. Kartochkalar uchun ham xuddi shunday yozing va Tekshirishni bosing.": "uz014",
+    "Ikkita sahifa yondi! Uchinchisi: xitlar. Bu yerda uchta o'yin bor, lekin eng mashhuri bittasi. Uni chap tomondagi to'q sariq chiziq bilan belgilang, qoidani esa boshidan oxirigacha o'zingiz yozing. Diqqat qiling: xitning o'z id atributi bor, u [English pronunciation] HTML [O'zbekcha tallaffuz] kodda ko'rinib turibdi.": "uz015",
+    "Mana bu xit! Endi uni darrov ko'rasiz. Xitlar sahifasi ham tayyor.": "uz016",
+    "Oldin selektor: faqat xitni qaysi nom tanlaydi? [English pronunciation] HTML [O'zbekcha tallaffuz] kodga qarang. Keyin bitta tomon uchun xususiyat kerak.": "uz017",
+    "Selektor xit, oldida panjara belgisi. Xususiyat border-left, qiymatida uch qism: qalinlik, chiziq turi va rang, masalan olti piksel, solid va orange.": "uz018",
+    "Namuna kod ostida: u boshqa o'yinni binafsha chiziq bilan belgilaydi. Xit uchun ham xuddi shunday yozing, faqat orange bilan.": "uz019",
+    "Uchta sahifa tayyor! To'rtinchisi: chegirmalar. Bu kodni men shoshib yozgan edim, unda ikkita joy buzilgan. Brauzer buzilgan qiymatlarni tashlab yuboradi, shuning uchun burchaklar o'tkir, soya esa yo'q. Ikkala buzilgan joyni toping va tuzating, sonlarni esa o'zgartirmang.": "uz020",
+    "Mana, tuzaldi! Burchaklar yumaloq, soya joyida. Chegirmalar sahifasi ham yondi.": "uz021",
+    "Darsdagi qoidalar bilan solishtiring: son yonida nima bo'lishi kerak? Soya qismlari nima bilan ajratiladi?": "uz022",
+    "border-radius qiymatida o'n ikkidan keyin px yo'q. box-shadow qiymatida esa vergullar ortiqcha: qismlar faqat bo'sh joy bilan ajratiladi.": "uz023",
+    "Namuna kod ostida: px bilan va vergulsiz to'g'ri qoida. Xuddi shunday tuzating va Tekshirishni bosing.": "uz024",
+    "To'rtta sahifa yonib turibdi! Oxirgisi sizniki: bu sizning o'yiningiz kartochkasi. Uni o'zingizcha bezang: burchaklarni yumaloqlang, soya bering va bir tomoniga chiziq qo'ying. Kartochkaning klassi tanish: karta. Qiymatlarni istalganicha tanlang, oyna ostida esa nima tayyorligi ko'rinib turadi.": "uz025",
+    "Ura! O'yiningiz kartochkasi tayyor, xuddi haqiqiy do'kondagidek!": "uz026",
+    "Bitta qoidadan boshlang: selektor karta, oldida nuqta. Qavslar ichiga uchta xususiyat yozasiz.": "uz027",
+    "Uchta xususiyat kerak: border-radius, box-shadow va bitta tomon uchun, masalan border-left. Har biridan keyin nuqtali vergul qo'ying.": "uz028",
+    "Namuna kod ostida: boshqa qiymatlar bilan uchta xususiyat. O'zingizga yoqqan qiymatlarni tanlang.": "uz029",
+    "Do'konning beshta sahifasi ham yana chiroyli! Kartochkalarni esa siz o'zingiz yozgan CSS bezadi.": "uz030",
+    "border-radius burchaklarni yumaloqlaydi: son qancha katta bo'lsa, burchak shuncha yumaloq.": "uz031",
+    "box-shadow soya beradi: o'ngga, pastga, xiralik va rang. Faqat pastki soya uchun birinchi son nol bo'ladi.": "uz032",
+    "border-left va boshqa tomonlar chiziqni bitta tomonga chizadi, id esa uni faqat bitta kartochkaga beradi.": "uz033",
+    "Buzilgan joylarni ham topasiz: unutilgan px, soyadagi vergullar va chiziq turisiz chiziq.": "uz034",
+    "Keyingi darsda elementlar sahifada qanday turishini o'rganamiz: ba'zilari butun qatorni egallaydi, ba'zilari esa yonma-yon turadi. Ko'rishguncha!": "uz035",
+    "Hozircha bo'sh. CSS kodini shu yerga yozing.": "uz036",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz037",
+    "Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.": "uz038",
+    "Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.": "uz039",
+    "Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.": "uz040",
+    "Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.": "uz041",
+    "Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz042",
+    "Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.": "uz043",
+    "Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.": "uz044",
+    "Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.": "uz045",
+    "Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.": "uz046",
+    "Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.": "uz047",
+    "Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.": "uz048",
+    "Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.": "uz049",
+    "Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.": "uz050",
+    "Voy, zo‘r!": "uz051",
+    "Ana! Chiqdi!": "uz052",
+    "Super!": "uz053",
+    "Qoyil!": "uz054",
+    "Ura!": "uz055",
+    "Zo‘r-ku!": "uz056",
+    "Yana bir bor urinib ko‘ring.": "uz057",
+    "Diqqat bilan qarang.": "uz058",
+    "Yaqin qoldingiz. Shoshilmang.": "uz059",
+    "Burchaklar hali o'tkir. Nol o'rniga o'n olti piksel yozing.": "uz060",
+    "Banner burchaklari hali boshqacha. Yigirma to'rt piksel kerak.": "uz061",
+    "Kartochkalarda hali soya yo'q. Soyani box-shadow beradi.": "uz062",
+    "Soya yon tomonga ham siljidi. Birinchi son o'ngga siljitadi: soya faqat pastda bo'lishi uchun u nol bo'lsin.": "uz063",
+    "Soya pastga tushmayapti. Ikkinchi son pastga siljitadi: u noldan katta bo'lsin.": "uz064",
+    "Bannerda hali pastki soya yo'q. Birinchi son nol, ikkinchisi esa noldan katta bo'lsin.": "uz065",
+    "Chiziq hamma kartochkada chiqdi. Bizga faqat xit kerak: selektorga uning id atributini yozing.": "uz066",
+    "Chiziq xitning hamma tomonida. border hamma tomonga chizadi, chap tomon uchun esa border-left kerak.": "uz067",
+    "Xitda hali chap chiziq yo'q. Chiziq ko'rinishi uchun border-left qiymatida qalinlik, chiziq turi va rang bo'ladi.": "uz068",
+    "Chiziq bor, lekin to'q sariq emas. To'q sariq inglizchada orange.": "uz069",
+    "Sarlavha ostida hali to'q sariq chiziq yo'q. Pastki tomon border-bottom bo'ladi, selektor esa [English pronunciation] H one [O'zbekcha tallaffuz].": "uz070",
+    "Yozuv to'g'ri, lekin sonlar boshqa. Sonlarni o'zgartirmang: burchak o'n ikki piksel, soya nol, olti, o'n ikki va gray.": "uz071",
+    "Chap chiziq hali ko'rinmayapti, chunki unda chiziq turi yo'q. Qalinlik va rang o'rtasiga solid qo'ying.": "uz072",
+    "Burchaklar hali o'tkir: border-radius yozing, son va px.": "uz073",
+    "Kartochkada hali soya yo'q: box-shadow yozing.": "uz074",
+    "Bir tomonda chiziq yo'q: masalan, border-left yozing.": "uz075",
+    "Chiziq yozildi, lekin ko'rinmayapti, chunki unda chiziq turi yo'q. solid, dashed yoki dotted qo'shing.": "uz076",
+    "Chiziq to'rtala tomonda. Bizga bitta tomon kerak: border o'rniga, masalan, border-left yozing.": "uz077",
+    "Salom!": "uz078",
+    "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz079",
+    "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz080",
+    "Yangi o'yin chiqdi!": "uz081",
+    "Tez kunda chiqadi!": "uz082",
+    "Barakalla!": "uz083",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz084",
+  },
+  ru: {
+    "Привет! Это сайт моего магазина игр. Смотри, какие красивые карточки: круглые углы, мягкая тень снизу, оранжевая полоса слева. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
+    "Ой! CSS-код стёрся. Карточки превратились в простые белые прямоугольники, а вкладки погасли.": "ru002",
+    "[English pronunciation] HTML [Русское произношение] на месте, карточки тоже, пропало только оформление. На прошлом уроке мы научились украшать карточки: круглые углы, тень и полоса с одной стороны. Теперь вернём пять страниц по одной, а код будешь писать ты. На пятой странице будет карточка твоей игры.": "ru003",
+    "Первая страница: новинки. Здесь осталось одно правило, но углы острые, потому что в нём ноль пикселей. Пусть углы карточек скруглятся на шестнадцать пикселей: замени в правиле число.": "ru004",
+    "Отлично! Углы стали мягкими, страница новинок ожила!": "ru005",
+    "Посмотри на правило: какое число стоит после border-radius? Именно оно скругляет угол.": "ru006",
+    "Сейчас там ноль пикселей. Сделай шестнадцать, а px пусть останется.": "ru007",
+    "Образец под кодом скругляет углы абзаца на восемь пикселей. Так же напиши шестнадцать для карточек и нажми Проверить.": "ru008",
+    "Углы скруглились, но не так. Нужно шестнадцать пикселей.": "ru009",
+    "Новинки готовы! Теперь страница спорта. Углы круглые, но карточки будто прилипли к фону. Дай им тень, и пусть она падает только вниз: впиши в пустое правило свойство и значение.": "ru010",
+    "Огонь! Карточки будто приподнялись над фоном. Страница спорта готова!": "ru011",
+    "Каким свойством задают тень? В её значении четыре части, помнишь?": "ru012",
+    "Это box-shadow. Первое число сдвигает вправо, пусть будет ноль. Второе, вниз, например шесть пикселей. Потом размытие и цвет.": "ru013",
+    "Образец под кодом даёт заголовку тень только снизу. Для карточек напиши так же и нажми Проверить.": "ru014",
+    "Две страницы горят! Третья: хиты. Здесь три игры, но самая популярная, одна. Отметь её оранжевой полосой слева, а правило напиши целиком. Обрати внимание: у хита свой id, он виден в [English pronunciation] HTML [Русское произношение]-коде.": "ru015",
+    "Вот это хит! Теперь его видно сразу. Страница хитов тоже готова.": "ru016",
+    "Сначала селектор: какое имя выбирает только хит? Посмотри в [English pronunciation] HTML [Русское произношение]-код. Потом нужно свойство для одной стороны.": "ru017",
+    "Селектор xit, перед ним решётка. Свойство border-left, в значении три части: толщина, вид линии и цвет, например шесть пикселей, solid и orange.": "ru018",
+    "Образец под кодом отмечает другую игру фиолетовой полосой. Для хита напиши так же, только с orange.": "ru019",
+    "Три страницы готовы! Четвёртая: скидки. Этот код я писал в спешке, и в нём две поломки. Браузер сломанные значения выбрасывает, поэтому углы острые, а тени нет. Найди и почини обе поломки, а числа не меняй.": "ru020",
+    "Вот, починено! Углы круглые, тень на месте. Страница скидок тоже горит.": "ru021",
+    "Сравни с правилами из урока: что должно стоять рядом с числом? Чем разделяют части тени?": "ru022",
+    "В значении border-radius после двенадцати нет px. А в значении box-shadow лишние запятые: части разделяют только пробелами.": "ru023",
+    "Образец под кодом, верное правило: с px и без запятых. Почини так же и нажми Проверить.": "ru024",
+    "Четыре страницы горят! Последняя, твоя: это карточка твоей игры. Укрась её по-своему: скругли углы, дай тень и проведи полосу с одной стороны. Класс карточки знакомый: karta. Значения выбирай любые, а под окном видно, что уже готово.": "ru025",
+    "Ура! Карточка твоей игры готова, прямо как в настоящем магазине!": "ru026",
+    "Начни с одного правила: селектор karta, перед ним точка. В скобках будут три свойства.": "ru027",
+    "Нужны три свойства: border-radius, box-shadow и одна сторона, например border-left. После каждого ставь точку с запятой.": "ru028",
+    "Образец под кодом, три свойства с другими значениями. Выбери свои.": "ru029",
+    "Все пять страниц магазина снова красивые! А карточки украсил CSS, написанный твоими руками.": "ru030",
+    "border-radius скругляет углы: чем больше число, тем круглее угол.": "ru031",
+    "box-shadow даёт тень: вправо, вниз, размытие и цвет. Для тени только снизу первое число, ноль.": "ru032",
+    "border-left и другие стороны рисуют линию с одной стороны, а id даёт её только одной карточке.": "ru033",
+    "И находишь поломки: забытый px, запятые в тени и полосу без вида линии.": "ru034",
+    "На следующем уроке узнаем, как элементы ведут себя на странице: одни занимают всю строку, а другие стоят рядом. До встречи!": "ru035",
+    "Пока пусто. Пиши CSS-код здесь.": "ru036",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru037",
+    "Правилу нужна открывающая фигурная скобка: она стоит после селектора.": "ru038",
+    "Правило не закрыто: в конце поставь закрывающую фигурную скобку.": "ru039",
+    "Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.": "ru040",
+    "Перед скобкой нет селектора: напиши, что оформляем.": "ru041",
+    "Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.": "ru042",
+    "Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.": "ru043",
+    "Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.": "ru044",
+    "Пока пусто: впиши нужное в рамку.": "ru045",
+    "В рамку, только значение: имя свойства уже стоит слева.": "ru046",
+    "В рамку, только селектор: скобки и остальной код уже на месте.": "ru047",
+    "В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.": "ru048",
+    "В рамку, только свойство и значение: селектор и скобки уже на месте.": "ru049",
+    "Код работает, но страница пока не такая, как нужно. Перечитай задание.": "ru050",
+    "Вау, классно!": "ru051",
+    "Есть! Получилось!": "ru052",
+    "Супер!": "ru053",
+    "Огонь!": "ru054",
+    "Ура!": "ru055",
+    "Вот это да!": "ru056",
+    "Попробуй ещё раз.": "ru057",
+    "Посмотри внимательно.": "ru058",
+    "Уже близко. Не спеши.": "ru059",
+    "Углы всё ещё острые. Вместо нуля напиши шестнадцать пикселей.": "ru060",
+    "Углы баннера пока не те. Нужно двадцать четыре пикселя.": "ru061",
+    "У карточек пока нет тени. Тень задаёт box-shadow.": "ru062",
+    "Тень ушла и вбок. Первое число сдвигает вправо: чтобы тень была только снизу, оно должно быть ноль.": "ru063",
+    "Тень не опускается вниз. Второе число сдвигает вниз: оно должно быть больше нуля.": "ru064",
+    "У баннера пока нет тени снизу. Первое число, ноль, а второе, больше нуля.": "ru065",
+    "Полоса появилась у всех карточек. А нужна только у хита: возьми в селектор его id.": "ru066",
+    "Линия у хита со всех сторон. border рисует со всех сторон, а для левой нужен border-left.": "ru067",
+    "У хита пока нет полосы слева. Чтобы линия была видна, в значении border-left нужны толщина, вид линии и цвет.": "ru068",
+    "Полоса есть, но не оранжевая. Оранжевый по-английски, orange.": "ru069",
+    "Под заголовком пока нет оранжевой линии. Нижняя сторона, это border-bottom, а селектор, [English pronunciation] H one [Русское произношение].": "ru070",
+    "Запись верная, но числа другие. Не меняй числа: углы двенадцать пикселей, тень ноль, шесть, двенадцать и gray.": "ru071",
+    "Полосы слева всё ещё не видно, потому что у неё нет вида линии. Поставь solid между толщиной и цветом.": "ru072",
+    "Углы пока острые: напиши border-radius, число и px.": "ru073",
+    "У карточки пока нет тени: напиши box-shadow.": "ru074",
+    "Нет полосы с одной стороны: напиши, например, border-left.": "ru075",
+    "Полоса записана, но её не видно, потому что нет вида линии. Добавь solid, dashed или dotted.": "ru076",
+    "Линия со всех четырёх сторон. А нужна одна сторона: вместо border напиши, например, border-left.": "ru077",
+    "Привет!": "ru078",
+    "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru079",
+    "Отлично, теперь это точно твоё! Идём дальше.": "ru080",
+    "Вышла новая игра!": "ru081",
+    "Скоро выйдет!": "ru082",
+    "Молодец!": "ru083",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru084",
+  },
+  en: {
+    "Hi! This is my game store’s website. Look how nice the cards are: round corners, a soft shadow below, an orange stripe on the left. The site has five pages. I’m about to update it, tap Refresh.": "en001",
+    "Oh no! The CSS code got erased. The cards turned into plain white rectangles, and the tabs went dark.": "en002",
+    "The H T M L is fine and the cards are there, only the styling is gone. Last lesson we learned to decorate cards: round corners, a shadow and a stripe on one side. Now let’s bring back the five pages one by one, and you’ll write the code. The fifth page will have your own game’s card.": "en003",
+    "The first page is new games. One rule is left here, but the corners are sharp, because it says zero pixels. Let’s round the card corners by sixteen pixels: change the number in the rule.": "en004",
+    "Great! The corners got soft, and the new games page is back to life!": "en005",
+    "Look at the rule: what number comes after border-radius? That’s what rounds the corner.": "en006",
+    "Right now it’s zero pixels. Make it sixteen, and keep the px.": "en007",
+    "The example under the code rounds a paragraph’s corners by eight pixels. Write sixteen for the cards the same way and tap Check.": "en008",
+    "The corners got round, but not like that. We need sixteen pixels.": "en009",
+    "New games are done! Now the sports page. The corners are round, but the cards look stuck to the background. Give them a shadow that falls only down: write a property and a value in the empty rule.": "en010",
+    "Awesome! The cards seem to float above the background. The sports page is ready!": "en011",
+    "Which property sets a shadow? Its value has four parts, remember?": "en012",
+    "It’s box-shadow. The first number moves it right, make it zero. The second moves it down, like six pixels. Then come the blur and the color.": "en013",
+    "The example under the code gives the heading a shadow only below. Write the same for the cards and tap Check.": "en014",
+    "Two pages are lit! The third is hits. There are three games here, but only one is the most popular. Mark it with an orange stripe on the left, and write the whole rule yourself. Notice: the hit has its own id, you can see it in the H T M L code.": "en015",
+    "Now that’s a hit! You can spot it right away. The hits page is ready too.": "en016",
+    "First the selector: which name picks only the hit? Look at the H T M L code. Then you need a property for one side.": "en017",
+    "The selector is xit with a hash sign before it. The property is border-left, and its value has three parts: thickness, line style and color, like six pixels, solid and orange.": "en018",
+    "The example under the code marks another game with a purple stripe. Write the same for the hit, only with orange.": "en019",
+    "Three pages are done! The fourth is the sale. I wrote this code in a hurry, and it has two broken spots. The browser throws broken values away, so the corners are sharp and there’s no shadow. Find and fix both, but don’t change the numbers.": "en020",
+    "There, it’s fixed! Round corners, the shadow is back. The sale page is lit too.": "en021",
+    "Compare with the rules from the lesson: what goes next to a number? What separates the parts of a shadow?": "en022",
+    "In the border-radius value there’s no px after twelve. And the box-shadow value has extra commas: the parts are separated only by spaces.": "en023",
+    "The example under the code is a correct rule: with px and without commas. Fix yours the same way and tap Check.": "en024",
+    "Four pages are lit! The last one is yours: it’s your game’s card. Decorate it your way: round the corners, add a shadow and draw a stripe on one side. The card’s class is the familiar karta. Pick any values, and under the window you can see what’s done.": "en025",
+    "Hooray! Your game’s card is ready, just like in a real store!": "en026",
+    "Start with one rule: the selector is karta with a dot before it. Three properties go inside the braces.": "en027",
+    "You need three properties: border-radius, box-shadow and one side, for example border-left. Put a semicolon after each.": "en028",
+    "The example under the code has three properties with other values. Pick your own.": "en029",
+    "All five store pages look great again! And the CSS you wrote yourself decorated the cards.": "en030",
+    "border-radius rounds the corners: the bigger the number, the rounder the corner.": "en031",
+    "box-shadow gives a shadow: right, down, blur and color. For a shadow only below, the first number is zero.": "en032",
+    "border-left and the other sides draw a line on one side, and an id gives it to just one card.": "en033",
+    "And you find broken spots: a forgotten px, commas in a shadow and a stripe with no line style.": "en034",
+    "Next lesson we’ll learn how elements behave on a page: some take the whole line, others sit side by side. See you!": "en035",
+    "It’s empty so far. Write the CSS code here.": "en036",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en037",
+    "The rule needs an opening curly brace: it goes after the selector.": "en038",
+    "The rule isn’t closed: put a closing curly brace at the end.": "en039",
+    "There’s an extra closing brace. Each opening brace gets one closing brace.": "en040",
+    "There’s no selector before the brace: write what we’re styling.": "en041",
+    "There’s no semicolon between two properties. Put one after every value.": "en042",
+    "This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.": "en043",
+    "The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.": "en044",
+    "It’s empty so far: type what’s needed into the box.": "en045",
+    "Only the value goes in the box: the property name is already on the left.": "en046",
+    "Only the selector goes in the box: the braces and the rest are already there.": "en047",
+    "There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.": "en048",
+    "Only the property and value go in the box: the selector and braces are already there.": "en049",
+    "The code works, but the page isn’t quite right yet. Read the task again.": "en050",
+    "Wow, awesome!": "en051",
+    "Yes! You did it!": "en052",
+    "Super!": "en053",
+    "Brilliant!": "en054",
+    "Hooray!": "en055",
+    "Amazing!": "en056",
+    "Try once more.": "en057",
+    "Take a closer look.": "en058",
+    "You are close. No rush.": "en059",
+    "The corners are still sharp. Write sixteen pixels instead of zero.": "en060",
+    "The banner corners aren’t right yet. We need twenty-four pixels.": "en061",
+    "The cards have no shadow yet. box-shadow sets the shadow.": "en062",
+    "The shadow moved sideways too. The first number moves it right: for a shadow only below, make it zero.": "en063",
+    "The shadow doesn’t go down. The second number moves it down: make it bigger than zero.": "en064",
+    "The banner has no shadow below yet. The first number is zero, and the second is bigger than zero.": "en065",
+    "The stripe appeared on every card. We need only the hit: use its id as the selector.": "en066",
+    "The line is on every side of the hit. border draws on all sides, but the left side needs border-left.": "en067",
+    "The hit has no stripe on the left yet. For the line to show, the border-left value needs a thickness, a line style and a color.": "en068",
+    "The stripe is there, but it isn’t orange. Use the word orange.": "en069",
+    "There’s no orange line under the heading yet. The bottom side is border-bottom, and the selector is H one.": "en070",
+    "The writing is fine, but the numbers changed. Keep the numbers: corners twelve pixels, shadow zero, six, twelve and gray.": "en071",
+    "The left stripe still doesn’t show, because it has no line style. Put solid between the thickness and the color.": "en072",
+    "The corners are still sharp: write border-radius, a number and px.": "en073",
+    "The card has no shadow yet: write box-shadow.": "en074",
+    "There’s no stripe on one side: write, for example, border-left.": "en075",
+    "The stripe is written, but it doesn’t show, because there’s no line style. Add solid, dashed or dotted.": "en076",
+    "The line is on all four sides. We need just one side: instead of border, write, for example, border-left.": "en077",
+    "Hello!": "en078",
+    "Great! Now one more small task: the same thing for another case.": "en079",
+    "Great, now you’ve really got it! Let’s move on.": "en080",
+    "A new game is out!": "en081",
+    "Coming soon!": "en082",
+    "Well done!": "en083",
+    "Everything in the window lives inside body.": "en084",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

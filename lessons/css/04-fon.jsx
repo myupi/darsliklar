@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8050,15 +7601,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14413,3 +13957,1065 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c4-sheet .kz-scene .kz-br.c4-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c4-sheet .kz-scene .kz-br.c4-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 174, ru 174, en 174; всего знаков 64410. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening futbol klubimning sayti. Lekin qarang, u juda oddiy: oq fon va qora harflar. Men uni haqiqiy stadionga o'xshatmoqchiman, orqada yashil maydon bo'lsin. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Sahifa orqasida maydon paydo bo'ldi, sarlavha va matn orqasi esa oq.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga tegmadim. Hammasini [English pronunciation] CSS [O'zbekcha tallaffuz] qildi: sahifa orqasiga rasm qo'ydi, matn orqasini esa oq rangga bo'yadi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun fon bilan ishlashni o'rganasiz: rang va rasm. Lekin oldin kichik topishmoq. Birinchi urinishda men [English pronunciation] background-image [O'zbekcha tallaffuz] deb yozdim, keyin esa faqat fayl nomini qo'shtirnoqda qoldirdim. Menimcha, shu yetarli. Siz nima deb o'ylaysiz, rasm chiqadimi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodda har safar yangi qator qo'shiladi. Sahifada o'sha qator bo'yagan joyga qarang.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor nimani bo'yashni aytadi: [English pronunciation] body [O'zbekcha tallaffuz] butun sahifa, [English pronunciation] H one [O'zbekcha tallaffuz] sarlavha, P abzas. [English pronunciation] background-color [O'zbekcha tallaffuz] esa ularning orqasini bo'yaydi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi daftarga marker bilan belgi qo'yishga o'xshaydi: harflar o'sha-o'sha, orqasi esa rangli bo'ladi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fon rangini siz allaqachon bilasiz: [English pronunciation] body [O'zbekcha tallaffuz] uchun [English pronunciation] background-color [O'zbekcha tallaffuz] butun sahifani bo'yaydi. Lekin fonni istalgan elementga berish mumkin. Qarang.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] H one [O'zbekcha tallaffuz] uchun [English pronunciation] background-color [O'zbekcha tallaffuz] yozamiz. Sarlavha orqasida sariq chiziq paydo bo'ldi. U sahifaning butun kengligi bo'ylab cho'zildi, chunki sarlavha qatorni to'liq egallaydi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzaslar uchun ham xuddi shunday. Har bir abzas orqasi oq bo'ldi. Matn rangi esa o'zgarmadi: harflar rangini [English pronunciation] color [O'zbekcha tallaffuz] beradi, orqasini esa [English pronunciation] background-color [O'zbekcha tallaffuz].", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] background-color [O'zbekcha tallaffuz] elementning orqasini bo'yaydi: butun sahifani, sarlavhani yoki abzasni.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Sahifa yashil, sarlavha esa unda yaxshi ko'rinmayapti. Sarlavha orqasini oq qiling: [English pronunciation] background-color [O'zbekcha tallaffuz] uchun rangni yozing.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang yozing, masalan uning nomini.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer buni rang deb tanimadi. Rang nomini yoki kodini tekshiring.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rang chiqdi. Sarlavha orqasi oq bo'lishi kerak.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oq rang inglizcha qanday ataladi?", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oq rangning nomi [English pronunciation] white [O'zbekcha tallaffuz]. Uni [English pronunciation] hex [O'zbekcha tallaffuz] kod bilan ham yozish mumkin.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] white [O'zbekcha tallaffuz] so'zini yozing va Tekshirishni bosing.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi sarlavha yashil sahifada aniq ko'rinadi.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor. Men bittasini yoqaman, siz esa sahifada u nimani bo'yaganini bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan qoidaning selektoriga qarang.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] body [O'zbekcha tallaffuz] bu butun sahifa, [English pronunciation] H one [O'zbekcha tallaffuz] sarlavha, P esa abzas.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida P uchun: u abzaslar orqasini bo'yaydi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida [English pronunciation] body [O'zbekcha tallaffuz] uchun: u butun sahifa orqasini bo'yaydi. Sahifaning bo'sh joyini bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida [English pronunciation] H one [O'zbekcha tallaffuz] uchun: u sarlavha orqasini bo'yaydi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Keyingi qoidaga qarang.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Qaysi qoida qayerni bo'yashini bilasiz.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastdagi fayllarga qarang. Koddagi nom ulardan birining nomi bilan bir xil.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] url [O'zbekcha tallaffuz] brauzerga faylni qayerdan olishni aytadi. Fayl nomi qavs ichida, qo'shtirnoqda yoziladi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi do'stingizga stoldagi ko'k papkani olib kel deyishga o'xshaydi: aniq nomini aytsangiz, u topadi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi eng qiziqi: fonga rasm qo'yamiz. Buning uchun [English pronunciation] background-image [O'zbekcha tallaffuz] xususiyati bor, ya'ni fon rasmi degani. Pastda fayllar turibdi, ulardan birini olamiz.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat [English pronunciation] url [O'zbekcha tallaffuz] so'zi bilan boshlanadi, keyin qavs ichida, qo'shtirnoqda fayl nomi yoziladi. [English pronunciation] url [O'zbekcha tallaffuz] brauzerga bu fayl manzili ekanini aytadi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, yulduzcha kichkina, sahifa esa katta. Shuning uchun brauzer rasmni kafel kabi qayta-qayta takrorlab, butun fonni to'ldirdi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] background-image [O'zbekcha tallaffuz] fonga rasm qo'yadi: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda fayl nomi. Kichik rasm o'zi takrorlanadi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingiz yig'ing. Sahifa foniga osmon rasmini qo'ying. Bo'laklarni to'g'ri tartibda bosing yoki suring.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] src [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi img [English pronunciation] tag [O'zbekcha tallaffuz]-i uchun edi. [English pronunciation] CSS [O'zbekcha tallaffuz] da rasm [English pronunciation] url [O'zbekcha tallaffuz] bilan beriladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib boshqacha: oldin [English pronunciation] url [O'zbekcha tallaffuz] va ochuvchi qavs, keyin qo'shtirnoqdagi fayl nomi, oxirida yopuvchi qavs.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qiymat qaysi so'z bilan boshlanardi?", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] url [O'zbekcha tallaffuz], ochuvchi qavs, fayl nomi, yopuvchi qavs.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan bo'lakni bosing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sahifa ortida osmon paydo bo'ldi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men sahifani ko'rsataman, siz esa uni qaysi kod yasaganini tanlang.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Fonga qarang: bu rangmi yoki rasmmi?", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang uchun [English pronunciation] background-color [O'zbekcha tallaffuz] kerak, rasm uchun esa [English pronunciation] background-image [O'zbekcha tallaffuz] va fayl nomi.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fonda kichik yulduzchalar takrorlanyapti, demak bu yulduz.png rasmi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fon tekis och ko'k, rasm yo'q. Demak, bu rang: [English pronunciation] skyblue [O'zbekcha tallaffuz].", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fonda maydon chiziqlari bor, demak bu maydon.jpg rasmi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz fon kodini o'qiy olasiz.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichik rasm o'zi takrorlanadi, buni ko'rdingiz. Lekin har doim ham bu kerak emas. Hozir to'p rasmi butun fonni to'ldirib turibdi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi qator qo'shamiz: [English pronunciation] background-repeat [O'zbekcha tallaffuz]: [English pronunciation] no-repeat [O'zbekcha tallaffuz], ya'ni takrorlanmasin degani. Endi to'p faqat bitta, chap yuqori burchakda.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] no-repeat [O'zbekcha tallaffuz] rasmni bitta qoldiradi. Usiz kichik rasm butun fonni to'ldiradi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodda bitta qator qo'shildi: [English pronunciation] background-repeat [O'zbekcha tallaffuz]. Sahifada to'plar soniga qarang.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] repeat [O'zbekcha tallaffuz] takrorlash degani, [English pronunciation] no-repeat [O'zbekcha tallaffuz] esa takrorlamaslik. no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida chiziqcha.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi devorga stiker yopishtirishga o'xshaydi: butun devorni stikerlar bilan qoplash mumkin yoki bittasini yopishtirish.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi katta osmon rasmi. U bitta, lekin sahifani to'liq qoplamayapti: yon tomonda va pastda bo'sh joy qoldi. Buni tuzatamiz.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-size [O'zbekcha tallaffuz]: [English pronunciation] cover [O'zbekcha tallaffuz] qo'shamiz. [English pronunciation] cover [O'zbekcha tallaffuz] ya'ni qoplasin degani. Rasm kattalashib, butun fonni qopladi. Endi osmon hamma joyda.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] cover [O'zbekcha tallaffuz] rasmni butun fonga yoyadi, bo'sh joy qolmaydi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifaning o'ng tomoni va pastiga qarang: oldin u yerda bo'sh joy bor edi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-size [O'zbekcha tallaffuz] rasm o'lchamini beradi. [English pronunciation] cover [O'zbekcha tallaffuz] bo'lsa, rasm butun fonni qoplaguncha kattalashadi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi stolga dasturxon yozishga o'xshaydi: dasturxon katta bo'lsa, stol to'liq yopiladi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'p rasmi butun fonni to'ldirib yuboribdi. Faqat bitta to'p bo'lsin. [English pronunciation] background-repeat [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-repeat [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida bo'sh joy emas, chiziqcha bo'ladi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] repeat [O'zbekcha tallaffuz] takrorlansin degani, shuning uchun to'plar yana ko'p. Takrorlanmasin degan so'z kerak.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Takrorlanmasin degani [English pronunciation] no-repeat [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Takrorlanmasin degan qiymat qanday edi?", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U ikki so'zdan iborat: no va [English pronunciation] repeat [O'zbekcha tallaffuz], o'rtasida chiziqcha.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] no-repeat [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi fonda bitta to'p qoldi.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz qiling. Osmon rasmi sahifani to'liq qoplamayapti. [English pronunciation] background-size [O'zbekcha tallaffuz] uchun shunday qiymat yozingki, rasm butun fonni qoplasin.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-size [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] contain ham bor, lekin u rasmni butunligicha sig'diradi va bo'sh joy qoladi. Qoplasin degan so'z kerak.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Butun fonni qoplash inglizchada [English pronunciation] cover [O'zbekcha tallaffuz].", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm o'zgardi, lekin fon to'liq qoplanmadi. Qoplasin degan so'z kerak.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasm butun fonni qoplashi uchun qaysi so'z kerak edi?", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu so'z inglizchada qoplamoq degani, besh harf, c bilan boshlanadi.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] cover [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Osmon butun fonni qopladi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men kodni ko'rsataman, siz esa rasm takrorlanadimi yoki bitta bo'ladimi, shuni tanlang.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodda [English pronunciation] background-repeat [O'zbekcha tallaffuz] yoki [English pronunciation] background-size [O'zbekcha tallaffuz] bormi?", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hech narsa yozilmasa yoki [English pronunciation] repeat [O'zbekcha tallaffuz] yozilsa, kichik rasm kafel kabi takrorlanadi. [English pronunciation] no-repeat [O'zbekcha tallaffuz] bitta qoldiradi, [English pronunciation] cover [O'zbekcha tallaffuz] bitta rasmni butun fonga yoyadi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Takrorlash haqida hech narsa yozilmagan, shuning uchun kichik rasm o'zi takrorlanadi.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] no-repeat [O'zbekcha tallaffuz] takrorlanmasin degani, demak rasm bitta.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] repeat [O'zbekcha tallaffuz] takrorlansin degani, demak rasm takrorlanadi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] cover [O'zbekcha tallaffuz] bitta rasmni butun fonga yoyadi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Rasm qanday turishini oldindan bilasiz.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar koddagi bitta narsa o'zgaradi. Qizil bilan belgilangan joyga va pastdagi fayllarga qarang.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer xato qiymatni tashlab yuboradi, topilmagan fayl o'rniga esa hech narsa chizmaydi. Shunda [English pronunciation] background-color [O'zbekcha tallaffuz] ko'rinadi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi devorga rasm osishga o'xshaydi: rasm tushib qolsa ham, devor bo'yog'i ko'rinib turadi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ba'zan rasm chiqmay qoladi. Brauzer xato kodni tashlab yuboradi yoki faylni topa olmaydi. Keling, ikkita sababni va bitta yordamchini ko'ramiz.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] url [O'zbekcha tallaffuz] yo'q, faqat qo'shtirnoqda fayl nomi. Brauzer buni rasm deb tanimadi, fon bo'sh qoldi.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: fayl nomida bitta harf yo'q. Fayllar orasida bunday nom yo'q, shuning uchun rasm yana chiqmadi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi yordamchi. Rasm bilan birga [English pronunciation] background-color [O'zbekcha tallaffuz] ham yozamiz. Rasm topilmasa, brauzer shu rangni ko'rsatadi. Bu zaxira rang.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, rasm uchun [English pronunciation] url [O'zbekcha tallaffuz] va to'g'ri fayl nomi kerak, zaxira rang esa sahifani bo'sh qoldirmaydi.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men yana [English pronunciation] url [O'zbekcha tallaffuz] ni unutibman! Maydon chiqmayapti. Fayl nomi oldidagi bo'sh joyga kerakli so'z va qavsni yozing.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi oldiga so'z va qavs yozing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] So'z to'g'ri, lekin uning yonida ochuvchi qavs bo'lishi kerak.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ishlamaydi. Fayl nomi oldida [English pronunciation] url [O'zbekcha tallaffuz] so'zi va ochuvchi qavs turadi.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq fayl nomi oldida allaqachon turibdi. Faqat [English pronunciation] url [O'zbekcha tallaffuz] so'zini va qavsni yozing.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasm qiymati qaysi so'z bilan boshlanardi?", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] url [O'zbekcha tallaffuz] so'zi va ochuvchi qavs. Yopuvchi qavs allaqachon bor.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastdagi [English pronunciation] url [O'zbekcha tallaffuz] tugmasini bosing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Maydon qaytib keldi.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va fayllarga qarang va buzilgan qoidani bosing.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: uning natijasi sahifada ko'rinib turibdi. Nima chiqmay qoldi?", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Faylning nomi osmon.jpg, kodda esa osmon.jpeg deb yozilgan.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor, chiziqcha bo'lishi kerak edi.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: nima kutilganidek chiqmadi?", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Osmon chiqmadi. Kodda yozilgan nomni fayllardagi nom bilan solishtiring.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'plar takrorlanyapti, lekin bitta bo'lishi kerak edi. [English pronunciation] background-repeat [O'zbekcha tallaffuz] qiymatiga qarang.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato birinchi qoidada: osmon.jpeg. O'sha qatorni bosing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato oxirgi qoidada: no [English pronunciation] repeat [O'zbekcha tallaffuz]. O'sha qatorni bosing.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz fonni haqiqiy dizayner kabi tekshiryapsiz.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Butun sahifa foniga yulduzchalar qo'ying, ular yulduz.png faylida.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Butun sahifa foni uchun [English pronunciation] body [O'zbekcha tallaffuz] selektori kerak.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fon rasmini [English pronunciation] background-image [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi oldida [English pronunciation] url [O'zbekcha tallaffuz] so'zi va qavs yo'q. Usiz brauzer rasmni tanimaydi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Qavslar va qo'shtirnoqlarni tekshiring: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda nom, qavs.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayllar orasida bunday nom yo'q. Nomni harfma-harf tekshiring.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rasm. Yulduzchalar fayli yulduz.png.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Butun sahifa qaysi selektor bilan tanlanardi? Fon rasmi uchun qaysi xususiyat kerak?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor [English pronunciation] body [O'zbekcha tallaffuz], xususiyat [English pronunciation] background-image [O'zbekcha tallaffuz], qiymat esa [English pronunciation] url [O'zbekcha tallaffuz], qavs ichida qo'shtirnoqda yulduz.png.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sahifa yulduzlarga to'ldi. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z sahifangizni bezang. Fayllardan sahifa foni uchun bitta rasm tanlang va uning nomini yozing. Sarlavha orqasi uchun esa istalgan rangni yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qaysi rasm sizga yoqadi? Uning nomini fayllardan ko'ring.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi nuqta va kengaytmasi bilan yoziladi. Rang esa nom yoki kod bilan.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, rasmga osmon.jpg, rangga esa [English pronunciation] white [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning o'z foningiz.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni bo'laklab o'qing: u rang haqidami yoki rasm haqidami?", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Dars esingizdami: rasm [English pronunciation] url [O'zbekcha tallaffuz] bilan beriladi, kichik rasm o'zi takrorlanadi, rasm chiqmasa zaxira rang ko'rinadi. Gap shunga mos keladimi?", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-image [O'zbekcha tallaffuz] da fayl nomi [English pronunciation] url [O'zbekcha tallaffuz] va qavs ichida yoziladi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda fayl nomi, qavs.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichik rasm o'z-o'zidan faqat bitta bo'lib chiqadi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida kichik rasm o'zi takrorlanadi. Bitta bo'lishi uchun [English pronunciation] no-repeat [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm topilmasa, [English pronunciation] background-color [O'zbekcha tallaffuz] rangi ko'rinadi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: bu zaxira rang, u sahifani bo'sh qoldirmaydi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-color [O'zbekcha tallaffuz] faqat [English pronunciation] body [O'zbekcha tallaffuz] uchun ishlaydi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida fonni istalgan elementga berish mumkin: sarlavhaga, abzasga, butun sahifaga.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz fonni yaxshi bilasiz.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] background-image [O'zbekcha tallaffuz] dan keyin faqat qo'shtirnoqda fayl nomini yozgan edim? Afsuski, men adashibman. Rasm uchun [English pronunciation] url [O'zbekcha tallaffuz] so'zi va qavslar kerak. Usiz brauzer bu yozuvni tashlab yuboradi va fon bo'sh qoladi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning sahifangiz, o'zingiz tanlagan fon bilan!", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-color [O'zbekcha tallaffuz] istalgan elementning orqasini bo'yaydi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-image url [O'zbekcha tallaffuz] bilan fonga rasm qo'yadi.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-repeat [O'zbekcha tallaffuz] rasm takrorlanadimi yoki yo'qmi, shuni hal qiladi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz sahifaga istalgan fon bera olasiz. Keyingi darsda matn va shriftlar bilan ishlaymiz. Ko'rishguncha!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har shanba maydonda o'ynaymiz.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizga qo'shiling!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nimani bo'yadi?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi kod?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu fonni qaysi kod beradi?", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Takrorlanadimi?", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasm takrorlanadimi yoki bittami?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего футбольного клуба. Но смотри, он совсем простой: белый фон и чёрные буквы. Хочу, чтобы он был похож на настоящий стадион, а сзади было зелёное поле. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! За страницей появилось поле, а под заголовком и текстом белый фон.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] я не трогал. Всё сделал [English pronunciation] CSS [Русское произношение]: поставил картинку позади страницы, а фон под текстом закрасил белым.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься работать с фоном: цветом и картинкой. Но сначала маленькая загадка. В первый раз я написал [English pronunciation] background-image [Русское произношение], а после него просто имя файла в кавычках. По-моему, этого хватит. Как думаешь, картинка появится? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В коде каждый раз добавляется новая строка. Посмотри на странице, что она покрасила.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор говорит, что красить: [English pronunciation] body [Русское произношение], всю страницу, [English pronunciation] H one [Русское произношение], заголовок, P, абзац. [English pronunciation] background-color [Русское произношение], их фон.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как выделить текст маркером в тетради: буквы те же, а под ними появляется цвет.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет фона ты уже знаешь: [English pronunciation] background-color [Русское произношение] для [English pronunciation] body [Русское произношение] красит всю страницу. Но фон можно дать любому элементу. Смотри.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напишем [English pronunciation] background-color [Русское произношение] для [English pronunciation] H one [Русское произношение]. За заголовком появилась жёлтая полоса. Она тянется на всю ширину страницы, потому что заголовок занимает строку целиком.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С абзацами так же. Фон за каждым абзацем стал белым. А цвет текста не изменился: цвет букв задаёт [English pronunciation] color [Русское произношение], а фон за ними, [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] background-color [Русское произношение] красит фон элемента: всей страницы, заголовка или абзаца.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Страница зелёная, и заголовок на ней плохо видно. Сделай фон заголовка белым: впиши цвет для [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши цвет, например его имя.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал в этом цвет. Проверь имя или код цвета.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Получился другой цвет. Фон заголовка должен быть белым.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как белый цвет называется по-английски?", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Белый по-английски [English pronunciation] white [Русское произношение]. Его можно записать и [English pronunciation] hex [Русское произношение]-кодом.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши слово [English pronunciation] white [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь заголовок хорошо видно на зелёной странице.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила. Я подсвечу одно, а ты нажми на странице то, что оно покрасило.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на селектор горящего правила.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] body [Русское произношение], это вся страница, [English pronunciation] H one [Русское произношение], заголовок, P, абзац.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило для P: оно красит фон абзацев.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило для [English pronunciation] body [Русское произношение]: оно красит фон всей страницы. Нажми на пустое место страницы.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило для [English pronunciation] H one [Русское произношение]: оно красит фон заголовка.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Смотри на следующее правило.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Ты знаешь, какое правило что красит.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на файлы внизу. Имя в коде, то же, что у одного из них.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] url [Русское произношение] говорит браузеру, откуда взять файл. Имя файла пишется в скобках и в кавычках.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как попросить друга: принеси синюю папку со стола. Назовёшь точно, он найдёт.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь самое интересное: поставим на фон картинку. Для этого есть свойство [English pronunciation] background-image [Русское произношение], то есть картинка фона. Внизу лежат файлы, возьмём один из них.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение начинается со слова [English pronunciation] url [Русское произношение], потом в скобках и в кавычках пишется имя файла. [English pronunciation] url [Русское произношение] говорит браузеру, что это адрес файла.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, звёздочка маленькая, а страница большая. Поэтому браузер повторил картинку плиткой и заполнил весь фон.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] background-image [Русское произношение] ставит на фон картинку: [English pronunciation] url [Русское произношение], скобки, имя файла в кавычках. Маленькая картинка сама повторяется.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери сам. Поставь на фон страницы картинку с небом. Нажимай или перетаскивай кусочки в правильном порядке.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] src был для тега img в [English pronunciation] HTML [Русское произношение]. В [English pronunciation] CSS [Русское произношение] картинку задают через [English pronunciation] url [Русское произношение].", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок другой: сначала [English pronunciation] url [Русское произношение] и открывающая скобка, потом имя файла в кавычках, в конце закрывающая скобка.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С какого слова начиналось значение?", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] url [Русское произношение], открывающая скобка, имя файла, закрывающая скобка.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящий кусочек.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! За страницей появилось небо.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу страницу, а ты выбери, какой код её сделал.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на фон: это цвет или картинка?", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для цвета нужен [English pronunciation] background-color [Русское произношение], а для картинки, [English pronunciation] background-image [Русское произношение] и имя файла.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На фоне повторяются звёздочки, значит, это картинка yulduz.png.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фон ровный голубой, картинки нет. Значит, это цвет [English pronunciation] skyblue [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На фоне видны линии поля, значит, это картинка maydon.jpg.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты умеешь читать код фона.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Маленькая картинка сама повторяется, это уже было. Но так нужно не всегда. Сейчас мячи заполнили весь фон.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавляем строку [English pronunciation] background-repeat [Русское произношение]: [English pronunciation] no-repeat [Русское произношение], то есть не повторять. Теперь мяч только один, в левом верхнем углу.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] no-repeat [Русское произношение] оставляет одну картинку. Без него маленькая картинка заполняет весь фон.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В коде добавилась одна строка, [English pronunciation] background-repeat [Русское произношение]. Посмотри, сколько мячей на странице.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] repeat [Русское произношение] значит повторять, а [English pronunciation] no-repeat [Русское произношение], не повторять. Между no и [English pronunciation] repeat [Русское произношение] дефис.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как наклейки на стене: можно обклеить ими всю стену, а можно наклеить одну.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь большая картинка неба. Она одна, но не закрывает страницу целиком: сбоку и снизу осталось пустое место. Исправим.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавляем [English pronunciation] background-size [Русское произношение]: [English pronunciation] cover [Русское произношение]. [English pronunciation] cover [Русское произношение] значит накрыть. Картинка выросла и накрыла весь фон. Теперь небо везде.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] cover [Русское произношение] растягивает картинку на весь фон, пустого места не остаётся.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на правый край и низ страницы: сначала там было пустое место.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] background-size [Русское произношение] задаёт размер картинки. [English pronunciation] cover [Русское произношение], картинка растёт, пока не накроет весь фон.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как скатерть на столе: если она большая, стол закрыт целиком.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мячи заполнили весь фон. Пусть мяч будет только один. Впиши значение для [English pronunciation] background-repeat [Русское произношение].", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение для [English pronunciation] background-repeat [Русское произношение].", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между no и [English pronunciation] repeat [Русское произношение] не пробел, а дефис.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] repeat [Русское произношение] значит повторять, поэтому мячей снова много. Нужно не повторять.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Не повторять, это [English pronunciation] no-repeat [Русское произношение].", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как было значение не повторять?", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Оно из двух слов: no и [English pronunciation] repeat [Русское произношение], между ними дефис.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] no-repeat [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь на фоне один мяч.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Картинка неба не закрывает страницу целиком. Впиши такое значение для [English pronunciation] background-size [Русское произношение], чтобы картинка накрыла весь фон.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение для [English pronunciation] background-size [Русское произношение].", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] contain тоже бывает, но он вмещает картинку целиком, и пустое место остаётся. Нужно слово накрыть.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Накрыть весь фон по-английски, [English pronunciation] cover [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинка изменилась, но фон накрыт не весь. Нужно слово накрыть.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое слово нужно, чтобы картинка накрыла весь фон?", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это английское слово накрыть, пять букв, начинается на c.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] cover [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Небо накрыло весь фон.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я покажу код, а ты выбери: картинка будет плиткой или одна?", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть ли в коде [English pronunciation] background-repeat [Русское произношение] или [English pronunciation] background-size [Русское произношение]?", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если ничего не написано или написано [English pronunciation] repeat [Русское произношение], маленькая картинка повторяется плиткой. [English pronunciation] no-repeat [Русское произношение] оставляет одну, [English pronunciation] cover [Русское произношение] растягивает одну на весь фон.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Про повтор ничего не написано, поэтому маленькая картинка повторяется сама.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] no-repeat [Русское произношение] значит не повторять, значит, картинка одна.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] repeat [Русское произношение] значит повторять, значит, картинка плиткой.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] cover [Русское произношение] растягивает одну картинку на весь фон.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты заранее знаешь, как ляжет картинка.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз в коде меняется одна вещь. Посмотри на отмеченное красным и на файлы внизу.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибочное значение браузер выбрасывает, а вместо ненайденного файла ничего не рисует. Тогда виден [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как картина на стене: даже если картина упала, видна краска стены.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Бывает, картинка не появляется. Браузер выбрасывает ошибочный код или не находит файл. Давай посмотрим на две причины и одного помощника.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: нет [English pronunciation] url [Русское произношение], только имя файла в кавычках. Браузер не узнал в этом картинку, фон пустой.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: в имени файла пропала буква. Среди файлов такого имени нет, поэтому картинки снова нет.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь помощник. Вместе с картинкой напишем и [English pronunciation] background-color [Русское произношение]. Если картинки нет, браузер покажет этот цвет. Это запасной цвет.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, для картинки нужны [English pronunciation] url [Русское произношение] и верное имя файла, а запасной цвет не даст странице остаться пустой.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я опять забыл [English pronunciation] url [Русское произношение]! Поле не появляется. Впиши в пустое место перед именем файла нужное слово и скобку.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши перед именем файла слово и скобку.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово верное, но рядом с ним нужна открывающая скобка.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так не работает. Перед именем файла стоят слово [English pronunciation] url [Русское произношение] и открывающая скобка.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кавычка уже стоит перед именем файла. Впиши только [English pronunciation] url [Русское произношение] и скобку.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С какого слова начинается значение картинки?", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово [English pronunciation] url [Русское произношение] и открывающая скобка. Закрывающая уже есть.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми кнопку [English pronunciation] url [Русское произношение] внизу, потом Проверить.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Поле вернулось.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на файлы и нажми сломанное правило.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: его результат виден на странице. Что не появилось?", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Файл называется osmon.jpg, а в коде написано osmon.jpeg.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Между no и [English pronunciation] repeat [Русское произношение] пробел, а нужен дефис.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что вышло не так, как ждали?", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Неба нет. Сравни имя в коде с именем в файлах.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мячи повторяются, а должен быть один. Посмотри на значение [English pronunciation] background-repeat [Русское произношение].", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в первом правиле: osmon.jpeg. Нажми эту строку.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в последнем правиле: no [English pronunciation] repeat [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь фон как настоящий дизайнер.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком сам. Поставь на фон всей страницы звёздочки из файла yulduz.png.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для фона всей страницы нужен селектор [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинку фона задаёт свойство [English pronunciation] background-image [Русское произношение].", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед именем файла нет слова [English pronunciation] url [Русское произношение] и скобки. Без них браузер не узнаёт картинку.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь скобки и кавычки: [English pronunciation] url [Русское произношение], скобка, имя в кавычках, скобка.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Среди файлов нет такого имени. Проверь имя буква в букву.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая картинка. Файл со звёздочками, yulduz.png.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каким селектором выбирают всю страницу? Какое свойство нужно для картинки фона?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор [English pronunciation] body [Русское произношение], свойство [English pronunciation] background-image [Русское произношение], а значение, [English pronunciation] url [Русское произношение] и в скобках yulduz.png в кавычках.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Страница в звёздах. Всё правило, целиком твоё.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь укрась свою страницу. Выбери из файлов картинку для фона страницы и впиши её имя. А для фона заголовка впиши любой цвет. Потом нажми Готово.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Какая картинка тебе нравится? Посмотри её имя в файлах.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла пишется с точкой и окончанием. А цвет, именем или кодом.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, впиши osmon.jpg для картинки и [English pronunciation] white [Русское произношение] для цвета. Потом нажми Готово.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твой собственный фон.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу по частям: она про цвет или про картинку?", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни урок: картинку задают через [English pronunciation] url [Русское произношение], маленькая картинка сама повторяется, если картинки нет, виден запасной цвет. Фраза с этим совпадает?", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] background-image [Русское произношение] имя файла пишется внутри [English pronunciation] url [Русское произношение] и скобок.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] url [Русское произношение], скобка, имя файла в кавычках, скобка.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Маленькая картинка сама по себе показывается только один раз.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле маленькая картинка повторяется сама. Чтобы была одна, нужен [English pronunciation] no-repeat [Русское произношение].", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если картинка не нашлась, виден цвет из [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: это запасной цвет, он не даёт странице остаться пустой.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] background-color [Русское произношение] работает только для [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле фон можно дать любому элементу: заголовку, абзацу, всей странице.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в фоне.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, после [English pronunciation] background-image [Русское произношение] я написал только имя файла в кавычках? Увы, я ошибся. Для картинки нужны слово [English pronunciation] url [Русское произношение] и скобки. Без них браузер выбрасывает эту запись, и фон остаётся пустым.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя страница с твоим собственным фоном!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] background-color [Русское произношение] красит фон любого элемента.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] background-image [Русское произношение] ставит на фон картинку через [English pronunciation] url [Русское произношение].", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] background-repeat [Русское произношение] решает, повторяется картинка или нет.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты можешь дать странице любой фон. На следующем уроке поработаем с текстом и шрифтами. До встречи!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждую субботу играем на поле.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Присоединяйся к нам!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что покрасило?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код?", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код даёт этот фон?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Плиткой или одна?", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Картинка будет плиткой или одна?", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my football club’s site. But look, it’s very plain: a white background and black letters. I want it to look like a real stadium, with a green field behind it. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! A field appeared behind the page, and the heading and text have a white background.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I didn’t touch the H T M L. CSS did it all: it put a picture behind the page and painted the background behind the text white.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to work with backgrounds: colors and pictures. But first, a little riddle. The first time, I wrote background-image and then just the file name in quotes. I think that’s enough. What do you think, will the picture show up? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time a new line is added to the code. Look at what it painted on the page.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector says what to paint: body is the whole page, H one the heading, P a paragraph. background-color is what’s behind them.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a highlighter in a notebook: the letters stay the same, but color appears behind them.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You already know background colors: background-color on body paints the whole page. But you can give a background to any element. Watch.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we write background-color for H one. A yellow strip appeared behind the heading. It stretches across the whole width of the page, because a heading takes up the entire line.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Same with paragraphs. Each paragraph got a white background. The text color didn’t change: color sets the letters, and background-color sets what’s behind them.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So background-color paints an element’s background: the whole page, a heading or a paragraph.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. The page is green, and the heading is hard to see on it. Make the heading’s background white: type the color for background-color.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a color, for example its name.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that as a color. Check the color’s name or code.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different color. The heading’s background should be white.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What is white called in English?", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] White is called white. You can also write it as a hex code.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the word white and tap Check.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the heading stands out on the green page.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code. I’ll light one up, and you tap what it painted on the page.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the lit rule’s selector.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] body is the whole page, H one is the heading, P is a paragraph.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule is for P: it paints the paragraphs’ background.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule is for body: it paints the whole page’s background. Tap an empty spot on the page.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule is for H one: it paints the heading’s background.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! Look at the next rule.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! You know which rule paints what.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the files below. The name in the code matches one of them.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] url tells the browser where to get the file. The file name goes in brackets and quotes.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like asking a friend to bring the blue folder from the desk: name it exactly and they’ll find it.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the most interesting part: we put a picture on the background. There’s a property for that, background-image, meaning the background picture. The files are below; we’ll take one of them.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value starts with the word url, then the file name goes in brackets and quotes. url tells the browser that this is a file’s address.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, the star is small and the page is big. So the browser repeated the picture like tiles and filled the whole background.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So background-image puts a picture on the background: url, brackets, the file name in quotes. A small picture repeats by itself.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build it yourself. Put the sky picture on the page background. Tap or drag the pieces in the right order.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] src was for the img tag in H T M L. In CSS a picture is given with url.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is different: first url and the opening bracket, then the file name in quotes, and the closing bracket last.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which word did the value start with?", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] url, the opening bracket, the file name, the closing bracket.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing piece.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The sky appeared behind the page.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show a page, and you pick the code that made it.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the background: is it a color or a picture?", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A color needs background-color, and a picture needs background-image and a file name.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Little stars repeat on the background, so it’s the picture yulduz.png.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The background is plain light blue with no picture. So it’s the color skyblue.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can see the field lines, so it’s the picture maydon.jpg.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can read background code.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’ve seen that a small picture repeats by itself. But you don’t always want that. Right now the balls fill the whole background.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We add a line, background-repeat: no-repeat, that is, don’t repeat. Now there’s only one ball, in the top left corner.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So no-repeat leaves just one picture. Without it a small picture fills the whole background.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One line was added to the code: background-repeat. Look at how many balls are on the page.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] repeat means repeat, and no-repeat means don’t. There’s a hyphen between no and repeat.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like stickers on a wall: you can cover the whole wall with them, or stick just one.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a big sky picture. There’s one, but it doesn’t cover the whole page: there’s empty space at the side and below. Let’s fix it.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We add background-size: cover. cover means cover it. The picture grew and covered the whole background. Now the sky is everywhere.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So cover stretches the picture over the whole background, with no empty space left.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the right side and the bottom of the page: at first there was empty space there.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-size sets the picture’s size. cover makes it grow until it covers the whole background.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a tablecloth: when it’s big enough, the whole table is covered.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The balls filled the whole background. Let there be just one ball. Type the value for background-repeat.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a value for background-repeat.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Between no and repeat there’s a hyphen, not a space.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] repeat means repeat, so there are many balls again. You need don’t repeat.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Don’t repeat is no-repeat.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What was the value for don’t repeat?", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s two words, no and repeat, with a hyphen between them.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type no-repeat and tap Check.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now there’s one ball on the background.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The sky picture doesn’t cover the whole page. Type a value for background-size so the picture covers the whole background.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a value for background-size.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] contain exists too, but it fits the whole picture in and leaves empty space. You need the word for cover.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Covering the whole background is cover.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The picture changed, but the background isn’t fully covered. You need the word for cover.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which word makes the picture cover the whole background?", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s the English word for that, five letters, starting with c.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type cover and tap Check.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The sky covers the whole background.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I’ll show some code, and you choose: will the picture be tiled or just one?", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does the code have background-repeat or background-size?", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If nothing is written, or repeat is written, a small picture repeats like tiles. no-repeat leaves one, and cover stretches one over the whole background.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Nothing is written about repeating, so the small picture repeats by itself.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] no-repeat means don’t repeat, so there’s one picture.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] repeat means repeat, so the picture is tiled.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] cover stretches one picture over the whole background.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know in advance how the picture will look.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time one thing changes in the code. Look at what’s marked in red and at the files below.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser throws out a wrong value, and draws nothing for a missing file. Then background-color shows.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a painting on a wall: even if the painting falls, you still see the wall’s paint.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sometimes the picture doesn’t show. The browser throws away bad code or can’t find the file. Let’s look at two reasons and one helper.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: there’s no url, only the file name in quotes. The browser didn’t recognize it as a picture, so the background is empty.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The second: a letter is missing from the file name. There’s no file with that name, so again there’s no picture.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the helper. Along with the picture we also write background-color. If the picture isn’t found, the browser shows this color. It’s a backup color.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a picture needs url and the right file name, and a backup color keeps the page from looking empty.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I forgot url again! The field won’t show. Type the right word and bracket in the empty spot before the file name.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a word and a bracket before the file name.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word is right, but it needs an opening bracket next to it.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That doesn’t work. The file name comes after the word url and an opening bracket.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The quote is already before the file name. Type only url and the bracket.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which word does a picture value start with?", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word url and an opening bracket. The closing one is already there.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the url button below, then Check.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The field is back.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules, but one doesn’t work. Look at the page and the files, and tap the broken rule.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see its result on the page. What didn’t show up?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The file is called osmon.jpg, but the code says osmon.jpeg.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There’s a space between no and repeat, but it should be a hyphen.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what didn’t come out as expected?", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no sky. Compare the name in the code with the name in the files.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The balls repeat, but there should be one. Look at the background-repeat value.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the first rule: osmon.jpeg. Tap that line.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the last rule: no repeat. Tap that line.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both are found. You check backgrounds like a real designer.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. Put stars from the file yulduz.png on the whole page background.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value in curly braces.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The whole page’s background needs the body selector.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The background-image property sets the background picture.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no url and bracket before the file name. Without them the browser doesn’t recognize the picture.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the brackets and quotes: url, a bracket, the name in quotes, a bracket.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no file with that name. Check the name letter by letter.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different picture. The stars file is yulduz.png.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which selector picks the whole page? Which property is for the background picture?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is body, the property background-image, and the value url with yulduz.png in quotes inside brackets.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The page is full of stars. You wrote the rule yourself.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now decorate your own page. Pick a picture from the files for the page background and type its name. Then type any color for the heading’s background. Then tap Done.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Which picture do you like? Look up its name in the files.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A file name is written with the dot and its ending. A color is a name or a code.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type osmon.jpg for the picture and white for the color. Then tap Done.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! That’s your very own background.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence piece by piece: is it about a color or a picture?", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Remember the lesson: a picture is given with url, a small picture repeats by itself, and if the picture is missing the backup color shows. Does the sentence match that?", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In background-image the file name goes inside url and brackets.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: url, a bracket, the file name in quotes, a bracket.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A small picture shows up only once by itself.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually a small picture repeats by itself. To get one, you need no-repeat.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the picture isn’t found, the background-color shows.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: it’s a backup color that keeps the page from looking empty.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-color only works for body.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually you can give any element a background: a heading, a paragraph, the whole page.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know backgrounds really well.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, after background-image I wrote only the file name in quotes? Sadly, I was wrong. A picture needs the word url and brackets. Without them the browser throws the line away, and the background stays empty.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your page with the background you picked yourself!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-color paints the background of any element.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-image puts a picture on the background with url.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-repeat decides whether the picture repeats or not.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you can give a page any background. Next time we’ll work with text and fonts. See you!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We play on the field every Saturday.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Join us!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What did it paint?", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code?", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code makes this background?", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Tiled or one?", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Will the picture be tiled or just one?", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening futbol klubimning sayti. Lekin qarang, u juda oddiy: oq fon va qora harflar. Men uni haqiqiy stadionga o'xshatmoqchiman, orqada yashil maydon bo'lsin. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Sahifa orqasida maydon paydo bo'ldi, sarlavha va matn orqasi esa oq.": "uz002",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga tegmadim. Hammasini [English pronunciation] CSS [O'zbekcha tallaffuz] qildi: sahifa orqasiga rasm qo'ydi, matn orqasini esa oq rangga bo'yadi.": "uz003",
+    "Bugun fon bilan ishlashni o'rganasiz: rang va rasm. Lekin oldin kichik topishmoq. Birinchi urinishda men [English pronunciation] background-image [O'zbekcha tallaffuz] deb yozdim, keyin esa faqat fayl nomini qo'shtirnoqda qoldirdim. Menimcha, shu yetarli. Siz nima deb o'ylaysiz, rasm chiqadimi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Kodda har safar yangi qator qo'shiladi. Sahifada o'sha qator bo'yagan joyga qarang.": "uz005",
+    "Selektor nimani bo'yashni aytadi: [English pronunciation] body [O'zbekcha tallaffuz] butun sahifa, [English pronunciation] H one [O'zbekcha tallaffuz] sarlavha, P abzas. [English pronunciation] background-color [O'zbekcha tallaffuz] esa ularning orqasini bo'yaydi.": "uz006",
+    "Xuddi daftarga marker bilan belgi qo'yishga o'xshaydi: harflar o'sha-o'sha, orqasi esa rangli bo'ladi.": "uz007",
+    "Fon rangini siz allaqachon bilasiz: [English pronunciation] body [O'zbekcha tallaffuz] uchun [English pronunciation] background-color [O'zbekcha tallaffuz] butun sahifani bo'yaydi. Lekin fonni istalgan elementga berish mumkin. Qarang.": "uz008",
+    "Endi [English pronunciation] H one [O'zbekcha tallaffuz] uchun [English pronunciation] background-color [O'zbekcha tallaffuz] yozamiz. Sarlavha orqasida sariq chiziq paydo bo'ldi. U sahifaning butun kengligi bo'ylab cho'zildi, chunki sarlavha qatorni to'liq egallaydi.": "uz009",
+    "Abzaslar uchun ham xuddi shunday. Har bir abzas orqasi oq bo'ldi. Matn rangi esa o'zgarmadi: harflar rangini [English pronunciation] color [O'zbekcha tallaffuz] beradi, orqasini esa [English pronunciation] background-color [O'zbekcha tallaffuz].": "uz010",
+    "Demak, [English pronunciation] background-color [O'zbekcha tallaffuz] elementning orqasini bo'yaydi: butun sahifani, sarlavhani yoki abzasni.": "uz011",
+    "Endi navbat sizga. Sahifa yashil, sarlavha esa unda yaxshi ko'rinmayapti. Sarlavha orqasini oq qiling: [English pronunciation] background-color [O'zbekcha tallaffuz] uchun rangni yozing.": "uz012",
+    "Rang yozing, masalan uning nomini.": "uz013",
+    "Brauzer buni rang deb tanimadi. Rang nomini yoki kodini tekshiring.": "uz014",
+    "Bu boshqa rang chiqdi. Sarlavha orqasi oq bo'lishi kerak.": "uz015",
+    "Oq rang inglizcha qanday ataladi?": "uz016",
+    "Oq rangning nomi [English pronunciation] white [O'zbekcha tallaffuz]. Uni [English pronunciation] hex [O'zbekcha tallaffuz] kod bilan ham yozish mumkin.": "uz017",
+    "[English pronunciation] white [O'zbekcha tallaffuz] so'zini yozing va Tekshirishni bosing.": "uz018",
+    "Zo'r! Endi sarlavha yashil sahifada aniq ko'rinadi.": "uz019",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor. Men bittasini yoqaman, siz esa sahifada u nimani bo'yaganini bosing.": "uz020",
+    "Yonib turgan qoidaning selektoriga qarang.": "uz021",
+    "[English pronunciation] body [O'zbekcha tallaffuz] bu butun sahifa, [English pronunciation] H one [O'zbekcha tallaffuz] sarlavha, P esa abzas.": "uz022",
+    "Bu qoida P uchun: u abzaslar orqasini bo'yaydi.": "uz023",
+    "Bu qoida [English pronunciation] body [O'zbekcha tallaffuz] uchun: u butun sahifa orqasini bo'yaydi. Sahifaning bo'sh joyini bosing.": "uz024",
+    "Bu qoida [English pronunciation] H one [O'zbekcha tallaffuz] uchun: u sarlavha orqasini bo'yaydi.": "uz025",
+    "To'g'ri! Keyingi qoidaga qarang.": "uz026",
+    "Barakalla! Qaysi qoida qayerni bo'yashini bilasiz.": "uz027",
+    "Pastdagi fayllarga qarang. Koddagi nom ulardan birining nomi bilan bir xil.": "uz028",
+    "[English pronunciation] url [O'zbekcha tallaffuz] brauzerga faylni qayerdan olishni aytadi. Fayl nomi qavs ichida, qo'shtirnoqda yoziladi.": "uz029",
+    "Xuddi do'stingizga stoldagi ko'k papkani olib kel deyishga o'xshaydi: aniq nomini aytsangiz, u topadi.": "uz030",
+    "Endi eng qiziqi: fonga rasm qo'yamiz. Buning uchun [English pronunciation] background-image [O'zbekcha tallaffuz] xususiyati bor, ya'ni fon rasmi degani. Pastda fayllar turibdi, ulardan birini olamiz.": "uz031",
+    "Qiymat [English pronunciation] url [O'zbekcha tallaffuz] so'zi bilan boshlanadi, keyin qavs ichida, qo'shtirnoqda fayl nomi yoziladi. [English pronunciation] url [O'zbekcha tallaffuz] brauzerga bu fayl manzili ekanini aytadi.": "uz032",
+    "Qarang, yulduzcha kichkina, sahifa esa katta. Shuning uchun brauzer rasmni kafel kabi qayta-qayta takrorlab, butun fonni to'ldirdi.": "uz033",
+    "Demak, [English pronunciation] background-image [O'zbekcha tallaffuz] fonga rasm qo'yadi: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda fayl nomi. Kichik rasm o'zi takrorlanadi.": "uz034",
+    "Endi o'zingiz yig'ing. Sahifa foniga osmon rasmini qo'ying. Bo'laklarni to'g'ri tartibda bosing yoki suring.": "uz035",
+    "src [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi img [English pronunciation] tag [O'zbekcha tallaffuz]-i uchun edi. [English pronunciation] CSS [O'zbekcha tallaffuz] da rasm [English pronunciation] url [O'zbekcha tallaffuz] bilan beriladi.": "uz036",
+    "Tartib boshqacha: oldin [English pronunciation] url [O'zbekcha tallaffuz] va ochuvchi qavs, keyin qo'shtirnoqdagi fayl nomi, oxirida yopuvchi qavs.": "uz037",
+    "Qiymat qaysi so'z bilan boshlanardi?": "uz038",
+    "[English pronunciation] url [O'zbekcha tallaffuz], ochuvchi qavs, fayl nomi, yopuvchi qavs.": "uz039",
+    "Yonib turgan bo'lakni bosing.": "uz040",
+    "Ajoyib! Sahifa ortida osmon paydo bo'ldi.": "uz041",
+    "Endi o'zingizni sinab ko'ring. Men sahifani ko'rsataman, siz esa uni qaysi kod yasaganini tanlang.": "uz042",
+    "Fonga qarang: bu rangmi yoki rasmmi?": "uz043",
+    "Rang uchun [English pronunciation] background-color [O'zbekcha tallaffuz] kerak, rasm uchun esa [English pronunciation] background-image [O'zbekcha tallaffuz] va fayl nomi.": "uz044",
+    "Fonda kichik yulduzchalar takrorlanyapti, demak bu yulduz.png rasmi.": "uz045",
+    "Fon tekis och ko'k, rasm yo'q. Demak, bu rang: [English pronunciation] skyblue [O'zbekcha tallaffuz].": "uz046",
+    "Fonda maydon chiziqlari bor, demak bu maydon.jpg rasmi.": "uz047",
+    "Barakalla!": "uz048",
+    "Hammasi to'g'ri! Siz fon kodini o'qiy olasiz.": "uz049",
+    "Kichik rasm o'zi takrorlanadi, buni ko'rdingiz. Lekin har doim ham bu kerak emas. Hozir to'p rasmi butun fonni to'ldirib turibdi.": "uz050",
+    "Yangi qator qo'shamiz: [English pronunciation] background-repeat [O'zbekcha tallaffuz]: [English pronunciation] no-repeat [O'zbekcha tallaffuz], ya'ni takrorlanmasin degani. Endi to'p faqat bitta, chap yuqori burchakda.": "uz051",
+    "Demak, [English pronunciation] no-repeat [O'zbekcha tallaffuz] rasmni bitta qoldiradi. Usiz kichik rasm butun fonni to'ldiradi.": "uz052",
+    "Kodda bitta qator qo'shildi: [English pronunciation] background-repeat [O'zbekcha tallaffuz]. Sahifada to'plar soniga qarang.": "uz053",
+    "[English pronunciation] repeat [O'zbekcha tallaffuz] takrorlash degani, [English pronunciation] no-repeat [O'zbekcha tallaffuz] esa takrorlamaslik. no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida chiziqcha.": "uz054",
+    "Xuddi devorga stiker yopishtirishga o'xshaydi: butun devorni stikerlar bilan qoplash mumkin yoki bittasini yopishtirish.": "uz055",
+    "Endi katta osmon rasmi. U bitta, lekin sahifani to'liq qoplamayapti: yon tomonda va pastda bo'sh joy qoldi. Buni tuzatamiz.": "uz056",
+    "[English pronunciation] background-size [O'zbekcha tallaffuz]: [English pronunciation] cover [O'zbekcha tallaffuz] qo'shamiz. [English pronunciation] cover [O'zbekcha tallaffuz] ya'ni qoplasin degani. Rasm kattalashib, butun fonni qopladi. Endi osmon hamma joyda.": "uz057",
+    "Demak, [English pronunciation] cover [O'zbekcha tallaffuz] rasmni butun fonga yoyadi, bo'sh joy qolmaydi.": "uz058",
+    "Sahifaning o'ng tomoni va pastiga qarang: oldin u yerda bo'sh joy bor edi.": "uz059",
+    "[English pronunciation] background-size [O'zbekcha tallaffuz] rasm o'lchamini beradi. [English pronunciation] cover [O'zbekcha tallaffuz] bo'lsa, rasm butun fonni qoplaguncha kattalashadi.": "uz060",
+    "Xuddi stolga dasturxon yozishga o'xshaydi: dasturxon katta bo'lsa, stol to'liq yopiladi.": "uz061",
+    "To'p rasmi butun fonni to'ldirib yuboribdi. Faqat bitta to'p bo'lsin. [English pronunciation] background-repeat [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz062",
+    "[English pronunciation] background-repeat [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz063",
+    "no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida bo'sh joy emas, chiziqcha bo'ladi.": "uz064",
+    "[English pronunciation] repeat [O'zbekcha tallaffuz] takrorlansin degani, shuning uchun to'plar yana ko'p. Takrorlanmasin degan so'z kerak.": "uz065",
+    "Brauzer bu qiymatni tanimadi. Takrorlanmasin degani [English pronunciation] no-repeat [O'zbekcha tallaffuz] bo'ladi.": "uz066",
+    "Takrorlanmasin degan qiymat qanday edi?": "uz067",
+    "U ikki so'zdan iborat: no va [English pronunciation] repeat [O'zbekcha tallaffuz], o'rtasida chiziqcha.": "uz068",
+    "[English pronunciation] no-repeat [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz069",
+    "Zo'r! Endi fonda bitta to'p qoldi.": "uz070",
+    "Endi siz qiling. Osmon rasmi sahifani to'liq qoplamayapti. [English pronunciation] background-size [O'zbekcha tallaffuz] uchun shunday qiymat yozingki, rasm butun fonni qoplasin.": "uz071",
+    "[English pronunciation] background-size [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz072",
+    "contain ham bor, lekin u rasmni butunligicha sig'diradi va bo'sh joy qoladi. Qoplasin degan so'z kerak.": "uz073",
+    "Brauzer bu qiymatni tanimadi. Butun fonni qoplash inglizchada [English pronunciation] cover [O'zbekcha tallaffuz].": "uz074",
+    "Rasm o'zgardi, lekin fon to'liq qoplanmadi. Qoplasin degan so'z kerak.": "uz075",
+    "Rasm butun fonni qoplashi uchun qaysi so'z kerak edi?": "uz076",
+    "Bu so'z inglizchada qoplamoq degani, besh harf, c bilan boshlanadi.": "uz077",
+    "[English pronunciation] cover [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz078",
+    "Ajoyib! Osmon butun fonni qopladi.": "uz079",
+    "Endi o'zingizni sinab ko'ring. Men kodni ko'rsataman, siz esa rasm takrorlanadimi yoki bitta bo'ladimi, shuni tanlang.": "uz080",
+    "Kodda [English pronunciation] background-repeat [O'zbekcha tallaffuz] yoki [English pronunciation] background-size [O'zbekcha tallaffuz] bormi?": "uz081",
+    "Hech narsa yozilmasa yoki [English pronunciation] repeat [O'zbekcha tallaffuz] yozilsa, kichik rasm kafel kabi takrorlanadi. [English pronunciation] no-repeat [O'zbekcha tallaffuz] bitta qoldiradi, [English pronunciation] cover [O'zbekcha tallaffuz] bitta rasmni butun fonga yoyadi.": "uz082",
+    "Takrorlash haqida hech narsa yozilmagan, shuning uchun kichik rasm o'zi takrorlanadi.": "uz083",
+    "[English pronunciation] no-repeat [O'zbekcha tallaffuz] takrorlanmasin degani, demak rasm bitta.": "uz084",
+    "[English pronunciation] repeat [O'zbekcha tallaffuz] takrorlansin degani, demak rasm takrorlanadi.": "uz085",
+    "[English pronunciation] cover [O'zbekcha tallaffuz] bitta rasmni butun fonga yoyadi.": "uz086",
+    "Hammasi to'g'ri! Rasm qanday turishini oldindan bilasiz.": "uz087",
+    "Har safar koddagi bitta narsa o'zgaradi. Qizil bilan belgilangan joyga va pastdagi fayllarga qarang.": "uz088",
+    "Brauzer xato qiymatni tashlab yuboradi, topilmagan fayl o'rniga esa hech narsa chizmaydi. Shunda [English pronunciation] background-color [O'zbekcha tallaffuz] ko'rinadi.": "uz089",
+    "Xuddi devorga rasm osishga o'xshaydi: rasm tushib qolsa ham, devor bo'yog'i ko'rinib turadi.": "uz090",
+    "Ba'zan rasm chiqmay qoladi. Brauzer xato kodni tashlab yuboradi yoki faylni topa olmaydi. Keling, ikkita sababni va bitta yordamchini ko'ramiz.": "uz091",
+    "Birinchisi: [English pronunciation] url [O'zbekcha tallaffuz] yo'q, faqat qo'shtirnoqda fayl nomi. Brauzer buni rasm deb tanimadi, fon bo'sh qoldi.": "uz092",
+    "Ikkinchisi: fayl nomida bitta harf yo'q. Fayllar orasida bunday nom yo'q, shuning uchun rasm yana chiqmadi.": "uz093",
+    "Endi yordamchi. Rasm bilan birga [English pronunciation] background-color [O'zbekcha tallaffuz] ham yozamiz. Rasm topilmasa, brauzer shu rangni ko'rsatadi. Bu zaxira rang.": "uz094",
+    "Demak, rasm uchun [English pronunciation] url [O'zbekcha tallaffuz] va to'g'ri fayl nomi kerak, zaxira rang esa sahifani bo'sh qoldirmaydi.": "uz095",
+    "Voy, men yana [English pronunciation] url [O'zbekcha tallaffuz] ni unutibman! Maydon chiqmayapti. Fayl nomi oldidagi bo'sh joyga kerakli so'z va qavsni yozing.": "uz096",
+    "Fayl nomi oldiga so'z va qavs yozing.": "uz097",
+    "So'z to'g'ri, lekin uning yonida ochuvchi qavs bo'lishi kerak.": "uz098",
+    "Bu ishlamaydi. Fayl nomi oldida [English pronunciation] url [O'zbekcha tallaffuz] so'zi va ochuvchi qavs turadi.": "uz099",
+    "Qo'shtirnoq fayl nomi oldida allaqachon turibdi. Faqat [English pronunciation] url [O'zbekcha tallaffuz] so'zini va qavsni yozing.": "uz100",
+    "Rasm qiymati qaysi so'z bilan boshlanardi?": "uz101",
+    "[English pronunciation] url [O'zbekcha tallaffuz] so'zi va ochuvchi qavs. Yopuvchi qavs allaqachon bor.": "uz102",
+    "Pastdagi [English pronunciation] url [O'zbekcha tallaffuz] tugmasini bosing, keyin Tekshirishni bosing.": "uz103",
+    "Ajoyib! Maydon qaytib keldi.": "uz104",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va fayllarga qarang va buzilgan qoidani bosing.": "uz105",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?": "uz106",
+    "Bu qoida ishlayapti: uning natijasi sahifada ko'rinib turibdi. Nima chiqmay qoldi?": "uz107",
+    "Topdingiz! Faylning nomi osmon.jpg, kodda esa osmon.jpeg deb yozilgan.": "uz108",
+    "Topdingiz! no va [English pronunciation] repeat [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor, chiziqcha bo'lishi kerak edi.": "uz109",
+    "Sahifaga qarang: nima kutilganidek chiqmadi?": "uz110",
+    "Osmon chiqmadi. Kodda yozilgan nomni fayllardagi nom bilan solishtiring.": "uz111",
+    "To'plar takrorlanyapti, lekin bitta bo'lishi kerak edi. [English pronunciation] background-repeat [O'zbekcha tallaffuz] qiymatiga qarang.": "uz112",
+    "Xato birinchi qoidada: osmon.jpeg. O'sha qatorni bosing.": "uz113",
+    "Xato oxirgi qoidada: no [English pronunciation] repeat [O'zbekcha tallaffuz]. O'sha qatorni bosing.": "uz114",
+    "Super! Ikkalasi ham topildi. Siz fonni haqiqiy dizayner kabi tekshiryapsiz.": "uz115",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Butun sahifa foniga yulduzchalar qo'ying, ular yulduz.png faylida.": "uz116",
+    "Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.": "uz117",
+    "Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.": "uz118",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz119",
+    "Butun sahifa foni uchun [English pronunciation] body [O'zbekcha tallaffuz] selektori kerak.": "uz120",
+    "Fon rasmini [English pronunciation] background-image [O'zbekcha tallaffuz] xususiyati beradi.": "uz121",
+    "Fayl nomi oldida [English pronunciation] url [O'zbekcha tallaffuz] so'zi va qavs yo'q. Usiz brauzer rasmni tanimaydi.": "uz122",
+    "Brauzer bu qiymatni tanimadi. Qavslar va qo'shtirnoqlarni tekshiring: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda nom, qavs.": "uz123",
+    "Fayllar orasida bunday nom yo'q. Nomni harfma-harf tekshiring.": "uz124",
+    "Bu boshqa rasm. Yulduzchalar fayli yulduz.png.": "uz125",
+    "Butun sahifa qaysi selektor bilan tanlanardi? Fon rasmi uchun qaysi xususiyat kerak?": "uz126",
+    "Selektor [English pronunciation] body [O'zbekcha tallaffuz], xususiyat [English pronunciation] background-image [O'zbekcha tallaffuz], qiymat esa [English pronunciation] url [O'zbekcha tallaffuz], qavs ichida qo'shtirnoqda yulduz.png.": "uz127",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz128",
+    "Ajoyib! Sahifa yulduzlarga to'ldi. Qoidani o'zingiz yozdingiz.": "uz129",
+    "Endi o'z sahifangizni bezang. Fayllardan sahifa foni uchun bitta rasm tanlang va uning nomini yozing. Sarlavha orqasi uchun esa istalgan rangni yozing. Keyin Tayyorni bosing.": "uz130",
+    "Qaysi rasm sizga yoqadi? Uning nomini fayllardan ko'ring.": "uz131",
+    "Fayl nomi nuqta va kengaytmasi bilan yoziladi. Rang esa nom yoki kod bilan.": "uz132",
+    "Masalan, rasmga osmon.jpg, rangga esa [English pronunciation] white [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.": "uz133",
+    "Voy, qanday chiroyli! Bu sizning o'z foningiz.": "uz134",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz135",
+    "Gapni bo'laklab o'qing: u rang haqidami yoki rasm haqidami?": "uz136",
+    "Dars esingizdami: rasm [English pronunciation] url [O'zbekcha tallaffuz] bilan beriladi, kichik rasm o'zi takrorlanadi, rasm chiqmasa zaxira rang ko'rinadi. Gap shunga mos keladimi?": "uz137",
+    "[English pronunciation] background-image [O'zbekcha tallaffuz] da fayl nomi [English pronunciation] url [O'zbekcha tallaffuz] va qavs ichida yoziladi.": "uz138",
+    "To'g'ri: [English pronunciation] url [O'zbekcha tallaffuz], qavs, qo'shtirnoqda fayl nomi, qavs.": "uz139",
+    "Kichik rasm o'z-o'zidan faqat bitta bo'lib chiqadi.": "uz140",
+    "Aslida kichik rasm o'zi takrorlanadi. Bitta bo'lishi uchun [English pronunciation] no-repeat [O'zbekcha tallaffuz] kerak.": "uz141",
+    "Rasm topilmasa, [English pronunciation] background-color [O'zbekcha tallaffuz] rangi ko'rinadi.": "uz142",
+    "Shunday: bu zaxira rang, u sahifani bo'sh qoldirmaydi.": "uz143",
+    "[English pronunciation] background-color [O'zbekcha tallaffuz] faqat [English pronunciation] body [O'zbekcha tallaffuz] uchun ishlaydi.": "uz144",
+    "Aslida fonni istalgan elementga berish mumkin: sarlavhaga, abzasga, butun sahifaga.": "uz145",
+    "Hammasi to'g'ri! Siz fonni yaxshi bilasiz.": "uz146",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] background-image [O'zbekcha tallaffuz] dan keyin faqat qo'shtirnoqda fayl nomini yozgan edim? Afsuski, men adashibman. Rasm uchun [English pronunciation] url [O'zbekcha tallaffuz] so'zi va qavslar kerak. Usiz brauzer bu yozuvni tashlab yuboradi va fon bo'sh qoladi.": "uz147",
+    "Qarang, bu sizning sahifangiz, o'zingiz tanlagan fon bilan!": "uz148",
+    "[English pronunciation] background-color [O'zbekcha tallaffuz] istalgan elementning orqasini bo'yaydi.": "uz149",
+    "[English pronunciation] background-image url [O'zbekcha tallaffuz] bilan fonga rasm qo'yadi.": "uz150",
+    "[English pronunciation] background-repeat [O'zbekcha tallaffuz] rasm takrorlanadimi yoki yo'qmi, shuni hal qiladi.": "uz151",
+    "Tabriklayman! Endi siz sahifaga istalgan fon bera olasiz. Keyingi darsda matn va shriftlar bilan ishlaymiz. Ko'rishguncha!": "uz152",
+    "Voy, zo‘r!": "uz153",
+    "Ana! Chiqdi!": "uz154",
+    "Super!": "uz155",
+    "Qoyil!": "uz156",
+    "Ura!": "uz157",
+    "Zo‘r-ku!": "uz158",
+    "Yana bir bor urinib ko‘ring.": "uz159",
+    "Diqqat bilan qarang.": "uz160",
+    "Yaqin qoldingiz. Shoshilmang.": "uz161",
+    "Har shanba maydonda o'ynaymiz.": "uz162",
+    "Bizga qo'shiling!": "uz163",
+    "Nimani bo'yadi?": "uz164",
+    "Qaysi kod?": "uz165",
+    "Bu fonni qaysi kod beradi?": "uz166",
+    "Takrorlanadimi?": "uz167",
+    "Rasm takrorlanadimi yoki bittami?": "uz168",
+    "To'g'rimi?": "uz169",
+    "To'g'ri yoki noto'g'ri?": "uz170",
+    "Salom, dunyo!": "uz171",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz172",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz173",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz174",
+  },
+  ru: {
+    "Привет! Это сайт моего футбольного клуба. Но смотри, он совсем простой: белый фон и чёрные буквы. Хочу, чтобы он был похож на настоящий стадион, а сзади было зелёное поле. Нажми Превратить.": "ru001",
+    "Вот! За страницей появилось поле, а под заголовком и текстом белый фон.": "ru002",
+    "[English pronunciation] HTML [Русское произношение] я не трогал. Всё сделал [English pronunciation] CSS [Русское произношение]: поставил картинку позади страницы, а фон под текстом закрасил белым.": "ru003",
+    "Сегодня ты научишься работать с фоном: цветом и картинкой. Но сначала маленькая загадка. В первый раз я написал [English pronunciation] background-image [Русское произношение], а после него просто имя файла в кавычках. По-моему, этого хватит. Как думаешь, картинка появится? Ответ найдём вместе в конце урока.": "ru004",
+    "В коде каждый раз добавляется новая строка. Посмотри на странице, что она покрасила.": "ru005",
+    "Селектор говорит, что красить: [English pronunciation] body [Русское произношение], всю страницу, [English pronunciation] H one [Русское произношение], заголовок, P, абзац. [English pronunciation] background-color [Русское произношение], их фон.": "ru006",
+    "Как выделить текст маркером в тетради: буквы те же, а под ними появляется цвет.": "ru007",
+    "Цвет фона ты уже знаешь: [English pronunciation] background-color [Русское произношение] для [English pronunciation] body [Русское произношение] красит всю страницу. Но фон можно дать любому элементу. Смотри.": "ru008",
+    "Теперь напишем [English pronunciation] background-color [Русское произношение] для [English pronunciation] H one [Русское произношение]. За заголовком появилась жёлтая полоса. Она тянется на всю ширину страницы, потому что заголовок занимает строку целиком.": "ru009",
+    "С абзацами так же. Фон за каждым абзацем стал белым. А цвет текста не изменился: цвет букв задаёт [English pronunciation] color [Русское произношение], а фон за ними, [English pronunciation] background-color [Русское произношение].": "ru010",
+    "Значит, [English pronunciation] background-color [Русское произношение] красит фон элемента: всей страницы, заголовка или абзаца.": "ru011",
+    "Теперь твоя очередь. Страница зелёная, и заголовок на ней плохо видно. Сделай фон заголовка белым: впиши цвет для [English pronunciation] background-color [Русское произношение].": "ru012",
+    "Впиши цвет, например его имя.": "ru013",
+    "Браузер не узнал в этом цвет. Проверь имя или код цвета.": "ru014",
+    "Получился другой цвет. Фон заголовка должен быть белым.": "ru015",
+    "Как белый цвет называется по-английски?": "ru016",
+    "Белый по-английски [English pronunciation] white [Русское произношение]. Его можно записать и [English pronunciation] hex [Русское произношение]-кодом.": "ru017",
+    "Впиши слово [English pronunciation] white [Русское произношение] и нажми Проверить.": "ru018",
+    "Огонь! Теперь заголовок хорошо видно на зелёной странице.": "ru019",
+    "Теперь проверь себя. В коде три правила. Я подсвечу одно, а ты нажми на странице то, что оно покрасило.": "ru020",
+    "Посмотри на селектор горящего правила.": "ru021",
+    "[English pronunciation] body [Русское произношение], это вся страница, [English pronunciation] H one [Русское произношение], заголовок, P, абзац.": "ru022",
+    "Это правило для P: оно красит фон абзацев.": "ru023",
+    "Это правило для [English pronunciation] body [Русское произношение]: оно красит фон всей страницы. Нажми на пустое место страницы.": "ru024",
+    "Это правило для [English pronunciation] H one [Русское произношение]: оно красит фон заголовка.": "ru025",
+    "Верно! Смотри на следующее правило.": "ru026",
+    "Молодец! Ты знаешь, какое правило что красит.": "ru027",
+    "Посмотри на файлы внизу. Имя в коде, то же, что у одного из них.": "ru028",
+    "[English pronunciation] url [Русское произношение] говорит браузеру, откуда взять файл. Имя файла пишется в скобках и в кавычках.": "ru029",
+    "Как попросить друга: принеси синюю папку со стола. Назовёшь точно, он найдёт.": "ru030",
+    "А теперь самое интересное: поставим на фон картинку. Для этого есть свойство [English pronunciation] background-image [Русское произношение], то есть картинка фона. Внизу лежат файлы, возьмём один из них.": "ru031",
+    "Значение начинается со слова [English pronunciation] url [Русское произношение], потом в скобках и в кавычках пишется имя файла. [English pronunciation] url [Русское произношение] говорит браузеру, что это адрес файла.": "ru032",
+    "Смотри, звёздочка маленькая, а страница большая. Поэтому браузер повторил картинку плиткой и заполнил весь фон.": "ru033",
+    "Значит, [English pronunciation] background-image [Русское произношение] ставит на фон картинку: [English pronunciation] url [Русское произношение], скобки, имя файла в кавычках. Маленькая картинка сама повторяется.": "ru034",
+    "Теперь собери сам. Поставь на фон страницы картинку с небом. Нажимай или перетаскивай кусочки в правильном порядке.": "ru035",
+    "src был для тега img в [English pronunciation] HTML [Русское произношение]. В [English pronunciation] CSS [Русское произношение] картинку задают через [English pronunciation] url [Русское произношение].": "ru036",
+    "Порядок другой: сначала [English pronunciation] url [Русское произношение] и открывающая скобка, потом имя файла в кавычках, в конце закрывающая скобка.": "ru037",
+    "С какого слова начиналось значение?": "ru038",
+    "[English pronunciation] url [Русское произношение], открывающая скобка, имя файла, закрывающая скобка.": "ru039",
+    "Нажми горящий кусочек.": "ru040",
+    "Отлично! За страницей появилось небо.": "ru041",
+    "Теперь проверь себя. Я покажу страницу, а ты выбери, какой код её сделал.": "ru042",
+    "Посмотри на фон: это цвет или картинка?": "ru043",
+    "Для цвета нужен [English pronunciation] background-color [Русское произношение], а для картинки, [English pronunciation] background-image [Русское произношение] и имя файла.": "ru044",
+    "На фоне повторяются звёздочки, значит, это картинка yulduz.png.": "ru045",
+    "Фон ровный голубой, картинки нет. Значит, это цвет [English pronunciation] skyblue [Русское произношение].": "ru046",
+    "На фоне видны линии поля, значит, это картинка maydon.jpg.": "ru047",
+    "Точно!": "ru048",
+    "Всё верно! Ты умеешь читать код фона.": "ru049",
+    "Маленькая картинка сама повторяется, это уже было. Но так нужно не всегда. Сейчас мячи заполнили весь фон.": "ru050",
+    "Добавляем строку [English pronunciation] background-repeat [Русское произношение]: [English pronunciation] no-repeat [Русское произношение], то есть не повторять. Теперь мяч только один, в левом верхнем углу.": "ru051",
+    "Значит, [English pronunciation] no-repeat [Русское произношение] оставляет одну картинку. Без него маленькая картинка заполняет весь фон.": "ru052",
+    "В коде добавилась одна строка, [English pronunciation] background-repeat [Русское произношение]. Посмотри, сколько мячей на странице.": "ru053",
+    "[English pronunciation] repeat [Русское произношение] значит повторять, а [English pronunciation] no-repeat [Русское произношение], не повторять. Между no и [English pronunciation] repeat [Русское произношение] дефис.": "ru054",
+    "Как наклейки на стене: можно обклеить ими всю стену, а можно наклеить одну.": "ru055",
+    "Теперь большая картинка неба. Она одна, но не закрывает страницу целиком: сбоку и снизу осталось пустое место. Исправим.": "ru056",
+    "Добавляем [English pronunciation] background-size [Русское произношение]: [English pronunciation] cover [Русское произношение]. [English pronunciation] cover [Русское произношение] значит накрыть. Картинка выросла и накрыла весь фон. Теперь небо везде.": "ru057",
+    "Значит, [English pronunciation] cover [Русское произношение] растягивает картинку на весь фон, пустого места не остаётся.": "ru058",
+    "Посмотри на правый край и низ страницы: сначала там было пустое место.": "ru059",
+    "[English pronunciation] background-size [Русское произношение] задаёт размер картинки. [English pronunciation] cover [Русское произношение], картинка растёт, пока не накроет весь фон.": "ru060",
+    "Как скатерть на столе: если она большая, стол закрыт целиком.": "ru061",
+    "Мячи заполнили весь фон. Пусть мяч будет только один. Впиши значение для [English pronunciation] background-repeat [Русское произношение].": "ru062",
+    "Впиши значение для [English pronunciation] background-repeat [Русское произношение].": "ru063",
+    "Между no и [English pronunciation] repeat [Русское произношение] не пробел, а дефис.": "ru064",
+    "[English pronunciation] repeat [Русское произношение] значит повторять, поэтому мячей снова много. Нужно не повторять.": "ru065",
+    "Браузер не узнал это значение. Не повторять, это [English pronunciation] no-repeat [Русское произношение].": "ru066",
+    "Как было значение не повторять?": "ru067",
+    "Оно из двух слов: no и [English pronunciation] repeat [Русское произношение], между ними дефис.": "ru068",
+    "Впиши [English pronunciation] no-repeat [Русское произношение] и нажми Проверить.": "ru069",
+    "Огонь! Теперь на фоне один мяч.": "ru070",
+    "Теперь ты. Картинка неба не закрывает страницу целиком. Впиши такое значение для [English pronunciation] background-size [Русское произношение], чтобы картинка накрыла весь фон.": "ru071",
+    "Впиши значение для [English pronunciation] background-size [Русское произношение].": "ru072",
+    "contain тоже бывает, но он вмещает картинку целиком, и пустое место остаётся. Нужно слово накрыть.": "ru073",
+    "Браузер не узнал это значение. Накрыть весь фон по-английски, [English pronunciation] cover [Русское произношение].": "ru074",
+    "Картинка изменилась, но фон накрыт не весь. Нужно слово накрыть.": "ru075",
+    "Какое слово нужно, чтобы картинка накрыла весь фон?": "ru076",
+    "Это английское слово накрыть, пять букв, начинается на c.": "ru077",
+    "Впиши [English pronunciation] cover [Русское произношение] и нажми Проверить.": "ru078",
+    "Отлично! Небо накрыло весь фон.": "ru079",
+    "Теперь проверь себя. Я покажу код, а ты выбери: картинка будет плиткой или одна?": "ru080",
+    "Есть ли в коде [English pronunciation] background-repeat [Русское произношение] или [English pronunciation] background-size [Русское произношение]?": "ru081",
+    "Если ничего не написано или написано [English pronunciation] repeat [Русское произношение], маленькая картинка повторяется плиткой. [English pronunciation] no-repeat [Русское произношение] оставляет одну, [English pronunciation] cover [Русское произношение] растягивает одну на весь фон.": "ru082",
+    "Про повтор ничего не написано, поэтому маленькая картинка повторяется сама.": "ru083",
+    "[English pronunciation] no-repeat [Русское произношение] значит не повторять, значит, картинка одна.": "ru084",
+    "[English pronunciation] repeat [Русское произношение] значит повторять, значит, картинка плиткой.": "ru085",
+    "[English pronunciation] cover [Русское произношение] растягивает одну картинку на весь фон.": "ru086",
+    "Всё верно! Ты заранее знаешь, как ляжет картинка.": "ru087",
+    "Каждый раз в коде меняется одна вещь. Посмотри на отмеченное красным и на файлы внизу.": "ru088",
+    "Ошибочное значение браузер выбрасывает, а вместо ненайденного файла ничего не рисует. Тогда виден [English pronunciation] background-color [Русское произношение].": "ru089",
+    "Как картина на стене: даже если картина упала, видна краска стены.": "ru090",
+    "Бывает, картинка не появляется. Браузер выбрасывает ошибочный код или не находит файл. Давай посмотрим на две причины и одного помощника.": "ru091",
+    "Первая: нет [English pronunciation] url [Русское произношение], только имя файла в кавычках. Браузер не узнал в этом картинку, фон пустой.": "ru092",
+    "Вторая: в имени файла пропала буква. Среди файлов такого имени нет, поэтому картинки снова нет.": "ru093",
+    "А теперь помощник. Вместе с картинкой напишем и [English pronunciation] background-color [Русское произношение]. Если картинки нет, браузер покажет этот цвет. Это запасной цвет.": "ru094",
+    "Значит, для картинки нужны [English pronunciation] url [Русское произношение] и верное имя файла, а запасной цвет не даст странице остаться пустой.": "ru095",
+    "Ой, я опять забыл [English pronunciation] url [Русское произношение]! Поле не появляется. Впиши в пустое место перед именем файла нужное слово и скобку.": "ru096",
+    "Впиши перед именем файла слово и скобку.": "ru097",
+    "Слово верное, но рядом с ним нужна открывающая скобка.": "ru098",
+    "Так не работает. Перед именем файла стоят слово [English pronunciation] url [Русское произношение] и открывающая скобка.": "ru099",
+    "Кавычка уже стоит перед именем файла. Впиши только [English pronunciation] url [Русское произношение] и скобку.": "ru100",
+    "С какого слова начинается значение картинки?": "ru101",
+    "Слово [English pronunciation] url [Русское произношение] и открывающая скобка. Закрывающая уже есть.": "ru102",
+    "Нажми кнопку [English pronunciation] url [Русское произношение] внизу, потом Проверить.": "ru103",
+    "Отлично! Поле вернулось.": "ru104",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на файлы и нажми сломанное правило.": "ru105",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило?": "ru106",
+    "Это правило работает: его результат виден на странице. Что не появилось?": "ru107",
+    "Есть! Файл называется osmon.jpg, а в коде написано osmon.jpeg.": "ru108",
+    "Есть! Между no и [English pronunciation] repeat [Русское произношение] пробел, а нужен дефис.": "ru109",
+    "Посмотри на страницу: что вышло не так, как ждали?": "ru110",
+    "Неба нет. Сравни имя в коде с именем в файлах.": "ru111",
+    "Мячи повторяются, а должен быть один. Посмотри на значение [English pronunciation] background-repeat [Русское произношение].": "ru112",
+    "Ошибка в первом правиле: osmon.jpeg. Нажми эту строку.": "ru113",
+    "Ошибка в последнем правиле: no [English pronunciation] repeat [Русское произношение]. Нажми эту строку.": "ru114",
+    "Супер! Обе найдены. Ты проверяешь фон как настоящий дизайнер.": "ru115",
+    "Теперь напиши правило целиком сам. Поставь на фон всей страницы звёздочки из файла yulduz.png.": "ru116",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru117",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru118",
+    "Между свойством и значением нет двоеточия.": "ru119",
+    "Для фона всей страницы нужен селектор [English pronunciation] body [Русское произношение].": "ru120",
+    "Картинку фона задаёт свойство [English pronunciation] background-image [Русское произношение].": "ru121",
+    "Перед именем файла нет слова [English pronunciation] url [Русское произношение] и скобки. Без них браузер не узнаёт картинку.": "ru122",
+    "Браузер не узнал это значение. Проверь скобки и кавычки: [English pronunciation] url [Русское произношение], скобка, имя в кавычках, скобка.": "ru123",
+    "Среди файлов нет такого имени. Проверь имя буква в букву.": "ru124",
+    "Это другая картинка. Файл со звёздочками, yulduz.png.": "ru125",
+    "Каким селектором выбирают всю страницу? Какое свойство нужно для картинки фона?": "ru126",
+    "Селектор [English pronunciation] body [Русское произношение], свойство [English pronunciation] background-image [Русское произношение], а значение, [English pronunciation] url [Русское произношение] и в скобках yulduz.png в кавычках.": "ru127",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru128",
+    "Отлично! Страница в звёздах. Всё правило, целиком твоё.": "ru129",
+    "Теперь укрась свою страницу. Выбери из файлов картинку для фона страницы и впиши её имя. А для фона заголовка впиши любой цвет. Потом нажми Готово.": "ru130",
+    "Какая картинка тебе нравится? Посмотри её имя в файлах.": "ru131",
+    "Имя файла пишется с точкой и окончанием. А цвет, именем или кодом.": "ru132",
+    "Например, впиши osmon.jpg для картинки и [English pronunciation] white [Русское произношение] для цвета. Потом нажми Готово.": "ru133",
+    "Ого, как красиво! Это твой собственный фон.": "ru134",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru135",
+    "Прочитай фразу по частям: она про цвет или про картинку?": "ru136",
+    "Вспомни урок: картинку задают через [English pronunciation] url [Русское произношение], маленькая картинка сама повторяется, если картинки нет, виден запасной цвет. Фраза с этим совпадает?": "ru137",
+    "В [English pronunciation] background-image [Русское произношение] имя файла пишется внутри [English pronunciation] url [Русское произношение] и скобок.": "ru138",
+    "Верно: [English pronunciation] url [Русское произношение], скобка, имя файла в кавычках, скобка.": "ru139",
+    "Маленькая картинка сама по себе показывается только один раз.": "ru140",
+    "На самом деле маленькая картинка повторяется сама. Чтобы была одна, нужен [English pronunciation] no-repeat [Русское произношение].": "ru141",
+    "Если картинка не нашлась, виден цвет из [English pronunciation] background-color [Русское произношение].": "ru142",
+    "Так и есть: это запасной цвет, он не даёт странице остаться пустой.": "ru143",
+    "[English pronunciation] background-color [Русское произношение] работает только для [English pronunciation] body [Русское произношение].": "ru144",
+    "На самом деле фон можно дать любому элементу: заголовку, абзацу, всей странице.": "ru145",
+    "Всё верно! Ты отлично разбираешься в фоне.": "ru146",
+    "Вернёмся к загадке. Помнишь, после [English pronunciation] background-image [Русское произношение] я написал только имя файла в кавычках? Увы, я ошибся. Для картинки нужны слово [English pronunciation] url [Русское произношение] и скобки. Без них браузер выбрасывает эту запись, и фон остаётся пустым.": "ru147",
+    "Смотри, это твоя страница с твоим собственным фоном!": "ru148",
+    "[English pronunciation] background-color [Русское произношение] красит фон любого элемента.": "ru149",
+    "[English pronunciation] background-image [Русское произношение] ставит на фон картинку через [English pronunciation] url [Русское произношение].": "ru150",
+    "[English pronunciation] background-repeat [Русское произношение] решает, повторяется картинка или нет.": "ru151",
+    "Ура! Теперь ты можешь дать странице любой фон. На следующем уроке поработаем с текстом и шрифтами. До встречи!": "ru152",
+    "Вау, классно!": "ru153",
+    "Есть! Получилось!": "ru154",
+    "Супер!": "ru155",
+    "Огонь!": "ru156",
+    "Ура!": "ru157",
+    "Вот это да!": "ru158",
+    "Попробуй ещё раз.": "ru159",
+    "Посмотри внимательно.": "ru160",
+    "Уже близко. Не спеши.": "ru161",
+    "Каждую субботу играем на поле.": "ru162",
+    "Присоединяйся к нам!": "ru163",
+    "Что покрасило?": "ru164",
+    "Какой код?": "ru165",
+    "Какой код даёт этот фон?": "ru166",
+    "Плиткой или одна?": "ru167",
+    "Картинка будет плиткой или одна?": "ru168",
+    "Верно или нет?": "ru169",
+    "Привет, мир!": "ru170",
+    "Здесь нужны только слова, без угловых скобок.": "ru171",
+    "Молодец!": "ru172",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru173",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru174",
+  },
+  en: {
+    "Hi! This is my football club’s site. But look, it’s very plain: a white background and black letters. I want it to look like a real stadium, with a green field behind it. Tap Transform.": "en001",
+    "There! A field appeared behind the page, and the heading and text have a white background.": "en002",
+    "I didn’t touch the H T M L. CSS did it all: it put a picture behind the page and painted the background behind the text white.": "en003",
+    "Today you’ll learn to work with backgrounds: colors and pictures. But first, a little riddle. The first time, I wrote background-image and then just the file name in quotes. I think that’s enough. What do you think, will the picture show up? We’ll find the answer together at the end of the lesson.": "en004",
+    "Each time a new line is added to the code. Look at what it painted on the page.": "en005",
+    "The selector says what to paint: body is the whole page, H one the heading, P a paragraph. background-color is what’s behind them.": "en006",
+    "It’s like a highlighter in a notebook: the letters stay the same, but color appears behind them.": "en007",
+    "You already know background colors: background-color on body paints the whole page. But you can give a background to any element. Watch.": "en008",
+    "Now we write background-color for H one. A yellow strip appeared behind the heading. It stretches across the whole width of the page, because a heading takes up the entire line.": "en009",
+    "Same with paragraphs. Each paragraph got a white background. The text color didn’t change: color sets the letters, and background-color sets what’s behind them.": "en010",
+    "So background-color paints an element’s background: the whole page, a heading or a paragraph.": "en011",
+    "Now it’s your turn. The page is green, and the heading is hard to see on it. Make the heading’s background white: type the color for background-color.": "en012",
+    "Type a color, for example its name.": "en013",
+    "The browser didn’t recognize that as a color. Check the color’s name or code.": "en014",
+    "That’s a different color. The heading’s background should be white.": "en015",
+    "What is white called in English?": "en016",
+    "White is called white. You can also write it as a hex code.": "en017",
+    "Type the word white and tap Check.": "en018",
+    "Awesome! Now the heading stands out on the green page.": "en019",
+    "Now check yourself. There are three rules in the code. I’ll light one up, and you tap what it painted on the page.": "en020",
+    "Look at the lit rule’s selector.": "en021",
+    "body is the whole page, H one is the heading, P is a paragraph.": "en022",
+    "This rule is for P: it paints the paragraphs’ background.": "en023",
+    "This rule is for body: it paints the whole page’s background. Tap an empty spot on the page.": "en024",
+    "This rule is for H one: it paints the heading’s background.": "en025",
+    "Right! Look at the next rule.": "en026",
+    "Well done! You know which rule paints what.": "en027",
+    "Look at the files below. The name in the code matches one of them.": "en028",
+    "url tells the browser where to get the file. The file name goes in brackets and quotes.": "en029",
+    "It’s like asking a friend to bring the blue folder from the desk: name it exactly and they’ll find it.": "en030",
+    "Now the most interesting part: we put a picture on the background. There’s a property for that, background-image, meaning the background picture. The files are below; we’ll take one of them.": "en031",
+    "The value starts with the word url, then the file name goes in brackets and quotes. url tells the browser that this is a file’s address.": "en032",
+    "Look, the star is small and the page is big. So the browser repeated the picture like tiles and filled the whole background.": "en033",
+    "So background-image puts a picture on the background: url, brackets, the file name in quotes. A small picture repeats by itself.": "en034",
+    "Now build it yourself. Put the sky picture on the page background. Tap or drag the pieces in the right order.": "en035",
+    "src was for the img tag in H T M L. In CSS a picture is given with url.": "en036",
+    "The order is different: first url and the opening bracket, then the file name in quotes, and the closing bracket last.": "en037",
+    "Which word did the value start with?": "en038",
+    "url, the opening bracket, the file name, the closing bracket.": "en039",
+    "Tap the glowing piece.": "en040",
+    "Great! The sky appeared behind the page.": "en041",
+    "Now check yourself. I’ll show a page, and you pick the code that made it.": "en042",
+    "Look at the background: is it a color or a picture?": "en043",
+    "A color needs background-color, and a picture needs background-image and a file name.": "en044",
+    "Little stars repeat on the background, so it’s the picture yulduz.png.": "en045",
+    "The background is plain light blue with no picture. So it’s the color skyblue.": "en046",
+    "You can see the field lines, so it’s the picture maydon.jpg.": "en047",
+    "Exactly!": "en048",
+    "All correct! You can read background code.": "en049",
+    "You’ve seen that a small picture repeats by itself. But you don’t always want that. Right now the balls fill the whole background.": "en050",
+    "We add a line, background-repeat: no-repeat, that is, don’t repeat. Now there’s only one ball, in the top left corner.": "en051",
+    "So no-repeat leaves just one picture. Without it a small picture fills the whole background.": "en052",
+    "One line was added to the code: background-repeat. Look at how many balls are on the page.": "en053",
+    "repeat means repeat, and no-repeat means don’t. There’s a hyphen between no and repeat.": "en054",
+    "It’s like stickers on a wall: you can cover the whole wall with them, or stick just one.": "en055",
+    "Now a big sky picture. There’s one, but it doesn’t cover the whole page: there’s empty space at the side and below. Let’s fix it.": "en056",
+    "We add background-size: cover. cover means cover it. The picture grew and covered the whole background. Now the sky is everywhere.": "en057",
+    "So cover stretches the picture over the whole background, with no empty space left.": "en058",
+    "Look at the right side and the bottom of the page: at first there was empty space there.": "en059",
+    "background-size sets the picture’s size. cover makes it grow until it covers the whole background.": "en060",
+    "It’s like a tablecloth: when it’s big enough, the whole table is covered.": "en061",
+    "The balls filled the whole background. Let there be just one ball. Type the value for background-repeat.": "en062",
+    "Type a value for background-repeat.": "en063",
+    "Between no and repeat there’s a hyphen, not a space.": "en064",
+    "repeat means repeat, so there are many balls again. You need don’t repeat.": "en065",
+    "The browser didn’t recognize that value. Don’t repeat is no-repeat.": "en066",
+    "What was the value for don’t repeat?": "en067",
+    "It’s two words, no and repeat, with a hyphen between them.": "en068",
+    "Type no-repeat and tap Check.": "en069",
+    "Awesome! Now there’s one ball on the background.": "en070",
+    "Your turn. The sky picture doesn’t cover the whole page. Type a value for background-size so the picture covers the whole background.": "en071",
+    "Type a value for background-size.": "en072",
+    "contain exists too, but it fits the whole picture in and leaves empty space. You need the word for cover.": "en073",
+    "The browser didn’t recognize that value. Covering the whole background is cover.": "en074",
+    "The picture changed, but the background isn’t fully covered. You need the word for cover.": "en075",
+    "Which word makes the picture cover the whole background?": "en076",
+    "It’s the English word for that, five letters, starting with c.": "en077",
+    "Type cover and tap Check.": "en078",
+    "Great! The sky covers the whole background.": "en079",
+    "Now check yourself. I’ll show some code, and you choose: will the picture be tiled or just one?": "en080",
+    "Does the code have background-repeat or background-size?": "en081",
+    "If nothing is written, or repeat is written, a small picture repeats like tiles. no-repeat leaves one, and cover stretches one over the whole background.": "en082",
+    "Nothing is written about repeating, so the small picture repeats by itself.": "en083",
+    "no-repeat means don’t repeat, so there’s one picture.": "en084",
+    "repeat means repeat, so the picture is tiled.": "en085",
+    "cover stretches one picture over the whole background.": "en086",
+    "All correct! You know in advance how the picture will look.": "en087",
+    "Each time one thing changes in the code. Look at what’s marked in red and at the files below.": "en088",
+    "The browser throws out a wrong value, and draws nothing for a missing file. Then background-color shows.": "en089",
+    "It’s like a painting on a wall: even if the painting falls, you still see the wall’s paint.": "en090",
+    "Sometimes the picture doesn’t show. The browser throws away bad code or can’t find the file. Let’s look at two reasons and one helper.": "en091",
+    "The first: there’s no url, only the file name in quotes. The browser didn’t recognize it as a picture, so the background is empty.": "en092",
+    "The second: a letter is missing from the file name. There’s no file with that name, so again there’s no picture.": "en093",
+    "Now the helper. Along with the picture we also write background-color. If the picture isn’t found, the browser shows this color. It’s a backup color.": "en094",
+    "So a picture needs url and the right file name, and a backup color keeps the page from looking empty.": "en095",
+    "Oops, I forgot url again! The field won’t show. Type the right word and bracket in the empty spot before the file name.": "en096",
+    "Type a word and a bracket before the file name.": "en097",
+    "The word is right, but it needs an opening bracket next to it.": "en098",
+    "That doesn’t work. The file name comes after the word url and an opening bracket.": "en099",
+    "The quote is already before the file name. Type only url and the bracket.": "en100",
+    "Which word does a picture value start with?": "en101",
+    "The word url and an opening bracket. The closing one is already there.": "en102",
+    "Tap the url button below, then Check.": "en103",
+    "Great! The field is back.": "en104",
+    "Now check yourself. There are three rules, but one doesn’t work. Look at the page and the files, and tap the broken rule.": "en105",
+    "Great, the first one is found! Now something else broke. Which rule?": "en106",
+    "This rule works: you can see its result on the page. What didn’t show up?": "en107",
+    "Found it! The file is called osmon.jpg, but the code says osmon.jpeg.": "en108",
+    "Found it! There’s a space between no and repeat, but it should be a hyphen.": "en109",
+    "Look at the page: what didn’t come out as expected?": "en110",
+    "There’s no sky. Compare the name in the code with the name in the files.": "en111",
+    "The balls repeat, but there should be one. Look at the background-repeat value.": "en112",
+    "The bug is in the first rule: osmon.jpeg. Tap that line.": "en113",
+    "The bug is in the last rule: no repeat. Tap that line.": "en114",
+    "Super! Both are found. You check backgrounds like a real designer.": "en115",
+    "Now write the whole rule yourself. Put stars from the file yulduz.png on the whole page background.": "en116",
+    "Write the rule: first the selector, then the property and value in curly braces.": "en117",
+    "The rule needs curly braces: an opening one and a closing one.": "en118",
+    "There’s no colon between the property and the value.": "en119",
+    "The whole page’s background needs the body selector.": "en120",
+    "The background-image property sets the background picture.": "en121",
+    "There’s no url and bracket before the file name. Without them the browser doesn’t recognize the picture.": "en122",
+    "The browser didn’t recognize that value. Check the brackets and quotes: url, a bracket, the name in quotes, a bracket.": "en123",
+    "There’s no file with that name. Check the name letter by letter.": "en124",
+    "That’s a different picture. The stars file is yulduz.png.": "en125",
+    "Which selector picks the whole page? Which property is for the background picture?": "en126",
+    "The selector is body, the property background-image, and the value url with yulduz.png in quotes inside brackets.": "en127",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en128",
+    "Great! The page is full of stars. You wrote the rule yourself.": "en129",
+    "Now decorate your own page. Pick a picture from the files for the page background and type its name. Then type any color for the heading’s background. Then tap Done.": "en130",
+    "Which picture do you like? Look up its name in the files.": "en131",
+    "A file name is written with the dot and its ending. A color is a name or a code.": "en132",
+    "For example, type osmon.jpg for the picture and white for the color. Then tap Done.": "en133",
+    "Wow, how pretty! That’s your very own background.": "en134",
+    "The last test. I’ll say something, and you choose: true or false.": "en135",
+    "Read the sentence piece by piece: is it about a color or a picture?": "en136",
+    "Remember the lesson: a picture is given with url, a small picture repeats by itself, and if the picture is missing the backup color shows. Does the sentence match that?": "en137",
+    "In background-image the file name goes inside url and brackets.": "en138",
+    "Right: url, a bracket, the file name in quotes, a bracket.": "en139",
+    "A small picture shows up only once by itself.": "en140",
+    "Actually a small picture repeats by itself. To get one, you need no-repeat.": "en141",
+    "If the picture isn’t found, the background-color shows.": "en142",
+    "That’s right: it’s a backup color that keeps the page from looking empty.": "en143",
+    "background-color only works for body.": "en144",
+    "Actually you can give any element a background: a heading, a paragraph, the whole page.": "en145",
+    "All correct! You know backgrounds really well.": "en146",
+    "Back to our riddle. Remember, after background-image I wrote only the file name in quotes? Sadly, I was wrong. A picture needs the word url and brackets. Without them the browser throws the line away, and the background stays empty.": "en147",
+    "Look, this is your page with the background you picked yourself!": "en148",
+    "background-color paints the background of any element.": "en149",
+    "background-image puts a picture on the background with url.": "en150",
+    "background-repeat decides whether the picture repeats or not.": "en151",
+    "Hooray! Now you can give a page any background. Next time we’ll work with text and fonts. See you!": "en152",
+    "Wow, awesome!": "en153",
+    "Yes! You did it!": "en154",
+    "Super!": "en155",
+    "Brilliant!": "en156",
+    "Hooray!": "en157",
+    "Amazing!": "en158",
+    "Try once more.": "en159",
+    "Take a closer look.": "en160",
+    "You are close. No rush.": "en161",
+    "We play on the field every Saturday.": "en162",
+    "Join us!": "en163",
+    "What did it paint?": "en164",
+    "Which code?": "en165",
+    "Which code makes this background?": "en166",
+    "Tiled or one?": "en167",
+    "Will the picture be tiled or just one?": "en168",
+    "True or false?": "en169",
+    "Hello, world!": "en170",
+    "Only words here, no angle brackets.": "en171",
+    "Well done!": "en172",
+    "Everything in the window lives inside body.": "en173",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en174",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8065,15 +7616,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14409,3 +13953,1119 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c12-sheet .kz-br.c12-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 183, ru 184, en 182; всего знаков 72071. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men yangi o'yin kartochkasiga YANGI belgisini qo'ydim. Lekin qarang: belgi matn qatorida turibdi, xuddi oddiy so'zdek. Men uni kartochkaning yuqori o'ng burchagida ko'rmoqchiman, haqiqiy do'konlardagidek. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Belgi matndan chiqib, kartochkaning burchagiga uchib o'tdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni [English pronunciation] position [O'zbekcha tallaffuz] xususiyati qildi, ya'ni element qayerda turishi degani. Kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz], belgiga esa [English pronunciation] absolute [O'zbekcha tallaffuz] berdik.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun elementlarni sahifaning istalgan joyiga qo'yishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta faqat belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozgan edim, kartochkaga esa hech narsa yozmagan edim. Menimcha, belgi baribir kartochka burchagiga boradi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi qutiga qarang: u siljiydi, lekin uning eski joyi bo'sh qoladi, uchinchi quti esa joyidan qimirlamaydi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] elementni o'z joyidan siljitadi. [English pronunciation] top [O'zbekcha tallaffuz] yuqoridan chekinish beradi, shuning uchun quti pastga tushadi. [English pronunciation] left [O'zbekcha tallaffuz] esa chapdan, shuning uchun o'ngga.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sinfda partadan turib, bir qadam chetga chiqing: sizning joyingiz bo'sh qoladi va sizni kutadi. [English pronunciation] relative [O'zbekcha tallaffuz] ham shunday.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda uchta quti bor. Odatda hamma elementlarda [English pronunciation] position static [O'zbekcha tallaffuz] bo'ladi: ular navbat bilan turadi va siljishlarni eshitmaydi. Ikkinchi qutiga [English pronunciation] position relative [O'zbekcha tallaffuz] beramiz, ya'ni nisbiy degani: u o'z joyidan siljiydi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, hech narsa o'zgarmadi. [English pronunciation] relative [O'zbekcha tallaffuz] ning o'zi joyidan qimirlamaydi, unga qayerga siljishni aytish kerak.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz] yigirma piksel. Diqqat qiling: quti pastga tushdi! [English pronunciation] top [O'zbekcha tallaffuz] tepadan masofa degani, shuning uchun quti tepasidan yigirma piksel uzoqlashdi. Uning eski joyi esa bo'sh qoldi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] left [O'zbekcha tallaffuz] qirq piksel: chapdan uzoqlashdi, ya'ni o'ngga siljidi. Uchinchi quti esa joyidan qimirlamadi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] relative [O'zbekcha tallaffuz] element o'z joyidan siljiydi, eski joyi esa uni kutib bo'sh turadi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Ikkinchi qutiga [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz] yozilgan, lekin u qimirlamayapti. U o'z joyidan siljisin: [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: bitta so'z.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] position [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] bilan quti joyidan qimirlamaydi: bu odatdagi holat.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] bilan quti o'z joyini tashlab ketdi, uchinchisi uning o'rniga chiqdi. Joyi saqlanib qolsin.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi. Bizga o'z joyidan siljish kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. O'z joyidan siljish kerak.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat elementni o'z joyidan siljitadi?", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nisbiy degani [English pronunciation] relative [O'zbekcha tallaffuz].", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Quti siljidi, eski joyi esa bo'sh turibdi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siljishlarni juftlang. Chapdan siljishni, o'ngdan esa quti shu yo'nalishga ketgan rasmni bosing. Punktir quti eski joyini ko'rsatadi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz] tepadan masofa: quti tepadan uzoqlashadi, ya'ni pastga tushadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] left [O'zbekcha tallaffuz] chapdan masofa: quti chapdan uzoqlashadi, ya'ni o'ngga ketadi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] bottom [O'zbekcha tallaffuz] pastdan masofa: quti pastdan uzoqlashadi, ya'ni tepaga chiqadi.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, [English pronunciation] top [O'zbekcha tallaffuz] pastga suradi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, [English pronunciation] left [O'zbekcha tallaffuz] o'ngga suradi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, [English pronunciation] bottom [O'zbekcha tallaffuz] tepaga suradi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdan siljishni tanlang.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Siljish so'zi qaysi tomondan uzoqlashishni aytadi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz] pastga, [English pronunciation] left [O'zbekcha tallaffuz] o'ngga, [English pronunciation] bottom [O'zbekcha tallaffuz] tepaga suradi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan juftlikni bosing.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Siljishlar sizni chalg'itmaydi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgiga qarang: u avval matndan chiqadi, keyin sahifa burchagiga, oxirida esa kartochka burchagiga uchadi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] elementni qatordan chiqarib, burchakka qo'yadi. Qaysi burchakka? Tashqaridagi, [English pronunciation] position [O'zbekcha tallaffuz] berilgan qutining burchagiga. Shuning uchun kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Muzlatgichga magnit yopishtirasiz: u muzlatgich burchagida turadi, xona burchagida emas. Muzlatgich bu langar, magnit esa [English pronunciation] absolute [O'zbekcha tallaffuz].", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] absolute [O'zbekcha tallaffuz]. U elementni umumiy qatordan olib chiqadi: qo'shnilar uni endi ko'rmaydi va uning joyini egallaydi. Elementning o'zini esa istalgan burchakka qo'yish mumkin. Belgiga qarang.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] position absolute [O'zbekcha tallaffuz]: belgi qatordan chiqdi, matn esa darhol uning joyini egalladi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz] nol, [English pronunciation] right [O'zbekcha tallaffuz] nol: belgi burchakka uchdi. Lekin kartochka burchagiga emas, butun sahifa burchagiga! [English pronunciation] absolute [O'zbekcha tallaffuz] o'zi yotgan va [English pronunciation] position [O'zbekcha tallaffuz] berilgan qutini qidiradi. Kartochkada [English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun belgi sahifaga yopishdi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkaga [English pronunciation] position relative [O'zbekcha tallaffuz] beramiz. Endi belgi kartochkaga yopishdi, kartochka uning langari bo'ldi, va belgi aynan uning burchagiga keldi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] absolute [O'zbekcha tallaffuz] oqimdan chiqadi va eng yaqin langar otaga nisbatan turadi. Langar bo'lishi uchun otaga [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozilgan, lekin u sahifa burchagiga uchib ketgan. Kartochka langar bo'lsin: kartochka uchun [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] langar bo'la olmaydi: belgi hali sahifa burchagida.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kartochkaning o'zi oqimdan chiqib ketdi. Kartochka joyida qolsin, faqat langar bo'lsin.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] bilan kartochka oynaga yopishdi. U joyida qolib, faqat langar bo'lsin.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Joyida turadigan langar kerak.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat elementni joyida qoldirib, langar qiladi?", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Langar uchun odatda [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Belgi kartochka burchagida.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kartochka langar, belgi [English pronunciation] absolute [O'zbekcha tallaffuz]. Belgining joyiga qarang va qaysi siljishlar uni o'sha yerga qo'yganini tanlang.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Belgi qaysi burchakda: tepadami yoki pastda, chapdami yoki o'ngda?", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] da [English pronunciation] top [O'zbekcha tallaffuz] tepaga, [English pronunciation] bottom [O'zbekcha tallaffuz] pastga, [English pronunciation] left [O'zbekcha tallaffuz] chapga, [English pronunciation] right [O'zbekcha tallaffuz] o'ngga yopishtiradi.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi tepada va o'ngda: [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz].", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi pastda va chapda: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz].", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi pastda va o'ngda: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz].", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Burchaklarni bir qarashda o'qiysiz.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa aylantirilganda tugmaga qarang: avval u sahifa bilan birga ketadi, [English pronunciation] fixed [O'zbekcha tallaffuz] dan keyin esa oyna burchagida qoladi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] elementni brauzer oynasiga yopishtiradi: sahifa aylantirilsa ham u joyida turadi. [English pronunciation] absolute [O'zbekcha tallaffuz] esa sahifa bilan birga harakatlanadi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mashina oynasiga yopishtirilgan stiker yo'l o'tib ketsa ham joyida qoladi. [English pronunciation] fixed [O'zbekcha tallaffuz] tugma ham sahifa o'tib ketsa, oynada qoladi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu uzun sahifa, kundalik. Eng pastda Yuqoriga tugmasi bor. Unga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak berdik: sahifa aylantirilmaganida, u o'ng pastki burchakda turadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifani pastga aylantiramiz. Qarang: tugma sahifa bilan birga tepaga ketib qoldi. [English pronunciation] absolute [O'zbekcha tallaffuz] sahifaga yopishgan.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] position fixed [O'zbekcha tallaffuz], ya'ni mahkamlangan degani. Tugma brauzer oynasining burchagiga yopishdi va sahifa aylansa ham joyida turibdi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana tepaga qaytamiz: tugma baribir oyna burchagida. [English pronunciation] fixed [O'zbekcha tallaffuz] sahifaga emas, oynaga yopishadi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] fixed [O'zbekcha tallaffuz] element oynaga yopishadi va sahifa bilan aylanmaydi. Yuqoriga tugmasi va menyular shunday qilinadi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Sahifa pastga aylantirilgan, Yuqoriga tugmasi esa ko'rinmayapti. U doim oyna burchagida tursin: [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] sahifaga yopishadi: aylantirsangiz tugma ketib qoladi. Oynaga yopishsin.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] tugmani o'z joyidan siljitadi, u esa sahifaning oxirida. Oynaga yopishsin.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] bilan tugma sahifa oxirida qoladi. Oynaga yopishsin.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Oynaga yopishadigan qiymat kerak.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat oynaga yopishadi va aylanmaydi?", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mahkamlangan degani [English pronunciation] fixed [O'zbekcha tallaffuz].", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Tugma oyna burchagida, sahifa qanchalik aylanmasin.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa [English pronunciation] position [O'zbekcha tallaffuz] uchun qaysi qiymat kerakligini tanlang.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Element oqimda qoladimi, o'z joyidan siljiydimi, langarga yopishadimi yoki oynagami?", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] oddiy, [English pronunciation] relative [O'zbekcha tallaffuz] o'z joyidan siljish, [English pronunciation] absolute [O'zbekcha tallaffuz] langarga, [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi kartochkaning burchagida tursin.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchakka [English pronunciation] absolute [O'zbekcha tallaffuz] qo'yadi, kartochka esa langar.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyu sahifa aylansa ham ekran tepasida tursin.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynaga yopishish [English pronunciation] fixed [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Quti joyidan biroz siljisin, eski joyi bo'sh qolsin.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'z joyidan siljish [English pronunciation] relative [O'zbekcha tallaffuz].", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas boshqalar qatori oddiy turaversin.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Odatdagi holat [English pronunciation] static [O'zbekcha tallaffuz].", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! To'rtala qiymatni joyida ishlatasiz.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar kodga qarang: [English pronunciation] position [O'zbekcha tallaffuz] bormi, so'z to'g'ri yozilganmi, son yonida [English pronunciation] px [O'zbekcha tallaffuz] bormi? Keyin ikkinchi qutiga qarang.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz], [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] right [O'zbekcha tallaffuz], [English pronunciation] bottom [O'zbekcha tallaffuz] faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan ishlaydi. So'zlar aniq yoziladi, sonlarga esa [English pronunciation] px [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rulsiz velosiped haydab bo'lmaydi, pedalni qancha aylantirmang. Siljishlar ham [English pronunciation] position [O'zbekcha tallaffuz] siz ishlamaydi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] position [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir ikkinchi quti [English pronunciation] relative [O'zbekcha tallaffuz] va yigirma piksel pastga siljigan.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] top [O'zbekcha tallaffuz] bor, [English pronunciation] position [O'zbekcha tallaffuz] yo'q. Oddiy element siljishlarga qaramaydi, quti joyiga qaytdi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: [English pronunciation] position [O'zbekcha tallaffuz] so'zida harf tushib qolgan. Brauzer bunday xususiyatni bilmaydi va uni tashlab yubordi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi: yigirma sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Siljish ishlamadi.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, siljishlar faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan ishlaydi, so'zlar esa aniq va [English pronunciation] px [O'zbekcha tallaffuz] bilan yoziladi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men ikkinchi qutini siljitmoqchi edim, lekin u joyidan qimirlamayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] relative [O'zbekcha tallaffuz] bilan harfma-harf solishtiring.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] bilan quti qimirlamaydi. O'z joyidan siljish kerak.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] bilan quti joyini tashlab ketdi. Joyi saqlansin.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi. O'z joyidan siljish kerak.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Faqat harfni qo'shing.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Brauzer bu so'zni tanimadi: oxirida bitta harf yetishmayapti.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] So'zni harfma-harf o'qing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Oxirida e harfi yetishmayapti.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Quti siljidi.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa sahifa. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] position [O'zbekcha tallaffuz] yo'q edi, shuning uchun siljishlar ishlamadi.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] absolute [O'zbekcha tallaffuz] so'zida harf yetishmayotgan edi.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Kodda ikkinchi quti siljishi kerak, u esa joyida. Nima yetishmayapti?", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi burchakka chiqmadi. [English pronunciation] position [O'zbekcha tallaffuz] qiymatini tekshiring.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ishlamayotgani ikkinchi qoida: [English pronunciation] position [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: absolut. O'sha qatorni bosing.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz joylashuvni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Kartochka allaqachon langar. Belgi kartochkaning chap pastki burchagida tursin: [English pronunciation] absolute [O'zbekcha tallaffuz], pastdan nol va chapdan nol.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyatlar.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat orasida ikki nuqta yo'q.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgining klassi belgi: selektor nuqta va belgi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun siljishlar ishlamaydi.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi burchakka faqat [English pronunciation] absolute [O'zbekcha tallaffuz] bilan chiqadi.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchak uchun ikkita siljish kerak: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz].", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchak boshqa. Pastki chap burchak kerak: [English pronunciation] bottom [O'zbekcha tallaffuz] nol va [English pronunciation] left [O'zbekcha tallaffuz] nol.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyatlar o'rtasida nuqtali vergul kerak: har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: 0[English pronunciation] px [O'zbekcha tallaffuz] qo'shib yoziladi.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta xususiyat: [English pronunciation] position [O'zbekcha tallaffuz] va ikkita siljish.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] position absolute [O'zbekcha tallaffuz], [English pronunciation] bottom [O'zbekcha tallaffuz] nol piksel, [English pronunciation] left [O'zbekcha tallaffuz] nol piksel.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Belgi chap pastki burchakda. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z belgingizni joylang. Kartochka langar, belgi [English pronunciation] absolute [O'zbekcha tallaffuz]. Tepadan va o'ngdan masofani hamda belgi rangini yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz] uchun son va [English pronunciation] px [O'zbekcha tallaffuz], rang uchun rang nomi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: sakkiz piksel, sakkiz piksel va [English pronunciation] gold [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning kartochkangiz.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap qaysi qiymat haqida: [English pronunciation] relative [O'zbekcha tallaffuz], [English pronunciation] absolute [O'zbekcha tallaffuz] yoki [English pronunciation] fixed [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: [English pronunciation] relative [O'zbekcha tallaffuz] joyini saqlaydi, [English pronunciation] absolute [O'zbekcha tallaffuz] langar otaga, [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga, siljishlar esa faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] element siljiganda uning eski joyi bo'sh qoladi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] relative [O'zbekcha tallaffuz] joyini saqlab qoladi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkada [English pronunciation] position [O'zbekcha tallaffuz] yo'q. Bu qoida belgini kartochka burchagiga qo'yadi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida kartochka langar bo'lmasa, belgi sahifa burchagiga uchadi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] tugma sahifa aylansa ham oynada qoladi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida qutini o'ttiz piksel pastga siljitadi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun [English pronunciation] top [O'zbekcha tallaffuz] ishlamaydi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] position [O'zbekcha tallaffuz] ni yaxshi bilasiz.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men faqat belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozgan edim? Qarang: belgi kartochka burchagiga emas, butun sahifa burchagiga uchib ketdi! Men adashibman. Langar yo'q edi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz] yozsak, u langar bo'ladi va belgi aynan uning burchagiga tushadi. Mana!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning kartochkangiz, o'zingiz joylagan belgi bilan!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] o'z joyidan siljiydi, eski joyi bo'sh qoladi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] oqimdan chiqadi va burchakka qo'yiladi.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uning langari esa [English pronunciation] relative [O'zbekcha tallaffuz] yozilgan ota.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi va sahifa bilan aylanmaydi.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz elementlarni sahifaning istalgan joyiga qo'ya olasiz. Keyingi darsda sichqoncha bilan jonlanadigan tugmalar yasaymiz: hover va transform. Ko'rishguncha!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun yangi o'yin chiqdi: Kosmik poyga!", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uni hoziroq sinab ko'ring.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dushanba. Bugun maktabda [English pronunciation] CSS [O'zbekcha tallaffuz] o'rgandik. Sahifam endi rangli va chiroyli.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Seshanba. Do'stim bilan futbol o'ynadik. Ikki gol urdim va jamoamiz yutdi.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chorshanba. Kutubxonadan kosmos haqida kitob oldim. Unda Mars haqida juda qiziq rasmlar bor.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Payshanba. Yangi o'yin yasadim va uni sinfdoshlarimga ko'rsatdim. Hammaga yoqdi!", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Belgi qayerda?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi siljishlar belgini shu yerga qo'ydi?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu vazifa uchun [English pronunciation] position [O'zbekcha tallaffuz] qanday bo'ladi?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я поставил на карточку новой игры метку НОВОЕ. Но смотри: метка стоит в строке текста, как обычное слово. Я хочу видеть её в правом верхнем углу карточки, как в настоящих магазинах. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Метка вылетела из текста и перелетела в угол карточки.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделало свойство [English pronunciation] position [Русское произношение], то есть где стоит элемент. Карточке мы дали [English pronunciation] relative [Русское произношение], а метке, [English pronunciation] absolute [Русское произношение].", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься ставить элементы в любое место страницы. Но сначала загадка. В первый раз я написал [English pronunciation] absolute [Русское произношение] и угол только метке, а карточке, ничего. По-моему, метка всё равно окажется в углу карточки. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на вторую коробку: она сдвигается, но её прежнее место остаётся пустым, а третья коробка не двигается.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] relative [Русское произношение] сдвигает элемент от его места. [English pronunciation] top [Русское произношение], отступ сверху, поэтому коробка уходит вниз. [English pronunciation] left [Русское произношение], отступ слева, поэтому вправо.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Встань из-за парты и отойди на шаг: твоё место остаётся пустым и ждёт тебя. [English pronunciation] relative [Русское произношение] работает так же.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь три коробки. Обычно у всех элементов [English pronunciation] position static [Русское произношение]: они стоят по порядку и сдвиги не слушают. Дадим второй коробке [English pronunciation] position relative [Русское произношение], то есть относительно: она сдвигается от своего места.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, ничего не изменилось. Сам по себе [English pronunciation] relative [Русское произношение] не двигает, ему нужно сказать, куда сдвинуться.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] top [Русское произношение] двадцать пикселей. Внимание: коробка опустилась вниз! [English pronunciation] top [Русское произношение], это отступ сверху, поэтому коробка отодвинулась от верха на двадцать пикселей. А её прежнее место осталось пустым.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] left [Русское произношение] сорок пикселей: отодвинулась от левого края, то есть вправо. А третья коробка осталась на месте.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] relative [Русское произношение] сдвигает элемент от его места, а прежнее место остаётся пустым и ждёт его.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Второй коробке написаны [English pronunciation] top [Русское произношение] и [English pronunciation] left [Русское произношение], но она не двигается. Пусть она сдвинется от своего места: впиши значение [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: одно слово.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Со [English pronunciation] static [Русское произношение] коробка не двигается: это обычный режим.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] absolute [Русское произношение] коробка бросила своё место, и третья заняла его. А место должно сохраниться.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] fixed [Русское произношение] прилипает к окну. А нужен сдвиг от своего места.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужен сдвиг от своего места.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение сдвигает элемент от его места?", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Относительно, [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] relative [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Коробка сдвинулась, а прежнее место пустует.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соедини сдвиги. Нажми сдвиг слева, а потом картинку, где коробка уехала так, справа. Пунктир показывает прежнее место.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] top [Русское произношение], отступ сверху: коробка отходит от верха, то есть опускается.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] left [Русское произношение], отступ слева: коробка отходит от левого края, то есть вправо.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] bottom [Русское произношение], отступ снизу: коробка отходит от низа, то есть поднимается.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, [English pronunciation] top [Русское произношение] толкает вниз.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, [English pronunciation] left [Русское произношение] толкает вправо.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, [English pronunciation] bottom [Русское произношение] толкает вверх.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери сдвиг слева.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово сдвига говорит, от какой стороны отойти.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] top [Русское произношение] толкает вниз, [English pronunciation] left [Русское произношение], вправо, [English pronunciation] bottom [Русское произношение], вверх.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую пару.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Сдвиги тебя не обманут.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на метку: сначала она выходит из текста, потом улетает в угол страницы, а в конце, в угол карточки.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] absolute [Русское произношение] вынимает элемент из ряда и ставит в угол. В угол чего? Той коробки снаружи, у которой есть [English pronunciation] position [Русское произношение]. Поэтому карточке пишут [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Магнит на холодильнике держится в углу холодильника, а не в углу комнаты. Холодильник, якорь, магнит, [English pronunciation] absolute [Русское произношение].", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] absolute [Русское произношение]. Он вынимает элемент из общего ряда: соседи его больше не замечают и занимают его место. А сам элемент можно поставить в любой угол. Смотри на метку.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] position absolute [Русское произношение]: метка вышла из строки, и текст сразу занял её место.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] top [Русское произношение] ноль, [English pronunciation] right [Русское произношение] ноль: метка улетела в угол. Но не в угол карточки, а в угол всей страницы! [English pronunciation] absolute [Русское произношение] ищет коробку, в которой лежит и у которой есть [English pronunciation] position [Русское произношение]. У карточки [English pronunciation] position [Русское произношение] нет, и метка держится за страницу.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дадим карточке [English pronunciation] position relative [Русское произношение]. Теперь метка держится за карточку, карточка стала её якорем. И метка встала точно в её угол.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] absolute [Русское произношение] выходит из потока и встаёт относительно ближайшего родителя-якоря. Чтобы родитель стал якорем, ему пишут [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. У метки есть [English pronunciation] absolute [Русское произношение] и угол, но она улетела в угол страницы. Пусть карточка станет якорем: впиши значение [English pronunciation] position [Русское произношение] для карточки.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] static [Русское произношение] не может быть якорем: метка всё ещё в углу страницы.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сама карточка вышла из потока. Пусть карточка остаётся на месте, просто станет якорем.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] fixed [Русское произношение] карточка прилипла к окну. Пусть она остаётся на месте и просто будет якорем.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужен якорь, который стоит на месте.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение оставляет элемент на месте и делает его якорем?", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для якоря обычно пишут [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Метка в углу карточки.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Карточка, якорь, метка, [English pronunciation] absolute [Русское произношение]. Посмотри, где метка, и выбери, какие сдвиги её туда поставили.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В каком углу метка: сверху или снизу, слева или справа?", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При [English pronunciation] absolute top [Русское произношение] прижимает к верху, [English pronunciation] bottom [Русское произношение], к низу, [English pronunciation] left [Русское произношение], к левому краю, [English pronunciation] right [Русское произношение], к правому.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка сверху и справа: [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка снизу и слева: [English pronunciation] bottom [Русское произношение] и [English pronunciation] left [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка снизу и справа: [English pronunciation] bottom [Русское произношение] и [English pronunciation] right [Русское произношение].", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты читаешь углы с одного взгляда.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на кнопку, когда страница прокручивается: сначала она уезжает вместе со страницей, а после [English pronunciation] fixed [Русское произношение] стоит в углу окна.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] fixed [Русское произношение] прилепляет элемент к окну браузера: он стоит на месте, даже когда страница прокручивается. А [English pronunciation] absolute [Русское произношение] едет вместе со страницей.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наклейка на окне машины остаётся на месте, хотя дорога проносится мимо. Кнопка с [English pronunciation] fixed [Русское произношение] так же остаётся в окне, пока страница едет.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это длинная страница, дневник. В самом низу есть кнопка Наверх. Мы дали ей [English pronunciation] absolute [Русское произношение] и угол: пока страница не прокручена, она стоит в правом нижнем углу.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прокрутим страницу вниз. Смотри: кнопка уехала вверх вместе со страницей. [English pronunciation] absolute [Русское произношение] держится за страницу.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] position fixed [Русское произношение], то есть закреплённый. Кнопка прилипла к углу окна браузера и стоит на месте, хоть страница и прокручена.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся наверх: кнопка всё так же в углу окна. [English pronunciation] fixed [Русское произношение] держится не за страницу, а за окно.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] fixed [Русское произношение] прилипает к окну и не прокручивается вместе со страницей. Так делают кнопку Наверх и меню.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Страница прокручена вниз, а кнопки Наверх не видно. Пусть она всегда стоит в углу окна: впиши значение [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] absolute [Русское произношение] держится за страницу: прокрутишь, кнопка уедет. Пусть держится за окно.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] relative [Русское произношение] сдвигает кнопку от её места, а оно в конце страницы. Пусть держится за окно.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Со [English pronunciation] static [Русское произношение] кнопка остаётся в конце страницы. Пусть держится за окно.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужно значение, которое держится за окно.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение прилипает к окну и не прокручивается?", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закреплённый, [English pronunciation] fixed [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] fixed [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кнопка в углу окна, как ни прокручивай страницу.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, какое значение [English pronunciation] position [Русское произношение] нужно.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Элемент остаётся в потоке, сдвигается от своего места, держится за якорь или за окно?", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] static [Русское произношение], обычный, [English pronunciation] relative [Русское произношение], сдвиг от своего места, [English pronunciation] absolute [Русское произношение], к якорю, [English pronunciation] fixed [Русское произношение], к окну.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка должна стоять в углу карточки.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В угол ставит [English pronunciation] absolute [Русское произношение], а карточка, якорь.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меню должно оставаться наверху экрана, даже когда страницу прокручивают.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прилипнуть к окну, это [English pronunciation] fixed [Русское произношение].", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Коробка должна чуть сдвинуться, а прежнее место, остаться пустым.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сдвиг от своего места, [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац должен стоять как обычно, вместе с остальными.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обычный режим, [English pronunciation] static [Русское произношение].", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты применяешь все четыре значения к месту.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на код: есть ли [English pronunciation] position [Русское произношение], верно ли написано слово, есть ли [English pronunciation] px [Русское произношение] у числа? Потом смотри на вторую коробку.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] top [Русское произношение], [English pronunciation] left [Русское произношение], [English pronunciation] right [Русское произношение] и [English pronunciation] bottom [Русское произношение] работают только вместе с [English pronunciation] position [Русское произношение]. Слова пишутся точно, а у чисел нужен [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без руля на велосипеде не поедешь, сколько ни крути педали. Сдвиги так же не работают без [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в [English pronunciation] position [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас вторая коробка [English pronunciation] relative [Русское произношение] и сдвинута на двадцать пикселей вниз.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: [English pronunciation] top [Русское произношение] есть, а [English pronunciation] position [Русское произношение] нет. Обычный элемент не слушает сдвиги, коробка вернулась на место.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: в слове [English pronunciation] position [Русское произношение] пропала буква. Браузер не знает такого свойства и выбросил его.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья: после двадцати нет [English pronunciation] px [Русское произношение]. Сдвиг не сработал.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, сдвиги работают только вместе с [English pronunciation] position [Русское произношение], а слова пишутся точно и с [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я хотел сдвинуть вторую коробку, а она не двигается! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Сравни с [English pronunciation] relative [Русское произношение] буква за буквой.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Со [English pronunciation] static [Русское произношение] коробка не двигается. Нужен сдвиг от своего места.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] absolute [Русское произношение] коробка бросила своё место. Место должно сохраниться.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] fixed [Русское произношение] прилипает к окну. Нужен сдвиг от своего места.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Просто допиши букву.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Браузер не узнал это слово: в конце не хватает буквы.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прочитай слово по буквам.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] В конце не хватает буквы e.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Коробка сдвинулась.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь другая страница. Какое правило не работает?", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Не было [English pronunciation] position [Русское произношение], поэтому сдвиги не работали.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В слове [English pronunciation] absolute [Русское произношение] не хватало буквы.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что не так, как в коде?", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] В коде вторая коробка должна сдвинуться, а она на месте. Чего не хватает?", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка не вышла в угол. Проверь значение [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не работает второе правило: нет [English pronunciation] position [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: absolut. Нажми эту строку.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Оба найдены. Ты проверяешь позиционирование как настоящий разработчик.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. Карточка уже якорь. Пусть метка стоит в левом нижнем углу карточки: [English pronunciation] absolute [Русское произношение], снизу ноль и слева ноль.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойства.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс метки, belgi: селектор, точка и belgi.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет [English pronunciation] position [Русское произношение], поэтому сдвиги не работают.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В угол метка выходит только с [English pronunciation] absolute [Русское произношение].", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для угла нужны два сдвига: [English pronunciation] bottom [Русское произношение] и [English pronunciation] left [Русское произношение].", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Угол другой. Нужен левый нижний: [English pronunciation] bottom [Русское произношение] ноль и [English pronunciation] left [Русское произношение] ноль.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слова.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойствами нужна точка с запятой: поставь её после каждого значения.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: 0[English pronunciation] px [Русское произношение] пишется слитно.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три свойства: [English pronunciation] position [Русское произношение] и два сдвига.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] position absolute [Русское произношение], [English pronunciation] bottom [Русское произношение] ноль пикселей, [English pronunciation] left [Русское произношение] ноль пикселей.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Метка в левом нижнем углу. Правило написано тобой целиком.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь размести свою метку. Карточка, якорь, метка, [English pronunciation] absolute [Русское произношение]. Впиши отступ сверху и справа и цвет метки. Потом нажми Готово.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение], число и [English pronunciation] px [Русское произношение], для цвета, название цвета.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: восемь пикселей, восемь пикселей и [English pronunciation] gold [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твоя карточка.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О каком значении фраза: [English pronunciation] relative [Русское произношение], [English pronunciation] absolute [Русское произношение] или [English pronunciation] fixed [Русское произношение]?", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: [English pronunciation] relative [Русское произношение] сохраняет место, [English pronunciation] absolute [Русское произношение], к родителю-якорю, [English pronunciation] fixed [Русское произношение], к окну, а сдвиги, только с [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда [English pronunciation] relative [Русское произношение]-элемент сдвигается, его прежнее место остаётся пустым.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] relative [Русское произношение] сохраняет своё место.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У карточки нет [English pronunciation] position [Русское произношение]. Это правило поставит метку в угол карточки.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле, если карточка не якорь, метка улетит в угол страницы.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка [English pronunciation] fixed [Русское произношение] остаётся в окне, даже когда страницу прокручивают.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] fixed [Русское произношение] прилипает к окну.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сдвигает коробку на тридцать пикселей вниз.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] position [Русское произношение] нет, поэтому [English pronunciation] top [Русское произношение] не работает.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в [English pronunciation] position [Русское произношение].", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал [English pronunciation] absolute [Русское произношение] и угол только метке? Смотри: метка улетела не в угол карточки, а в угол всей страницы! Я ошибся. Якоря не было.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать карточке [English pronunciation] relative [Русское произношение], она станет якорем, и метка встанет точно в её угол. Вот!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя карточка с твоей собственной меткой!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] relative [Русское произношение] сдвигается от своего места, прежнее место остаётся пустым.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] absolute [Русское произношение] выходит из потока и встаёт в угол.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А его якорь, родитель с [English pronunciation] relative [Русское произношение].", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] fixed [Русское произношение] прилипает к окну и не прокручивается вместе со страницей.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты умеешь ставить элементы в любое место страницы. На следующем уроке сделаем кнопки, которые оживают под мышкой: hover и transform. До встречи!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня вышла новая игра: Космические гонки!", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй её прямо сейчас.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Понедельник. Сегодня в школе учили [English pronunciation] CSS [Русское произношение]. Моя страница теперь цветная и красивая.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторник. Играли с другом в футбол. Я забил два гола, и наша команда победила.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Среда. Взял в библиотеке книгу о космосе. В ней очень интересные картинки про Марс.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четверг. Сделал новую игру и показал одноклассникам. Всем понравилось!", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где метка?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие сдвиги поставили метку сюда?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] position [Русское произношение] нужен для этой задачи?", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I put a NEW badge on the new game’s card. But look: the badge sits in the line of text, like an ordinary word. I want it in the top-right corner of the card, like in real stores. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The badge left the text and flew to the corner of the card.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The position property did it, meaning where an element stands. We gave the card relative and the badge absolute.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to place elements anywhere on the page. But first, a riddle. The first time, I wrote absolute and the corner only on the badge, and nothing on the card. I think the badge will still land in the card’s corner. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the second box: it moves, but its old spot stays empty, and the third box doesn’t move.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative shifts an element from its own spot. top is a gap from the top, so the box goes down. left is a gap from the left, so it goes right.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Get up from your desk and step aside: your seat stays empty and waits for you. relative works the same way.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are three boxes here. Normally every element has position static: they stand in order and ignore offsets. Let’s give the second box position relative, meaning relative: it moves from its own place.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, nothing changed. relative alone doesn’t move anything; you have to tell it where to move.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] top twenty pixels. Watch: the box went down! top is the distance from the top, so the box moved twenty pixels away from the top. Its old place stayed empty.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] left forty pixels: it moved away from the left, that is, to the right. The third box didn’t move.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So relative moves an element from its place, and the old place stays empty, waiting for it.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. The second box has top and left, but it doesn’t move. Let it move from its own place: type the position value.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: one word.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for position.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With static the box doesn’t move: that’s the normal mode.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With absolute the box left its place, and the third one took it. The place should be kept.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] fixed sticks to the window. We need a move from its own place.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need a move from its own place.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value moves an element from its own place?", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Relative is relative.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type relative and tap Check.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The box moved, and its old place is empty.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now match the offsets. Tap an offset on the left, then the picture where the box moved that way on the right. The dashed outline shows the old place.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] top is the distance from the top: the box moves away from the top, so it goes down.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] left is the distance from the left: the box moves away from the left, so it goes right.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] bottom is the distance from the bottom: the box moves away from the bottom, so it goes up.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, top pushes it down.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, left pushes it right.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, bottom pushes it up.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First pick an offset on the left.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The offset word says which side to move away from.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] top pushes down, left pushes right, bottom pushes up.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing pair.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The offsets can’t fool you.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the badge: first it leaves the text, then flies to the page corner, and finally to the card corner.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] absolute takes an element out of the row and puts it in a corner. Which corner? The corner of the outer box that has position. That’s why the card gets relative.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A magnet on a fridge sits in the fridge’s corner, not the room’s corner. The fridge is the anchor, the magnet is absolute.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now absolute. It takes an element out of the shared row: the neighbors stop noticing it and take its place. And the element itself can go into any corner. Watch the badge.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] position absolute: the badge left the line, and the text took its place right away.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] top zero, right zero: the badge flew into a corner. But not the card’s corner, the whole page’s corner! absolute looks for a box it sits in that has position. The card has no position, so the badge holds on to the page.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Give the card position relative. Now the badge holds on to the card, the card became its anchor, and the badge landed right in its corner.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So absolute leaves the flow and stands relative to the nearest anchor parent. To make the parent an anchor, you give it relative.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The badge has absolute and a corner, but it flew to the page’s corner. Make the card the anchor: type the position value for the card.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] static can’t be an anchor: the badge is still in the page’s corner.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the card itself left the flow. Let the card stay in place and just become the anchor.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With fixed the card stuck to the window. Let it stay in place and just be the anchor.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need an anchor that stays in place.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value keeps the element in place and makes it an anchor?", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For an anchor you usually write relative.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The badge is in the card’s corner.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. The card is the anchor, the badge is absolute. Look where the badge is and pick which offsets put it there.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which corner is the badge in: top or bottom, left or right?", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With absolute, top sticks it to the top, bottom to the bottom, left to the left, right to the right.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge is at the top right: top and right.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge is at the bottom left: bottom and left.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge is at the bottom right: bottom and right.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You read corners at a glance.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Watch the button as the page scrolls: first it moves with the page, but after fixed it stays in the window’s corner.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] fixed sticks an element to the browser window: it stays put even when the page scrolls. absolute moves together with the page.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A sticker on a car window stays put while the road rushes by. A fixed button stays in the window the same way while the page moves.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is a long page, a diary. At the very bottom there’s a To top button. We gave it absolute and a corner: while the page isn’t scrolled, it stands in the bottom right corner.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s scroll the page down. Look: the button went up with the page. absolute holds on to the page.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now position fixed, meaning fixed in place. The button stuck to the browser window’s corner and stays put even though the page is scrolled.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the top: the button is still in the window’s corner. fixed holds on to the window, not the page.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So fixed sticks to the window and doesn’t scroll with the page. That’s how To top buttons and menus are made.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The page is scrolled down, and the To top button isn’t visible. Let it always stand in the window’s corner: type the position value.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] absolute holds on to the page: scroll, and the button leaves. Let it hold on to the window.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative moves the button from its place, which is at the end of the page. Let it hold on to the window.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With static the button stays at the end of the page. Let it hold on to the window.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need the value that holds on to the window.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value sticks to the window and doesn’t scroll?", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fixed in place is fixed.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type fixed and tap Check.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The button is in the window’s corner however far you scroll.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick which position value is needed.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does the element stay in the flow, move from its place, hold on to an anchor, or to the window?", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] static is normal, relative moves from its place, absolute goes to an anchor, fixed to the window.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge should stand in the card’s corner.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] absolute puts it in the corner, and the card is the anchor.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The menu should stay at the top of the screen even when the page scrolls.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sticking to the window is fixed.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The box should move a little, and its old place should stay empty.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Moving from its own place is relative.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraph should just stand normally with the others.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The normal mode is static.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You use all four values in the right place.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time, look at the code: is there position, is the word spelled right, does the number have px? Then look at the second box.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] top, left, right and bottom only work together with position. Words must be exact, and numbers need px.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can’t ride a bike without handlebars, however hard you pedal. Shifts don’t work without position either.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] position has mistakes too. Let’s look at three. Right now the second box is relative and moved twenty pixels down.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: there’s top but no position. A normal element ignores offsets, so the box went back to its place.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The second: a letter is missing in position. The browser doesn’t know that property and threw it away.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third: there’s no px after twenty. The offset didn’t work.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So offsets only work together with position, and words must be exact, with px.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wanted to move the second box, but it won’t budge! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Compare it with relative letter by letter.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With static the box doesn’t move. We need a move from its own place.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With absolute the box left its place. The place should be kept.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. Just add the letter.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The browser didn’t recognize that word: a letter is missing at the end.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read the word letter by letter.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The letter e is missing at the end.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The box moved.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now another page. Which rule doesn’t work?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was no position, so the offsets didn’t work.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! A letter was missing in absolute.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what doesn’t match the code?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The code says the second box should move, but it’s in place. What’s missing?", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge didn’t go to the corner. Check the position value.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second rule doesn’t work: no position. Tap that line.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: absolut. Tap that line.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check positioning like a real developer.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. The card is already the anchor. Put the badge in the card’s bottom-left corner: absolute, zero from the bottom and zero from the left.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the properties inside curly braces.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge’s class is belgi: the selector is a dot and belgi.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no position, so the offsets don’t work.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge only goes to a corner with absolute.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A corner needs two offsets: bottom and left.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different corner. We need the bottom left: bottom zero and left zero.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the words.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Properties need a semicolon between them: put one after each value.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No space between the number and px: 0px is written together.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three properties: position and two offsets.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] position absolute, bottom zero pixels, left zero pixels.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The badge is in the bottom-left corner. You wrote the whole rule yourself.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now place your own badge. The card is the anchor, the badge is absolute. Type the distance from the top and from the right, and the badge color. Then tap Done.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For top and right, a number and px; for the color, a color name.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: eight pixels, eight pixels and gold. Then tap Done.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! This is your card.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value is the sentence about: relative, absolute or fixed?", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: relative keeps its place, absolute goes to the anchor parent, fixed to the window, and offsets only work with position.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When a relative element moves, its old place stays empty.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: relative keeps its place.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The card has no position. This rule will put the badge in the card’s corner.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually, if the card isn’t an anchor, the badge flies to the page’s corner.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A fixed button stays in the window even when the page scrolls.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: fixed sticks to the window.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule moves the box thirty pixels down.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually there’s no position, so top doesn’t work.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know position really well.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrote absolute and the corner only on the badge? Look: the badge flew not to the card’s corner but to the whole page’s corner! I was wrong. There was no anchor.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If we give the card relative, it becomes the anchor, and the badge lands right in its corner. There!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your card with the badge you placed yourself!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative moves from its own place; the old place stays empty.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] absolute leaves the flow and goes to a corner.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And its anchor is a parent with relative.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] fixed sticks to the window and doesn’t scroll with the page.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you can place elements anywhere on the page. Next lesson we’ll make buttons that come alive under the mouse: hover and transform. See you!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A new game came out today: Space Race!", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try it right now.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Monday. Today at school we learned CSS. My page is colorful and pretty now.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tuesday. My friend and I played football. I scored two goals and our team won.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Wednesday. I got a book about space from the library. It has really interesting pictures of Mars.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Thursday. I made a new game and showed it to my classmates. Everyone liked it!", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where’s the badge?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which offsets put the badge here?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which position does this task need?", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Men yangi o'yin kartochkasiga YANGI belgisini qo'ydim. Lekin qarang: belgi matn qatorida turibdi, xuddi oddiy so'zdek. Men uni kartochkaning yuqori o'ng burchagida ko'rmoqchiman, haqiqiy do'konlardagidek. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Belgi matndan chiqib, kartochkaning burchagiga uchib o'tdi.": "uz002",
+    "Buni [English pronunciation] position [O'zbekcha tallaffuz] xususiyati qildi, ya'ni element qayerda turishi degani. Kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz], belgiga esa [English pronunciation] absolute [O'zbekcha tallaffuz] berdik.": "uz003",
+    "Bugun elementlarni sahifaning istalgan joyiga qo'yishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta faqat belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozgan edim, kartochkaga esa hech narsa yozmagan edim. Menimcha, belgi baribir kartochka burchagiga boradi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Ikkinchi qutiga qarang: u siljiydi, lekin uning eski joyi bo'sh qoladi, uchinchi quti esa joyidan qimirlamaydi.": "uz005",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] elementni o'z joyidan siljitadi. [English pronunciation] top [O'zbekcha tallaffuz] yuqoridan chekinish beradi, shuning uchun quti pastga tushadi. [English pronunciation] left [O'zbekcha tallaffuz] esa chapdan, shuning uchun o'ngga.": "uz006",
+    "Sinfda partadan turib, bir qadam chetga chiqing: sizning joyingiz bo'sh qoladi va sizni kutadi. [English pronunciation] relative [O'zbekcha tallaffuz] ham shunday.": "uz007",
+    "Bu yerda uchta quti bor. Odatda hamma elementlarda [English pronunciation] position static [O'zbekcha tallaffuz] bo'ladi: ular navbat bilan turadi va siljishlarni eshitmaydi. Ikkinchi qutiga [English pronunciation] position relative [O'zbekcha tallaffuz] beramiz, ya'ni nisbiy degani: u o'z joyidan siljiydi.": "uz008",
+    "Qarang, hech narsa o'zgarmadi. [English pronunciation] relative [O'zbekcha tallaffuz] ning o'zi joyidan qimirlamaydi, unga qayerga siljishni aytish kerak.": "uz009",
+    "[English pronunciation] top [O'zbekcha tallaffuz] yigirma piksel. Diqqat qiling: quti pastga tushdi! [English pronunciation] top [O'zbekcha tallaffuz] tepadan masofa degani, shuning uchun quti tepasidan yigirma piksel uzoqlashdi. Uning eski joyi esa bo'sh qoldi.": "uz010",
+    "[English pronunciation] left [O'zbekcha tallaffuz] qirq piksel: chapdan uzoqlashdi, ya'ni o'ngga siljidi. Uchinchi quti esa joyidan qimirlamadi.": "uz011",
+    "Demak, [English pronunciation] relative [O'zbekcha tallaffuz] element o'z joyidan siljiydi, eski joyi esa uni kutib bo'sh turadi.": "uz012",
+    "Endi navbat sizga. Ikkinchi qutiga [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz] yozilgan, lekin u qimirlamayapti. U o'z joyidan siljisin: [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.": "uz013",
+    "Qiymatni yozing: bitta so'z.": "uz014",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] position [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz015",
+    "[English pronunciation] static [O'zbekcha tallaffuz] bilan quti joyidan qimirlamaydi: bu odatdagi holat.": "uz016",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] bilan quti o'z joyini tashlab ketdi, uchinchisi uning o'rniga chiqdi. Joyi saqlanib qolsin.": "uz017",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi. Bizga o'z joyidan siljish kerak.": "uz018",
+    "Bu boshqa qiymat. O'z joyidan siljish kerak.": "uz019",
+    "Qaysi qiymat elementni o'z joyidan siljitadi?": "uz020",
+    "Nisbiy degani [English pronunciation] relative [O'zbekcha tallaffuz].": "uz021",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz022",
+    "Zo'r! Quti siljidi, eski joyi esa bo'sh turibdi.": "uz023",
+    "Endi siljishlarni juftlang. Chapdan siljishni, o'ngdan esa quti shu yo'nalishga ketgan rasmni bosing. Punktir quti eski joyini ko'rsatadi.": "uz024",
+    "[English pronunciation] top [O'zbekcha tallaffuz] tepadan masofa: quti tepadan uzoqlashadi, ya'ni pastga tushadi.": "uz025",
+    "[English pronunciation] left [O'zbekcha tallaffuz] chapdan masofa: quti chapdan uzoqlashadi, ya'ni o'ngga ketadi.": "uz026",
+    "[English pronunciation] bottom [O'zbekcha tallaffuz] pastdan masofa: quti pastdan uzoqlashadi, ya'ni tepaga chiqadi.": "uz027",
+    "To'g'ri, [English pronunciation] top [O'zbekcha tallaffuz] pastga suradi.": "uz028",
+    "To'g'ri, [English pronunciation] left [O'zbekcha tallaffuz] o'ngga suradi.": "uz029",
+    "To'g'ri, [English pronunciation] bottom [O'zbekcha tallaffuz] tepaga suradi.": "uz030",
+    "Oldin chapdan siljishni tanlang.": "uz031",
+    "Siljish so'zi qaysi tomondan uzoqlashishni aytadi.": "uz032",
+    "[English pronunciation] top [O'zbekcha tallaffuz] pastga, [English pronunciation] left [O'zbekcha tallaffuz] o'ngga, [English pronunciation] bottom [O'zbekcha tallaffuz] tepaga suradi.": "uz033",
+    "Yonib turgan juftlikni bosing.": "uz034",
+    "Ajoyib! Siljishlar sizni chalg'itmaydi.": "uz035",
+    "Belgiga qarang: u avval matndan chiqadi, keyin sahifa burchagiga, oxirida esa kartochka burchagiga uchadi.": "uz036",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] elementni qatordan chiqarib, burchakka qo'yadi. Qaysi burchakka? Tashqaridagi, [English pronunciation] position [O'zbekcha tallaffuz] berilgan qutining burchagiga. Shuning uchun kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.": "uz037",
+    "Muzlatgichga magnit yopishtirasiz: u muzlatgich burchagida turadi, xona burchagida emas. Muzlatgich bu langar, magnit esa [English pronunciation] absolute [O'zbekcha tallaffuz].": "uz038",
+    "Endi [English pronunciation] absolute [O'zbekcha tallaffuz]. U elementni umumiy qatordan olib chiqadi: qo'shnilar uni endi ko'rmaydi va uning joyini egallaydi. Elementning o'zini esa istalgan burchakka qo'yish mumkin. Belgiga qarang.": "uz039",
+    "[English pronunciation] position absolute [O'zbekcha tallaffuz]: belgi qatordan chiqdi, matn esa darhol uning joyini egalladi.": "uz040",
+    "[English pronunciation] top [O'zbekcha tallaffuz] nol, [English pronunciation] right [O'zbekcha tallaffuz] nol: belgi burchakka uchdi. Lekin kartochka burchagiga emas, butun sahifa burchagiga! [English pronunciation] absolute [O'zbekcha tallaffuz] o'zi yotgan va [English pronunciation] position [O'zbekcha tallaffuz] berilgan qutini qidiradi. Kartochkada [English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun belgi sahifaga yopishdi.": "uz041",
+    "Kartochkaga [English pronunciation] position relative [O'zbekcha tallaffuz] beramiz. Endi belgi kartochkaga yopishdi, kartochka uning langari bo'ldi, va belgi aynan uning burchagiga keldi.": "uz042",
+    "Demak, [English pronunciation] absolute [O'zbekcha tallaffuz] oqimdan chiqadi va eng yaqin langar otaga nisbatan turadi. Langar bo'lishi uchun otaga [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.": "uz043",
+    "Endi siz. Belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozilgan, lekin u sahifa burchagiga uchib ketgan. Kartochka langar bo'lsin: kartochka uchun [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.": "uz044",
+    "[English pronunciation] static [O'zbekcha tallaffuz] langar bo'la olmaydi: belgi hali sahifa burchagida.": "uz045",
+    "Endi kartochkaning o'zi oqimdan chiqib ketdi. Kartochka joyida qolsin, faqat langar bo'lsin.": "uz046",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] bilan kartochka oynaga yopishdi. U joyida qolib, faqat langar bo'lsin.": "uz047",
+    "Bu boshqa qiymat. Joyida turadigan langar kerak.": "uz048",
+    "Qaysi qiymat elementni joyida qoldirib, langar qiladi?": "uz049",
+    "Langar uchun odatda [English pronunciation] relative [O'zbekcha tallaffuz] yoziladi.": "uz050",
+    "Barakalla! Belgi kartochka burchagida.": "uz051",
+    "Endi o'zingizni sinab ko'ring. Kartochka langar, belgi [English pronunciation] absolute [O'zbekcha tallaffuz]. Belgining joyiga qarang va qaysi siljishlar uni o'sha yerga qo'yganini tanlang.": "uz052",
+    "Belgi qaysi burchakda: tepadami yoki pastda, chapdami yoki o'ngda?": "uz053",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] da [English pronunciation] top [O'zbekcha tallaffuz] tepaga, [English pronunciation] bottom [O'zbekcha tallaffuz] pastga, [English pronunciation] left [O'zbekcha tallaffuz] chapga, [English pronunciation] right [O'zbekcha tallaffuz] o'ngga yopishtiradi.": "uz054",
+    "Belgi tepada va o'ngda: [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz].": "uz055",
+    "Belgi pastda va chapda: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz].": "uz056",
+    "Belgi pastda va o'ngda: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz].": "uz057",
+    "Barakalla!": "uz058",
+    "Hammasi to'g'ri! Burchaklarni bir qarashda o'qiysiz.": "uz059",
+    "Sahifa aylantirilganda tugmaga qarang: avval u sahifa bilan birga ketadi, [English pronunciation] fixed [O'zbekcha tallaffuz] dan keyin esa oyna burchagida qoladi.": "uz060",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] elementni brauzer oynasiga yopishtiradi: sahifa aylantirilsa ham u joyida turadi. [English pronunciation] absolute [O'zbekcha tallaffuz] esa sahifa bilan birga harakatlanadi.": "uz061",
+    "Mashina oynasiga yopishtirilgan stiker yo'l o'tib ketsa ham joyida qoladi. [English pronunciation] fixed [O'zbekcha tallaffuz] tugma ham sahifa o'tib ketsa, oynada qoladi.": "uz062",
+    "Bu uzun sahifa, kundalik. Eng pastda Yuqoriga tugmasi bor. Unga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak berdik: sahifa aylantirilmaganida, u o'ng pastki burchakda turadi.": "uz063",
+    "Sahifani pastga aylantiramiz. Qarang: tugma sahifa bilan birga tepaga ketib qoldi. [English pronunciation] absolute [O'zbekcha tallaffuz] sahifaga yopishgan.": "uz064",
+    "Endi [English pronunciation] position fixed [O'zbekcha tallaffuz], ya'ni mahkamlangan degani. Tugma brauzer oynasining burchagiga yopishdi va sahifa aylansa ham joyida turibdi.": "uz065",
+    "Yana tepaga qaytamiz: tugma baribir oyna burchagida. [English pronunciation] fixed [O'zbekcha tallaffuz] sahifaga emas, oynaga yopishadi.": "uz066",
+    "Demak, [English pronunciation] fixed [O'zbekcha tallaffuz] element oynaga yopishadi va sahifa bilan aylanmaydi. Yuqoriga tugmasi va menyular shunday qilinadi.": "uz067",
+    "Endi siz. Sahifa pastga aylantirilgan, Yuqoriga tugmasi esa ko'rinmayapti. U doim oyna burchagida tursin: [English pronunciation] position [O'zbekcha tallaffuz] qiymatini yozing.": "uz068",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] sahifaga yopishadi: aylantirsangiz tugma ketib qoladi. Oynaga yopishsin.": "uz069",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] tugmani o'z joyidan siljitadi, u esa sahifaning oxirida. Oynaga yopishsin.": "uz070",
+    "[English pronunciation] static [O'zbekcha tallaffuz] bilan tugma sahifa oxirida qoladi. Oynaga yopishsin.": "uz071",
+    "Bu boshqa qiymat. Oynaga yopishadigan qiymat kerak.": "uz072",
+    "Qaysi qiymat oynaga yopishadi va aylanmaydi?": "uz073",
+    "Mahkamlangan degani [English pronunciation] fixed [O'zbekcha tallaffuz].": "uz074",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz075",
+    "Ajoyib! Tugma oyna burchagida, sahifa qanchalik aylanmasin.": "uz076",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa [English pronunciation] position [O'zbekcha tallaffuz] uchun qaysi qiymat kerakligini tanlang.": "uz077",
+    "Element oqimda qoladimi, o'z joyidan siljiydimi, langarga yopishadimi yoki oynagami?": "uz078",
+    "[English pronunciation] static [O'zbekcha tallaffuz] oddiy, [English pronunciation] relative [O'zbekcha tallaffuz] o'z joyidan siljish, [English pronunciation] absolute [O'zbekcha tallaffuz] langarga, [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga.": "uz079",
+    "Belgi kartochkaning burchagida tursin.": "uz080",
+    "Burchakka [English pronunciation] absolute [O'zbekcha tallaffuz] qo'yadi, kartochka esa langar.": "uz081",
+    "Menyu sahifa aylansa ham ekran tepasida tursin.": "uz082",
+    "Oynaga yopishish [English pronunciation] fixed [O'zbekcha tallaffuz] bilan.": "uz083",
+    "Quti joyidan biroz siljisin, eski joyi bo'sh qolsin.": "uz084",
+    "O'z joyidan siljish [English pronunciation] relative [O'zbekcha tallaffuz].": "uz085",
+    "Abzas boshqalar qatori oddiy turaversin.": "uz086",
+    "Odatdagi holat [English pronunciation] static [O'zbekcha tallaffuz].": "uz087",
+    "Hammasi to'g'ri! To'rtala qiymatni joyida ishlatasiz.": "uz088",
+    "Har safar kodga qarang: [English pronunciation] position [O'zbekcha tallaffuz] bormi, so'z to'g'ri yozilganmi, son yonida [English pronunciation] px [O'zbekcha tallaffuz] bormi? Keyin ikkinchi qutiga qarang.": "uz089",
+    "[English pronunciation] top [O'zbekcha tallaffuz], [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] right [O'zbekcha tallaffuz], [English pronunciation] bottom [O'zbekcha tallaffuz] faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan ishlaydi. So'zlar aniq yoziladi, sonlarga esa [English pronunciation] px [O'zbekcha tallaffuz] kerak.": "uz090",
+    "Rulsiz velosiped haydab bo'lmaydi, pedalni qancha aylantirmang. Siljishlar ham [English pronunciation] position [O'zbekcha tallaffuz] siz ishlamaydi.": "uz091",
+    "[English pronunciation] position [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir ikkinchi quti [English pronunciation] relative [O'zbekcha tallaffuz] va yigirma piksel pastga siljigan.": "uz092",
+    "Birinchisi: [English pronunciation] top [O'zbekcha tallaffuz] bor, [English pronunciation] position [O'zbekcha tallaffuz] yo'q. Oddiy element siljishlarga qaramaydi, quti joyiga qaytdi.": "uz093",
+    "Ikkinchisi: [English pronunciation] position [O'zbekcha tallaffuz] so'zida harf tushib qolgan. Brauzer bunday xususiyatni bilmaydi va uni tashlab yubordi.": "uz094",
+    "Uchinchisi: yigirma sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Siljish ishlamadi.": "uz095",
+    "Demak, siljishlar faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan ishlaydi, so'zlar esa aniq va [English pronunciation] px [O'zbekcha tallaffuz] bilan yoziladi.": "uz096",
+    "Voy, men ikkinchi qutini siljitmoqchi edim, lekin u joyidan qimirlamayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz097",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] relative [O'zbekcha tallaffuz] bilan harfma-harf solishtiring.": "uz098",
+    "[English pronunciation] static [O'zbekcha tallaffuz] bilan quti qimirlamaydi. O'z joyidan siljish kerak.": "uz099",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] bilan quti joyini tashlab ketdi. Joyi saqlansin.": "uz100",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi. O'z joyidan siljish kerak.": "uz101",
+    "Bu boshqa qiymat. Faqat harfni qo'shing.": "uz102",
+    "Brauzer bu so'zni tanimadi: oxirida bitta harf yetishmayapti.": "uz103",
+    "So'zni harfma-harf o'qing.": "uz104",
+    "Oxirida e harfi yetishmayapti.": "uz105",
+    "Ura, ishladi! Quti siljidi.": "uz106",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.": "uz107",
+    "Zo'r, birinchisi topildi! Endi boshqa sahifa. Qaysi qoida ishlamayapti?": "uz108",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz109",
+    "Topdingiz! [English pronunciation] position [O'zbekcha tallaffuz] yo'q edi, shuning uchun siljishlar ishlamadi.": "uz110",
+    "Topdingiz! [English pronunciation] absolute [O'zbekcha tallaffuz] so'zida harf yetishmayotgan edi.": "uz111",
+    "Sahifaga qarang: qaysi narsa kod aytgandek emas?": "uz112",
+    "Kodda ikkinchi quti siljishi kerak, u esa joyida. Nima yetishmayapti?": "uz113",
+    "Belgi burchakka chiqmadi. [English pronunciation] position [O'zbekcha tallaffuz] qiymatini tekshiring.": "uz114",
+    "Ishlamayotgani ikkinchi qoida: [English pronunciation] position [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.": "uz115",
+    "Xato ikkinchi qoidada: absolut. O'sha qatorni bosing.": "uz116",
+    "Super! Ikkalasi ham topildi. Siz joylashuvni haqiqiy dasturchi kabi tekshiryapsiz.": "uz117",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Kartochka allaqachon langar. Belgi kartochkaning chap pastki burchagida tursin: [English pronunciation] absolute [O'zbekcha tallaffuz], pastdan nol va chapdan nol.": "uz118",
+    "Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyatlar.": "uz119",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz120",
+    "Xususiyat va qiymat orasida ikki nuqta yo'q.": "uz121",
+    "Belgining klassi belgi: selektor nuqta va belgi.": "uz122",
+    "[English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun siljishlar ishlamaydi.": "uz123",
+    "Belgi burchakka faqat [English pronunciation] absolute [O'zbekcha tallaffuz] bilan chiqadi.": "uz124",
+    "Burchak uchun ikkita siljish kerak: [English pronunciation] bottom [O'zbekcha tallaffuz] va [English pronunciation] left [O'zbekcha tallaffuz].": "uz125",
+    "Burchak boshqa. Pastki chap burchak kerak: [English pronunciation] bottom [O'zbekcha tallaffuz] nol va [English pronunciation] left [O'zbekcha tallaffuz] nol.": "uz126",
+    "Brauzer bu so'zni tanimadi. So'zlarni tekshiring.": "uz127",
+    "Xususiyatlar o'rtasida nuqtali vergul kerak: har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz128",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: 0[English pronunciation] px [O'zbekcha tallaffuz] qo'shib yoziladi.": "uz129",
+    "Uchta xususiyat: [English pronunciation] position [O'zbekcha tallaffuz] va ikkita siljish.": "uz130",
+    "[English pronunciation] position absolute [O'zbekcha tallaffuz], [English pronunciation] bottom [O'zbekcha tallaffuz] nol piksel, [English pronunciation] left [O'zbekcha tallaffuz] nol piksel.": "uz131",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz132",
+    "Ajoyib! Belgi chap pastki burchakda. Qoidani o'zingiz yozdingiz.": "uz133",
+    "Endi o'z belgingizni joylang. Kartochka langar, belgi [English pronunciation] absolute [O'zbekcha tallaffuz]. Tepadan va o'ngdan masofani hamda belgi rangini yozing. Keyin Tayyorni bosing.": "uz134",
+    "Har bir maydonga bitta qiymat yozing.": "uz135",
+    "[English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz] uchun son va [English pronunciation] px [O'zbekcha tallaffuz], rang uchun rang nomi.": "uz136",
+    "Masalan: sakkiz piksel, sakkiz piksel va [English pronunciation] gold [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz137",
+    "Voy, qanday chiroyli! Bu sizning kartochkangiz.": "uz138",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz139",
+    "Gap qaysi qiymat haqida: [English pronunciation] relative [O'zbekcha tallaffuz], [English pronunciation] absolute [O'zbekcha tallaffuz] yoki [English pronunciation] fixed [O'zbekcha tallaffuz]?": "uz140",
+    "Esingizdami: [English pronunciation] relative [O'zbekcha tallaffuz] joyini saqlaydi, [English pronunciation] absolute [O'zbekcha tallaffuz] langar otaga, [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga, siljishlar esa faqat [English pronunciation] position [O'zbekcha tallaffuz] bilan.": "uz141",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] element siljiganda uning eski joyi bo'sh qoladi.": "uz142",
+    "To'g'ri: [English pronunciation] relative [O'zbekcha tallaffuz] joyini saqlab qoladi.": "uz143",
+    "Kartochkada [English pronunciation] position [O'zbekcha tallaffuz] yo'q. Bu qoida belgini kartochka burchagiga qo'yadi.": "uz144",
+    "Aslida kartochka langar bo'lmasa, belgi sahifa burchagiga uchadi.": "uz145",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] tugma sahifa aylansa ham oynada qoladi.": "uz146",
+    "To'g'ri: [English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi.": "uz147",
+    "Bu qoida qutini o'ttiz piksel pastga siljitadi.": "uz148",
+    "Aslida [English pronunciation] position [O'zbekcha tallaffuz] yo'q, shuning uchun [English pronunciation] top [O'zbekcha tallaffuz] ishlamaydi.": "uz149",
+    "Hammasi to'g'ri! Siz [English pronunciation] position [O'zbekcha tallaffuz] ni yaxshi bilasiz.": "uz150",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men faqat belgiga [English pronunciation] absolute [O'zbekcha tallaffuz] va burchak yozgan edim? Qarang: belgi kartochka burchagiga emas, butun sahifa burchagiga uchib ketdi! Men adashibman. Langar yo'q edi.": "uz151",
+    "Kartochkaga [English pronunciation] relative [O'zbekcha tallaffuz] yozsak, u langar bo'ladi va belgi aynan uning burchagiga tushadi. Mana!": "uz152",
+    "Qarang, bu sizning kartochkangiz, o'zingiz joylagan belgi bilan!": "uz153",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] o'z joyidan siljiydi, eski joyi bo'sh qoladi.": "uz154",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] oqimdan chiqadi va burchakka qo'yiladi.": "uz155",
+    "Uning langari esa [English pronunciation] relative [O'zbekcha tallaffuz] yozilgan ota.": "uz156",
+    "[English pronunciation] fixed [O'zbekcha tallaffuz] oynaga yopishadi va sahifa bilan aylanmaydi.": "uz157",
+    "Tabriklayman! Endi siz elementlarni sahifaning istalgan joyiga qo'ya olasiz. Keyingi darsda sichqoncha bilan jonlanadigan tugmalar yasaymiz: hover va transform. Ko'rishguncha!": "uz158",
+    "Voy, zo‘r!": "uz159",
+    "Ana! Chiqdi!": "uz160",
+    "Super!": "uz161",
+    "Qoyil!": "uz162",
+    "Ura!": "uz163",
+    "Zo‘r-ku!": "uz164",
+    "Yana bir bor urinib ko‘ring.": "uz165",
+    "Diqqat bilan qarang.": "uz166",
+    "Yaqin qoldingiz. Shoshilmang.": "uz167",
+    "Bugun yangi o'yin chiqdi: Kosmik poyga!": "uz168",
+    "Uni hoziroq sinab ko'ring.": "uz169",
+    "Dushanba. Bugun maktabda [English pronunciation] CSS [O'zbekcha tallaffuz] o'rgandik. Sahifam endi rangli va chiroyli.": "uz170",
+    "Seshanba. Do'stim bilan futbol o'ynadik. Ikki gol urdim va jamoamiz yutdi.": "uz171",
+    "Chorshanba. Kutubxonadan kosmos haqida kitob oldim. Unda Mars haqida juda qiziq rasmlar bor.": "uz172",
+    "Payshanba. Yangi o'yin yasadim va uni sinfdoshlarimga ko'rsatdim. Hammaga yoqdi!": "uz173",
+    "Belgi qayerda?": "uz174",
+    "Qaysi siljishlar belgini shu yerga qo'ydi?": "uz175",
+    "Qaysi qiymat?": "uz176",
+    "Bu vazifa uchun [English pronunciation] position [O'zbekcha tallaffuz] qanday bo'ladi?": "uz177",
+    "To'g'rimi?": "uz178",
+    "To'g'rimi yoki noto'g'rimi?": "uz179",
+    "Salom, dunyo!": "uz180",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz181",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz182",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz183",
+  },
+  ru: {
+    "Привет! Я поставил на карточку новой игры метку НОВОЕ. Но смотри: метка стоит в строке текста, как обычное слово. Я хочу видеть её в правом верхнем углу карточки, как в настоящих магазинах. Нажми Превратить.": "ru001",
+    "Вот! Метка вылетела из текста и перелетела в угол карточки.": "ru002",
+    "Это сделало свойство [English pronunciation] position [Русское произношение], то есть где стоит элемент. Карточке мы дали [English pronunciation] relative [Русское произношение], а метке, [English pronunciation] absolute [Русское произношение].": "ru003",
+    "Сегодня ты научишься ставить элементы в любое место страницы. Но сначала загадка. В первый раз я написал [English pronunciation] absolute [Русское произношение] и угол только метке, а карточке, ничего. По-моему, метка всё равно окажется в углу карточки. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на вторую коробку: она сдвигается, но её прежнее место остаётся пустым, а третья коробка не двигается.": "ru005",
+    "[English pronunciation] relative [Русское произношение] сдвигает элемент от его места. [English pronunciation] top [Русское произношение], отступ сверху, поэтому коробка уходит вниз. [English pronunciation] left [Русское произношение], отступ слева, поэтому вправо.": "ru006",
+    "Встань из-за парты и отойди на шаг: твоё место остаётся пустым и ждёт тебя. [English pronunciation] relative [Русское произношение] работает так же.": "ru007",
+    "Здесь три коробки. Обычно у всех элементов [English pronunciation] position static [Русское произношение]: они стоят по порядку и сдвиги не слушают. Дадим второй коробке [English pronunciation] position relative [Русское произношение], то есть относительно: она сдвигается от своего места.": "ru008",
+    "Смотри, ничего не изменилось. Сам по себе [English pronunciation] relative [Русское произношение] не двигает, ему нужно сказать, куда сдвинуться.": "ru009",
+    "[English pronunciation] top [Русское произношение] двадцать пикселей. Внимание: коробка опустилась вниз! [English pronunciation] top [Русское произношение], это отступ сверху, поэтому коробка отодвинулась от верха на двадцать пикселей. А её прежнее место осталось пустым.": "ru010",
+    "[English pronunciation] left [Русское произношение] сорок пикселей: отодвинулась от левого края, то есть вправо. А третья коробка осталась на месте.": "ru011",
+    "Значит, [English pronunciation] relative [Русское произношение] сдвигает элемент от его места, а прежнее место остаётся пустым и ждёт его.": "ru012",
+    "Теперь твоя очередь. Второй коробке написаны [English pronunciation] top [Русское произношение] и [English pronunciation] left [Русское произношение], но она не двигается. Пусть она сдвинется от своего места: впиши значение [English pronunciation] position [Русское произношение].": "ru013",
+    "Впиши значение: одно слово.": "ru014",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] position [Русское произношение].": "ru015",
+    "Со [English pronunciation] static [Русское произношение] коробка не двигается: это обычный режим.": "ru016",
+    "С [English pronunciation] absolute [Русское произношение] коробка бросила своё место, и третья заняла его. А место должно сохраниться.": "ru017",
+    "[English pronunciation] fixed [Русское произношение] прилипает к окну. А нужен сдвиг от своего места.": "ru018",
+    "Это другое значение. Нужен сдвиг от своего места.": "ru019",
+    "Какое значение сдвигает элемент от его места?": "ru020",
+    "Относительно, [English pronunciation] relative [Русское произношение].": "ru021",
+    "Впиши [English pronunciation] relative [Русское произношение] и нажми Проверить.": "ru022",
+    "Огонь! Коробка сдвинулась, а прежнее место пустует.": "ru023",
+    "Теперь соедини сдвиги. Нажми сдвиг слева, а потом картинку, где коробка уехала так, справа. Пунктир показывает прежнее место.": "ru024",
+    "[English pronunciation] top [Русское произношение], отступ сверху: коробка отходит от верха, то есть опускается.": "ru025",
+    "[English pronunciation] left [Русское произношение], отступ слева: коробка отходит от левого края, то есть вправо.": "ru026",
+    "[English pronunciation] bottom [Русское произношение], отступ снизу: коробка отходит от низа, то есть поднимается.": "ru027",
+    "Верно, [English pronunciation] top [Русское произношение] толкает вниз.": "ru028",
+    "Верно, [English pronunciation] left [Русское произношение] толкает вправо.": "ru029",
+    "Верно, [English pronunciation] bottom [Русское произношение] толкает вверх.": "ru030",
+    "Сначала выбери сдвиг слева.": "ru031",
+    "Слово сдвига говорит, от какой стороны отойти.": "ru032",
+    "[English pronunciation] top [Русское произношение] толкает вниз, [English pronunciation] left [Русское произношение], вправо, [English pronunciation] bottom [Русское произношение], вверх.": "ru033",
+    "Нажми горящую пару.": "ru034",
+    "Отлично! Сдвиги тебя не обманут.": "ru035",
+    "Посмотри на метку: сначала она выходит из текста, потом улетает в угол страницы, а в конце, в угол карточки.": "ru036",
+    "[English pronunciation] absolute [Русское произношение] вынимает элемент из ряда и ставит в угол. В угол чего? Той коробки снаружи, у которой есть [English pronunciation] position [Русское произношение]. Поэтому карточке пишут [English pronunciation] relative [Русское произношение].": "ru037",
+    "Магнит на холодильнике держится в углу холодильника, а не в углу комнаты. Холодильник, якорь, магнит, [English pronunciation] absolute [Русское произношение].": "ru038",
+    "Теперь [English pronunciation] absolute [Русское произношение]. Он вынимает элемент из общего ряда: соседи его больше не замечают и занимают его место. А сам элемент можно поставить в любой угол. Смотри на метку.": "ru039",
+    "[English pronunciation] position absolute [Русское произношение]: метка вышла из строки, и текст сразу занял её место.": "ru040",
+    "[English pronunciation] top [Русское произношение] ноль, [English pronunciation] right [Русское произношение] ноль: метка улетела в угол. Но не в угол карточки, а в угол всей страницы! [English pronunciation] absolute [Русское произношение] ищет коробку, в которой лежит и у которой есть [English pronunciation] position [Русское произношение]. У карточки [English pronunciation] position [Русское произношение] нет, и метка держится за страницу.": "ru041",
+    "Дадим карточке [English pronunciation] position relative [Русское произношение]. Теперь метка держится за карточку, карточка стала её якорем. И метка встала точно в её угол.": "ru042",
+    "Значит, [English pronunciation] absolute [Русское произношение] выходит из потока и встаёт относительно ближайшего родителя-якоря. Чтобы родитель стал якорем, ему пишут [English pronunciation] relative [Русское произношение].": "ru043",
+    "Теперь ты. У метки есть [English pronunciation] absolute [Русское произношение] и угол, но она улетела в угол страницы. Пусть карточка станет якорем: впиши значение [English pronunciation] position [Русское произношение] для карточки.": "ru044",
+    "[English pronunciation] static [Русское произношение] не может быть якорем: метка всё ещё в углу страницы.": "ru045",
+    "Теперь сама карточка вышла из потока. Пусть карточка остаётся на месте, просто станет якорем.": "ru046",
+    "С [English pronunciation] fixed [Русское произношение] карточка прилипла к окну. Пусть она остаётся на месте и просто будет якорем.": "ru047",
+    "Это другое значение. Нужен якорь, который стоит на месте.": "ru048",
+    "Какое значение оставляет элемент на месте и делает его якорем?": "ru049",
+    "Для якоря обычно пишут [English pronunciation] relative [Русское произношение].": "ru050",
+    "Молодец! Метка в углу карточки.": "ru051",
+    "Теперь проверь себя. Карточка, якорь, метка, [English pronunciation] absolute [Русское произношение]. Посмотри, где метка, и выбери, какие сдвиги её туда поставили.": "ru052",
+    "В каком углу метка: сверху или снизу, слева или справа?": "ru053",
+    "При [English pronunciation] absolute top [Русское произношение] прижимает к верху, [English pronunciation] bottom [Русское произношение], к низу, [English pronunciation] left [Русское произношение], к левому краю, [English pronunciation] right [Русское произношение], к правому.": "ru054",
+    "Метка сверху и справа: [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение].": "ru055",
+    "Метка снизу и слева: [English pronunciation] bottom [Русское произношение] и [English pronunciation] left [Русское произношение].": "ru056",
+    "Метка снизу и справа: [English pronunciation] bottom [Русское произношение] и [English pronunciation] right [Русское произношение].": "ru057",
+    "Точно!": "ru058",
+    "Всё верно! Ты читаешь углы с одного взгляда.": "ru059",
+    "Посмотри на кнопку, когда страница прокручивается: сначала она уезжает вместе со страницей, а после [English pronunciation] fixed [Русское произношение] стоит в углу окна.": "ru060",
+    "[English pronunciation] fixed [Русское произношение] прилепляет элемент к окну браузера: он стоит на месте, даже когда страница прокручивается. А [English pronunciation] absolute [Русское произношение] едет вместе со страницей.": "ru061",
+    "Наклейка на окне машины остаётся на месте, хотя дорога проносится мимо. Кнопка с [English pronunciation] fixed [Русское произношение] так же остаётся в окне, пока страница едет.": "ru062",
+    "Это длинная страница, дневник. В самом низу есть кнопка Наверх. Мы дали ей [English pronunciation] absolute [Русское произношение] и угол: пока страница не прокручена, она стоит в правом нижнем углу.": "ru063",
+    "Прокрутим страницу вниз. Смотри: кнопка уехала вверх вместе со страницей. [English pronunciation] absolute [Русское произношение] держится за страницу.": "ru064",
+    "Теперь [English pronunciation] position fixed [Русское произношение], то есть закреплённый. Кнопка прилипла к углу окна браузера и стоит на месте, хоть страница и прокручена.": "ru065",
+    "Вернёмся наверх: кнопка всё так же в углу окна. [English pronunciation] fixed [Русское произношение] держится не за страницу, а за окно.": "ru066",
+    "Значит, [English pronunciation] fixed [Русское произношение] прилипает к окну и не прокручивается вместе со страницей. Так делают кнопку Наверх и меню.": "ru067",
+    "Теперь ты. Страница прокручена вниз, а кнопки Наверх не видно. Пусть она всегда стоит в углу окна: впиши значение [English pronunciation] position [Русское произношение].": "ru068",
+    "[English pronunciation] absolute [Русское произношение] держится за страницу: прокрутишь, кнопка уедет. Пусть держится за окно.": "ru069",
+    "[English pronunciation] relative [Русское произношение] сдвигает кнопку от её места, а оно в конце страницы. Пусть держится за окно.": "ru070",
+    "Со [English pronunciation] static [Русское произношение] кнопка остаётся в конце страницы. Пусть держится за окно.": "ru071",
+    "Это другое значение. Нужно значение, которое держится за окно.": "ru072",
+    "Какое значение прилипает к окну и не прокручивается?": "ru073",
+    "Закреплённый, [English pronunciation] fixed [Русское произношение].": "ru074",
+    "Впиши [English pronunciation] fixed [Русское произношение] и нажми Проверить.": "ru075",
+    "Отлично! Кнопка в углу окна, как ни прокручивай страницу.": "ru076",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, какое значение [English pronunciation] position [Русское произношение] нужно.": "ru077",
+    "Элемент остаётся в потоке, сдвигается от своего места, держится за якорь или за окно?": "ru078",
+    "[English pronunciation] static [Русское произношение], обычный, [English pronunciation] relative [Русское произношение], сдвиг от своего места, [English pronunciation] absolute [Русское произношение], к якорю, [English pronunciation] fixed [Русское произношение], к окну.": "ru079",
+    "Метка должна стоять в углу карточки.": "ru080",
+    "В угол ставит [English pronunciation] absolute [Русское произношение], а карточка, якорь.": "ru081",
+    "Меню должно оставаться наверху экрана, даже когда страницу прокручивают.": "ru082",
+    "Прилипнуть к окну, это [English pronunciation] fixed [Русское произношение].": "ru083",
+    "Коробка должна чуть сдвинуться, а прежнее место, остаться пустым.": "ru084",
+    "Сдвиг от своего места, [English pronunciation] relative [Русское произношение].": "ru085",
+    "Абзац должен стоять как обычно, вместе с остальными.": "ru086",
+    "Обычный режим, [English pronunciation] static [Русское произношение].": "ru087",
+    "Всё верно! Ты применяешь все четыре значения к месту.": "ru088",
+    "Каждый раз смотри на код: есть ли [English pronunciation] position [Русское произношение], верно ли написано слово, есть ли [English pronunciation] px [Русское произношение] у числа? Потом смотри на вторую коробку.": "ru089",
+    "[English pronunciation] top [Русское произношение], [English pronunciation] left [Русское произношение], [English pronunciation] right [Русское произношение] и [English pronunciation] bottom [Русское произношение] работают только вместе с [English pronunciation] position [Русское произношение]. Слова пишутся точно, а у чисел нужен [English pronunciation] px [Русское произношение].": "ru090",
+    "Без руля на велосипеде не поедешь, сколько ни крути педали. Сдвиги так же не работают без [English pronunciation] position [Русское произношение].": "ru091",
+    "И в [English pronunciation] position [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас вторая коробка [English pronunciation] relative [Русское произношение] и сдвинута на двадцать пикселей вниз.": "ru092",
+    "Первая: [English pronunciation] top [Русское произношение] есть, а [English pronunciation] position [Русское произношение] нет. Обычный элемент не слушает сдвиги, коробка вернулась на место.": "ru093",
+    "Вторая: в слове [English pronunciation] position [Русское произношение] пропала буква. Браузер не знает такого свойства и выбросил его.": "ru094",
+    "Третья: после двадцати нет [English pronunciation] px [Русское произношение]. Сдвиг не сработал.": "ru095",
+    "Значит, сдвиги работают только вместе с [English pronunciation] position [Русское произношение], а слова пишутся точно и с [English pronunciation] px [Русское произношение].": "ru096",
+    "Ой, я хотел сдвинуть вторую коробку, а она не двигается! В поле, моё значение. Найди ошибку и исправь.": "ru097",
+    "Браузер не узнал это слово. Сравни с [English pronunciation] relative [Русское произношение] буква за буквой.": "ru098",
+    "Со [English pronunciation] static [Русское произношение] коробка не двигается. Нужен сдвиг от своего места.": "ru099",
+    "С [English pronunciation] absolute [Русское произношение] коробка бросила своё место. Место должно сохраниться.": "ru100",
+    "[English pronunciation] fixed [Русское произношение] прилипает к окну. Нужен сдвиг от своего места.": "ru101",
+    "Это другое значение. Просто допиши букву.": "ru102",
+    "Браузер не узнал это слово: в конце не хватает буквы.": "ru103",
+    "Прочитай слово по буквам.": "ru104",
+    "В конце не хватает буквы e.": "ru105",
+    "Ура, заработало! Коробка сдвинулась.": "ru106",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.": "ru107",
+    "Класс, первая найдена! Теперь другая страница. Какое правило не работает?": "ru108",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru109",
+    "Есть! Не было [English pronunciation] position [Русское произношение], поэтому сдвиги не работали.": "ru110",
+    "Есть! В слове [English pronunciation] absolute [Русское произношение] не хватало буквы.": "ru111",
+    "Посмотри на страницу: что не так, как в коде?": "ru112",
+    "В коде вторая коробка должна сдвинуться, а она на месте. Чего не хватает?": "ru113",
+    "Метка не вышла в угол. Проверь значение [English pronunciation] position [Русское произношение].": "ru114",
+    "Не работает второе правило: нет [English pronunciation] position [Русское произношение]. Нажми эту строку.": "ru115",
+    "Ошибка во втором правиле: absolut. Нажми эту строку.": "ru116",
+    "Супер! Оба найдены. Ты проверяешь позиционирование как настоящий разработчик.": "ru117",
+    "Теперь напиши правило целиком. Карточка уже якорь. Пусть метка стоит в левом нижнем углу карточки: [English pronunciation] absolute [Русское произношение], снизу ноль и слева ноль.": "ru118",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойства.": "ru119",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru120",
+    "Между свойством и значением нет двоеточия.": "ru121",
+    "Класс метки, belgi: селектор, точка и belgi.": "ru122",
+    "Нет [English pronunciation] position [Русское произношение], поэтому сдвиги не работают.": "ru123",
+    "В угол метка выходит только с [English pronunciation] absolute [Русское произношение].": "ru124",
+    "Для угла нужны два сдвига: [English pronunciation] bottom [Русское произношение] и [English pronunciation] left [Русское произношение].": "ru125",
+    "Угол другой. Нужен левый нижний: [English pronunciation] bottom [Русское произношение] ноль и [English pronunciation] left [Русское произношение] ноль.": "ru126",
+    "Браузер не узнал это слово. Проверь слова.": "ru127",
+    "Между свойствами нужна точка с запятой: поставь её после каждого значения.": "ru128",
+    "Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: 0[English pronunciation] px [Русское произношение] пишется слитно.": "ru129",
+    "Три свойства: [English pronunciation] position [Русское произношение] и два сдвига.": "ru130",
+    "[English pronunciation] position absolute [Русское произношение], [English pronunciation] bottom [Русское произношение] ноль пикселей, [English pronunciation] left [Русское произношение] ноль пикселей.": "ru131",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru132",
+    "Отлично! Метка в левом нижнем углу. Правило написано тобой целиком.": "ru133",
+    "Теперь размести свою метку. Карточка, якорь, метка, [English pronunciation] absolute [Русское произношение]. Впиши отступ сверху и справа и цвет метки. Потом нажми Готово.": "ru134",
+    "В каждое поле, одно значение.": "ru135",
+    "Для [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение], число и [English pronunciation] px [Русское произношение], для цвета, название цвета.": "ru136",
+    "Например: восемь пикселей, восемь пикселей и [English pronunciation] gold [Русское произношение]. Потом нажми Готово.": "ru137",
+    "Ого, как красиво! Это твоя карточка.": "ru138",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru139",
+    "О каком значении фраза: [English pronunciation] relative [Русское произношение], [English pronunciation] absolute [Русское произношение] или [English pronunciation] fixed [Русское произношение]?": "ru140",
+    "Вспомни: [English pronunciation] relative [Русское произношение] сохраняет место, [English pronunciation] absolute [Русское произношение], к родителю-якорю, [English pronunciation] fixed [Русское произношение], к окну, а сдвиги, только с [English pronunciation] position [Русское произношение].": "ru141",
+    "Когда [English pronunciation] relative [Русское произношение]-элемент сдвигается, его прежнее место остаётся пустым.": "ru142",
+    "Верно: [English pronunciation] relative [Русское произношение] сохраняет своё место.": "ru143",
+    "У карточки нет [English pronunciation] position [Русское произношение]. Это правило поставит метку в угол карточки.": "ru144",
+    "На самом деле, если карточка не якорь, метка улетит в угол страницы.": "ru145",
+    "Кнопка [English pronunciation] fixed [Русское произношение] остаётся в окне, даже когда страницу прокручивают.": "ru146",
+    "Верно: [English pronunciation] fixed [Русское произношение] прилипает к окну.": "ru147",
+    "Это правило сдвигает коробку на тридцать пикселей вниз.": "ru148",
+    "На самом деле [English pronunciation] position [Русское произношение] нет, поэтому [English pronunciation] top [Русское произношение] не работает.": "ru149",
+    "Всё верно! Ты отлично разбираешься в [English pronunciation] position [Русское произношение].": "ru150",
+    "Вернёмся к загадке. Помнишь, я написал [English pronunciation] absolute [Русское произношение] и угол только метке? Смотри: метка улетела не в угол карточки, а в угол всей страницы! Я ошибся. Якоря не было.": "ru151",
+    "Если написать карточке [English pronunciation] relative [Русское произношение], она станет якорем, и метка встанет точно в её угол. Вот!": "ru152",
+    "Смотри, это твоя карточка с твоей собственной меткой!": "ru153",
+    "[English pronunciation] relative [Русское произношение] сдвигается от своего места, прежнее место остаётся пустым.": "ru154",
+    "[English pronunciation] absolute [Русское произношение] выходит из потока и встаёт в угол.": "ru155",
+    "А его якорь, родитель с [English pronunciation] relative [Русское произношение].": "ru156",
+    "[English pronunciation] fixed [Русское произношение] прилипает к окну и не прокручивается вместе со страницей.": "ru157",
+    "Ура! Теперь ты умеешь ставить элементы в любое место страницы. На следующем уроке сделаем кнопки, которые оживают под мышкой: hover и transform. До встречи!": "ru158",
+    "Вау, классно!": "ru159",
+    "Есть! Получилось!": "ru160",
+    "Супер!": "ru161",
+    "Огонь!": "ru162",
+    "Ура!": "ru163",
+    "Вот это да!": "ru164",
+    "Попробуй ещё раз.": "ru165",
+    "Посмотри внимательно.": "ru166",
+    "Уже близко. Не спеши.": "ru167",
+    "Сегодня вышла новая игра: Космические гонки!": "ru168",
+    "Попробуй её прямо сейчас.": "ru169",
+    "Понедельник. Сегодня в школе учили [English pronunciation] CSS [Русское произношение]. Моя страница теперь цветная и красивая.": "ru170",
+    "Вторник. Играли с другом в футбол. Я забил два гола, и наша команда победила.": "ru171",
+    "Среда. Взял в библиотеке книгу о космосе. В ней очень интересные картинки про Марс.": "ru172",
+    "Четверг. Сделал новую игру и показал одноклассникам. Всем понравилось!": "ru173",
+    "Где метка?": "ru174",
+    "Какие сдвиги поставили метку сюда?": "ru175",
+    "Какое значение?": "ru176",
+    "Какой [English pronunciation] position [Русское произношение] нужен для этой задачи?": "ru177",
+    "Верно или нет?": "ru178",
+    "Верно или неверно?": "ru179",
+    "Привет, мир!": "ru180",
+    "Здесь нужны только слова, без угловых скобок.": "ru181",
+    "Молодец!": "ru182",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru183",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru184",
+  },
+  en: {
+    "Hi! I put a NEW badge on the new game’s card. But look: the badge sits in the line of text, like an ordinary word. I want it in the top-right corner of the card, like in real stores. Tap Transform.": "en001",
+    "There! The badge left the text and flew to the corner of the card.": "en002",
+    "The position property did it, meaning where an element stands. We gave the card relative and the badge absolute.": "en003",
+    "Today you’ll learn to place elements anywhere on the page. But first, a riddle. The first time, I wrote absolute and the corner only on the badge, and nothing on the card. I think the badge will still land in the card’s corner. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the second box: it moves, but its old spot stays empty, and the third box doesn’t move.": "en005",
+    "relative shifts an element from its own spot. top is a gap from the top, so the box goes down. left is a gap from the left, so it goes right.": "en006",
+    "Get up from your desk and step aside: your seat stays empty and waits for you. relative works the same way.": "en007",
+    "There are three boxes here. Normally every element has position static: they stand in order and ignore offsets. Let’s give the second box position relative, meaning relative: it moves from its own place.": "en008",
+    "Look, nothing changed. relative alone doesn’t move anything; you have to tell it where to move.": "en009",
+    "top twenty pixels. Watch: the box went down! top is the distance from the top, so the box moved twenty pixels away from the top. Its old place stayed empty.": "en010",
+    "left forty pixels: it moved away from the left, that is, to the right. The third box didn’t move.": "en011",
+    "So relative moves an element from its place, and the old place stays empty, waiting for it.": "en012",
+    "Now it’s your turn. The second box has top and left, but it doesn’t move. Let it move from its own place: type the position value.": "en013",
+    "Type the value: one word.": "en014",
+    "The browser didn’t recognize that word. Check the word for position.": "en015",
+    "With static the box doesn’t move: that’s the normal mode.": "en016",
+    "With absolute the box left its place, and the third one took it. The place should be kept.": "en017",
+    "fixed sticks to the window. We need a move from its own place.": "en018",
+    "That’s a different value. We need a move from its own place.": "en019",
+    "Which value moves an element from its own place?": "en020",
+    "Relative is relative.": "en021",
+    "Type relative and tap Check.": "en022",
+    "Awesome! The box moved, and its old place is empty.": "en023",
+    "Now match the offsets. Tap an offset on the left, then the picture where the box moved that way on the right. The dashed outline shows the old place.": "en024",
+    "top is the distance from the top: the box moves away from the top, so it goes down.": "en025",
+    "left is the distance from the left: the box moves away from the left, so it goes right.": "en026",
+    "bottom is the distance from the bottom: the box moves away from the bottom, so it goes up.": "en027",
+    "Right, top pushes it down.": "en028",
+    "Right, left pushes it right.": "en029",
+    "Right, bottom pushes it up.": "en030",
+    "First pick an offset on the left.": "en031",
+    "The offset word says which side to move away from.": "en032",
+    "top pushes down, left pushes right, bottom pushes up.": "en033",
+    "Tap the glowing pair.": "en034",
+    "Great! The offsets can’t fool you.": "en035",
+    "Look at the badge: first it leaves the text, then flies to the page corner, and finally to the card corner.": "en036",
+    "absolute takes an element out of the row and puts it in a corner. Which corner? The corner of the outer box that has position. That’s why the card gets relative.": "en037",
+    "A magnet on a fridge sits in the fridge’s corner, not the room’s corner. The fridge is the anchor, the magnet is absolute.": "en038",
+    "Now absolute. It takes an element out of the shared row: the neighbors stop noticing it and take its place. And the element itself can go into any corner. Watch the badge.": "en039",
+    "position absolute: the badge left the line, and the text took its place right away.": "en040",
+    "top zero, right zero: the badge flew into a corner. But not the card’s corner, the whole page’s corner! absolute looks for a box it sits in that has position. The card has no position, so the badge holds on to the page.": "en041",
+    "Give the card position relative. Now the badge holds on to the card, the card became its anchor, and the badge landed right in its corner.": "en042",
+    "So absolute leaves the flow and stands relative to the nearest anchor parent. To make the parent an anchor, you give it relative.": "en043",
+    "Your turn. The badge has absolute and a corner, but it flew to the page’s corner. Make the card the anchor: type the position value for the card.": "en044",
+    "static can’t be an anchor: the badge is still in the page’s corner.": "en045",
+    "Now the card itself left the flow. Let the card stay in place and just become the anchor.": "en046",
+    "With fixed the card stuck to the window. Let it stay in place and just be the anchor.": "en047",
+    "That’s a different value. We need an anchor that stays in place.": "en048",
+    "Which value keeps the element in place and makes it an anchor?": "en049",
+    "For an anchor you usually write relative.": "en050",
+    "Well done! The badge is in the card’s corner.": "en051",
+    "Now check yourself. The card is the anchor, the badge is absolute. Look where the badge is and pick which offsets put it there.": "en052",
+    "Which corner is the badge in: top or bottom, left or right?": "en053",
+    "With absolute, top sticks it to the top, bottom to the bottom, left to the left, right to the right.": "en054",
+    "The badge is at the top right: top and right.": "en055",
+    "The badge is at the bottom left: bottom and left.": "en056",
+    "The badge is at the bottom right: bottom and right.": "en057",
+    "Exactly!": "en058",
+    "All correct! You read corners at a glance.": "en059",
+    "Watch the button as the page scrolls: first it moves with the page, but after fixed it stays in the window’s corner.": "en060",
+    "fixed sticks an element to the browser window: it stays put even when the page scrolls. absolute moves together with the page.": "en061",
+    "A sticker on a car window stays put while the road rushes by. A fixed button stays in the window the same way while the page moves.": "en062",
+    "This is a long page, a diary. At the very bottom there’s a To top button. We gave it absolute and a corner: while the page isn’t scrolled, it stands in the bottom right corner.": "en063",
+    "Let’s scroll the page down. Look: the button went up with the page. absolute holds on to the page.": "en064",
+    "Now position fixed, meaning fixed in place. The button stuck to the browser window’s corner and stays put even though the page is scrolled.": "en065",
+    "Back to the top: the button is still in the window’s corner. fixed holds on to the window, not the page.": "en066",
+    "So fixed sticks to the window and doesn’t scroll with the page. That’s how To top buttons and menus are made.": "en067",
+    "Your turn. The page is scrolled down, and the To top button isn’t visible. Let it always stand in the window’s corner: type the position value.": "en068",
+    "absolute holds on to the page: scroll, and the button leaves. Let it hold on to the window.": "en069",
+    "relative moves the button from its place, which is at the end of the page. Let it hold on to the window.": "en070",
+    "With static the button stays at the end of the page. Let it hold on to the window.": "en071",
+    "That’s a different value. We need the value that holds on to the window.": "en072",
+    "Which value sticks to the window and doesn’t scroll?": "en073",
+    "Fixed in place is fixed.": "en074",
+    "Type fixed and tap Check.": "en075",
+    "Great! The button is in the window’s corner however far you scroll.": "en076",
+    "Now check yourself. I’ll say a task, and you pick which position value is needed.": "en077",
+    "Does the element stay in the flow, move from its place, hold on to an anchor, or to the window?": "en078",
+    "static is normal, relative moves from its place, absolute goes to an anchor, fixed to the window.": "en079",
+    "The badge should stand in the card’s corner.": "en080",
+    "absolute puts it in the corner, and the card is the anchor.": "en081",
+    "The menu should stay at the top of the screen even when the page scrolls.": "en082",
+    "Sticking to the window is fixed.": "en083",
+    "The box should move a little, and its old place should stay empty.": "en084",
+    "Moving from its own place is relative.": "en085",
+    "The paragraph should just stand normally with the others.": "en086",
+    "The normal mode is static.": "en087",
+    "All correct! You use all four values in the right place.": "en088",
+    "Each time, look at the code: is there position, is the word spelled right, does the number have px? Then look at the second box.": "en089",
+    "top, left, right and bottom only work together with position. Words must be exact, and numbers need px.": "en090",
+    "You can’t ride a bike without handlebars, however hard you pedal. Shifts don’t work without position either.": "en091",
+    "position has mistakes too. Let’s look at three. Right now the second box is relative and moved twenty pixels down.": "en092",
+    "The first: there’s top but no position. A normal element ignores offsets, so the box went back to its place.": "en093",
+    "The second: a letter is missing in position. The browser doesn’t know that property and threw it away.": "en094",
+    "The third: there’s no px after twenty. The offset didn’t work.": "en095",
+    "So offsets only work together with position, and words must be exact, with px.": "en096",
+    "Oops, I wanted to move the second box, but it won’t budge! My value is in the field. Find the mistake and fix it.": "en097",
+    "The browser didn’t recognize that word. Compare it with relative letter by letter.": "en098",
+    "With static the box doesn’t move. We need a move from its own place.": "en099",
+    "With absolute the box left its place. The place should be kept.": "en100",
+    "That’s a different value. Just add the letter.": "en101",
+    "The browser didn’t recognize that word: a letter is missing at the end.": "en102",
+    "Read the word letter by letter.": "en103",
+    "The letter e is missing at the end.": "en104",
+    "Hooray, it works! The box moved.": "en105",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.": "en106",
+    "Great, the first one is found! Now another page. Which rule doesn’t work?": "en107",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en108",
+    "Found it! There was no position, so the offsets didn’t work.": "en109",
+    "Found it! A letter was missing in absolute.": "en110",
+    "Look at the page: what doesn’t match the code?": "en111",
+    "The code says the second box should move, but it’s in place. What’s missing?": "en112",
+    "The badge didn’t go to the corner. Check the position value.": "en113",
+    "The second rule doesn’t work: no position. Tap that line.": "en114",
+    "The bug is in the second rule: absolut. Tap that line.": "en115",
+    "Super! Both found. You check positioning like a real developer.": "en116",
+    "Now write the whole rule yourself. The card is already the anchor. Put the badge in the card’s bottom-left corner: absolute, zero from the bottom and zero from the left.": "en117",
+    "Write the rule: first the selector, then the properties inside curly braces.": "en118",
+    "The rule needs curly braces: an opening one and a closing one.": "en119",
+    "There’s no colon between the property and the value.": "en120",
+    "The badge’s class is belgi: the selector is a dot and belgi.": "en121",
+    "There’s no position, so the offsets don’t work.": "en122",
+    "The badge only goes to a corner with absolute.": "en123",
+    "A corner needs two offsets: bottom and left.": "en124",
+    "That’s a different corner. We need the bottom left: bottom zero and left zero.": "en125",
+    "The browser didn’t recognize that word. Check the words.": "en126",
+    "Properties need a semicolon between them: put one after each value.": "en127",
+    "No space between the number and px: 0px is written together.": "en128",
+    "Three properties: position and two offsets.": "en129",
+    "position absolute, bottom zero pixels, left zero pixels.": "en130",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en131",
+    "Great! The badge is in the bottom-left corner. You wrote the whole rule yourself.": "en132",
+    "Now place your own badge. The card is the anchor, the badge is absolute. Type the distance from the top and from the right, and the badge color. Then tap Done.": "en133",
+    "One value in each field.": "en134",
+    "For top and right, a number and px; for the color, a color name.": "en135",
+    "For example: eight pixels, eight pixels and gold. Then tap Done.": "en136",
+    "Wow, how pretty! This is your card.": "en137",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en138",
+    "Which value is the sentence about: relative, absolute or fixed?": "en139",
+    "Remember: relative keeps its place, absolute goes to the anchor parent, fixed to the window, and offsets only work with position.": "en140",
+    "When a relative element moves, its old place stays empty.": "en141",
+    "Right: relative keeps its place.": "en142",
+    "The card has no position. This rule will put the badge in the card’s corner.": "en143",
+    "Actually, if the card isn’t an anchor, the badge flies to the page’s corner.": "en144",
+    "A fixed button stays in the window even when the page scrolls.": "en145",
+    "Right: fixed sticks to the window.": "en146",
+    "This rule moves the box thirty pixels down.": "en147",
+    "Actually there’s no position, so top doesn’t work.": "en148",
+    "All correct! You know position really well.": "en149",
+    "Back to our riddle. Remember, I wrote absolute and the corner only on the badge? Look: the badge flew not to the card’s corner but to the whole page’s corner! I was wrong. There was no anchor.": "en150",
+    "If we give the card relative, it becomes the anchor, and the badge lands right in its corner. There!": "en151",
+    "Look, this is your card with the badge you placed yourself!": "en152",
+    "relative moves from its own place; the old place stays empty.": "en153",
+    "absolute leaves the flow and goes to a corner.": "en154",
+    "And its anchor is a parent with relative.": "en155",
+    "fixed sticks to the window and doesn’t scroll with the page.": "en156",
+    "Hooray! Now you can place elements anywhere on the page. Next lesson we’ll make buttons that come alive under the mouse: hover and transform. See you!": "en157",
+    "Wow, awesome!": "en158",
+    "Yes! You did it!": "en159",
+    "Super!": "en160",
+    "Brilliant!": "en161",
+    "Hooray!": "en162",
+    "Amazing!": "en163",
+    "Try once more.": "en164",
+    "Take a closer look.": "en165",
+    "You are close. No rush.": "en166",
+    "A new game came out today: Space Race!": "en167",
+    "Try it right now.": "en168",
+    "Monday. Today at school we learned CSS. My page is colorful and pretty now.": "en169",
+    "Tuesday. My friend and I played football. I scored two goals and our team won.": "en170",
+    "Wednesday. I got a book about space from the library. It has really interesting pictures of Mars.": "en171",
+    "Thursday. I made a new game and showed it to my classmates. Everyone liked it!": "en172",
+    "Where’s the badge?": "en173",
+    "Which offsets put the badge here?": "en174",
+    "Which value?": "en175",
+    "Which position does this task need?": "en176",
+    "True or false?": "en177",
+    "Hello, world!": "en178",
+    "Only words here, no angle brackets.": "en179",
+    "Well done!": "en180",
+    "Everything in the window lives inside body.": "en181",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en182",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8057,15 +7608,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14584,3 +14128,1133 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c14-sheet .kz-br.c14-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 185, ru 186, en 185; всего знаков 66519. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Esingizdami, o'tgan darsda tugmamni jonlantirdik? Endi sichqoncha ustiga kelsa, u o'sadi va to'q sariq bo'ladi. Lekin qarang: u birdaniga sakraydi, xuddi kadr tushib qolgandek. Haqiqiy saytlarda tugma silliq o'zgaradi. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Endi tugma birdaniga emas, asta-sekin o'sadi va rangini o'zgartiradi. Sichqoncha ketganda esa xuddi shunday silliq qaytadi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni [English pronunciation] transition [O'zbekcha tallaffuz] qildi, ya'ni silliq o'tish degani. Pastdagi chiziqqa qarang: u o'zgarish qancha vaqt davom etganini ko'rsatadi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun tugmalarni silliq qilishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] transition [O'zbekcha tallaffuz] qoidasini [English pronunciation] hover [O'zbekcha tallaffuz] qoidasining ichiga yozgan edim. Menimcha, farqi yo'q: tugma baribir ikki tomonga ham silliq bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmaga va pastdagi chiziqqa qarang: chiziq o'zgarish necha soniya davom etganini ko'rsatadi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi. Unda ikki narsa yoziladi: qaysi xususiyat va necha soniya. Vaqt kam bo'lsa, tez.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xonadagi chiroqni birdan yoqish va asta-sekin yoritishni solishtiring. [English pronunciation] transition [O'zbekcha tallaffuz] chiroqni asta yoqqandek ishlaydi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] qoidasida ikki narsa yoziladi: qaysi xususiyat silliq o'zgaradi va bu necha soniya davom etadi. Keling, ko'ramiz.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozir [English pronunciation] transition [O'zbekcha tallaffuz] yo'q. Tugma birdaniga sakraydi, chiziqda esa nol soniya: o'zgarish bir zumda bo'ldi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] bir soniya: o'sish endi bir soniya davom etadi. Sekin va silliq. s harfi soniya degani.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol butun o'ndan uch soniya: tez, lekin baribir silliq. Odatda tugmalar uchun shunday qisqa vaqt tanlanadi. Yarim soniya esa nol butun o'ndan besh va s harfi bilan yoziladi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi: oldin xususiyat, keyin vaqt yoziladi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Tugma yarim soniyada silliq o'ssin: [English pronunciation] transform [O'zbekcha tallaffuz] dan keyin vaqtni yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtni yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sonda vergul bor. [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin birlik yo'q. Soniya uchun s harfini qo'shing.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu vaqtni tanimadi. Son va s harfini yozing.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa vaqt. Yarim soniya kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yarim soniya bu nol butun o'ndan besh degani.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son nuqta bilan, oxirida s harfi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Tugma yarim soniyada silliq o'sadi. Chiziqqa qarang.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa tugma qanday o'zgarishini tanlang: birdaniga, tez yoki sekin.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Vaqtga qarang: soniyami yoki millisoniyami?", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol bo'lsa birdaniga, bir soniyadan kam bo'lsa tez, bir necha soniya bo'lsa sekin. Ming millisoniya esa bir soniya.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uch soniya bu sekin.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Soniyaning beshdan biri, demak tez.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol soniyada o'zgarish birdaniga bo'ladi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki ming millisoniya bu ikki soniya, demak sekin.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Vaqtni ko'rib, tezlikni bilasiz.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugmaning o'lchami va rangiga qarang: qaysi biri silliq, qaysi biri birdaniga o'zgaryapti?", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] faqat siz yozgan xususiyatni silliq qiladi. Hammasi kerak bo'lsa, [English pronunciation] all [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pultda faqat ovozni sekin o'zgartirsangiz, kanal baribir birdaniga almashadi. [English pronunciation] transition [O'zbekcha tallaffuz] da ham faqat aytilgan narsa silliq bo'ladi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha ustida tugmada ikki narsa o'zgaradi: o'lchami va rangi. [English pronunciation] transition [O'zbekcha tallaffuz] faqat siz yozgan xususiyatni silliq qiladi. Keling, ko'ramiz.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] bir soniya: o'sish silliq, lekin rang birdaniga sakraydi. Chunki rang yozilmagan.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] background-color [O'zbekcha tallaffuz] bir soniya: rang silliq, o'sish esa birdaniga.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] all [O'zbekcha tallaffuz] bir soniya: [English pronunciation] all [O'zbekcha tallaffuz] ya'ni hammasi degani. Endi o'lcham ham, rang ham silliq o'zgaradi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] transition [O'zbekcha tallaffuz] da qaysi xususiyat yozilsa, o'shasi silliq bo'ladi. Hammasi kerak bo'lsa, [English pronunciation] all [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Sichqoncha ustida tugmaning foni o'zgaradi. Fon rangi silliq o'zgarsin: o'sha xususiyat nomini yozing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat nomini yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] all [O'zbekcha tallaffuz] ham fon rangini silliq qiladi, boshqa hamma narsa bilan birga. Bu yerda esa faqat fon rangi xususiyatining nomini yozing: [English pronunciation] hover [O'zbekcha tallaffuz] li qoidaga qarang.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] color [O'zbekcha tallaffuz] bu matn rangi. O'zgarayotgani esa fon.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] bu yerda o'zgarmayapti. Hover qoidasiga qarang.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] orange [O'zbekcha tallaffuz] bu qiymat. Bu yerga xususiyat nomi kerak.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bunday xususiyatni bilmaydi. Yozilishini tekshiring.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa xususiyat. Fon rangi o'zgaryapti.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Hover qoidasida qaysi xususiyat o'zgaryapti?", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U yerda [English pronunciation] background-color [O'zbekcha tallaffuz] yozilgan.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] background-color [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi rang yarim soniyada silliq o'zgaradi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men [English pronunciation] hover [O'zbekcha tallaffuz] qoidasini ko'rsataman, siz esa uni silliq qiladigan [English pronunciation] transition [O'zbekcha tallaffuz] ni tanlang.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] da xuddi o'sha xususiyat nomi turishi kerak. Qiymat emas, nom.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'zgarayotgani [English pronunciation] transform [O'zbekcha tallaffuz], demak [English pronunciation] transition [O'zbekcha tallaffuz] da ham [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn rangi o'zgaryapti, uning nomi [English pronunciation] color [O'zbekcha tallaffuz].", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gold [O'zbekcha tallaffuz] bu qiymat. [English pronunciation] transition [O'zbekcha tallaffuz] qoidasiga xususiyat nomi kerak: [English pronunciation] background-color [O'zbekcha tallaffuz].", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Qaysi xususiyatni silliq qilishni aniq bilasiz.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Chiziqqa qarang: u bir xil tezlikda to'lyaptimi yoki avval sekin, keyin tez?", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt soniyada yoki millisoniyada yoziladi: ming millisoniya bu bir soniya. [English pronunciation] linear [O'zbekcha tallaffuz] tekis tezlik beradi, [English pronunciation] ease [O'zbekcha tallaffuz] esa boshida va oxirida sekin.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mashina joyidan sekin qo'zg'aladi, keyin tezlashadi va to'xtashdan oldin sekinlashadi. Bu [English pronunciation] ease [O'zbekcha tallaffuz]. Eskalator esa bir xil yuradi, bu [English pronunciation] linear [O'zbekcha tallaffuz].", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtni boshqacha ham yozish mumkin, tezlikni ham tanlash mumkin. Keling, ko'ramiz. Hozir yarim soniya.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Besh yuz millisoniya ham xuddi yarim soniya. Millisoniya soniyaning mingdan biri degani. Tugma oldingidek o'zgaryapti.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tugma ikki soniyada o'ngga suriladi. [English pronunciation] linear [O'zbekcha tallaffuz] ya'ni tekis degani: tezlik boshidan oxirigacha bir xil. Chiziq ham tekis to'lyapti.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] ease [O'zbekcha tallaffuz] esa boshqacha: oldin sekin, o'rtada tez, oxirida yana sekin. Xuddi mashina joyidan qo'zg'alib, keyin to'xtagandek. Hech narsa yozmasangiz, brauzer o'zi [English pronunciation] ease [O'zbekcha tallaffuz] ni oladi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, vaqt soniyada yoki millisoniyada yoziladi, tezlikni esa [English pronunciation] linear [O'zbekcha tallaffuz] yoki [English pronunciation] ease [O'zbekcha tallaffuz] tanlaydi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi siz. Tugma bir soniyada o'zgarsin, lekin vaqtni millisoniyada yozing. Bir soniyada nechta millisoniya bor?", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin birlik yo'q. Millisoniya uchun [English pronunciation] ms [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu bir soniya! Lekin vazifa millisoniyada yozish edi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu vaqtni tanimadi. Son va [English pronunciation] ms [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa vaqt. Bir soniya kerak.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Milli ming degani: soniyada ming millisoniya.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ming soni va [English pronunciation] ms [O'zbekcha tallaffuz] harflari.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir, uchta nol va [English pronunciation] ms [O'zbekcha tallaffuz] deb yozing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Ming millisoniya bu bir soniya.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Tugmada [English pronunciation] transform [O'zbekcha tallaffuz] ikki soniya turibdi. Men vazifani aytaman, siz esa nimani yozish kerakligini tanlang.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Vazifa nima haqida: vaqtmi, xususiyatmi yoki tezlikmi?", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt kamroq bo'lsa, tezroq. [English pronunciation] linear [O'zbekcha tallaffuz] bilan tezlik bir xil. [English pronunciation] all [O'zbekcha tallaffuz] bilan hammasi silliq.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma tezroq o'zgarsin.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt kamroq bo'lsa, o'zgarish tezroq.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat fon rangi silliq bo'lsin.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fon rangi xususiyati [English pronunciation] background-color [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tezlik boshidan oxirigacha bir xil bo'lsin.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] linear [O'zbekcha tallaffuz] tekis tezlik beradi.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma o'zgarishlar silliq bo'lsin.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] all [O'zbekcha tallaffuz] ya'ni hammasi degani.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] transition [O'zbekcha tallaffuz] ni kerakli tomonga sozlay olasiz.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har safar kodga qarang: vaqtda s bormi, nuqta yoki vergulmi, xususiyat nomi to'g'rimi? Keyin chiziqqa qarang: nol soniyami?", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Taymerga besh deb aytsangiz, u besh soniyami yoki besh daqiqami bilmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] ga ham birlikni aniq aytish kerak.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: yarim soniya, silliq.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: sondan keyin s harfi yo'q. Brauzer qoidani tashlab yubordi, tugma yana sakraydi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: nuqta o'rniga vergul. Biz sonlarni vergul bilan yozishga o'rganganmiz, lekin [English pronunciation] CSS [O'zbekcha tallaffuz] faqat nuqtani tushunadi.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi ayyorroq: [English pronunciation] transform [O'zbekcha tallaffuz] so'zida harflar almashib qolgan. Brauzer qoidani xato demaydi, lekin bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men tugmani yarim soniyada silliq qilmoqchi edim, lekin u sakrayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sonda hali vergul turibdi. Uni nuqtaga almashtiring.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtga s harfi kerak.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat nomi buzildi. [English pronunciation] transform [O'zbekcha tallaffuz] deb yozing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Xususiyat va vaqtni tekshiring.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Faqat vergulni nuqtaga almashtiring.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sonning o'rtasiga qarang.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz], bo'sh joy, nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Tugma yana silliq.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va chiziqqa qarang, keyin o'sha qoidani bosing.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Vaqtda s harfi yo'q edi.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] transform [O'zbekcha tallaffuz] so'zida harflar almashgan edi.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Chiziqqa qarang: tugma silliq o'zgaryaptimi?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziqda nol soniya. [English pronunciation] transition [O'zbekcha tallaffuz] qatoridagi vaqtni tekshiring.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziqda nol soniya. [English pronunciation] transition [O'zbekcha tallaffuz] qatoridagi xususiyat nomini tekshiring.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: vaqtda s yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato uchinchi qoidada: transfrom. O'sha qatorni bosing.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz silliq effektlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Hover qoidasi tayyor. Tugmaning o'zi uchun qoida yozing: [English pronunciation] transform [O'zbekcha tallaffuz] nol butun o'ndan uch soniyada silliq o'zgarsin.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] ni tugmaning o'z qoidasiga yozamiz, [English pronunciation] hover [O'zbekcha tallaffuz] siz. Nega bunday, dars oxirida ko'rasiz.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor: nuqta va tugma klassi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Silliq o'tishni [English pronunciation] transition [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sonda vergul bor. Kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat nomini tekshiring: [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hover da [English pronunciation] transform [O'zbekcha tallaffuz] o'zgaradi, demak [English pronunciation] transition [O'zbekcha tallaffuz] da ham [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt boshqa. Nol butun o'ndan uch soniya kerak.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] all [O'zbekcha tallaffuz] ham ishlaydi, lekin bu yerda aynan [English pronunciation] transform [O'zbekcha tallaffuz] so'ralgan: uni yozing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor tugma klassi, xususiyat [English pronunciation] transition [O'zbekcha tallaffuz], qiymat esa [English pronunciation] transform [O'zbekcha tallaffuz] va vaqt.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor nuqta tugma, qiymat [English pronunciation] transform [O'zbekcha tallaffuz], bo'sh joy, nol nuqta uch s.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Tugma endi silliq o'sadi va silliq qaytadi. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z tugmangizni yarating. Sichqoncha ustida nima o'zgarishini, qancha vaqt davom etishini va tezlikni o'zingiz tanlang. Keyin Tayyorni bosing.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol soniyada o'zgarish birdaniga bo'ladi. Noldan katta vaqt yozing.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu juda uzoq: tugmani kutib charchab qolasiz. Besh soniyadan kam yozing.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta uch.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisiga qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], ikkinchisiga vaqt s yoki [English pronunciation] ms [O'zbekcha tallaffuz] bilan, uchinchisiga [English pronunciation] linear [O'zbekcha tallaffuz] yoki [English pronunciation] ease [O'zbekcha tallaffuz].", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan uch, nol butun o'ndan to'rt soniya va [English pronunciation] ease [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday silliq! Bu sizning o'z tugmangiz.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: vaqt, yozilish yoki qoidaning joyi?", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: [English pronunciation] transition [O'zbekcha tallaffuz] silliq qiladi, ming millisoniya bir soniya, kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] transition [O'zbekcha tallaffuz] silliq o'tish degani.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Besh yuz millisoniya va yarim soniya bir xil vaqt.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: soniyada ming millisoniya.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida ishlaydi.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida vergul tufayli brauzer qoidani tashlab yuboradi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida tugmaning kattalashishini silliq qiladi.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida transfrom bu xato yozuv: bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi. To'g'risi [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] transition [O'zbekcha tallaffuz] ni yaxshi bilasiz.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] transition [O'zbekcha tallaffuz] ni [English pronunciation] hover [O'zbekcha tallaffuz] qoidasining ichiga yozgan edim? Qarang: tugma silliq o'sadi, lekin sichqoncha ketganda birdaniga sakrab qaytadi! Men adashibman. Sichqoncha ketishi bilan [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi o'chadi, u bilan birga [English pronunciation] transition [O'zbekcha tallaffuz] ham ketadi.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] ni tugmaning o'z qoidasiga ko'chirsak, u doim turadi. Endi ikki tomonga ham silliq. Mana!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning silliq tugmangiz!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt soniyada yoki millisoniyada yoziladi.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qaysi xususiyat yozilsa, o'shasi silliq bo'ladi, [English pronunciation] all [O'zbekcha tallaffuz] esa hammasini silliq qiladi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transition [O'zbekcha tallaffuz] esa [English pronunciation] hover [O'zbekcha tallaffuz] qoidasiga emas, tugmaning o'z qoidasiga yoziladi.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi tugmalaringiz silliq. Keyingi darsda yanada qiziqroq narsa bor: sahifadagi narsalar sichqonchasiz, o'zi harakatlanadi. Bu animatsiya deyiladi. Ko'rishguncha!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tayyormisiz? Tugmani bosing!", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rekord: 120 ochko.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday o'zgaradi?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugma qanday o'zgaradi?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi xususiyat?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] transition [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] transition [O'zbekcha tallaffuz] bu o'zgarishni silliq qiladi?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nimani o'zgartirish kerak?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buning uchun nima kerak?", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Помнишь, на прошлом уроке мы оживили кнопку? Теперь под мышкой она растёт и становится оранжевой. Но смотри: она прыгает сразу, будто кадр пропал. На настоящих сайтах кнопка меняется плавно. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Теперь кнопка растёт и меняет цвет не сразу, а постепенно. А когда мышка уходит, так же плавно возвращается.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделал [English pronunciation] transition [Русское произношение], то есть плавный переход. Посмотри на полосу внизу: она показывает, сколько времени длится изменение.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься делать кнопки плавными. Но сначала загадка. В первый раз я написал [English pronunciation] transition [Русское произношение] внутри правила с [English pronunciation] hover [Русское произношение]. По-моему, разницы нет: кнопка всё равно будет плавной в обе стороны. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на кнопку и на полосу внизу: полоса показывает, сколько секунд длится изменение.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transition [Русское произношение] делает изменение плавным. В нём пишут две вещи: какое свойство и сколько секунд. Меньше время, быстрее.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сравни: свет в комнате включается сразу или разгорается постепенно. [English pronunciation] transition [Русское произношение], как свет, который разгорается.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В правиле [English pronunciation] transition [Русское произношение] пишут две вещи: какое свойство меняется плавно и сколько секунд это длится. Давай посмотрим.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сейчас [English pronunciation] transition [Русское произношение] нет. Кнопка прыгает сразу, а на полосе ноль секунд: изменение случилось мгновенно.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transform [Русское произношение] одна секунда: рост теперь длится одну секунду. Медленно и плавно. Буква s, это секунды.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время. А полсекунды пишут как ноль целых пять десятых с буквой s.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] transition [Русское произношение] делает изменение плавным: сначала пишут свойство, потом время.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Пусть кнопка плавно растёт за полсекунды: впиши время после [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши время.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В числе запятая. В [English pronunciation] CSS [Русское произношение] дробь пишут через точку.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а единицы нет. Добавь букву s, секунды.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это время. Напиши число и букву s.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое время. Нужно полсекунды.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полсекунды, это ноль целых пять десятых.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число через точку, в конце буква s.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши ноль, точка, пять и s, потом нажми Проверить.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Кнопка плавно растёт за полсекунды. Посмотри на полосу.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу правило, а ты выбери, как изменится кнопка: сразу, быстро или медленно.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на время: секунды или миллисекунды?", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ноль, сразу, меньше секунды, быстро, несколько секунд, медленно. Тысяча миллисекунд, одна секунда.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три секунды, это медленно.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна пятая секунды, быстро.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ноль секунд, изменение сразу.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две тысячи миллисекунд, это две секунды, то есть медленно.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты по времени сразу видишь скорость.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на размер и цвет кнопки: что меняется плавно, а что сразу?", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transition [Русское произношение] делает плавным только то свойство, которое написано. Если нужно всё, пишут [English pronunciation] all [Русское произношение].", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если на пульте плавно менять только громкость, канал всё равно переключится сразу. В [English pronunciation] transition [Русское произношение] так же плавно только то, что названо.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под мышкой у кнопки меняются две вещи: размер и цвет. [English pronunciation] transition [Русское произношение] делает плавным только то свойство, которое ты написал. Давай посмотрим.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transform [Русское произношение] одна секунда: рост плавный, а цвет прыгает сразу. Ведь цвет не написан.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] background-color [Русское произношение] одна секунда: цвет плавный, а рост сразу.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] all [Русское произношение] одна секунда: [English pronunciation] all [Русское произношение], то есть всё. Теперь плавно меняются и размер, и цвет.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, плавным становится то свойство, которое написано в [English pronunciation] transition [Русское произношение]. Если нужно всё, пишут [English pronunciation] all [Русское произношение].", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Под мышкой у кнопки меняется фон. Пусть цвет фона меняется плавно: впиши имя этого свойства.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя свойства.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] all [Русское произношение] тоже сделает цвет плавным, вместе со всем остальным. А здесь впиши только имя свойства цвета фона: посмотри на правило с [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] color [Русское произношение], это цвет текста. А меняется фон.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transform [Русское произношение] здесь не меняется. Посмотри на правило с [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] orange [Русское произношение], это значение. А нужно имя свойства.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не знает такого свойства. Проверь написание.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое свойство. Меняется цвет фона.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство меняется в правиле с [English pronunciation] hover [Русское произношение]?", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Там написано [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] background-color [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Теперь цвет плавно меняется за полсекунды.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу правило с [English pronunciation] hover [Русское произношение], а ты выбери [English pronunciation] transition [Русское произношение], который сделает его плавным.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] transition [Русское произношение] должно стоять имя того же свойства. Не значение, а имя.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меняется [English pronunciation] transform [Русское произношение], значит, и в [English pronunciation] transition transform [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меняется цвет текста, то есть [English pronunciation] color [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] gold [Русское произношение], это значение. В [English pronunciation] transition [Русское произношение] нужно имя свойства: [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты точно знаешь, что делать плавным.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на полосу: она заполняется с одинаковой скоростью или сначала медленно, потом быстро?", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время пишут в секундах или миллисекундах: тысяча миллисекунд, одна секунда. [English pronunciation] linear [Русское произношение] даёт ровную скорость, [English pronunciation] ease [Русское произношение], медленно в начале и в конце.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Машина трогается медленно, разгоняется и тормозит перед остановкой, это [English pronunciation] ease [Русское произношение]. А эскалатор едет ровно, это [English pronunciation] linear [Русское произношение].", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время можно записать и по-другому, а ещё можно выбрать скорость. Давай посмотрим. Сейчас полсекунды.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятьсот миллисекунд, это те же полсекунды. Миллисекунда, это тысячная доля секунды. Кнопка меняется так же, как раньше.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь кнопка за две секунды сдвигается вправо. [English pronunciation] linear [Русское произношение], то есть ровно: скорость от начала до конца одинаковая. И полоса заполняется ровно.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] ease [Русское произношение] по-другому: сначала медленно, в середине быстро, в конце опять медленно. Как машина, что трогается и останавливается. Если ничего не написать, браузер сам берёт [English pronunciation] ease [Русское произношение].", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, время пишут в секундах или миллисекундах, а скорость выбирают [English pronunciation] linear [Русское произношение] или [English pronunciation] ease [Русское произношение].", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь ты. Пусть кнопка меняется за одну секунду, но время напиши в миллисекундах. Сколько миллисекунд в одной секунде?", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а единицы нет. Миллисекунды пишут [English pronunciation] ms [Русское произношение].", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это одна секунда! Но задание, написать в миллисекундах.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это время. Напиши число и [English pronunciation] ms [Русское произношение].", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое время. Нужна одна секунда.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Милли, это тысяча: в секунде тысяча миллисекунд.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число тысяча и буквы [English pronunciation] ms [Русское произношение].", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши единицу, три нуля и [English pronunciation] ms [Русское произношение], потом нажми Проверить.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Тысяча миллисекунд, это одна секунда.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. У кнопки стоит [English pronunciation] transform [Русское произношение] две секунды. Я скажу задачу, а ты выбери, что нужно написать.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём задача: о времени, о свойстве или о скорости?", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меньше время, быстрее. [English pronunciation] linear [Русское произношение], скорость одинаковая. [English pronunciation] all [Русское произношение], плавное всё.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка должна меняться быстрее.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чем меньше время, тем быстрее изменение.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плавным должен быть только цвет фона.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свойство цвета фона, [English pronunciation] background-color [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скорость должна быть одинаковой от начала до конца.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] linear [Русское произношение], ровная скорость.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плавными должны быть все изменения.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] all [Русское произношение], значит всё.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты умеешь настроить [English pronunciation] transition [Русское произношение] как нужно.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каждый раз смотри на код: есть ли s у времени, точка или запятая, верно ли имя свойства? Потом на полосу: там ноль секунд?", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени нужны s или [English pronunciation] ms [Русское произношение], дробь пишут через точку, а имя свойства, буква в букву.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если сказать таймеру просто пять, он не поймёт: пять секунд или минут. [English pronunciation] CSS [Русское произношение] тоже надо точно назвать единицу.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в [English pronunciation] transition [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: полсекунды, плавно.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: после числа нет буквы s. Браузер выбросил правило, кнопка снова прыгает.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: запятая вместо точки. Мы привыкли писать дроби через запятую, но [English pronunciation] CSS [Русское произношение] понимает только точку.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья, хитрее: в слове [English pronunciation] transform [Русское произношение] переставлены буквы. Браузер не считает правило ошибкой, но такого свойства нет, поэтому плавным не становится ничего.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, у времени нужны s или [English pronunciation] ms [Русское произношение], дробь пишут через точку, а имя свойства, буква в букву.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я хотел, чтобы кнопка менялась плавно за полсекунды, а она прыгает! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В числе всё ещё запятая. Замени её на точку.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени нужна буква s.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя свойства сломалось. Напиши [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь свойство и время.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Просто замени запятую на точку.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на середину числа.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] дробь пишут не через запятую, а через точку.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] transform [Русское произношение], пробел, ноль, точка, пять и s, потом нажми Проверить.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Кнопка снова плавная.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на полосу, потом нажми это правило.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! У времени не было буквы s.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В слове [English pronunciation] transform [Русское произношение] были переставлены буквы.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на полосу: кнопка меняется плавно?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На полосе ноль секунд. Проверь время в строке [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На полосе ноль секунд. Проверь имя свойства в строке [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: у времени нет s. Нажми эту строку.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в третьем правиле: transfrom. Нажми эту строку.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь плавные эффекты как настоящий разработчик.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. Правило с [English pronunciation] hover [Русское произношение] уже готово. Напиши правило для самой кнопки: пусть [English pronunciation] transform [Русское произношение] меняется плавно за ноль целых три десятых секунды.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transition [Русское произношение] пишем в правило самой кнопки, без [English pronunciation] hover [Русское произношение]. Почему так, увидишь в конце урока.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка и класс кнопки.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плавный переход задаёт свойство [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В числе запятая. Дробь пишут через точку.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Проверь имя свойства: [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под [English pronunciation] hover [Русское произношение] меняется [English pronunciation] transform [Русское произношение], значит, и в [English pronunciation] transition [Русское произношение], [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время другое. Нужно ноль целых три десятых секунды.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] all [Русское произношение] тоже сработает, но здесь просили именно [English pronunciation] transform [Русское произношение], напиши его.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор, класс кнопки, свойство, [English pronunciation] transition [Русское произношение], значение, [English pronunciation] transform [Русское произношение] и время.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка tugma, значение: [English pronunciation] transform [Русское произношение], пробел, ноль точка три s.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кнопка плавно растёт и плавно возвращается. Правило написано тобой целиком.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свою кнопку. Сам выбери, что меняется под мышкой, сколько это длится и какая скорость. Потом нажми Готово.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во времени запятая. Дробь пишут через точку.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени нужны s или [English pronunciation] ms [Русское произношение].", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] За ноль секунд изменение будет сразу. Напиши время больше нуля.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку: одна точка три, а не через запятую.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первое, [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, во второе, время с s или [English pronunciation] ms [Русское произношение], в третье, [English pronunciation] linear [Русское произношение] или [English pronunciation] ease [Русское произношение].", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: [English pronunciation] scale [Русское произношение] одна целая три десятых, ноль целых четыре десятых секунды и [English pronunciation] ease [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как плавно! Это твоя собственная кнопка.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о времени, о записи или о месте правила?", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: [English pronunciation] transition [Русское произношение] делает плавно, тысяча миллисекунд, одна секунда, дробь пишут через точку.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transition [Русское произношение] делает изменение плавным.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] transition [Русское произношение], это плавный переход.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятьсот миллисекунд и полсекунды, одно и то же время.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: в секунде тысяча миллисекунд.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сработает.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле из-за запятой браузер выбросит правило.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сделает рост кнопки плавным.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле transfrom, опечатка: такого свойства нет, и плавным не станет ничего. Правильно, [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал [English pronunciation] transition [Русское произношение] внутри правила с [English pronunciation] hover [Русское произношение]? Смотри: кнопка плавно растёт, а когда мышка уходит, прыгает обратно сразу! Я ошибся. Как только мышка уходит, правило с [English pronunciation] hover [Русское произношение] выключается, и [English pronunciation] transition [Русское произношение] уходит вместе с ним.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перенесём [English pronunciation] transition [Русское произношение] в правило самой кнопки, оно действует всегда. Теперь плавно в обе стороны. Вот!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя плавная кнопка!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время пишут в секундах или миллисекундах.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плавным становится написанное свойство, а [English pronunciation] all [Русское произношение] делает плавным всё.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] transition [Русское произношение] пишут не в правило с [English pronunciation] hover [Русское произношение], а в правило самой кнопки.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твои кнопки плавные. На следующем уроке ещё интереснее: вещи на странице будут двигаться сами, без мышки. Это называется анимация. До встречи!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готов? Нажми кнопку!", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рекорд: 120 очков.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как изменится?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как изменится кнопка?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] transition [Русское произношение]?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] transition [Русское произношение] сделает это изменение плавным?", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что поменять?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что для этого нужно?", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Remember how we brought the button to life last lesson? Now it grows and turns orange under the mouse. But look: it jumps all at once, as if a frame went missing. On real sites a button changes smoothly. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! Now the button grows and changes color gradually, not all at once. And when the mouse leaves, it goes back just as smoothly.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition did it, meaning a smooth change. Look at the bar at the bottom: it shows how long the change takes.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to make buttons smooth. But first, a riddle. The first time, I put transition inside the hover rule. I think it makes no difference: the button will still be smooth both ways. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the button and the bar below: the bar shows how many seconds the change takes.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition makes a change smooth. It says two things: which property and how many seconds. Less time means faster.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Compare a room light snapping on with one that fades up slowly. transition is like the light that fades up.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A transition rule says two things: which property changes smoothly and how many seconds it takes. Let’s see.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right now there’s no transition. The button jumps at once, and the bar shows zero seconds: the change was instant.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform one second: growing now takes one second. Slow and smooth. The letter s means seconds.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this. And half a second is written as zero point five with the letter s.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So transition makes a change smooth: first you write the property, then the time.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the button grow smoothly in half a second: type the time after transform.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the time.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a comma in the number. CSS writes decimals with a dot.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no unit. Add the letter s for seconds.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that time. Write a number and the letter s.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different time. We need half a second.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Half a second is zero point five.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A number with a dot, and the letter s at the end.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type zero, dot, five and s, then tap Check.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The button grows smoothly in half a second. Look at the bar.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show a rule, and you pick how the button will change: at once, fast or slow.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the time: seconds or milliseconds?", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Zero is at once, under a second is fast, a few seconds is slow. A thousand milliseconds is one second.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three seconds is slow.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A fifth of a second is fast.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Zero seconds means the change is instant.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two thousand milliseconds is two seconds, so it’s slow.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tell the speed from the time.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the button’s size and color: which changes smoothly, and which changes at once?", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition only smooths the property you write. If you need everything, you write all.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you smoothly change only the volume on a remote, the channel still switches at once. In transition, only what you name is smooth.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Under the mouse, two things change on the button: its size and its color. transition only smooths the property you write. Let’s see.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform one second: the growing is smooth, but the color jumps at once. Because color isn’t written.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now background-color one second: the color is smooth, but the growing is instant.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] all one second: all means everything. Now both the size and the color change smoothly.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So whichever property you write in transition becomes smooth. If you need everything, you write all.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Under the mouse, the button’s background changes. Make the background color change smoothly: type that property’s name.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the property name.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] all would make the color smooth too, along with everything else. Here, type just the name of the background color property: look at the hover rule.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] color is the text color. What’s changing is the background.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform isn’t changing here. Look at the hover rule.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] orange is a value. We need the property name.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser doesn’t know that property. Check the spelling.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different property. The background color is changing.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property changes in the hover rule?", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It says background-color there.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type background-color and tap Check.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now the color changes smoothly in half a second.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show a hover rule, and you pick the transition that makes it smooth.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition must have the same property name. Not the value, the name.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform is changing, so transition needs transform too.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The text color, that is color, is changing.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gold is a value. transition needs the property name: background-color.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know exactly what to make smooth.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the bar: does it fill at the same speed, or slow first and then fast?", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Time is written in seconds or milliseconds: a thousand milliseconds is one second. linear gives an even speed, ease is slow at the start and end.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A car starts slowly, speeds up and slows before stopping. That’s ease. An escalator moves evenly. That’s linear.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can write the time another way, and you can pick the speed too. Let’s see. Right now it’s half a second.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Five hundred milliseconds is the same half a second. A millisecond is a thousandth of a second. The button changes just like before.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the button slides right over two seconds. linear means even: the speed is the same from start to end. The bar fills evenly too.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ease is different: slow at first, fast in the middle, slow again at the end. Like a car starting off and then stopping. If you write nothing, the browser uses ease by itself.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So time is written in seconds or milliseconds, and the speed is chosen with linear or ease.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Your turn. Make the button change in one second, but write the time in milliseconds. How many milliseconds are in a second?", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no unit. Milliseconds are written ms.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s one second! But the task is to write it in milliseconds.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that time. Write a number and ms.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different time. We need one second.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Milli means thousand: a second has a thousand milliseconds.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number one thousand and the letters ms.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type one, three zeros and ms, then tap Check.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! A thousand milliseconds is one second.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. The button has transform two seconds. I’ll say a task, and you pick what to write.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the task about: time, a property or speed?", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Less time is faster. linear keeps the speed the same. all makes everything smooth.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button should change faster.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The less time, the faster the change.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the background color should be smooth.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The background color property is background-color.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The speed should be the same from start to end.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] linear is an even speed.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All changes should be smooth.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] all means everything.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tune transition just the way you need.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Each time, look at the code: does the time have s, a dot or a comma, is the property name right? Then the bar: is it zero seconds?", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Time needs s or ms, decimals use a dot, and the property name must be right letter for letter.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tell a timer just five and it won’t know if that’s seconds or minutes. CSS also needs the unit spelled out.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition has mistakes too. Let’s look at three. Right now everything is correct: half a second, smooth.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: there’s no s after the number. The browser threw the rule away, and the button jumps again.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: a comma instead of a dot. Some of us write decimals with a comma, but CSS only understands a dot.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third is sneakier: letters in the word transform are swapped. The browser doesn’t call the rule a mistake, but there’s no such property, so nothing becomes smooth.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So time needs s or ms, decimals use a dot, and the property name must be right letter for letter.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wanted the button to change smoothly in half a second, but it jumps! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still a comma in the number. Change it to a dot.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time needs the letter s.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The property name broke. Write transform.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the property and the time.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. Just change the comma to a dot.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the middle of the number.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS decimals use a dot, not a comma.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type transform, space, zero, dot, five and s, then tap Check.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The button is smooth again.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the bar, then tap that rule.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule doesn’t work?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The time had no s.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The letters in transform were swapped.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the bar: does the button change smoothly?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bar shows zero seconds. Check the time in the transition line.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bar shows zero seconds. Check the property name in the transition line.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: the time has no s. Tap that line.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the third rule: transfrom. Tap that line.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check smooth effects like a real developer.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. The hover rule is ready. Write a rule for the button itself: make transform change smoothly in zero point three seconds.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value inside curly braces.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We put transition in the button’s own rule, without hover. You’ll see why at the end of the lesson.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector: a dot and the button’s class.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The transition property makes the change smooth.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a comma in the number. Decimals use a dot.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the property name: transform.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform changes on hover, so transition needs transform too.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time is different. We need zero point three seconds.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] all would work too, but here we asked for transform: write it.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is the button’s class, the property is transition, the value is transform and the time.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Selector: dot tugma; value: transform, space, zero point three s.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The button grows and goes back smoothly. You wrote the whole rule yourself.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own button. Choose what changes under the mouse, how long it takes and the speed. Then tap Done.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a comma in the time. Decimals use a dot.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time needs s or ms.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With zero seconds the change is instant. Write a time greater than zero.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s too long: you’d get tired waiting for the button. Write less than five seconds.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS a decimal uses a dot, not a comma: one point three.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the first, scale, rotate or translate with brackets and a number; in the second, a time with s or ms; in the third, linear or ease.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: scale one point three, zero point four seconds and ease. Then tap Done.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how smooth! This is your very own button.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the sentence about: time, spelling or where the rule goes?", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: transition makes things smooth, a thousand milliseconds is one second, and decimals use a dot.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transition makes a change smooth.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: transition means a smooth change.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Five hundred milliseconds and half a second are the same time.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: a second has a thousand milliseconds.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule works.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the browser throws the rule away because of the comma.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule makes the button’s growth smooth.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually transfrom is a typo: there’s no such property, so nothing becomes smooth. It should be transform.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know transition really well.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I put transition inside the hover rule? Look: the button grows smoothly, but when the mouse leaves, it jumps back at once! I was wrong. As soon as the mouse leaves, the hover rule switches off, and transition goes with it.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Move transition into the button’s own rule, and it’s always there. Now it’s smooth both ways. There!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your smooth button!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Time is written in seconds or milliseconds.", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The property you write becomes smooth, and all makes everything smooth.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And transition goes in the button’s own rule, not in the hover rule.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your buttons are smooth. Next lesson is even more fun: things on the page will move by themselves, without the mouse. That’s called animation. See you!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Ready? Press the button!", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Record: 120 points.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How will it change?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How will the button change?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which transition?", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which transition makes this change smooth?", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What to change?", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does this need?", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Esingizdami, o'tgan darsda tugmamni jonlantirdik? Endi sichqoncha ustiga kelsa, u o'sadi va to'q sariq bo'ladi. Lekin qarang: u birdaniga sakraydi, xuddi kadr tushib qolgandek. Haqiqiy saytlarda tugma silliq o'zgaradi. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Endi tugma birdaniga emas, asta-sekin o'sadi va rangini o'zgartiradi. Sichqoncha ketganda esa xuddi shunday silliq qaytadi.": "uz002",
+    "Buni [English pronunciation] transition [O'zbekcha tallaffuz] qildi, ya'ni silliq o'tish degani. Pastdagi chiziqqa qarang: u o'zgarish qancha vaqt davom etganini ko'rsatadi.": "uz003",
+    "Bugun tugmalarni silliq qilishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] transition [O'zbekcha tallaffuz] qoidasini [English pronunciation] hover [O'zbekcha tallaffuz] qoidasining ichiga yozgan edim. Menimcha, farqi yo'q: tugma baribir ikki tomonga ham silliq bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Tugmaga va pastdagi chiziqqa qarang: chiziq o'zgarish necha soniya davom etganini ko'rsatadi.": "uz005",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi. Unda ikki narsa yoziladi: qaysi xususiyat va necha soniya. Vaqt kam bo'lsa, tez.": "uz006",
+    "Xonadagi chiroqni birdan yoqish va asta-sekin yoritishni solishtiring. [English pronunciation] transition [O'zbekcha tallaffuz] chiroqni asta yoqqandek ishlaydi.": "uz007",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] qoidasida ikki narsa yoziladi: qaysi xususiyat silliq o'zgaradi va bu necha soniya davom etadi. Keling, ko'ramiz.": "uz008",
+    "Hozir [English pronunciation] transition [O'zbekcha tallaffuz] yo'q. Tugma birdaniga sakraydi, chiziqda esa nol soniya: o'zgarish bir zumda bo'ldi.": "uz009",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] bir soniya: o'sish endi bir soniya davom etadi. Sekin va silliq. s harfi soniya degani.": "uz010",
+    "Nol butun o'ndan uch soniya: tez, lekin baribir silliq. Odatda tugmalar uchun shunday qisqa vaqt tanlanadi. Yarim soniya esa nol butun o'ndan besh va s harfi bilan yoziladi.": "uz011",
+    "Demak, [English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi: oldin xususiyat, keyin vaqt yoziladi.": "uz012",
+    "Endi navbat sizga. Tugma yarim soniyada silliq o'ssin: [English pronunciation] transform [O'zbekcha tallaffuz] dan keyin vaqtni yozing.": "uz013",
+    "Vaqtni yozing.": "uz014",
+    "Sonda vergul bor. [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr nuqta bilan yoziladi.": "uz015",
+    "Son bor, lekin birlik yo'q. Soniya uchun s harfini qo'shing.": "uz016",
+    "Brauzer bu vaqtni tanimadi. Son va s harfini yozing.": "uz017",
+    "Bu boshqa vaqt. Yarim soniya kerak.": "uz018",
+    "Yarim soniya bu nol butun o'ndan besh degani.": "uz019",
+    "Son nuqta bilan, oxirida s harfi.": "uz020",
+    "Nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.": "uz021",
+    "Zo'r! Tugma yarim soniyada silliq o'sadi. Chiziqqa qarang.": "uz022",
+    "Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa tugma qanday o'zgarishini tanlang: birdaniga, tez yoki sekin.": "uz023",
+    "Vaqtga qarang: soniyami yoki millisoniyami?": "uz024",
+    "Nol bo'lsa birdaniga, bir soniyadan kam bo'lsa tez, bir necha soniya bo'lsa sekin. Ming millisoniya esa bir soniya.": "uz025",
+    "Uch soniya bu sekin.": "uz026",
+    "Soniyaning beshdan biri, demak tez.": "uz027",
+    "Nol soniyada o'zgarish birdaniga bo'ladi.": "uz028",
+    "Ikki ming millisoniya bu ikki soniya, demak sekin.": "uz029",
+    "Barakalla!": "uz030",
+    "Hammasi to'g'ri! Vaqtni ko'rib, tezlikni bilasiz.": "uz031",
+    "Tugmaning o'lchami va rangiga qarang: qaysi biri silliq, qaysi biri birdaniga o'zgaryapti?": "uz032",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] faqat siz yozgan xususiyatni silliq qiladi. Hammasi kerak bo'lsa, [English pronunciation] all [O'zbekcha tallaffuz] yoziladi.": "uz033",
+    "Pultda faqat ovozni sekin o'zgartirsangiz, kanal baribir birdaniga almashadi. [English pronunciation] transition [O'zbekcha tallaffuz] da ham faqat aytilgan narsa silliq bo'ladi.": "uz034",
+    "Sichqoncha ustida tugmada ikki narsa o'zgaradi: o'lchami va rangi. [English pronunciation] transition [O'zbekcha tallaffuz] faqat siz yozgan xususiyatni silliq qiladi. Keling, ko'ramiz.": "uz035",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] bir soniya: o'sish silliq, lekin rang birdaniga sakraydi. Chunki rang yozilmagan.": "uz036",
+    "Endi [English pronunciation] background-color [O'zbekcha tallaffuz] bir soniya: rang silliq, o'sish esa birdaniga.": "uz037",
+    "[English pronunciation] all [O'zbekcha tallaffuz] bir soniya: [English pronunciation] all [O'zbekcha tallaffuz] ya'ni hammasi degani. Endi o'lcham ham, rang ham silliq o'zgaradi.": "uz038",
+    "Demak, [English pronunciation] transition [O'zbekcha tallaffuz] da qaysi xususiyat yozilsa, o'shasi silliq bo'ladi. Hammasi kerak bo'lsa, [English pronunciation] all [O'zbekcha tallaffuz] yoziladi.": "uz039",
+    "Endi siz. Sichqoncha ustida tugmaning foni o'zgaradi. Fon rangi silliq o'zgarsin: o'sha xususiyat nomini yozing.": "uz040",
+    "Xususiyat nomini yozing.": "uz041",
+    "[English pronunciation] all [O'zbekcha tallaffuz] ham fon rangini silliq qiladi, boshqa hamma narsa bilan birga. Bu yerda esa faqat fon rangi xususiyatining nomini yozing: [English pronunciation] hover [O'zbekcha tallaffuz] li qoidaga qarang.": "uz042",
+    "[English pronunciation] color [O'zbekcha tallaffuz] bu matn rangi. O'zgarayotgani esa fon.": "uz043",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] bu yerda o'zgarmayapti. Hover qoidasiga qarang.": "uz044",
+    "[English pronunciation] orange [O'zbekcha tallaffuz] bu qiymat. Bu yerga xususiyat nomi kerak.": "uz045",
+    "Brauzer bunday xususiyatni bilmaydi. Yozilishini tekshiring.": "uz046",
+    "Bu boshqa xususiyat. Fon rangi o'zgaryapti.": "uz047",
+    "Hover qoidasida qaysi xususiyat o'zgaryapti?": "uz048",
+    "U yerda [English pronunciation] background-color [O'zbekcha tallaffuz] yozilgan.": "uz049",
+    "[English pronunciation] background-color [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz050",
+    "Ajoyib! Endi rang yarim soniyada silliq o'zgaradi.": "uz051",
+    "Endi o'zingizni sinab ko'ring. Men [English pronunciation] hover [O'zbekcha tallaffuz] qoidasini ko'rsataman, siz esa uni silliq qiladigan [English pronunciation] transition [O'zbekcha tallaffuz] ni tanlang.": "uz052",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] da xuddi o'sha xususiyat nomi turishi kerak. Qiymat emas, nom.": "uz053",
+    "O'zgarayotgani [English pronunciation] transform [O'zbekcha tallaffuz], demak [English pronunciation] transition [O'zbekcha tallaffuz] da ham [English pronunciation] transform [O'zbekcha tallaffuz].": "uz054",
+    "Matn rangi o'zgaryapti, uning nomi [English pronunciation] color [O'zbekcha tallaffuz].": "uz055",
+    "[English pronunciation] gold [O'zbekcha tallaffuz] bu qiymat. [English pronunciation] transition [O'zbekcha tallaffuz] qoidasiga xususiyat nomi kerak: [English pronunciation] background-color [O'zbekcha tallaffuz].": "uz056",
+    "Hammasi to'g'ri! Qaysi xususiyatni silliq qilishni aniq bilasiz.": "uz057",
+    "Chiziqqa qarang: u bir xil tezlikda to'lyaptimi yoki avval sekin, keyin tez?": "uz058",
+    "Vaqt soniyada yoki millisoniyada yoziladi: ming millisoniya bu bir soniya. [English pronunciation] linear [O'zbekcha tallaffuz] tekis tezlik beradi, [English pronunciation] ease [O'zbekcha tallaffuz] esa boshida va oxirida sekin.": "uz059",
+    "Mashina joyidan sekin qo'zg'aladi, keyin tezlashadi va to'xtashdan oldin sekinlashadi. Bu [English pronunciation] ease [O'zbekcha tallaffuz]. Eskalator esa bir xil yuradi, bu [English pronunciation] linear [O'zbekcha tallaffuz].": "uz060",
+    "Vaqtni boshqacha ham yozish mumkin, tezlikni ham tanlash mumkin. Keling, ko'ramiz. Hozir yarim soniya.": "uz061",
+    "Besh yuz millisoniya ham xuddi yarim soniya. Millisoniya soniyaning mingdan biri degani. Tugma oldingidek o'zgaryapti.": "uz062",
+    "Endi tugma ikki soniyada o'ngga suriladi. [English pronunciation] linear [O'zbekcha tallaffuz] ya'ni tekis degani: tezlik boshidan oxirigacha bir xil. Chiziq ham tekis to'lyapti.": "uz063",
+    "[English pronunciation] ease [O'zbekcha tallaffuz] esa boshqacha: oldin sekin, o'rtada tez, oxirida yana sekin. Xuddi mashina joyidan qo'zg'alib, keyin to'xtagandek. Hech narsa yozmasangiz, brauzer o'zi [English pronunciation] ease [O'zbekcha tallaffuz] ni oladi.": "uz064",
+    "Demak, vaqt soniyada yoki millisoniyada yoziladi, tezlikni esa [English pronunciation] linear [O'zbekcha tallaffuz] yoki [English pronunciation] ease [O'zbekcha tallaffuz] tanlaydi.": "uz065",
+    "Endi siz. Tugma bir soniyada o'zgarsin, lekin vaqtni millisoniyada yozing. Bir soniyada nechta millisoniya bor?": "uz066",
+    "Son bor, lekin birlik yo'q. Millisoniya uchun [English pronunciation] ms [O'zbekcha tallaffuz] yoziladi.": "uz067",
+    "To'g'ri, bu bir soniya! Lekin vazifa millisoniyada yozish edi.": "uz068",
+    "Brauzer bu vaqtni tanimadi. Son va [English pronunciation] ms [O'zbekcha tallaffuz] yozing.": "uz069",
+    "Bu boshqa vaqt. Bir soniya kerak.": "uz070",
+    "Milli ming degani: soniyada ming millisoniya.": "uz071",
+    "Ming soni va [English pronunciation] ms [O'zbekcha tallaffuz] harflari.": "uz072",
+    "Bir, uchta nol va [English pronunciation] ms [O'zbekcha tallaffuz] deb yozing, keyin Tekshirishni bosing.": "uz073",
+    "Barakalla! Ming millisoniya bu bir soniya.": "uz074",
+    "Endi o'zingizni sinab ko'ring. Tugmada [English pronunciation] transform [O'zbekcha tallaffuz] ikki soniya turibdi. Men vazifani aytaman, siz esa nimani yozish kerakligini tanlang.": "uz075",
+    "Vazifa nima haqida: vaqtmi, xususiyatmi yoki tezlikmi?": "uz076",
+    "Vaqt kamroq bo'lsa, tezroq. [English pronunciation] linear [O'zbekcha tallaffuz] bilan tezlik bir xil. [English pronunciation] all [O'zbekcha tallaffuz] bilan hammasi silliq.": "uz077",
+    "Tugma tezroq o'zgarsin.": "uz078",
+    "Vaqt kamroq bo'lsa, o'zgarish tezroq.": "uz079",
+    "Faqat fon rangi silliq bo'lsin.": "uz080",
+    "Fon rangi xususiyati [English pronunciation] background-color [O'zbekcha tallaffuz] deyiladi.": "uz081",
+    "Tezlik boshidan oxirigacha bir xil bo'lsin.": "uz082",
+    "[English pronunciation] linear [O'zbekcha tallaffuz] tekis tezlik beradi.": "uz083",
+    "Hamma o'zgarishlar silliq bo'lsin.": "uz084",
+    "[English pronunciation] all [O'zbekcha tallaffuz] ya'ni hammasi degani.": "uz085",
+    "Hammasi to'g'ri! [English pronunciation] transition [O'zbekcha tallaffuz] ni kerakli tomonga sozlay olasiz.": "uz086",
+    "Har safar kodga qarang: vaqtda s bormi, nuqta yoki vergulmi, xususiyat nomi to'g'rimi? Keyin chiziqqa qarang: nol soniyami?": "uz087",
+    "Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.": "uz088",
+    "Taymerga besh deb aytsangiz, u besh soniyami yoki besh daqiqami bilmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] ga ham birlikni aniq aytish kerak.": "uz089",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: yarim soniya, silliq.": "uz090",
+    "Birinchisi: sondan keyin s harfi yo'q. Brauzer qoidani tashlab yubordi, tugma yana sakraydi.": "uz091",
+    "Ikkinchisi: nuqta o'rniga vergul. Biz sonlarni vergul bilan yozishga o'rganganmiz, lekin [English pronunciation] CSS [O'zbekcha tallaffuz] faqat nuqtani tushunadi.": "uz092",
+    "Uchinchisi ayyorroq: [English pronunciation] transform [O'zbekcha tallaffuz] so'zida harflar almashib qolgan. Brauzer qoidani xato demaydi, lekin bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi.": "uz093",
+    "Demak, vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.": "uz094",
+    "Voy, men tugmani yarim soniyada silliq qilmoqchi edim, lekin u sakrayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz095",
+    "Qiymatni yozing.": "uz096",
+    "Sonda hali vergul turibdi. Uni nuqtaga almashtiring.": "uz097",
+    "Vaqtga s harfi kerak.": "uz098",
+    "Xususiyat nomi buzildi. [English pronunciation] transform [O'zbekcha tallaffuz] deb yozing.": "uz099",
+    "Brauzer bu qiymatni tanimadi. Xususiyat va vaqtni tekshiring.": "uz100",
+    "Bu boshqa qiymat. Faqat vergulni nuqtaga almashtiring.": "uz101",
+    "Sonning o'rtasiga qarang.": "uz102",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi.": "uz103",
+    "[English pronunciation] transform [O'zbekcha tallaffuz], bo'sh joy, nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.": "uz104",
+    "Ura, ishladi! Tugma yana silliq.": "uz105",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va chiziqqa qarang, keyin o'sha qoidani bosing.": "uz106",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?": "uz107",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz108",
+    "Topdingiz! Vaqtda s harfi yo'q edi.": "uz109",
+    "Topdingiz! [English pronunciation] transform [O'zbekcha tallaffuz] so'zida harflar almashgan edi.": "uz110",
+    "Chiziqqa qarang: tugma silliq o'zgaryaptimi?": "uz111",
+    "Chiziqda nol soniya. [English pronunciation] transition [O'zbekcha tallaffuz] qatoridagi vaqtni tekshiring.": "uz112",
+    "Chiziqda nol soniya. [English pronunciation] transition [O'zbekcha tallaffuz] qatoridagi xususiyat nomini tekshiring.": "uz113",
+    "Xato ikkinchi qoidada: vaqtda s yo'q. O'sha qatorni bosing.": "uz114",
+    "Xato uchinchi qoidada: transfrom. O'sha qatorni bosing.": "uz115",
+    "Super! Ikkalasi ham topildi. Siz silliq effektlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz116",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Hover qoidasi tayyor. Tugmaning o'zi uchun qoida yozing: [English pronunciation] transform [O'zbekcha tallaffuz] nol butun o'ndan uch soniyada silliq o'zgarsin.": "uz117",
+    "Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.": "uz118",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz119",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz120",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] ni tugmaning o'z qoidasiga yozamiz, [English pronunciation] hover [O'zbekcha tallaffuz] siz. Nega bunday, dars oxirida ko'rasiz.": "uz121",
+    "Selektor: nuqta va tugma klassi.": "uz122",
+    "Silliq o'tishni [English pronunciation] transition [O'zbekcha tallaffuz] xususiyati beradi.": "uz123",
+    "Sonda vergul bor. Kasr nuqta bilan yoziladi.": "uz124",
+    "Xususiyat nomini tekshiring: [English pronunciation] transform [O'zbekcha tallaffuz].": "uz125",
+    "Hover da [English pronunciation] transform [O'zbekcha tallaffuz] o'zgaradi, demak [English pronunciation] transition [O'zbekcha tallaffuz] da ham [English pronunciation] transform [O'zbekcha tallaffuz].": "uz126",
+    "Vaqt boshqa. Nol butun o'ndan uch soniya kerak.": "uz127",
+    "[English pronunciation] all [O'zbekcha tallaffuz] ham ishlaydi, lekin bu yerda aynan [English pronunciation] transform [O'zbekcha tallaffuz] so'ralgan: uni yozing.": "uz128",
+    "Selektor tugma klassi, xususiyat [English pronunciation] transition [O'zbekcha tallaffuz], qiymat esa [English pronunciation] transform [O'zbekcha tallaffuz] va vaqt.": "uz129",
+    "Selektor nuqta tugma, qiymat [English pronunciation] transform [O'zbekcha tallaffuz], bo'sh joy, nol nuqta uch s.": "uz130",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz131",
+    "Ajoyib! Tugma endi silliq o'sadi va silliq qaytadi. Qoidani o'zingiz yozdingiz.": "uz132",
+    "Endi o'z tugmangizni yarating. Sichqoncha ustida nima o'zgarishini, qancha vaqt davom etishini va tezlikni o'zingiz tanlang. Keyin Tayyorni bosing.": "uz133",
+    "Vaqtda vergul bor. Kasr nuqta bilan yoziladi.": "uz134",
+    "Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak.": "uz135",
+    "Nol soniyada o'zgarish birdaniga bo'ladi. Noldan katta vaqt yozing.": "uz136",
+    "Bu juda uzoq: tugmani kutib charchab qolasiz. Besh soniyadan kam yozing.": "uz137",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta uch.": "uz138",
+    "Har bir maydonga bitta qiymat yozing.": "uz139",
+    "Birinchisiga qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], ikkinchisiga vaqt s yoki [English pronunciation] ms [O'zbekcha tallaffuz] bilan, uchinchisiga [English pronunciation] linear [O'zbekcha tallaffuz] yoki [English pronunciation] ease [O'zbekcha tallaffuz].": "uz140",
+    "Masalan: [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan uch, nol butun o'ndan to'rt soniya va [English pronunciation] ease [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz141",
+    "Voy, qanday silliq! Bu sizning o'z tugmangiz.": "uz142",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz143",
+    "Gap nima haqida: vaqt, yozilish yoki qoidaning joyi?": "uz144",
+    "Esingizdami: [English pronunciation] transition [O'zbekcha tallaffuz] silliq qiladi, ming millisoniya bir soniya, kasr nuqta bilan yoziladi.": "uz145",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] o'zgarishni silliq qiladi.": "uz146",
+    "To'g'ri: [English pronunciation] transition [O'zbekcha tallaffuz] silliq o'tish degani.": "uz147",
+    "Besh yuz millisoniya va yarim soniya bir xil vaqt.": "uz148",
+    "To'g'ri: soniyada ming millisoniya.": "uz149",
+    "Bu qoida ishlaydi.": "uz150",
+    "Aslida vergul tufayli brauzer qoidani tashlab yuboradi.": "uz151",
+    "Bu qoida tugmaning kattalashishini silliq qiladi.": "uz152",
+    "Aslida transfrom bu xato yozuv: bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi. To'g'risi [English pronunciation] transform [O'zbekcha tallaffuz].": "uz153",
+    "Hammasi to'g'ri! Siz [English pronunciation] transition [O'zbekcha tallaffuz] ni yaxshi bilasiz.": "uz154",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] transition [O'zbekcha tallaffuz] ni [English pronunciation] hover [O'zbekcha tallaffuz] qoidasining ichiga yozgan edim? Qarang: tugma silliq o'sadi, lekin sichqoncha ketganda birdaniga sakrab qaytadi! Men adashibman. Sichqoncha ketishi bilan [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi o'chadi, u bilan birga [English pronunciation] transition [O'zbekcha tallaffuz] ham ketadi.": "uz155",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] ni tugmaning o'z qoidasiga ko'chirsak, u doim turadi. Endi ikki tomonga ham silliq. Mana!": "uz156",
+    "Qarang, bu sizning silliq tugmangiz!": "uz157",
+    "Vaqt soniyada yoki millisoniyada yoziladi.": "uz158",
+    "Qaysi xususiyat yozilsa, o'shasi silliq bo'ladi, [English pronunciation] all [O'zbekcha tallaffuz] esa hammasini silliq qiladi.": "uz159",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] esa [English pronunciation] hover [O'zbekcha tallaffuz] qoidasiga emas, tugmaning o'z qoidasiga yoziladi.": "uz160",
+    "Tabriklayman! Endi tugmalaringiz silliq. Keyingi darsda yanada qiziqroq narsa bor: sahifadagi narsalar sichqonchasiz, o'zi harakatlanadi. Bu animatsiya deyiladi. Ko'rishguncha!": "uz161",
+    "Voy, zo‘r!": "uz162",
+    "Ana! Chiqdi!": "uz163",
+    "Super!": "uz164",
+    "Qoyil!": "uz165",
+    "Ura!": "uz166",
+    "Zo‘r-ku!": "uz167",
+    "Yana bir bor urinib ko‘ring.": "uz168",
+    "Diqqat bilan qarang.": "uz169",
+    "Yaqin qoldingiz. Shoshilmang.": "uz170",
+    "Tayyormisiz? Tugmani bosing!": "uz171",
+    "Rekord: 120 ochko.": "uz172",
+    "Qanday o'zgaradi?": "uz173",
+    "Tugma qanday o'zgaradi?": "uz174",
+    "Qaysi xususiyat?": "uz175",
+    "Qaysi [English pronunciation] transition [O'zbekcha tallaffuz]?": "uz176",
+    "Qaysi [English pronunciation] transition [O'zbekcha tallaffuz] bu o'zgarishni silliq qiladi?": "uz177",
+    "Nimani o'zgartirish kerak?": "uz178",
+    "Buning uchun nima kerak?": "uz179",
+    "To'g'rimi?": "uz180",
+    "To'g'rimi yoki noto'g'rimi?": "uz181",
+    "Salom, dunyo!": "uz182",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz183",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz184",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz185",
+  },
+  ru: {
+    "Привет! Помнишь, на прошлом уроке мы оживили кнопку? Теперь под мышкой она растёт и становится оранжевой. Но смотри: она прыгает сразу, будто кадр пропал. На настоящих сайтах кнопка меняется плавно. Нажми Превратить.": "ru001",
+    "Вот! Теперь кнопка растёт и меняет цвет не сразу, а постепенно. А когда мышка уходит, так же плавно возвращается.": "ru002",
+    "Это сделал [English pronunciation] transition [Русское произношение], то есть плавный переход. Посмотри на полосу внизу: она показывает, сколько времени длится изменение.": "ru003",
+    "Сегодня ты научишься делать кнопки плавными. Но сначала загадка. В первый раз я написал [English pronunciation] transition [Русское произношение] внутри правила с [English pronunciation] hover [Русское произношение]. По-моему, разницы нет: кнопка всё равно будет плавной в обе стороны. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на кнопку и на полосу внизу: полоса показывает, сколько секунд длится изменение.": "ru005",
+    "[English pronunciation] transition [Русское произношение] делает изменение плавным. В нём пишут две вещи: какое свойство и сколько секунд. Меньше время, быстрее.": "ru006",
+    "Сравни: свет в комнате включается сразу или разгорается постепенно. [English pronunciation] transition [Русское произношение], как свет, который разгорается.": "ru007",
+    "В правиле [English pronunciation] transition [Русское произношение] пишут две вещи: какое свойство меняется плавно и сколько секунд это длится. Давай посмотрим.": "ru008",
+    "Сейчас [English pronunciation] transition [Русское произношение] нет. Кнопка прыгает сразу, а на полосе ноль секунд: изменение случилось мгновенно.": "ru009",
+    "[English pronunciation] transform [Русское произношение] одна секунда: рост теперь длится одну секунду. Медленно и плавно. Буква s, это секунды.": "ru010",
+    "Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время. А полсекунды пишут как ноль целых пять десятых с буквой s.": "ru011",
+    "Значит, [English pronunciation] transition [Русское произношение] делает изменение плавным: сначала пишут свойство, потом время.": "ru012",
+    "Теперь твоя очередь. Пусть кнопка плавно растёт за полсекунды: впиши время после [English pronunciation] transform [Русское произношение].": "ru013",
+    "Впиши время.": "ru014",
+    "В числе запятая. В [English pronunciation] CSS [Русское произношение] дробь пишут через точку.": "ru015",
+    "Число есть, а единицы нет. Добавь букву s, секунды.": "ru016",
+    "Браузер не узнал это время. Напиши число и букву s.": "ru017",
+    "Это другое время. Нужно полсекунды.": "ru018",
+    "Полсекунды, это ноль целых пять десятых.": "ru019",
+    "Число через точку, в конце буква s.": "ru020",
+    "Впиши ноль, точка, пять и s, потом нажми Проверить.": "ru021",
+    "Огонь! Кнопка плавно растёт за полсекунды. Посмотри на полосу.": "ru022",
+    "Теперь проверь себя. Я покажу правило, а ты выбери, как изменится кнопка: сразу, быстро или медленно.": "ru023",
+    "Посмотри на время: секунды или миллисекунды?": "ru024",
+    "Ноль, сразу, меньше секунды, быстро, несколько секунд, медленно. Тысяча миллисекунд, одна секунда.": "ru025",
+    "Три секунды, это медленно.": "ru026",
+    "Одна пятая секунды, быстро.": "ru027",
+    "Ноль секунд, изменение сразу.": "ru028",
+    "Две тысячи миллисекунд, это две секунды, то есть медленно.": "ru029",
+    "Точно!": "ru030",
+    "Всё верно! Ты по времени сразу видишь скорость.": "ru031",
+    "Посмотри на размер и цвет кнопки: что меняется плавно, а что сразу?": "ru032",
+    "[English pronunciation] transition [Русское произношение] делает плавным только то свойство, которое написано. Если нужно всё, пишут [English pronunciation] all [Русское произношение].": "ru033",
+    "Если на пульте плавно менять только громкость, канал всё равно переключится сразу. В [English pronunciation] transition [Русское произношение] так же плавно только то, что названо.": "ru034",
+    "Под мышкой у кнопки меняются две вещи: размер и цвет. [English pronunciation] transition [Русское произношение] делает плавным только то свойство, которое ты написал. Давай посмотрим.": "ru035",
+    "[English pronunciation] transform [Русское произношение] одна секунда: рост плавный, а цвет прыгает сразу. Ведь цвет не написан.": "ru036",
+    "Теперь [English pronunciation] background-color [Русское произношение] одна секунда: цвет плавный, а рост сразу.": "ru037",
+    "[English pronunciation] all [Русское произношение] одна секунда: [English pronunciation] all [Русское произношение], то есть всё. Теперь плавно меняются и размер, и цвет.": "ru038",
+    "Значит, плавным становится то свойство, которое написано в [English pronunciation] transition [Русское произношение]. Если нужно всё, пишут [English pronunciation] all [Русское произношение].": "ru039",
+    "Теперь ты. Под мышкой у кнопки меняется фон. Пусть цвет фона меняется плавно: впиши имя этого свойства.": "ru040",
+    "Впиши имя свойства.": "ru041",
+    "[English pronunciation] all [Русское произношение] тоже сделает цвет плавным, вместе со всем остальным. А здесь впиши только имя свойства цвета фона: посмотри на правило с [English pronunciation] hover [Русское произношение].": "ru042",
+    "[English pronunciation] color [Русское произношение], это цвет текста. А меняется фон.": "ru043",
+    "[English pronunciation] transform [Русское произношение] здесь не меняется. Посмотри на правило с [English pronunciation] hover [Русское произношение].": "ru044",
+    "[English pronunciation] orange [Русское произношение], это значение. А нужно имя свойства.": "ru045",
+    "Браузер не знает такого свойства. Проверь написание.": "ru046",
+    "Это другое свойство. Меняется цвет фона.": "ru047",
+    "Какое свойство меняется в правиле с [English pronunciation] hover [Русское произношение]?": "ru048",
+    "Там написано [English pronunciation] background-color [Русское произношение].": "ru049",
+    "Впиши [English pronunciation] background-color [Русское произношение] и нажми Проверить.": "ru050",
+    "Отлично! Теперь цвет плавно меняется за полсекунды.": "ru051",
+    "Теперь проверь себя. Я покажу правило с [English pronunciation] hover [Русское произношение], а ты выбери [English pronunciation] transition [Русское произношение], который сделает его плавным.": "ru052",
+    "В [English pronunciation] transition [Русское произношение] должно стоять имя того же свойства. Не значение, а имя.": "ru053",
+    "Меняется [English pronunciation] transform [Русское произношение], значит, и в [English pronunciation] transition transform [Русское произношение].": "ru054",
+    "Меняется цвет текста, то есть [English pronunciation] color [Русское произношение].": "ru055",
+    "[English pronunciation] gold [Русское произношение], это значение. В [English pronunciation] transition [Русское произношение] нужно имя свойства: [English pronunciation] background-color [Русское произношение].": "ru056",
+    "Всё верно! Ты точно знаешь, что делать плавным.": "ru057",
+    "Посмотри на полосу: она заполняется с одинаковой скоростью или сначала медленно, потом быстро?": "ru058",
+    "Время пишут в секундах или миллисекундах: тысяча миллисекунд, одна секунда. [English pronunciation] linear [Русское произношение] даёт ровную скорость, [English pronunciation] ease [Русское произношение], медленно в начале и в конце.": "ru059",
+    "Машина трогается медленно, разгоняется и тормозит перед остановкой, это [English pronunciation] ease [Русское произношение]. А эскалатор едет ровно, это [English pronunciation] linear [Русское произношение].": "ru060",
+    "Время можно записать и по-другому, а ещё можно выбрать скорость. Давай посмотрим. Сейчас полсекунды.": "ru061",
+    "Пятьсот миллисекунд, это те же полсекунды. Миллисекунда, это тысячная доля секунды. Кнопка меняется так же, как раньше.": "ru062",
+    "Теперь кнопка за две секунды сдвигается вправо. [English pronunciation] linear [Русское произношение], то есть ровно: скорость от начала до конца одинаковая. И полоса заполняется ровно.": "ru063",
+    "А [English pronunciation] ease [Русское произношение] по-другому: сначала медленно, в середине быстро, в конце опять медленно. Как машина, что трогается и останавливается. Если ничего не написать, браузер сам берёт [English pronunciation] ease [Русское произношение].": "ru064",
+    "Значит, время пишут в секундах или миллисекундах, а скорость выбирают [English pronunciation] linear [Русское произношение] или [English pronunciation] ease [Русское произношение].": "ru065",
+    "Теперь ты. Пусть кнопка меняется за одну секунду, но время напиши в миллисекундах. Сколько миллисекунд в одной секунде?": "ru066",
+    "Число есть, а единицы нет. Миллисекунды пишут [English pronunciation] ms [Русское произношение].": "ru067",
+    "Верно, это одна секунда! Но задание, написать в миллисекундах.": "ru068",
+    "Браузер не узнал это время. Напиши число и [English pronunciation] ms [Русское произношение].": "ru069",
+    "Это другое время. Нужна одна секунда.": "ru070",
+    "Милли, это тысяча: в секунде тысяча миллисекунд.": "ru071",
+    "Число тысяча и буквы [English pronunciation] ms [Русское произношение].": "ru072",
+    "Впиши единицу, три нуля и [English pronunciation] ms [Русское произношение], потом нажми Проверить.": "ru073",
+    "Молодец! Тысяча миллисекунд, это одна секунда.": "ru074",
+    "Теперь проверь себя. У кнопки стоит [English pronunciation] transform [Русское произношение] две секунды. Я скажу задачу, а ты выбери, что нужно написать.": "ru075",
+    "О чём задача: о времени, о свойстве или о скорости?": "ru076",
+    "Меньше время, быстрее. [English pronunciation] linear [Русское произношение], скорость одинаковая. [English pronunciation] all [Русское произношение], плавное всё.": "ru077",
+    "Кнопка должна меняться быстрее.": "ru078",
+    "Чем меньше время, тем быстрее изменение.": "ru079",
+    "Плавным должен быть только цвет фона.": "ru080",
+    "Свойство цвета фона, [English pronunciation] background-color [Русское произношение].": "ru081",
+    "Скорость должна быть одинаковой от начала до конца.": "ru082",
+    "[English pronunciation] linear [Русское произношение], ровная скорость.": "ru083",
+    "Плавными должны быть все изменения.": "ru084",
+    "[English pronunciation] all [Русское произношение], значит всё.": "ru085",
+    "Всё верно! Ты умеешь настроить [English pronunciation] transition [Русское произношение] как нужно.": "ru086",
+    "Каждый раз смотри на код: есть ли s у времени, точка или запятая, верно ли имя свойства? Потом на полосу: там ноль секунд?": "ru087",
+    "Времени нужны s или [English pronunciation] ms [Русское произношение], дробь пишут через точку, а имя свойства, буква в букву.": "ru088",
+    "Если сказать таймеру просто пять, он не поймёт: пять секунд или минут. [English pronunciation] CSS [Русское произношение] тоже надо точно назвать единицу.": "ru089",
+    "И в [English pronunciation] transition [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: полсекунды, плавно.": "ru090",
+    "Первая: после числа нет буквы s. Браузер выбросил правило, кнопка снова прыгает.": "ru091",
+    "Вторая: запятая вместо точки. Мы привыкли писать дроби через запятую, но [English pronunciation] CSS [Русское произношение] понимает только точку.": "ru092",
+    "Третья, хитрее: в слове [English pronunciation] transform [Русское произношение] переставлены буквы. Браузер не считает правило ошибкой, но такого свойства нет, поэтому плавным не становится ничего.": "ru093",
+    "Значит, у времени нужны s или [English pronunciation] ms [Русское произношение], дробь пишут через точку, а имя свойства, буква в букву.": "ru094",
+    "Ой, я хотел, чтобы кнопка менялась плавно за полсекунды, а она прыгает! В поле, моё значение. Найди ошибку и исправь.": "ru095",
+    "Впиши значение.": "ru096",
+    "В числе всё ещё запятая. Замени её на точку.": "ru097",
+    "Времени нужна буква s.": "ru098",
+    "Имя свойства сломалось. Напиши [English pronunciation] transform [Русское произношение].": "ru099",
+    "Браузер не узнал это значение. Проверь свойство и время.": "ru100",
+    "Это другое значение. Просто замени запятую на точку.": "ru101",
+    "Посмотри на середину числа.": "ru102",
+    "В [English pronunciation] CSS [Русское произношение] дробь пишут не через запятую, а через точку.": "ru103",
+    "Впиши [English pronunciation] transform [Русское произношение], пробел, ноль, точка, пять и s, потом нажми Проверить.": "ru104",
+    "Ура, заработало! Кнопка снова плавная.": "ru105",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на полосу, потом нажми это правило.": "ru106",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?": "ru107",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru108",
+    "Есть! У времени не было буквы s.": "ru109",
+    "Есть! В слове [English pronunciation] transform [Русское произношение] были переставлены буквы.": "ru110",
+    "Посмотри на полосу: кнопка меняется плавно?": "ru111",
+    "На полосе ноль секунд. Проверь время в строке [English pronunciation] transition [Русское произношение].": "ru112",
+    "На полосе ноль секунд. Проверь имя свойства в строке [English pronunciation] transition [Русское произношение].": "ru113",
+    "Ошибка во втором правиле: у времени нет s. Нажми эту строку.": "ru114",
+    "Ошибка в третьем правиле: transfrom. Нажми эту строку.": "ru115",
+    "Супер! Обе найдены. Ты проверяешь плавные эффекты как настоящий разработчик.": "ru116",
+    "Теперь напиши правило целиком. Правило с [English pronunciation] hover [Русское произношение] уже готово. Напиши правило для самой кнопки: пусть [English pronunciation] transform [Русское произношение] меняется плавно за ноль целых три десятых секунды.": "ru117",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru118",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru119",
+    "Между свойством и значением нет двоеточия.": "ru120",
+    "[English pronunciation] transition [Русское произношение] пишем в правило самой кнопки, без [English pronunciation] hover [Русское произношение]. Почему так, увидишь в конце урока.": "ru121",
+    "Селектор: точка и класс кнопки.": "ru122",
+    "Плавный переход задаёт свойство [English pronunciation] transition [Русское произношение].": "ru123",
+    "В числе запятая. Дробь пишут через точку.": "ru124",
+    "Проверь имя свойства: [English pronunciation] transform [Русское произношение].": "ru125",
+    "Под [English pronunciation] hover [Русское произношение] меняется [English pronunciation] transform [Русское произношение], значит, и в [English pronunciation] transition [Русское произношение], [English pronunciation] transform [Русское произношение].": "ru126",
+    "Время другое. Нужно ноль целых три десятых секунды.": "ru127",
+    "[English pronunciation] all [Русское произношение] тоже сработает, но здесь просили именно [English pronunciation] transform [Русское произношение], напиши его.": "ru128",
+    "Селектор, класс кнопки, свойство, [English pronunciation] transition [Русское произношение], значение, [English pronunciation] transform [Русское произношение] и время.": "ru129",
+    "Селектор: точка tugma, значение: [English pronunciation] transform [Русское произношение], пробел, ноль точка три s.": "ru130",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru131",
+    "Отлично! Кнопка плавно растёт и плавно возвращается. Правило написано тобой целиком.": "ru132",
+    "Теперь сделай свою кнопку. Сам выбери, что меняется под мышкой, сколько это длится и какая скорость. Потом нажми Готово.": "ru133",
+    "Во времени запятая. Дробь пишут через точку.": "ru134",
+    "Времени нужны s или [English pronunciation] ms [Русское произношение].": "ru135",
+    "За ноль секунд изменение будет сразу. Напиши время больше нуля.": "ru136",
+    "Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.": "ru137",
+    "Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку: одна точка три, а не через запятую.": "ru138",
+    "В каждое поле, одно значение.": "ru139",
+    "В первое, [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, во второе, время с s или [English pronunciation] ms [Русское произношение], в третье, [English pronunciation] linear [Русское произношение] или [English pronunciation] ease [Русское произношение].": "ru140",
+    "Например: [English pronunciation] scale [Русское произношение] одна целая три десятых, ноль целых четыре десятых секунды и [English pronunciation] ease [Русское произношение]. Потом нажми Готово.": "ru141",
+    "Ого, как плавно! Это твоя собственная кнопка.": "ru142",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru143",
+    "О чём фраза: о времени, о записи или о месте правила?": "ru144",
+    "Вспомни: [English pronunciation] transition [Русское произношение] делает плавно, тысяча миллисекунд, одна секунда, дробь пишут через точку.": "ru145",
+    "[English pronunciation] transition [Русское произношение] делает изменение плавным.": "ru146",
+    "Верно: [English pronunciation] transition [Русское произношение], это плавный переход.": "ru147",
+    "Пятьсот миллисекунд и полсекунды, одно и то же время.": "ru148",
+    "Верно: в секунде тысяча миллисекунд.": "ru149",
+    "Это правило сработает.": "ru150",
+    "На самом деле из-за запятой браузер выбросит правило.": "ru151",
+    "Это правило сделает рост кнопки плавным.": "ru152",
+    "На самом деле transfrom, опечатка: такого свойства нет, и плавным не станет ничего. Правильно, [English pronunciation] transform [Русское произношение].": "ru153",
+    "Всё верно! Ты отлично знаешь [English pronunciation] transition [Русское произношение].": "ru154",
+    "Вернёмся к загадке. Помнишь, я написал [English pronunciation] transition [Русское произношение] внутри правила с [English pronunciation] hover [Русское произношение]? Смотри: кнопка плавно растёт, а когда мышка уходит, прыгает обратно сразу! Я ошибся. Как только мышка уходит, правило с [English pronunciation] hover [Русское произношение] выключается, и [English pronunciation] transition [Русское произношение] уходит вместе с ним.": "ru155",
+    "Перенесём [English pronunciation] transition [Русское произношение] в правило самой кнопки, оно действует всегда. Теперь плавно в обе стороны. Вот!": "ru156",
+    "Смотри, это твоя плавная кнопка!": "ru157",
+    "Время пишут в секундах или миллисекундах.": "ru158",
+    "Плавным становится написанное свойство, а [English pronunciation] all [Русское произношение] делает плавным всё.": "ru159",
+    "А [English pronunciation] transition [Русское произношение] пишут не в правило с [English pronunciation] hover [Русское произношение], а в правило самой кнопки.": "ru160",
+    "Ура! Теперь твои кнопки плавные. На следующем уроке ещё интереснее: вещи на странице будут двигаться сами, без мышки. Это называется анимация. До встречи!": "ru161",
+    "Вау, классно!": "ru162",
+    "Есть! Получилось!": "ru163",
+    "Супер!": "ru164",
+    "Огонь!": "ru165",
+    "Ура!": "ru166",
+    "Вот это да!": "ru167",
+    "Попробуй ещё раз.": "ru168",
+    "Посмотри внимательно.": "ru169",
+    "Уже близко. Не спеши.": "ru170",
+    "Готов? Нажми кнопку!": "ru171",
+    "Рекорд: 120 очков.": "ru172",
+    "Как изменится?": "ru173",
+    "Как изменится кнопка?": "ru174",
+    "Какое свойство?": "ru175",
+    "Какой [English pronunciation] transition [Русское произношение]?": "ru176",
+    "Какой [English pronunciation] transition [Русское произношение] сделает это изменение плавным?": "ru177",
+    "Что поменять?": "ru178",
+    "Что для этого нужно?": "ru179",
+    "Верно или нет?": "ru180",
+    "Верно или неверно?": "ru181",
+    "Привет, мир!": "ru182",
+    "Здесь нужны только слова, без угловых скобок.": "ru183",
+    "Молодец!": "ru184",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru185",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru186",
+  },
+  en: {
+    "Hi! Remember how we brought the button to life last lesson? Now it grows and turns orange under the mouse. But look: it jumps all at once, as if a frame went missing. On real sites a button changes smoothly. Tap Transform.": "en001",
+    "There! Now the button grows and changes color gradually, not all at once. And when the mouse leaves, it goes back just as smoothly.": "en002",
+    "transition did it, meaning a smooth change. Look at the bar at the bottom: it shows how long the change takes.": "en003",
+    "Today you’ll learn to make buttons smooth. But first, a riddle. The first time, I put transition inside the hover rule. I think it makes no difference: the button will still be smooth both ways. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the button and the bar below: the bar shows how many seconds the change takes.": "en005",
+    "transition makes a change smooth. It says two things: which property and how many seconds. Less time means faster.": "en006",
+    "Compare a room light snapping on with one that fades up slowly. transition is like the light that fades up.": "en007",
+    "A transition rule says two things: which property changes smoothly and how many seconds it takes. Let’s see.": "en008",
+    "Right now there’s no transition. The button jumps at once, and the bar shows zero seconds: the change was instant.": "en009",
+    "transform one second: growing now takes one second. Slow and smooth. The letter s means seconds.": "en010",
+    "Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this. And half a second is written as zero point five with the letter s.": "en011",
+    "So transition makes a change smooth: first you write the property, then the time.": "en012",
+    "Now it’s your turn. Make the button grow smoothly in half a second: type the time after transform.": "en013",
+    "Type the time.": "en014",
+    "There’s a comma in the number. CSS writes decimals with a dot.": "en015",
+    "There’s a number but no unit. Add the letter s for seconds.": "en016",
+    "The browser didn’t recognize that time. Write a number and the letter s.": "en017",
+    "That’s a different time. We need half a second.": "en018",
+    "Half a second is zero point five.": "en019",
+    "A number with a dot, and the letter s at the end.": "en020",
+    "Type zero, dot, five and s, then tap Check.": "en021",
+    "Awesome! The button grows smoothly in half a second. Look at the bar.": "en022",
+    "Now check yourself. I’ll show a rule, and you pick how the button will change: at once, fast or slow.": "en023",
+    "Look at the time: seconds or milliseconds?": "en024",
+    "Zero is at once, under a second is fast, a few seconds is slow. A thousand milliseconds is one second.": "en025",
+    "Three seconds is slow.": "en026",
+    "A fifth of a second is fast.": "en027",
+    "Zero seconds means the change is instant.": "en028",
+    "Two thousand milliseconds is two seconds, so it’s slow.": "en029",
+    "Exactly!": "en030",
+    "All correct! You can tell the speed from the time.": "en031",
+    "Look at the button’s size and color: which changes smoothly, and which changes at once?": "en032",
+    "transition only smooths the property you write. If you need everything, you write all.": "en033",
+    "If you smoothly change only the volume on a remote, the channel still switches at once. In transition, only what you name is smooth.": "en034",
+    "Under the mouse, two things change on the button: its size and its color. transition only smooths the property you write. Let’s see.": "en035",
+    "transform one second: the growing is smooth, but the color jumps at once. Because color isn’t written.": "en036",
+    "Now background-color one second: the color is smooth, but the growing is instant.": "en037",
+    "all one second: all means everything. Now both the size and the color change smoothly.": "en038",
+    "So whichever property you write in transition becomes smooth. If you need everything, you write all.": "en039",
+    "Your turn. Under the mouse, the button’s background changes. Make the background color change smoothly: type that property’s name.": "en040",
+    "Type the property name.": "en041",
+    "all would make the color smooth too, along with everything else. Here, type just the name of the background color property: look at the hover rule.": "en042",
+    "color is the text color. What’s changing is the background.": "en043",
+    "transform isn’t changing here. Look at the hover rule.": "en044",
+    "orange is a value. We need the property name.": "en045",
+    "The browser doesn’t know that property. Check the spelling.": "en046",
+    "That’s a different property. The background color is changing.": "en047",
+    "Which property changes in the hover rule?": "en048",
+    "It says background-color there.": "en049",
+    "Type background-color and tap Check.": "en050",
+    "Great! Now the color changes smoothly in half a second.": "en051",
+    "Now check yourself. I’ll show a hover rule, and you pick the transition that makes it smooth.": "en052",
+    "transition must have the same property name. Not the value, the name.": "en053",
+    "transform is changing, so transition needs transform too.": "en054",
+    "The text color, that is color, is changing.": "en055",
+    "gold is a value. transition needs the property name: background-color.": "en056",
+    "All correct! You know exactly what to make smooth.": "en057",
+    "Look at the bar: does it fill at the same speed, or slow first and then fast?": "en058",
+    "Time is written in seconds or milliseconds: a thousand milliseconds is one second. linear gives an even speed, ease is slow at the start and end.": "en059",
+    "A car starts slowly, speeds up and slows before stopping. That’s ease. An escalator moves evenly. That’s linear.": "en060",
+    "You can write the time another way, and you can pick the speed too. Let’s see. Right now it’s half a second.": "en061",
+    "Five hundred milliseconds is the same half a second. A millisecond is a thousandth of a second. The button changes just like before.": "en062",
+    "Now the button slides right over two seconds. linear means even: the speed is the same from start to end. The bar fills evenly too.": "en063",
+    "ease is different: slow at first, fast in the middle, slow again at the end. Like a car starting off and then stopping. If you write nothing, the browser uses ease by itself.": "en064",
+    "So time is written in seconds or milliseconds, and the speed is chosen with linear or ease.": "en065",
+    "Your turn. Make the button change in one second, but write the time in milliseconds. How many milliseconds are in a second?": "en066",
+    "There’s a number but no unit. Milliseconds are written ms.": "en067",
+    "Right, that’s one second! But the task is to write it in milliseconds.": "en068",
+    "The browser didn’t recognize that time. Write a number and ms.": "en069",
+    "That’s a different time. We need one second.": "en070",
+    "Milli means thousand: a second has a thousand milliseconds.": "en071",
+    "The number one thousand and the letters ms.": "en072",
+    "Type one, three zeros and ms, then tap Check.": "en073",
+    "Well done! A thousand milliseconds is one second.": "en074",
+    "Now check yourself. The button has transform two seconds. I’ll say a task, and you pick what to write.": "en075",
+    "What’s the task about: time, a property or speed?": "en076",
+    "Less time is faster. linear keeps the speed the same. all makes everything smooth.": "en077",
+    "The button should change faster.": "en078",
+    "The less time, the faster the change.": "en079",
+    "Only the background color should be smooth.": "en080",
+    "The background color property is background-color.": "en081",
+    "The speed should be the same from start to end.": "en082",
+    "linear is an even speed.": "en083",
+    "All changes should be smooth.": "en084",
+    "all means everything.": "en085",
+    "All correct! You can tune transition just the way you need.": "en086",
+    "Each time, look at the code: does the time have s, a dot or a comma, is the property name right? Then the bar: is it zero seconds?": "en087",
+    "Time needs s or ms, decimals use a dot, and the property name must be right letter for letter.": "en088",
+    "Tell a timer just five and it won’t know if that’s seconds or minutes. CSS also needs the unit spelled out.": "en089",
+    "transition has mistakes too. Let’s look at three. Right now everything is correct: half a second, smooth.": "en090",
+    "The first: there’s no s after the number. The browser threw the rule away, and the button jumps again.": "en091",
+    "The second: a comma instead of a dot. Some of us write decimals with a comma, but CSS only understands a dot.": "en092",
+    "The third is sneakier: letters in the word transform are swapped. The browser doesn’t call the rule a mistake, but there’s no such property, so nothing becomes smooth.": "en093",
+    "So time needs s or ms, decimals use a dot, and the property name must be right letter for letter.": "en094",
+    "Oops, I wanted the button to change smoothly in half a second, but it jumps! My value is in the field. Find the mistake and fix it.": "en095",
+    "Type the value.": "en096",
+    "There’s still a comma in the number. Change it to a dot.": "en097",
+    "The time needs the letter s.": "en098",
+    "The property name broke. Write transform.": "en099",
+    "The browser didn’t recognize that value. Check the property and the time.": "en100",
+    "That’s a different value. Just change the comma to a dot.": "en101",
+    "Look at the middle of the number.": "en102",
+    "In CSS decimals use a dot, not a comma.": "en103",
+    "Type transform, space, zero, dot, five and s, then tap Check.": "en104",
+    "Hooray, it works! The button is smooth again.": "en105",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the bar, then tap that rule.": "en106",
+    "Great, the first one is found! Now something else broke. Which rule doesn’t work?": "en107",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en108",
+    "Found it! The time had no s.": "en109",
+    "Found it! The letters in transform were swapped.": "en110",
+    "Look at the bar: does the button change smoothly?": "en111",
+    "The bar shows zero seconds. Check the time in the transition line.": "en112",
+    "The bar shows zero seconds. Check the property name in the transition line.": "en113",
+    "The bug is in the second rule: the time has no s. Tap that line.": "en114",
+    "The bug is in the third rule: transfrom. Tap that line.": "en115",
+    "Super! Both found. You check smooth effects like a real developer.": "en116",
+    "Now write the whole rule yourself. The hover rule is ready. Write a rule for the button itself: make transform change smoothly in zero point three seconds.": "en117",
+    "Write the rule: first the selector, then the property and value inside curly braces.": "en118",
+    "The rule needs curly braces: an opening one and a closing one.": "en119",
+    "There’s no colon between the property and the value.": "en120",
+    "We put transition in the button’s own rule, without hover. You’ll see why at the end of the lesson.": "en121",
+    "The selector: a dot and the button’s class.": "en122",
+    "The transition property makes the change smooth.": "en123",
+    "There’s a comma in the number. Decimals use a dot.": "en124",
+    "Check the property name: transform.": "en125",
+    "transform changes on hover, so transition needs transform too.": "en126",
+    "The time is different. We need zero point three seconds.": "en127",
+    "all would work too, but here we asked for transform: write it.": "en128",
+    "The selector is the button’s class, the property is transition, the value is transform and the time.": "en129",
+    "Selector: dot tugma; value: transform, space, zero point three s.": "en130",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en131",
+    "Great! The button grows and goes back smoothly. You wrote the whole rule yourself.": "en132",
+    "Now make your own button. Choose what changes under the mouse, how long it takes and the speed. Then tap Done.": "en133",
+    "There’s a comma in the time. Decimals use a dot.": "en134",
+    "The time needs s or ms.": "en135",
+    "With zero seconds the change is instant. Write a time greater than zero.": "en136",
+    "That’s too long: you’d get tired waiting for the button. Write less than five seconds.": "en137",
+    "In CSS a decimal uses a dot, not a comma: one point three.": "en138",
+    "One value in each field.": "en139",
+    "In the first, scale, rotate or translate with brackets and a number; in the second, a time with s or ms; in the third, linear or ease.": "en140",
+    "For example: scale one point three, zero point four seconds and ease. Then tap Done.": "en141",
+    "Wow, how smooth! This is your very own button.": "en142",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en143",
+    "What’s the sentence about: time, spelling or where the rule goes?": "en144",
+    "Remember: transition makes things smooth, a thousand milliseconds is one second, and decimals use a dot.": "en145",
+    "transition makes a change smooth.": "en146",
+    "Right: transition means a smooth change.": "en147",
+    "Five hundred milliseconds and half a second are the same time.": "en148",
+    "Right: a second has a thousand milliseconds.": "en149",
+    "This rule works.": "en150",
+    "Actually the browser throws the rule away because of the comma.": "en151",
+    "This rule makes the button’s growth smooth.": "en152",
+    "Actually transfrom is a typo: there’s no such property, so nothing becomes smooth. It should be transform.": "en153",
+    "All correct! You know transition really well.": "en154",
+    "Back to our riddle. Remember, I put transition inside the hover rule? Look: the button grows smoothly, but when the mouse leaves, it jumps back at once! I was wrong. As soon as the mouse leaves, the hover rule switches off, and transition goes with it.": "en155",
+    "Move transition into the button’s own rule, and it’s always there. Now it’s smooth both ways. There!": "en156",
+    "Look, this is your smooth button!": "en157",
+    "Time is written in seconds or milliseconds.": "en158",
+    "The property you write becomes smooth, and all makes everything smooth.": "en159",
+    "And transition goes in the button’s own rule, not in the hover rule.": "en160",
+    "Hooray! Now your buttons are smooth. Next lesson is even more fun: things on the page will move by themselves, without the mouse. That’s called animation. See you!": "en161",
+    "Wow, awesome!": "en162",
+    "Yes! You did it!": "en163",
+    "Super!": "en164",
+    "Brilliant!": "en165",
+    "Hooray!": "en166",
+    "Amazing!": "en167",
+    "Try once more.": "en168",
+    "Take a closer look.": "en169",
+    "You are close. No rush.": "en170",
+    "Ready? Press the button!": "en171",
+    "Record: 120 points.": "en172",
+    "How will it change?": "en173",
+    "How will the button change?": "en174",
+    "Which property?": "en175",
+    "Which transition?": "en176",
+    "Which transition makes this change smooth?": "en177",
+    "What to change?": "en178",
+    "What does this need?": "en179",
+    "True or false?": "en180",
+    "Hello, world!": "en181",
+    "Only words here, no angle brackets.": "en182",
+    "Well done!": "en183",
+    "Everything in the window lives inside body.": "en184",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en185",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

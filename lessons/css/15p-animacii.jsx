@@ -36,12 +36,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -53,6 +50,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -934,643 +932,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3768,6 +3317,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3805,8 +3355,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3875,7 +3425,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3889,6 +3439,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3903,7 +3454,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8074,15 +7625,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13889,3 +13433,585 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 94, ru 94, en 94; всего знаков 32156. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening kosmik saytim. Qarang: raketa o'zi tepaga-pastga uchib turibdi, hech qanday sichqonchasiz. Bu animatsiya. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! CSS kodi o'chib ketdi. Raketa qotib qoldi, varaqlar esa o'chdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmlar va matnlar joyida turibdi, faqat harakat yo'qoldi. O'tgan darsda animatsiyani o'rgandik: keyframes harakat rejasini yozadi, animation esa uni ishga tushiradi. Endi beshta sahifani birma-bir jonlantiramiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi sahifa: raketa. Parvoz rejasi tayyor, animation ham bor, lekin raketa bir marta uchadi-yu, to'xtab qoladi. Raketa to'xtamasdan uchsin: qoidadagi takrorlar sonini almashtiring.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Raketa endi to'xtamasdan uchyapti. Birinchi sahifa jonlandi!", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidaga qarang: vaqtdan keyin bir soni turibdi. U nimani aytadi?", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu son necha marta takrorlanishini aytadi. To'xtamasdan uchish uchun infinite kerak, ya'ni cheksiz degani.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: kubik cheksiz sakraydi. Xuddi shunday, bir o'rniga infinite yozing va Tekshirishni bosing.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa uchyapti! Endi yulduzlar sahifasi. Yulduzlarda animation bor, lekin ular qimirlamaydi. Rejaga qarang: boshida ham, oxirida ham yulduz bir xil, o'rtadagi kadr esa bo'm-bo'sh. Yulduz o'rtada kattalashsin: o'rtadagi kadrga yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Yulduzlar miltillab turibdi: kattalashadi va yana kichrayadi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ellik foizli kadr bu animatsiyaning o'rtasi. U yerda yulduz qanday bo'lsin?", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'lchamni transform va scale o'zgartiradi. Birdan katta son kattalashtiradi, masalan bir butun o'ndan besh.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: o'rtadagi kadrda kubik buriladi. Xuddi shunday yozing, faqat scale bilan.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rtadagi kadr hali bo'sh, yulduz o'zgarmaydi. Uning qavslari ichiga transform yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa jonlandi! Uchinchisi: sayyoralar. Aylanish rejasi tayyor, lekin uni hech kim ishga tushirmagan. Sayyora tekis va to'xtamasdan aylansin, bir aylanish to'rt soniyada: qoidani boshidan oxirigacha o'zingiz yozing. Sayyoraning klassi [English pronunciation] HTML [O'zbekcha tallaffuz] kodda ko'rinib turibdi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, aylanyapti! Xuddi haqiqiy sayyoradek, tekis va to'xtamasdan.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] animation qiymatida to'rtta narsa bor: rejaning nomi, vaqt, tezlik va necha marta.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor nuqta va sayyora so'zi. Qiymat esa aylan, to'rt soniya, linear va infinite.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: kubik ikki soniyada tekis aylanadi. Xuddi shunday, sayyora uchun to'rt soniya bilan yozing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: koinotdan kelgan signallar. Antenna ham, yo'ldosh ham aylanishi kerak edi, lekin men kodni shoshib yozdim va ikkita joy buzildi. Shuning uchun ikkalasi ham qimirlamaydi. Ikkala buzilgan joyni toping va tuzating.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu ish! Antenna ham, yo'ldosh ham aylanyapti. Signal keldi!", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir qoidani rejaga solishtiring: nom bir xilmi, vaqt yozilganmi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qoidada nomdagi harflar almashib qolgan: reja aylan deb nomlangan. Ikkinchisida vaqt yo'q.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: nomi va vaqti joyida turgan ikkita qoida. Xuddi shunday tuzating va Tekshirishni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta sahifa jonlandi! Oxirgisi sizniki. Uchar likopchangiz uchun o'z animatsiyangizni yarating. Rejaning boshi tayyor: to kadriga likopcha qayerga uchishini yozing, keyin rejani animation bilan ishga tushiring. Vaqtni va necha marta takrorlanishini o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Uchar likopchangiz o'zi uchyapti. Bu sizning animatsiyangiz!", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita bo'sh joy bor: to kadri va likopchaning qoidasi. Oldin kadrni to'ldiring.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] to kadriga masalan transform va translateX yozing. Likopcha qoidasiga esa animation yozing: sayohat, vaqt va takrorlar.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: kubikning sakrash animatsiyasi. O'zingizga yoqqanini yozing.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Koinotning beshta sahifasi ham yana harakatda! Raketa, yulduzlar va sayyoralar o'zi qimirlaydi, chunki animatsiya kodini siz yozdingiz.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] keyframes bilan harakat rejasini yozasiz: boshi, o'rtasi va oxiri.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] animation shu rejani nom va vaqt bilan ishga tushiradi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] infinite yoki son necha marta takrorlanishini aytadi, linear esa tezlikni tekis qiladi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buzilgan joylarni ham topasiz: nomdagi almashgan harflarni, yozilmagan vaqtni va foiz belgisisiz kadrni.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyingi darsda saytni telefonga moslashni o'rganamiz: u katta ekranda ham, kichik ekranda ham chiroyli bo'ladi. Ko'rishguncha!", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. CSS kodini shu yerga yozing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa qotib qoldi: animation qoidasidagi nom rejaning nomi bilan bir xil bo'lishi kerak. Reja parvoz deb nomlangan.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yo'qolib qoldi: usiz animatsiya nol soniya davom etadi. Ikki soniyani qaytaring.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa hali to'xtab qolyapti. Cheksiz uchishi uchun takrorlar soni o'rniga infinite yozing.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa hali uch marta uchmayapti. Takrorlar soni o'rniga uch raqamini yozing.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reja topilmadi: keyframes so'zidan keyin miltilla nomi turishi kerak.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rtadagi kadr yo'qolib qoldi. O'rtasi bu ellik foiz, foiz belgisi ham kerak.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduz o'rtada kattalashmayapti. scale ichiga birdan katta son yozing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduz hali tepaga sakramayapti. Tepaga translateY olib chiqadi, son esa minus bilan, masalan minus yigirma piksel.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayyora hali turibdi: unda animation yo'q.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday reja yo'q. Tepadagi rejaning nomi aylan, uni harfma-harf yozing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yozilmagan: usiz animatsiya nol soniya davom etadi.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aylanyapti, lekin vaqt boshqa. Bir aylanish to'rt soniya bo'lsin.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayyora aylanadi-yu, to'xtab qoladi. To'xtamasligi uchun infinite yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aylanyapti, lekin har aylanishda sekinlashib qoladi. Tekis aylanishi uchun linear qo'shing.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayyora hali ikki marta, bir soniyadan aylanmayapti. Vaqt bir soniya, takrorlar soni esa ikki bo'lsin.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Antenna hali turibdi: brauzer bunday nomli rejani topmadi. Nomni rejadagidek, harfma-harf yozing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yo'ldosh hali turibdi: vaqt yozilmagan, animatsiya nol soniya davom etadi. Vaqt qo'shing.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer o'rtadagi kadrni hali tashlab yuboryapti. Ellik sonidan keyin foiz belgisi kerak.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reja yo'q: keyframes bilan harakat rejasini yozing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] to kadri bo'sh: likopcha oxirida qayerda bo'lishini yozing, masalan translateX bilan.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reja bor, lekin uni hech kim ishga tushirmagan. Likopcha qoidasiga animation yozing.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Likopcha turibdi: animation qoidasidagi nom rejaning nomi bilan harfma-harf bir xil bo'lishi kerak.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yo'q: usiz animatsiya nol soniya davom etadi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Likopcha bir marta uchadi-yu, to'xtaydi. Takrorlar sonini yoki infinite yozing.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshi va oxiri bir xil, likopcha joyidan qimirlamaydi. to kadriga boshqa qiymat yozing.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduzlar sari uchdik!", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Start yaqinda!", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir tilak tilang!", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizga koinotdan yozishyapti!", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Likopcham yulduzlar sari uchadi!", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это мой космический сайт. Смотри: ракета сама летает вверх-вниз, безо всякой мышки. Это анимация. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS-код стёрся. Ракета замерла, а вкладки погасли.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинки и тексты на месте, пропало только движение. На прошлом уроке мы разобрали анимацию: keyframes записывает план движения, а animation его запускает. Теперь оживим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая страница: ракета. План полёта готов, animation тоже есть, но ракета взлетает один раз и останавливается. Пусть она летает без остановки: замени в правиле число повторов.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь ракета летает без остановки. Первая страница ожила!", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на правило: после времени стоит единица. Что она говорит?", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это число говорит, сколько раз повторить. Чтобы без остановки, нужен infinite, то есть бесконечно.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом: кубик прыгает без конца. Так же замени единицу на infinite и нажми Проверить.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета летает! Теперь страница звёзд. У звёзд есть animation, но они не двигаются. Посмотри на план: в начале и в конце звезда одинаковая, а кадр посередине пустой. Пусть в середине звезда вырастет: впиши это в средний кадр.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Звёзды мерцают: растут и снова уменьшаются.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кадр пятьдесят процентов, это середина анимации. Какой там должна быть звезда?", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Размер меняет transform со scale. Число больше единицы увеличивает, например одна целая пять десятых.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом: в среднем кадре кубик поворачивается. Напиши так же, только со scale.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Средний кадр пока пустой, звезда не меняется. Впиши в его скобки transform.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы ожили! Третья: планеты. План вращения готов, но его никто не запустил. Пусть планета крутится ровно и без остановки, один оборот за четыре секунды: напиши правило целиком. Класс планеты виден в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, крутится! Как настоящая планета: ровно и без остановки.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В значении animation четыре вещи: имя плана, время, скорость и сколько раз.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка и слово sayyora. Значение: aylan, четыре секунды, linear и infinite.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом: кубик ровно крутится за две секунды. Напиши так же для планеты, с четырьмя секундами.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: сигналы из космоса. И антенна, и спутник должны крутиться, но я писал код в спешке, и в нём две поломки. Поэтому оба стоят. Найди и почини обе поломки.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! И антенна, и спутник крутятся. Сигнал пошёл!", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни каждое правило с планом: имя совпадает, время написано?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первом правиле в имени переставлены буквы: план называется aylan. Во втором нет времени.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, два правила, где имя и время на месте. Почини так же и нажми Проверить.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре страницы ожили! Последняя, твоя. Сделай свою анимацию для летающей тарелки. Начало плана готово: в кадр to напиши, куда летит тарелка, а потом запусти план через animation. Время и число повторов выбери сам. Под окном видно, что уже готово.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Твоя тарелка летает сама. Это твоя анимация!", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть два пустых места: кадр to и правило тарелки. Сначала заполни кадр.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В кадр to напиши, например, transform с translateX. А в правило тарелки, animation: sayohat, время и повторы.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, анимация прыжка кубика. Напиши то, что нравится тебе.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять страниц космоса снова в движении! Ракета, звёзды и планеты двигаются сами, потому что код анимации написан тобой.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С keyframes ты пишешь план движения: начало, середину и конец.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] animation запускает этот план по имени и со временем.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] infinite или число говорят, сколько раз повторить, а linear делает скорость ровной.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И находишь поломки: переставленные буквы в имени, забытое время и кадр без знака процента.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] На следующем уроке научимся подстраивать сайт под телефон: он будет красивым и на большом экране, и на маленьком. До встречи!", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши CSS-код здесь.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужна открывающая фигурная скобка: она стоит после селектора.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило не закрыто: в конце поставь закрывающую фигурную скобку.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед скобкой нет селектора: напиши, что оформляем.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто: впиши нужное в рамку.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только значение: имя свойства уже стоит слева.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только селектор: скобки и остальной код уже на месте.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только свойство и значение: селектор и скобки уже на месте.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код работает, но страница пока не такая, как нужно. Перечитай задание.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета замерла: имя в animation должно совпадать с именем плана. План называется parvoz.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пропало время: без него анимация длится ноль секунд. Верни две секунды.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета всё ещё останавливается. Чтобы она летала без конца, вместо числа повторов напиши infinite.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета пока взлетает не три раза. Вместо числа повторов напиши тройку.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] План не найден: после keyframes должно стоять имя miltilla.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кадр посередине пропал. Середина, это пятьдесят процентов, и знак процента нужен.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Звезда в середине не растёт. Внутри scale напиши число больше единицы.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Звезда пока не подпрыгивает. Вверх поднимает translateY с минусом, например минус двадцать пикселей.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Планета пока стоит: у неё нет animation.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого плана нет. План сверху называется aylan, напиши его буква в букву.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не написано время: без него анимация длится ноль секунд.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Крутится, но время другое. Пусть один оборот длится четыре секунды.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Планета крутится и останавливается. Чтобы не останавливалась, допиши infinite.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Крутится, но на каждом обороте притормаживает. Для ровного вращения допиши linear.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Планета пока не делает два оборота по секунде. Время, одна секунда, число повторов, два.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Антенна всё ещё стоит: браузер не нашёл план с таким именем. Напиши имя как в плане, буква в букву.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спутник всё ещё стоит: не написано время, анимация длится ноль секунд. Добавь время.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер всё ещё выбрасывает средний кадр. После числа пятьдесят нужен знак процента.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плана нет: напиши план движения с keyframes.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кадр to пустой: напиши, где тарелка будет в конце, например через translateX.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] План есть, но его никто не запустил. Напиши animation в правило тарелки.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тарелка стоит: имя в animation должно совпадать с именем плана буква в букву.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет времени: без него анимация длится ноль секунд.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тарелка пролетит один раз и остановится. Допиши число повторов или infinite.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начало и конец одинаковые, тарелка не двигается с места. Напиши в кадр to другое значение.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Летим к звёздам!", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скоро старт!", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Загадай желание!", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нам пишут из космоса!", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Моя тарелка летит к звёздам!", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my space website. Look: the rocket flies up and down by itself, without any mouse. That’s animation. The site has five pages. I’m about to update it, tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The CSS code got erased. The rocket froze, and the tabs went dark.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The pictures and texts are fine, only the movement is gone. Last lesson we learned animation: keyframes writes the movement plan, and animation starts it. Now let’s bring the five pages to life one by one, and you’ll write the code. The fifth page will be yours.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first page is the rocket. The flight plan is ready and there’s animation too, but the rocket flies once and stops. Make it fly without stopping: change the number of repeats in the rule.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The rocket flies nonstop now. The first page is alive!", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the rule: there’s a one after the time. What does it say?", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That number says how many times to repeat. For nonstop you need infinite, meaning endlessly.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code: a cube jumps endlessly. The same way, replace the one with infinite and tap Check.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket flies! Now the stars page. The stars have animation, but they don’t move. Look at the plan: the star is the same at the start and the end, and the middle frame is empty. Make the star grow in the middle: write it in the middle frame.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The stars twinkle: they grow and shrink again.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The fifty percent frame is the middle of the animation. What should the star be like there?", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform with scale changes the size. A number above one makes it bigger, for example one point five.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code: the cube turns in the middle frame. Write the same, only with scale.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The middle frame is still empty, so the star doesn’t change. Write transform inside its braces.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are alive! The third is planets. The spinning plan is ready, but nothing starts it. Make the planet spin evenly and nonstop, one turn every four seconds: write the whole rule yourself. The planet’s class is shown in the H T M L code.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, it spins! Just like a real planet: evenly and nonstop.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The animation value has four things: the plan’s name, the time, the speed and how many times.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is a dot and the word sayyora. The value is aylan, four seconds, linear and infinite.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code: a cube spins evenly in two seconds. Write the same for the planet, with four seconds.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is signals from space. Both the antenna and the satellite should spin, but I wrote the code in a hurry, and it has two broken spots. That’s why both stand still. Find and fix both.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! Both the antenna and the satellite spin. The signal is coming in!", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare each rule with the plan: does the name match, is the time written?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the first rule, letters in the name are swapped: the plan is called aylan. The second has no time.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has two rules with the name and time in place. Fix yours the same way and tap Check.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four pages are alive! The last one is yours. Make your own animation for the flying saucer. The start of the plan is ready: in the to frame, write where the saucer flies, then start the plan with animation. Choose the time and the number of repeats yourself. Under the window you can see what’s done.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your saucer flies by itself. That’s your animation!", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are two empty spots: the to frame and the saucer’s rule. Fill in the frame first.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the to frame write, for example, transform with translateX. And in the saucer’s rule write animation: sayohat, a time and repeats.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code is a cube’s jump animation. Write what you like.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five space pages are moving again! The rocket, stars and planets move by themselves, because you wrote the animation code.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With keyframes you write the movement plan: the start, the middle and the end.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] animation starts that plan by name, with a time.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] infinite or a number says how many times to repeat, and linear makes the speed even.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And you find broken spots: swapped letters in a name, a missing time and a frame without a percent sign.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Next lesson we’ll learn to fit a site to a phone: it will look good on big and small screens alike. See you!", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the CSS code here.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs an opening curly brace: it goes after the selector.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule isn’t closed: put a closing curly brace at the end.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an extra closing brace. Each opening brace gets one closing brace.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no selector before the brace: write what we’re styling.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no semicolon between two properties. Put one after every value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far: type what’s needed into the box.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the value goes in the box: the property name is already on the left.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the selector goes in the box: the braces and the rest are already there.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the property and value go in the box: the selector and braces are already there.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code works, but the page isn’t quite right yet. Read the task again.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket froze: the name in animation must match the plan’s name. The plan is called parvoz.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time is gone: without it the animation lasts zero seconds. Put the two seconds back.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket still stops. To make it fly endlessly, write infinite instead of the number of repeats.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket doesn’t fly three times yet. Write a three as the number of repeats.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The plan wasn’t found: the name miltilla must come after keyframes.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The middle frame is gone. The middle is fifty percent, and the percent sign is needed.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The star doesn’t grow in the middle. Write a number bigger than one inside scale.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The star doesn’t jump yet. translateY with a minus lifts it up, for example minus twenty pixels.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The planet is still: it has no animation.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such plan. The plan above is called aylan; write it letter for letter.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No time is written: without it the animation lasts zero seconds.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It spins, but the time is different. One turn should take four seconds.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The planet spins and then stops. To keep it going, add infinite.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It spins, but slows down on every turn. Add linear for even spinning.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The planet doesn’t do two one-second turns yet. The time is one second, the number of repeats two.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The antenna still stands: the browser found no plan with that name. Write the name exactly as in the plan.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The satellite still stands: no time is written, so the animation lasts zero seconds. Add a time.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser still throws the middle frame away. The number fifty needs a percent sign.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no plan: write a movement plan with keyframes.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The to frame is empty: write where the saucer ends up, for example with translateX.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a plan, but nothing starts it. Write animation in the saucer’s rule.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The saucer stands still: the name in animation must match the plan’s name letter for letter.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no time: without it the animation lasts zero seconds.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The saucer flies once and stops. Add a number of repeats or infinite.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The start and end are the same, so the saucer doesn’t move. Write a different value in the to frame.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Off to the stars!", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Launch is coming soon!", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Make a wish!", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Space is writing to us!", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My saucer flies to the stars!", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening kosmik saytim. Qarang: raketa o'zi tepaga-pastga uchib turibdi, hech qanday sichqonchasiz. Bu animatsiya. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.": "uz001",
+    "Voy! CSS kodi o'chib ketdi. Raketa qotib qoldi, varaqlar esa o'chdi.": "uz002",
+    "Rasmlar va matnlar joyida turibdi, faqat harakat yo'qoldi. O'tgan darsda animatsiyani o'rgandik: keyframes harakat rejasini yozadi, animation esa uni ishga tushiradi. Endi beshta sahifani birma-bir jonlantiramiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.": "uz003",
+    "Birinchi sahifa: raketa. Parvoz rejasi tayyor, animation ham bor, lekin raketa bir marta uchadi-yu, to'xtab qoladi. Raketa to'xtamasdan uchsin: qoidadagi takrorlar sonini almashtiring.": "uz004",
+    "Zo'r! Raketa endi to'xtamasdan uchyapti. Birinchi sahifa jonlandi!": "uz005",
+    "Qoidaga qarang: vaqtdan keyin bir soni turibdi. U nimani aytadi?": "uz006",
+    "Bu son necha marta takrorlanishini aytadi. To'xtamasdan uchish uchun infinite kerak, ya'ni cheksiz degani.": "uz007",
+    "Namuna kod ostida: kubik cheksiz sakraydi. Xuddi shunday, bir o'rniga infinite yozing va Tekshirishni bosing.": "uz008",
+    "Raketa uchyapti! Endi yulduzlar sahifasi. Yulduzlarda animation bor, lekin ular qimirlamaydi. Rejaga qarang: boshida ham, oxirida ham yulduz bir xil, o'rtadagi kadr esa bo'm-bo'sh. Yulduz o'rtada kattalashsin: o'rtadagi kadrga yozing.": "uz009",
+    "Ajoyib! Yulduzlar miltillab turibdi: kattalashadi va yana kichrayadi.": "uz010",
+    "Ellik foizli kadr bu animatsiyaning o'rtasi. U yerda yulduz qanday bo'lsin?": "uz011",
+    "O'lchamni transform va scale o'zgartiradi. Birdan katta son kattalashtiradi, masalan bir butun o'ndan besh.": "uz012",
+    "Namuna kod ostida: o'rtadagi kadrda kubik buriladi. Xuddi shunday yozing, faqat scale bilan.": "uz013",
+    "O'rtadagi kadr hali bo'sh, yulduz o'zgarmaydi. Uning qavslari ichiga transform yozing.": "uz014",
+    "Ikkita sahifa jonlandi! Uchinchisi: sayyoralar. Aylanish rejasi tayyor, lekin uni hech kim ishga tushirmagan. Sayyora tekis va to'xtamasdan aylansin, bir aylanish to'rt soniyada: qoidani boshidan oxirigacha o'zingiz yozing. Sayyoraning klassi [English pronunciation] HTML [O'zbekcha tallaffuz] kodda ko'rinib turibdi.": "uz015",
+    "Voy, aylanyapti! Xuddi haqiqiy sayyoradek, tekis va to'xtamasdan.": "uz016",
+    "animation qiymatida to'rtta narsa bor: rejaning nomi, vaqt, tezlik va necha marta.": "uz017",
+    "Selektor nuqta va sayyora so'zi. Qiymat esa aylan, to'rt soniya, linear va infinite.": "uz018",
+    "Namuna kod ostida: kubik ikki soniyada tekis aylanadi. Xuddi shunday, sayyora uchun to'rt soniya bilan yozing.": "uz019",
+    "Uchta sahifa tayyor! To'rtinchisi: koinotdan kelgan signallar. Antenna ham, yo'ldosh ham aylanishi kerak edi, lekin men kodni shoshib yozdim va ikkita joy buzildi. Shuning uchun ikkalasi ham qimirlamaydi. Ikkala buzilgan joyni toping va tuzating.": "uz020",
+    "Mana bu ish! Antenna ham, yo'ldosh ham aylanyapti. Signal keldi!": "uz021",
+    "Har bir qoidani rejaga solishtiring: nom bir xilmi, vaqt yozilganmi?": "uz022",
+    "Birinchi qoidada nomdagi harflar almashib qolgan: reja aylan deb nomlangan. Ikkinchisida vaqt yo'q.": "uz023",
+    "Namuna kod ostida: nomi va vaqti joyida turgan ikkita qoida. Xuddi shunday tuzating va Tekshirishni bosing.": "uz024",
+    "To'rtta sahifa jonlandi! Oxirgisi sizniki. Uchar likopchangiz uchun o'z animatsiyangizni yarating. Rejaning boshi tayyor: to kadriga likopcha qayerga uchishini yozing, keyin rejani animation bilan ishga tushiring. Vaqtni va necha marta takrorlanishini o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.": "uz025",
+    "Ura! Uchar likopchangiz o'zi uchyapti. Bu sizning animatsiyangiz!": "uz026",
+    "Ikkita bo'sh joy bor: to kadri va likopchaning qoidasi. Oldin kadrni to'ldiring.": "uz027",
+    "to kadriga masalan transform va translateX yozing. Likopcha qoidasiga esa animation yozing: sayohat, vaqt va takrorlar.": "uz028",
+    "Namuna kod ostida: kubikning sakrash animatsiyasi. O'zingizga yoqqanini yozing.": "uz029",
+    "Koinotning beshta sahifasi ham yana harakatda! Raketa, yulduzlar va sayyoralar o'zi qimirlaydi, chunki animatsiya kodini siz yozdingiz.": "uz030",
+    "keyframes bilan harakat rejasini yozasiz: boshi, o'rtasi va oxiri.": "uz031",
+    "animation shu rejani nom va vaqt bilan ishga tushiradi.": "uz032",
+    "infinite yoki son necha marta takrorlanishini aytadi, linear esa tezlikni tekis qiladi.": "uz033",
+    "Buzilgan joylarni ham topasiz: nomdagi almashgan harflarni, yozilmagan vaqtni va foiz belgisisiz kadrni.": "uz034",
+    "Keyingi darsda saytni telefonga moslashni o'rganamiz: u katta ekranda ham, kichik ekranda ham chiroyli bo'ladi. Ko'rishguncha!": "uz035",
+    "Hozircha bo'sh. CSS kodini shu yerga yozing.": "uz036",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz037",
+    "Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.": "uz038",
+    "Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.": "uz039",
+    "Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.": "uz040",
+    "Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.": "uz041",
+    "Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz042",
+    "Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.": "uz043",
+    "Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.": "uz044",
+    "Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.": "uz045",
+    "Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.": "uz046",
+    "Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.": "uz047",
+    "Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.": "uz048",
+    "Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.": "uz049",
+    "Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.": "uz050",
+    "Voy, zo‘r!": "uz051",
+    "Ana! Chiqdi!": "uz052",
+    "Super!": "uz053",
+    "Qoyil!": "uz054",
+    "Ura!": "uz055",
+    "Zo‘r-ku!": "uz056",
+    "Yana bir bor urinib ko‘ring.": "uz057",
+    "Diqqat bilan qarang.": "uz058",
+    "Yaqin qoldingiz. Shoshilmang.": "uz059",
+    "Raketa qotib qoldi: animation qoidasidagi nom rejaning nomi bilan bir xil bo'lishi kerak. Reja parvoz deb nomlangan.": "uz060",
+    "Vaqt yo'qolib qoldi: usiz animatsiya nol soniya davom etadi. Ikki soniyani qaytaring.": "uz061",
+    "Raketa hali to'xtab qolyapti. Cheksiz uchishi uchun takrorlar soni o'rniga infinite yozing.": "uz062",
+    "Raketa hali uch marta uchmayapti. Takrorlar soni o'rniga uch raqamini yozing.": "uz063",
+    "Reja topilmadi: keyframes so'zidan keyin miltilla nomi turishi kerak.": "uz064",
+    "O'rtadagi kadr yo'qolib qoldi. O'rtasi bu ellik foiz, foiz belgisi ham kerak.": "uz065",
+    "Yulduz o'rtada kattalashmayapti. scale ichiga birdan katta son yozing.": "uz066",
+    "Yulduz hali tepaga sakramayapti. Tepaga translateY olib chiqadi, son esa minus bilan, masalan minus yigirma piksel.": "uz067",
+    "Sayyora hali turibdi: unda animation yo'q.": "uz068",
+    "Bunday reja yo'q. Tepadagi rejaning nomi aylan, uni harfma-harf yozing.": "uz069",
+    "Vaqt yozilmagan: usiz animatsiya nol soniya davom etadi.": "uz070",
+    "Aylanyapti, lekin vaqt boshqa. Bir aylanish to'rt soniya bo'lsin.": "uz071",
+    "Sayyora aylanadi-yu, to'xtab qoladi. To'xtamasligi uchun infinite yozing.": "uz072",
+    "Aylanyapti, lekin har aylanishda sekinlashib qoladi. Tekis aylanishi uchun linear qo'shing.": "uz073",
+    "Sayyora hali ikki marta, bir soniyadan aylanmayapti. Vaqt bir soniya, takrorlar soni esa ikki bo'lsin.": "uz074",
+    "Antenna hali turibdi: brauzer bunday nomli rejani topmadi. Nomni rejadagidek, harfma-harf yozing.": "uz075",
+    "Yo'ldosh hali turibdi: vaqt yozilmagan, animatsiya nol soniya davom etadi. Vaqt qo'shing.": "uz076",
+    "Brauzer o'rtadagi kadrni hali tashlab yuboryapti. Ellik sonidan keyin foiz belgisi kerak.": "uz077",
+    "Reja yo'q: keyframes bilan harakat rejasini yozing.": "uz078",
+    "to kadri bo'sh: likopcha oxirida qayerda bo'lishini yozing, masalan translateX bilan.": "uz079",
+    "Reja bor, lekin uni hech kim ishga tushirmagan. Likopcha qoidasiga animation yozing.": "uz080",
+    "Likopcha turibdi: animation qoidasidagi nom rejaning nomi bilan harfma-harf bir xil bo'lishi kerak.": "uz081",
+    "Vaqt yo'q: usiz animatsiya nol soniya davom etadi.": "uz082",
+    "Likopcha bir marta uchadi-yu, to'xtaydi. Takrorlar sonini yoki infinite yozing.": "uz083",
+    "Boshi va oxiri bir xil, likopcha joyidan qimirlamaydi. to kadriga boshqa qiymat yozing.": "uz084",
+    "Salom!": "uz085",
+    "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz086",
+    "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz087",
+    "Yulduzlar sari uchdik!": "uz088",
+    "Start yaqinda!": "uz089",
+    "Bir tilak tilang!": "uz090",
+    "Bizga koinotdan yozishyapti!": "uz091",
+    "Likopcham yulduzlar sari uchadi!": "uz092",
+    "Barakalla!": "uz093",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz094",
+  },
+  ru: {
+    "Привет! Это мой космический сайт. Смотри: ракета сама летает вверх-вниз, безо всякой мышки. Это анимация. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
+    "Ой! CSS-код стёрся. Ракета замерла, а вкладки погасли.": "ru002",
+    "Картинки и тексты на месте, пропало только движение. На прошлом уроке мы разобрали анимацию: keyframes записывает план движения, а animation его запускает. Теперь оживим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.": "ru003",
+    "Первая страница: ракета. План полёта готов, animation тоже есть, но ракета взлетает один раз и останавливается. Пусть она летает без остановки: замени в правиле число повторов.": "ru004",
+    "Огонь! Теперь ракета летает без остановки. Первая страница ожила!": "ru005",
+    "Посмотри на правило: после времени стоит единица. Что она говорит?": "ru006",
+    "Это число говорит, сколько раз повторить. Чтобы без остановки, нужен infinite, то есть бесконечно.": "ru007",
+    "Образец под кодом: кубик прыгает без конца. Так же замени единицу на infinite и нажми Проверить.": "ru008",
+    "Ракета летает! Теперь страница звёзд. У звёзд есть animation, но они не двигаются. Посмотри на план: в начале и в конце звезда одинаковая, а кадр посередине пустой. Пусть в середине звезда вырастет: впиши это в средний кадр.": "ru009",
+    "Отлично! Звёзды мерцают: растут и снова уменьшаются.": "ru010",
+    "Кадр пятьдесят процентов, это середина анимации. Какой там должна быть звезда?": "ru011",
+    "Размер меняет transform со scale. Число больше единицы увеличивает, например одна целая пять десятых.": "ru012",
+    "Образец под кодом: в среднем кадре кубик поворачивается. Напиши так же, только со scale.": "ru013",
+    "Средний кадр пока пустой, звезда не меняется. Впиши в его скобки transform.": "ru014",
+    "Две страницы ожили! Третья: планеты. План вращения готов, но его никто не запустил. Пусть планета крутится ровно и без остановки, один оборот за четыре секунды: напиши правило целиком. Класс планеты виден в [English pronunciation] HTML [Русское произношение]-коде.": "ru015",
+    "Ого, крутится! Как настоящая планета: ровно и без остановки.": "ru016",
+    "В значении animation четыре вещи: имя плана, время, скорость и сколько раз.": "ru017",
+    "Селектор: точка и слово sayyora. Значение: aylan, четыре секунды, linear и infinite.": "ru018",
+    "Образец под кодом: кубик ровно крутится за две секунды. Напиши так же для планеты, с четырьмя секундами.": "ru019",
+    "Три страницы готовы! Четвёртая: сигналы из космоса. И антенна, и спутник должны крутиться, но я писал код в спешке, и в нём две поломки. Поэтому оба стоят. Найди и почини обе поломки.": "ru020",
+    "Вот это да! И антенна, и спутник крутятся. Сигнал пошёл!": "ru021",
+    "Сравни каждое правило с планом: имя совпадает, время написано?": "ru022",
+    "В первом правиле в имени переставлены буквы: план называется aylan. Во втором нет времени.": "ru023",
+    "Образец под кодом, два правила, где имя и время на месте. Почини так же и нажми Проверить.": "ru024",
+    "Четыре страницы ожили! Последняя, твоя. Сделай свою анимацию для летающей тарелки. Начало плана готово: в кадр to напиши, куда летит тарелка, а потом запусти план через animation. Время и число повторов выбери сам. Под окном видно, что уже готово.": "ru025",
+    "Ура! Твоя тарелка летает сама. Это твоя анимация!": "ru026",
+    "Есть два пустых места: кадр to и правило тарелки. Сначала заполни кадр.": "ru027",
+    "В кадр to напиши, например, transform с translateX. А в правило тарелки, animation: sayohat, время и повторы.": "ru028",
+    "Образец под кодом, анимация прыжка кубика. Напиши то, что нравится тебе.": "ru029",
+    "Все пять страниц космоса снова в движении! Ракета, звёзды и планеты двигаются сами, потому что код анимации написан тобой.": "ru030",
+    "С keyframes ты пишешь план движения: начало, середину и конец.": "ru031",
+    "animation запускает этот план по имени и со временем.": "ru032",
+    "infinite или число говорят, сколько раз повторить, а linear делает скорость ровной.": "ru033",
+    "И находишь поломки: переставленные буквы в имени, забытое время и кадр без знака процента.": "ru034",
+    "На следующем уроке научимся подстраивать сайт под телефон: он будет красивым и на большом экране, и на маленьком. До встречи!": "ru035",
+    "Пока пусто. Пиши CSS-код здесь.": "ru036",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru037",
+    "Правилу нужна открывающая фигурная скобка: она стоит после селектора.": "ru038",
+    "Правило не закрыто: в конце поставь закрывающую фигурную скобку.": "ru039",
+    "Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.": "ru040",
+    "Перед скобкой нет селектора: напиши, что оформляем.": "ru041",
+    "Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.": "ru042",
+    "Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.": "ru043",
+    "Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.": "ru044",
+    "Пока пусто: впиши нужное в рамку.": "ru045",
+    "В рамку, только значение: имя свойства уже стоит слева.": "ru046",
+    "В рамку, только селектор: скобки и остальной код уже на месте.": "ru047",
+    "В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.": "ru048",
+    "В рамку, только свойство и значение: селектор и скобки уже на месте.": "ru049",
+    "Код работает, но страница пока не такая, как нужно. Перечитай задание.": "ru050",
+    "Вау, классно!": "ru051",
+    "Есть! Получилось!": "ru052",
+    "Супер!": "ru053",
+    "Огонь!": "ru054",
+    "Ура!": "ru055",
+    "Вот это да!": "ru056",
+    "Попробуй ещё раз.": "ru057",
+    "Посмотри внимательно.": "ru058",
+    "Уже близко. Не спеши.": "ru059",
+    "Ракета замерла: имя в animation должно совпадать с именем плана. План называется parvoz.": "ru060",
+    "Пропало время: без него анимация длится ноль секунд. Верни две секунды.": "ru061",
+    "Ракета всё ещё останавливается. Чтобы она летала без конца, вместо числа повторов напиши infinite.": "ru062",
+    "Ракета пока взлетает не три раза. Вместо числа повторов напиши тройку.": "ru063",
+    "План не найден: после keyframes должно стоять имя miltilla.": "ru064",
+    "Кадр посередине пропал. Середина, это пятьдесят процентов, и знак процента нужен.": "ru065",
+    "Звезда в середине не растёт. Внутри scale напиши число больше единицы.": "ru066",
+    "Звезда пока не подпрыгивает. Вверх поднимает translateY с минусом, например минус двадцать пикселей.": "ru067",
+    "Планета пока стоит: у неё нет animation.": "ru068",
+    "Такого плана нет. План сверху называется aylan, напиши его буква в букву.": "ru069",
+    "Не написано время: без него анимация длится ноль секунд.": "ru070",
+    "Крутится, но время другое. Пусть один оборот длится четыре секунды.": "ru071",
+    "Планета крутится и останавливается. Чтобы не останавливалась, допиши infinite.": "ru072",
+    "Крутится, но на каждом обороте притормаживает. Для ровного вращения допиши linear.": "ru073",
+    "Планета пока не делает два оборота по секунде. Время, одна секунда, число повторов, два.": "ru074",
+    "Антенна всё ещё стоит: браузер не нашёл план с таким именем. Напиши имя как в плане, буква в букву.": "ru075",
+    "Спутник всё ещё стоит: не написано время, анимация длится ноль секунд. Добавь время.": "ru076",
+    "Браузер всё ещё выбрасывает средний кадр. После числа пятьдесят нужен знак процента.": "ru077",
+    "Плана нет: напиши план движения с keyframes.": "ru078",
+    "Кадр to пустой: напиши, где тарелка будет в конце, например через translateX.": "ru079",
+    "План есть, но его никто не запустил. Напиши animation в правило тарелки.": "ru080",
+    "Тарелка стоит: имя в animation должно совпадать с именем плана буква в букву.": "ru081",
+    "Нет времени: без него анимация длится ноль секунд.": "ru082",
+    "Тарелка пролетит один раз и остановится. Допиши число повторов или infinite.": "ru083",
+    "Начало и конец одинаковые, тарелка не двигается с места. Напиши в кадр to другое значение.": "ru084",
+    "Привет!": "ru085",
+    "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru086",
+    "Отлично, теперь это точно твоё! Идём дальше.": "ru087",
+    "Летим к звёздам!": "ru088",
+    "Скоро старт!": "ru089",
+    "Загадай желание!": "ru090",
+    "Нам пишут из космоса!": "ru091",
+    "Моя тарелка летит к звёздам!": "ru092",
+    "Молодец!": "ru093",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru094",
+  },
+  en: {
+    "Hi! This is my space website. Look: the rocket flies up and down by itself, without any mouse. That’s animation. The site has five pages. I’m about to update it, tap Refresh.": "en001",
+    "Oh no! The CSS code got erased. The rocket froze, and the tabs went dark.": "en002",
+    "The pictures and texts are fine, only the movement is gone. Last lesson we learned animation: keyframes writes the movement plan, and animation starts it. Now let’s bring the five pages to life one by one, and you’ll write the code. The fifth page will be yours.": "en003",
+    "The first page is the rocket. The flight plan is ready and there’s animation too, but the rocket flies once and stops. Make it fly without stopping: change the number of repeats in the rule.": "en004",
+    "Awesome! The rocket flies nonstop now. The first page is alive!": "en005",
+    "Look at the rule: there’s a one after the time. What does it say?": "en006",
+    "That number says how many times to repeat. For nonstop you need infinite, meaning endlessly.": "en007",
+    "The example under the code: a cube jumps endlessly. The same way, replace the one with infinite and tap Check.": "en008",
+    "The rocket flies! Now the stars page. The stars have animation, but they don’t move. Look at the plan: the star is the same at the start and the end, and the middle frame is empty. Make the star grow in the middle: write it in the middle frame.": "en009",
+    "Great! The stars twinkle: they grow and shrink again.": "en010",
+    "The fifty percent frame is the middle of the animation. What should the star be like there?": "en011",
+    "transform with scale changes the size. A number above one makes it bigger, for example one point five.": "en012",
+    "The example under the code: the cube turns in the middle frame. Write the same, only with scale.": "en013",
+    "The middle frame is still empty, so the star doesn’t change. Write transform inside its braces.": "en014",
+    "Two pages are alive! The third is planets. The spinning plan is ready, but nothing starts it. Make the planet spin evenly and nonstop, one turn every four seconds: write the whole rule yourself. The planet’s class is shown in the H T M L code.": "en015",
+    "Wow, it spins! Just like a real planet: evenly and nonstop.": "en016",
+    "The animation value has four things: the plan’s name, the time, the speed and how many times.": "en017",
+    "The selector is a dot and the word sayyora. The value is aylan, four seconds, linear and infinite.": "en018",
+    "The example under the code: a cube spins evenly in two seconds. Write the same for the planet, with four seconds.": "en019",
+    "Three pages are done! The fourth is signals from space. Both the antenna and the satellite should spin, but I wrote the code in a hurry, and it has two broken spots. That’s why both stand still. Find and fix both.": "en020",
+    "That’s it! Both the antenna and the satellite spin. The signal is coming in!": "en021",
+    "Compare each rule with the plan: does the name match, is the time written?": "en022",
+    "In the first rule, letters in the name are swapped: the plan is called aylan. The second has no time.": "en023",
+    "The example under the code has two rules with the name and time in place. Fix yours the same way and tap Check.": "en024",
+    "Four pages are alive! The last one is yours. Make your own animation for the flying saucer. The start of the plan is ready: in the to frame, write where the saucer flies, then start the plan with animation. Choose the time and the number of repeats yourself. Under the window you can see what’s done.": "en025",
+    "Hooray! Your saucer flies by itself. That’s your animation!": "en026",
+    "There are two empty spots: the to frame and the saucer’s rule. Fill in the frame first.": "en027",
+    "In the to frame write, for example, transform with translateX. And in the saucer’s rule write animation: sayohat, a time and repeats.": "en028",
+    "The example under the code is a cube’s jump animation. Write what you like.": "en029",
+    "All five space pages are moving again! The rocket, stars and planets move by themselves, because you wrote the animation code.": "en030",
+    "With keyframes you write the movement plan: the start, the middle and the end.": "en031",
+    "animation starts that plan by name, with a time.": "en032",
+    "infinite or a number says how many times to repeat, and linear makes the speed even.": "en033",
+    "And you find broken spots: swapped letters in a name, a missing time and a frame without a percent sign.": "en034",
+    "Next lesson we’ll learn to fit a site to a phone: it will look good on big and small screens alike. See you!": "en035",
+    "It’s empty so far. Write the CSS code here.": "en036",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en037",
+    "The rule needs an opening curly brace: it goes after the selector.": "en038",
+    "The rule isn’t closed: put a closing curly brace at the end.": "en039",
+    "There’s an extra closing brace. Each opening brace gets one closing brace.": "en040",
+    "There’s no selector before the brace: write what we’re styling.": "en041",
+    "There’s no semicolon between two properties. Put one after every value.": "en042",
+    "This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.": "en043",
+    "The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.": "en044",
+    "It’s empty so far: type what’s needed into the box.": "en045",
+    "Only the value goes in the box: the property name is already on the left.": "en046",
+    "Only the selector goes in the box: the braces and the rest are already there.": "en047",
+    "There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.": "en048",
+    "Only the property and value go in the box: the selector and braces are already there.": "en049",
+    "The code works, but the page isn’t quite right yet. Read the task again.": "en050",
+    "Wow, awesome!": "en051",
+    "Yes! You did it!": "en052",
+    "Super!": "en053",
+    "Brilliant!": "en054",
+    "Hooray!": "en055",
+    "Amazing!": "en056",
+    "Try once more.": "en057",
+    "Take a closer look.": "en058",
+    "You are close. No rush.": "en059",
+    "The rocket froze: the name in animation must match the plan’s name. The plan is called parvoz.": "en060",
+    "The time is gone: without it the animation lasts zero seconds. Put the two seconds back.": "en061",
+    "The rocket still stops. To make it fly endlessly, write infinite instead of the number of repeats.": "en062",
+    "The rocket doesn’t fly three times yet. Write a three as the number of repeats.": "en063",
+    "The plan wasn’t found: the name miltilla must come after keyframes.": "en064",
+    "The middle frame is gone. The middle is fifty percent, and the percent sign is needed.": "en065",
+    "The star doesn’t grow in the middle. Write a number bigger than one inside scale.": "en066",
+    "The star doesn’t jump yet. translateY with a minus lifts it up, for example minus twenty pixels.": "en067",
+    "The planet is still: it has no animation.": "en068",
+    "There’s no such plan. The plan above is called aylan; write it letter for letter.": "en069",
+    "No time is written: without it the animation lasts zero seconds.": "en070",
+    "It spins, but the time is different. One turn should take four seconds.": "en071",
+    "The planet spins and then stops. To keep it going, add infinite.": "en072",
+    "It spins, but slows down on every turn. Add linear for even spinning.": "en073",
+    "The planet doesn’t do two one-second turns yet. The time is one second, the number of repeats two.": "en074",
+    "The antenna still stands: the browser found no plan with that name. Write the name exactly as in the plan.": "en075",
+    "The satellite still stands: no time is written, so the animation lasts zero seconds. Add a time.": "en076",
+    "The browser still throws the middle frame away. The number fifty needs a percent sign.": "en077",
+    "There’s no plan: write a movement plan with keyframes.": "en078",
+    "The to frame is empty: write where the saucer ends up, for example with translateX.": "en079",
+    "There’s a plan, but nothing starts it. Write animation in the saucer’s rule.": "en080",
+    "The saucer stands still: the name in animation must match the plan’s name letter for letter.": "en081",
+    "There’s no time: without it the animation lasts zero seconds.": "en082",
+    "The saucer flies once and stops. Add a number of repeats or infinite.": "en083",
+    "The start and end are the same, so the saucer doesn’t move. Write a different value in the to frame.": "en084",
+    "Hello!": "en085",
+    "Great! Now one more small task: the same thing for another case.": "en086",
+    "Great, now you’ve really got it! Let’s move on.": "en087",
+    "Off to the stars!": "en088",
+    "Launch is coming soon!": "en089",
+    "Make a wish!": "en090",
+    "Space is writing to us!": "en091",
+    "My saucer flies to the stars!": "en092",
+    "Well done!": "en093",
+    "Everything in the window lives inside body.": "en094",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

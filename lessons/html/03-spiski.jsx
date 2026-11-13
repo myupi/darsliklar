@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8043,15 +7594,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13987,3 +13531,849 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z3-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z3-s5 .kz-br.z3-br { aspect-ratio: auto !important; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 138, ru 138, en 138; всего знаков 54357. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana salom! O'tgan darsda sarlavha va abzaslarni o'rgandik. Bugun men osh retseptini sahifaga yozdim. Lekin qarang: mahsulotlar ham, qadamlar ham bitta qatorga yopishib qolgan. Nimani olish kerak, nimadan boshlash kerak, bilib bo'lmaydi. Keling, buni tuzatamiz. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Mahsulotlar alohida qatorlarga tizildi, har birining oldida nuqta bor.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tayyorlash qadamlari esa raqamlandi: bir, ikki, uch.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun shunday ro'yxatlar tuzishni o'rganasiz va o'z ro'yxatingizni yasaysiz. Lekin oldin kichik topishmoq. Men qadamlarni yozganimda har bir qadamning boshiga raqamni o'zim qo'shib qo'ydim: bir, ikki, uch. Menimcha, sahifada hammasi chiroyli chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, mahsulotlardan boshlaymiz. Qarang: kodda uchta so'z bor, lekin brauzer ularni bitta qatorga yopishtirdi. Ro'yxat bo'lishi uchun bizga ikkita yangi [English pronunciation] tag [O'zbekcha tallaffuz] kerak bo'ladi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi [English pronunciation] U L tag [O'zbekcha tallaffuz]-i. [English pronunciation] U L [O'zbekcha tallaffuz] inglizcha [English pronunciation] unordered list [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni tartibi muhim bo'lmagan ro'yxat degani. [English pronunciation] U L [O'zbekcha tallaffuz] butun ro'yxatni o'rab turadi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i. [English pronunciation] L I [O'zbekcha tallaffuz] inglizcha [English pronunciation] list item [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni ro'yxat bandi degani. Har bir band alohida [English pronunciation] L I [O'zbekcha tallaffuz] ichiga yoziladi. Qarang.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer har bir [English pronunciation] L I [O'zbekcha tallaffuz] oldiga o'zi nuqta qo'yadi. Eslab qoling: [English pronunciation] U L [O'zbekcha tallaffuz] butun ro'yxatni o'raydi, [English pronunciation] L I [O'zbekcha tallaffuz] esa har bir bandni. Shuning uchun [English pronunciation] L I [O'zbekcha tallaffuz] doim [English pronunciation] U L [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Qarang: sabzi ro'yxatda turibdi, lekin uning oldida nuqta yo'q. Chunki u [English pronunciation] L I [O'zbekcha tallaffuz] ichida emas. Sabzi so'zini [English pronunciation] L I tag [O'zbekcha tallaffuz]-iga o'rang: so'zdan oldin ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir band qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ichida turadi?", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Band [English pronunciation] tag [O'zbekcha tallaffuz]-i [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi. Uning yopuvchisida qiya chiziq bor.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi joyga ochuvchi [English pronunciation] L I [O'zbekcha tallaffuz], ikkinchisiga yopuvchi [English pronunciation] L I [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sabzining oldida ham nuqta paydo bo'ldi. Endi u ham ro'yxat bandi bo'ladi.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oshga yana piyoz va yog' kerak bo'ladi. Ikkala bandni ro'yxatga olib boring. Diqqat qiling: ro'yxat yopuvchi [English pronunciation] U L tag [O'zbekcha tallaffuz]-ida tugaydi.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu joy ro'yxatdan tashqarida turibdi: [English pronunciation] U L [O'zbekcha tallaffuz] allaqachon yopilgan. Bandni [English pronunciation] U L [O'zbekcha tallaffuz] ichiga qo'ying.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ro'yxat qayerda boshlanib, qayerda tugaydi?", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxat ochuvchi [English pronunciation] U L [O'zbekcha tallaffuz] va yopuvchi [English pronunciation] U L [O'zbekcha tallaffuz] o'rtasida bo'ladi.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bandlarni yopuvchi [English pronunciation] U L tag [O'zbekcha tallaffuz]-idan oldingi bo'sh qatorlarga qo'ying.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Endi ro'yxatda beshta mahsulot bor, hammasining oldida nuqta turibdi.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin bandni bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mahsulotlar tayyor, endi tayyorlash qadamlariga o'tamiz. Bu yerda tartib muhim bo'ladi: oldin go'sht qovuriladi, keyin sabzi qo'shiladi. Lekin nuqtalar tartibni ko'rsatmaydi.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buning uchun [English pronunciation] O L tag [O'zbekcha tallaffuz]-i bor. [English pronunciation] O L [O'zbekcha tallaffuz] inglizcha [English pronunciation] ordered list [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni tartiblangan ro'yxat degani. Qarang, [English pronunciation] U L [O'zbekcha tallaffuz] o'rniga [English pronunciation] O L [O'zbekcha tallaffuz] yozamiz.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqamlarni brauzer o'zi qo'yadi. Yangi band qo'shsak, keyingi raqam ham o'zi paydo bo'ladi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, tartib muhim bo'lsa [English pronunciation] O L [O'zbekcha tallaffuz], muhim bo'lmasa [English pronunciation] U L [O'zbekcha tallaffuz] ishlatiladi. Bandlar esa ikkalasida ham [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qadamlardan o'zingiz ro'yxat yig'ing. Qadamlarni ovqat tayyorlanadigan tartibda [English pronunciation] O L [O'zbekcha tallaffuz] ichidagi bo'sh qatorlarga qo'ying. Raqamlarni brauzer o'zi qo'yadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Guruchni hozir solsak, go'sht xom qolib ketadi. Oldin qozonda nima qilinadi?", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sabzi va piyozdan oldin qozonda bir narsa qovurilishi kerak bo'ladi. U nima?", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Guruch eng oxirida solinadi. Undan oldin nima qo'shiladi?", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Osh tayyorlash nimadan boshlanadi?", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qadam go'shtni qovurish bo'ladi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib shunday bo'ladi: oldin go'sht, keyin sabzi va piyoz, oxirida esa guruch.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Qadamlar to'g'ri tartibda turibdi, raqamlarni esa brauzer o'zi qo'ydi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi bizda uchta [English pronunciation] tag [O'zbekcha tallaffuz] bor: [English pronunciation] U L [O'zbekcha tallaffuz], [English pronunciation] O L [O'zbekcha tallaffuz] va [English pronunciation] L I [O'zbekcha tallaffuz]. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni uning ishi bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin uning ishini bosing.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat yasaydi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat yasaydi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] L I [O'zbekcha tallaffuz] ro'yxatning bitta bandi bo'ladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat yasaydi, unda raqam bo'lmaydi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat yasaydi, raqamlarni brauzer o'zi qo'yadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] L I [O'zbekcha tallaffuz] butun ro'yxat emas, u faqat bitta band bo'ladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] nuqta qo'yadi, qaysi biri raqam qo'yadi?", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] O L [O'zbekcha tallaffuz] so'zida tartib bor, demak raqam ham bor bo'ladi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat, [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat, [English pronunciation] L I [O'zbekcha tallaffuz] esa bitta band bo'ladi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Uchala [English pronunciation] tag [O'zbekcha tallaffuz] ham o'z ishini topdi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Xo'sh, qachon [English pronunciation] U L [O'zbekcha tallaffuz], qachon [English pronunciation] O L [O'zbekcha tallaffuz] kerak bo'ladi? Bitta savol yordam beradi: bandlarning o'rnini almashtirsak, ma'no o'zgaradimi?", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, xaridlar ro'yxati. Non bilan sutning o'rnini almashtiramiz. Hech narsa o'zgarmadi, ikkalasini ham baribir olamiz. Demak, bu yerga [English pronunciation] U L [O'zbekcha tallaffuz] to'g'ri keladi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi ertalabki ishlarga qarang. Uyg'onish bilan yuvinishning o'rnini almashtiramiz. Voy, uyg'onmasdan yuvinib bo'lmaydi-ku! Ma'no buzildi. Demak, bu yerga [English pronunciation] O L [O'zbekcha tallaffuz] kerak bo'ladi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: bandlarning o'rni almashganda ma'no buzilsa, [English pronunciation] O L [O'zbekcha tallaffuz] tanlanadi. Ma'no o'zgarmasa, [English pronunciation] U L [O'zbekcha tallaffuz] yetarli bo'ladi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men ertalabki ishlarni [English pronunciation] U L [O'zbekcha tallaffuz] bilan yozib qo'yibman. Lekin bu yerda tartib muhim bo'ladi. [English pronunciation] U L [O'zbekcha tallaffuz] o'rniga [English pronunciation] O L [O'zbekcha tallaffuz] yozing: boshiga ochuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-ini, oxiriga yopuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-ini qo'ying.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxat boshida ochuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-i kerak bo'ladi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Ro'yxat boshida qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxat oxirida yopuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-i kerak bo'ladi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yana [English pronunciation] U L [O'zbekcha tallaffuz] bo'lib qoldi. Bizga raqamli ro'yxat kerak, ya'ni [English pronunciation] O L [O'zbekcha tallaffuz] degani.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Raqamli ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi?", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] O L tag [O'zbekcha tallaffuz]-i bo'ladi. Uning yopuvchisida qiya chiziq bor.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi joyga ochuvchi [English pronunciation] O L [O'zbekcha tallaffuz], oxirgisiga yopuvchi [English pronunciation] O L [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Nuqtalar raqamlarga aylandi. Endi tartib aniq ko'rinib turibdi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi ikkita ro'yxatga qarang: oldin va keyin. Ro'yxatda nimadir o'zgardi. Xo'sh, buni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qildi?", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] buni qildi?", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] O L [O'zbekcha tallaffuz] nuqtalarni raqamlarga aylantirdi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Yangi [English pronunciation] L I [O'zbekcha tallaffuz] yangi band qo'shdi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] U L [O'zbekcha tallaffuz] raqamlarni nuqtalarga aylantirdi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: keyin nuqtalar raqamlarga aylandi. Raqam qo'yadigan [English pronunciation] tag [O'zbekcha tallaffuz] esa [English pronunciation] O L [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: keyin ro'yxatda bitta band ko'paydi. Yangi bandni [English pronunciation] L I [O'zbekcha tallaffuz] qo'shadi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: keyin raqamlar nuqtalarga aylandi. Nuqta qo'yadigan [English pronunciation] tag [O'zbekcha tallaffuz] esa [English pronunciation] U L [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin va keyin ro'yxatni solishtiring: nuqtalar, raqamlar yoki bandlar soni o'zgardimi?", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: bandlar soni o'sha-o'sha, faqat belgisi o'zgardi. Raqam qo'yadigan ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi edi, esingizdami?", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: belgilar o'sha-o'sha, lekin bandlar ko'paydi. Ro'yxatning bitta bandini qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi?", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: bandlar soni o'sha-o'sha, faqat raqamlar o'rniga boshqa belgi chiqdi. Nuqta qo'yadigan ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi edi, esingizdami?", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi uchala [English pronunciation] tag [O'zbekcha tallaffuz]-ni ham adashtirmaysiz. Keyin butun sahifani birga o'qiymiz.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, osh retseptining butun sahifasi. Brauzer uni qanday o'qishini ko'raylik.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer kodni tepadan pastga o'qiydi. Oldin [English pronunciation] H one [O'zbekcha tallaffuz] keladi, bu asosiy sarlavha bo'ladi.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyin [English pronunciation] H two [O'zbekcha tallaffuz] va [English pronunciation] U L [O'zbekcha tallaffuz] keladi: mahsulotlar nuqtali ro'yxatda turibdi.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida yana [English pronunciation] H two [O'zbekcha tallaffuz] va [English pronunciation] O L [O'zbekcha tallaffuz] keladi: qadamlar raqamli ro'yxatda turibdi.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z ro'yxatingizni yasang. Oldin unga sarlavha kerak bo'ladi. [English pronunciation] H two [O'zbekcha tallaffuz] ichiga ro'yxatingiz nima haqida ekanini yozing va Tayyorni bosing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r sarlavha! Endi unga bandlar kerak bo'ladi.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nima haqida ro'yxat tuzmoqchisiz? Masalan, sevimli o'yinlaringiz haqida.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar allaqachon joyida turibdi.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Sevimli o'yinlarim. Keyin Tayyorni bosing.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha bor, endi ro'yxatning o'zi qoldi. Uchta [English pronunciation] L I [O'zbekcha tallaffuz] ichiga uchta band yozing va Tayyorni bosing. Nuqtalarni brauzer o'zi qo'yadi.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Ro'yxatingiz tayyor: sarlavha ham, uchta band ham bor.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhangizga mos uchta narsani o'ylab toping.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir [English pronunciation] L I [O'zbekcha tallaffuz] ichiga bittadan band yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Futbol, Shaxmat, Minecraft. Keyin Tayyorni bosing.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, ro'yxatingizda ikkinchi bandning nuqtasi yo'qolib qoldi! Uning oldidagi ochuvchi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i tushib qolgan. Yetishmayotgan [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga olib boring.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yopuvchi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i. Band boshida qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu raqamli ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i. Bizga esa band [English pronunciation] tag [O'zbekcha tallaffuz]-i kerak bo'ladi.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana endi joyida! Ikkinchi bandning oldida ham nuqta paydo bo'ldi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Brauzerga qarang: ikkinchi bandga nima yetishmayapti?", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqtani [English pronunciation] L I tag [O'zbekcha tallaffuz]-i qo'yadi. Band boshida esa ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi, unda qiya chiziq bo'lmaydi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, band boshiga ochuvchi [English pronunciation] L I [O'zbekcha tallaffuz] kerak. Yonib turgan bo'lakni bo'sh joyga olib boring.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Mana, maktab sumkasi uchun ro'yxat, lekin unda xato bor. Brauzerga qarang: nima noto'g'ri ko'rinyapti? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Mana ertalabki ishlar ro'yxati. Bu yerda nima buzilgan?", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator to'g'ri yozilgan: band [English pronunciation] L I [O'zbekcha tallaffuz] ichida turibdi. Brauzerga qarang: buzilish qayerda?", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Bu bandda [English pronunciation] L I tag [O'zbekcha tallaffuz]-i yo'q edi. Shuning uchun uning oldida nuqta chiqmagan edi.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Bu bandga raqam qo'lda yozilgan edi. [English pronunciation] O L [O'zbekcha tallaffuz] raqamni o'zi qo'yadi, shuning uchun ikkita raqam chiqqan edi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: qaysi bandning oldida nuqta yo'q?", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta [English pronunciation] L I tag [O'zbekcha tallaffuz]-idan keladi. O'sha bandning qatorini tekshiring.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qatorda so'z [English pronunciation] L I [O'zbekcha tallaffuz] ichida turmaydi?", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: qaysi bandda raqam ikki marta chiqdi?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] O L [O'zbekcha tallaffuz] raqamni o'zi qo'yadi. Qaysi qatorda raqam qo'lda yozilgan?", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ikkinchi bandga qarang: uning matnida raqam bormi?", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala xato ham topildi. Siz endi ro'yxatlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni diqqat bilan o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida gapiryapti?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Esingizdami: tartib muhim bo'lsa [English pronunciation] O L [O'zbekcha tallaffuz], muhim bo'lmasa [English pronunciation] U L [O'zbekcha tallaffuz] olinadi. Raqamlarni brauzer o'zi qo'yadi, har bir band esa o'z [English pronunciation] L I tag [O'zbekcha tallaffuz]-ida turadi. Gap shunga mos keladimi?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] O L [O'zbekcha tallaffuz] ichidagi raqamlarni o'zimiz yozishimiz kerak bo'ladi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida raqamlarni brauzer o'zi qo'yadi. Biz faqat bandlarni [English pronunciation] L I [O'zbekcha tallaffuz] ichiga yozamiz.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir band alohida [English pronunciation] L I [O'zbekcha tallaffuz] ichida bo'ladi.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] L I [O'zbekcha tallaffuz] ro'yxatning bitta bandi bo'ladi. Nechta band bo'lsa, shuncha [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xaridlar ro'yxati uchun faqat [English pronunciation] O L [O'zbekcha tallaffuz] to'g'ri keladi.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xaridlarda tartib muhim emas, shuning uchun [English pronunciation] U L [O'zbekcha tallaffuz] ham yetarli bo'ladi.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] U L [O'zbekcha tallaffuz], [English pronunciation] O L [O'zbekcha tallaffuz] va [English pronunciation] L I tag [O'zbekcha tallaffuz]-larini yaxshi bilasiz.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men har bir qadamning boshiga raqamni o'zim yozgan edim? Afsuski, men adashibman. [English pronunciation] O L [O'zbekcha tallaffuz] raqamlarni o'zi qo'yadi, shuning uchun sahifada ikkita raqam chiqadi: bir, bir. Demak, [English pronunciation] O L [O'zbekcha tallaffuz] ichida raqamni qo'lda yozish kerak emas.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning ro'yxatingiz!", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat bo'ladi, unda tartib muhim emas.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat bo'ladi, raqamlarni brauzer o'zi qo'yadi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] L I [O'zbekcha tallaffuz] esa ro'yxatning bitta bandi bo'ladi, u doim [English pronunciation] U L [O'zbekcha tallaffuz] yoki [English pronunciation] O L [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi sahifangizda tartibli ro'yxatlar bor. Keyingi darsda havolalar bilan tanishamiz. Ko'rishguncha!", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Oldinga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] U L [O'zbekcha tallaffuz] yoki [English pronunciation] O L [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет снова! На прошлом уроке мы разобрали заголовки и абзацы. А сегодня я записал на страницу рецепт плова. Но смотри: и продукты, и шаги слиплись в одну строку. Что купить и с чего начать, не понять. Давай это исправим. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Продукты встали отдельными строками, у каждого точка.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А шаги готовки получили номера: один, два, три.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься делать такие списки и соберёшь свой. Но сначала маленькая загадка. Когда я писал шаги, я сам поставил перед каждым номер: один, два, три. По-моему, на странице всё выйдет красиво. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начнём с продуктов. Смотри: в коде три слова, но браузер склеил их в одну строку. Чтобы получился список, нужны два новых тега.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый, тег [English pronunciation] U L [Русское произношение]. [English pronunciation] U L [Русское произношение], от английского [English pronunciation] unordered list [Русское произношение], то есть список, где порядок не важен. [English pronunciation] U L [Русское произношение] обнимает весь список.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Второй, тег [English pronunciation] L I [Русское произношение]. [English pronunciation] L I [Русское произношение], от английского [English pronunciation] list item [Русское произношение], то есть пункт списка. Каждый пункт пишут в свой [English pronunciation] L I [Русское произношение]. Смотри.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер сам ставит точку перед каждым [English pronunciation] L I [Русское произношение]. Запомни: [English pronunciation] U L [Русское произношение] обнимает весь список, а [English pronunciation] L I [Русское произношение], каждый пункт. Поэтому [English pronunciation] L I [Русское произношение] всегда стоит внутри [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Смотри: морковь стоит в списке, но точки перед ней нет. Потому что она не в [English pronunciation] L I [Русское произношение]. Оберни слово в тег [English pronunciation] L I [Русское произношение]: перед словом напиши открывающий тег, после, закрывающий.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В каком теге стоит каждый пункт?", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег пункта, [English pronunciation] L I [Русское произношение]. В закрывающем есть косая черта.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первое место, открывающий [English pronunciation] L I [Русское произношение], во второе, закрывающий [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Перед морковью тоже появилась точка. Теперь это тоже пункт списка.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для плова нужны ещё лук и масло. Перетащи оба пункта в список. Внимание: список заканчивается на закрывающем теге [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это место за пределами списка: [English pronunciation] U L [Русское произношение] уже закрыт. Поставь пункт внутрь [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где начинается и где кончается список?", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Список, между открывающим и закрывающим [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поставь пункты в пустые строки перед закрывающим [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Теперь в списке пять продуктов, и у всех есть точка.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми пункт.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Продукты готовы, переходим к шагам готовки. Здесь порядок важен: сначала жарят мясо, потом добавляют морковь. Но точки порядок не показывают.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для этого есть тег [English pronunciation] O L [Русское произношение]. [English pronunciation] O L [Русское произношение], от английского [English pronunciation] ordered list [Русское произношение], то есть упорядоченный список. Смотри, пишем [English pronunciation] O L [Русское произношение] вместо [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номера браузер ставит сам. Добавим новый пункт, следующий номер тоже появится сам.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, если порядок важен, [English pronunciation] O L [Русское произношение], если нет, [English pronunciation] U L [Русское произношение]. А пункты в обоих, [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери список из шагов сам. Ставь шаги в пустые строки внутри [English pronunciation] O L [Русское произношение] в том порядке, в каком готовят плов. Номера браузер поставит сам.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Если засыпать рис сейчас, мясо останется сырым. Что делают в казане сначала?", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Перед морковью и луком в казане нужно кое-что обжарить. Что?", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Рис засыпают в самом конце. Что добавляют перед ним?", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С чего начинается плов?", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый шаг, обжарить мясо.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок такой: мясо, потом морковь и лук, а в конце рис.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Шаги стоят по порядку, а номера браузер поставил сам.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь у нас три тега: [English pronunciation] U L [Русское произношение], [English pronunciation] O L [Русское произношение] и [English pronunciation] L I [Русское произношение]. Соедини каждый тег с тем, что он делает. Сначала нажми тег, потом его дело.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] U L [Русское произношение] делает список с точками.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] O L [Русское произношение] делает список с номерами.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] L I [Русское произношение], один пункт списка.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] U L [Русское произношение] делает список с точками, номеров в нём нет.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] O L [Русское произношение] делает список с номерами, номера ставит браузер.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] L I [Русское произношение], не весь список, а только один пункт.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег ставит точки, а какой номера?", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] O L [Русское произношение] есть порядок, значит, есть и номера.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] U L [Русское произношение], список с точками, [English pronunciation] O L [Русское произношение], с номерами, [English pronunciation] L I [Русское произношение], один пункт.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Все три тега нашли своё дело.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми тег.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Так когда нужен [English pronunciation] U L [Русское произношение], а когда [English pronunciation] O L [Русское произношение]? Поможет один вопрос: если поменять пункты местами, смысл изменится?", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот список покупок. Меняем местами хлеб и молоко. Ничего не изменилось: купим и то и другое. Значит, здесь подходит [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь утренние дела. Меняем местами просыпаюсь и умываюсь. Ой, не проснувшись, не умоешься! Смысл сломался. Значит, здесь нужен [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: если от перестановки пунктов смысл ломается, выбирай [English pronunciation] O L [Русское произношение]. Если не меняется, хватит [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я записал утренние дела через [English pronunciation] U L [Русское произношение]. А здесь порядок важен. Напиши [English pronunciation] O L [Русское произношение] вместо [English pronunciation] U L [Русское произношение]: в начале, открывающий тег [English pronunciation] O L [Русское произношение], в конце, закрывающий.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В начале списка нужен открывающий тег [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это закрывающий тег. В начале списка ставят открывающий, без косой черты.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце списка нужен закрывающий тег [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это снова [English pronunciation] U L [Русское произношение]. Нам нужен список с номерами, то есть [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег у списка с номерами?", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тег [English pronunciation] O L [Русское произношение]. В закрывающем есть косая черта.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первое место, открывающий [English pronunciation] O L [Русское произношение], в последнее, закрывающий [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Точки стали номерами. Теперь порядок видно сразу.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь посмотри на два списка: до и после. В списке что-то изменилось. Ну и какой тег это сделал?", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег это сделал?", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] O L [Русское произношение] превратил точки в номера.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Новый [English pronunciation] L I [Русское произношение] добавил новый пункт.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] U L [Русское произношение] превратил номера в точки.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: после точки стали номерами. Номера ставит тег [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: после в списке стало на один пункт больше. Новый пункт добавляет [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: после номера стали точками. Точки ставит тег [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни список до и после: изменились точки, номера или число пунктов?", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: пунктов столько же, поменялись только значки. Помнишь, какой тег списка ставит номера?", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: значки те же, а пунктов стало больше. Какой тег делает один пункт списка?", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: пунктов столько же, только вместо номеров другие значки. Помнишь, какой тег списка ставит точки?", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь эти три тега не перепутать. Дальше прочитаем всю страницу целиком.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот вся страница рецепта плова. Посмотрим, как браузер её читает.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер читает код сверху вниз. Сначала [English pronunciation] H one [Русское произношение], главный заголовок.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Потом [English pronunciation] H two [Русское произношение] и [English pronunciation] U L [Русское произношение]: продукты стоят в списке с точками.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце снова [English pronunciation] H two [Русское произношение] и [English pronunciation] O L [Русское произношение]: шаги стоят в списке с номерами.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свой список. Сначала ему нужен заголовок. Напиши в [English pronunciation] H two [Русское произношение], о чём твой список, и нажми Готово.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Классный заголовок! Теперь ему нужны пункты.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] О чём будет твой список? Например, о любимых играх.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги уже на месте.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Мои любимые игры. Потом нажми Готово.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок есть, осталось сделать сам список. Напиши три пункта в три [English pronunciation] L I [Русское произношение] и нажми Готово. Точки браузер поставит сам.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Твой список готов: есть и заголовок, и три пункта.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Придумай три вещи под свой заголовок.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждый [English pronunciation] L I [Русское произношение], по одному пункту, теги на месте.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Футбол, Шахматы, Minecraft. Потом нажми Готово.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, в твоём списке у второго пункта пропала точка! Перед ним потерялся открывающий тег [English pronunciation] L I [Русское произношение]. Перетащи недостающий тег в пустое место.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это закрывающий [English pronunciation] L I [Русское произношение]. В начале пункта стоит открывающий, без косой черты.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тег списка с номерами. А нам нужен тег пункта.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот теперь порядок! У второго пункта тоже появилась точка.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на браузер: чего не хватает второму пункту?", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Точку ставит тег [English pronunciation] L I [Русское произношение]. А в начале пункта стоит открывающий тег, без косой черты.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в начало пункта нужен открывающий [English pronunciation] L I [Русское произношение]. Перетащи горящий кусок в пустое место.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Вот список для школьной сумки, но в нём ошибка. Посмотри на браузер: что выглядит не так? Найди строку с ошибкой и нажми её.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Вот список утренних дел. Что сломано здесь?", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка в порядке: пункт стоит в [English pronunciation] L I [Русское произношение]. Посмотри на браузер: где поломка?", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! У этого пункта не было тега [English pronunciation] L I [Русское произношение]. Поэтому перед ним не было точки.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! В этом пункте номер был вписан руками. [English pronunciation] O L [Русское произношение] ставит номер сам, поэтому номеров было два.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: у какого пункта нет точки?", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Точка берётся из тега [English pronunciation] L I [Русское произношение]. Проверь строку этого пункта.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какой строке слово не стоит в [English pronunciation] L I [Русское произношение]?", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: у какого пункта номер дважды?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] O L [Русское произношение] ставит номер сам. В какой строке номер вписан руками?", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на второй пункт: в его тексте есть номер?", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь списки как настоящий программист.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу внимательно: о каком теге она?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни: если порядок важен, [English pronunciation] O L [Русское произношение], если нет, [English pronunciation] U L [Русское произношение]. Номера браузер ставит сам, а каждый пункт стоит в своём [English pronunciation] L I [Русское произношение]. Фраза с этим совпадает?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номера в [English pronunciation] O L [Русское произношение] нужно писать самим.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле номера ставит браузер. Мы пишем только пункты в [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый пункт стоит в своём [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] L I [Русское произношение], один пункт списка. Сколько пунктов, столько и [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для списка покупок подходит только [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В покупках порядок не важен, поэтому хватит и [English pronunciation] U L [Русское произношение].", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь теги [English pronunciation] U L [Русское произношение], [English pronunciation] O L [Русское произношение] и [English pronunciation] L I [Русское произношение].", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я сам вписал номер перед каждым шагом? Увы, я ошибся. [English pronunciation] O L [Русское произношение] ставит номера сам, поэтому на странице выходит два номера: один, один. Значит, в [English pronunciation] O L [Русское произношение] номер руками писать не нужно.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри, это твой список!", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] U L [Русское произношение], список с точками, порядок в нём не важен.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] O L [Русское произношение], список с номерами, номера ставит браузер.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] L I [Русское произношение], один пункт списка, он всегда стоит внутри [English pronunciation] U L [Русское произношение] или [English pronunciation] O L [Русское произношение].", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь на твоей странице есть аккуратные списки. На следующем уроке познакомимся со ссылками. До встречи!", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это закрывающий тег. Впереди ставят открывающий, без косой черты.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег начинается с уголка.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце тега нужен уголок.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] U L [Русское произношение] или [English pronunciation] O L [Русское произношение]?", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi again! Last time we learned headings and paragraphs. Today I wrote a plov recipe on a page. But look: the ingredients and the steps are all stuck in one line. You can’t tell what to buy or where to start. Let’s fix it. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! The ingredients lined up on separate lines, each with a dot.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the cooking steps got numbers: one, two, three.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to make lists like these and build your own. But first, a little riddle. When I wrote the steps, I put a number in front of each one myself: one, two, three. I think it will look great on the page. So what do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s start with the ingredients. Look: the code has three words, but the browser glued them into one line. To make a list, we need two new tags.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first one is the U L tag. U L comes from unordered list: a list where the order doesn’t matter. U L wraps the whole list.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second one is the L I tag. L I comes from list item: one point of the list. Each item goes into its own L I. Watch.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser puts a dot in front of each L I by itself. Remember: U L wraps the whole list, and L I wraps each item. That’s why L I always sits inside U L.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Look: the carrots are in the list, but there’s no dot in front of them, because they aren’t inside L I. Wrap the word in L I: type the opening tag before it and the closing tag after it.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag holds each item?", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The item tag is L I. The closing one has a slash.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the opening L I in the first spot and the closing L I in the second.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! A dot appeared in front of the carrots too. Now they’re a list item as well.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The plov also needs onions and oil. Drag both items into the list. Careful: the list ends at the closing U L tag.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This spot is outside the list: U L is already closed. Put the item inside U L.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where does the list start and end?", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The list is between the opening and the closing U L.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put the items into the empty lines before the closing U L.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Now the list has five ingredients, and each one has a dot.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap an item first.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The ingredients are done; now the cooking steps. Here the order matters: first you fry the meat, then you add the carrots. But dots don’t show the order.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For that there’s the O L tag. O L comes from ordered list: a list in order. Watch, we write O L instead of U L.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser adds the numbers by itself. If we add a new item, the next number appears by itself too.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So if the order matters, use O L; if not, use U L. The items in both are L I.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build the list of steps yourself. Put the steps into the empty lines inside O L in the order you cook. The browser will add the numbers.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] If we add the rice now, the meat stays raw. What happens in the pot first?", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Before the carrots and onions, something has to be fried in the pot. What is it?", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The rice goes in last. What do we add before it?", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does making plov start with?", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first step is frying the meat.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is: meat, then carrots and onions, and rice at the end.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The steps are in order, and the browser added the numbers by itself.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we have three tags: U L, O L and L I. Match each tag with what it does. Tap a tag first, then what it does.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! U L makes a bulleted list.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! O L makes a numbered list.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! L I is one list item.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] U L makes a bulleted list, with no numbers.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] O L makes a numbered list; the browser adds the numbers.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] L I isn’t the whole list, only one item.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag adds dots, and which adds numbers?", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] O L means order, so it has numbers.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] U L is a bulleted list, O L is numbered, and L I is one item.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant! All three tags found their job.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a tag first.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] So when do we need U L, and when O L? One question helps: if we swap the items, does the meaning change?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s a shopping list. We swap the bread and the milk. Nothing changed: we’ll buy both anyway. So U L fits here.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the morning routine. We swap waking up and washing. Oops, you can’t wash before you wake up! The meaning broke. So O L is needed here.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: if swapping the items breaks the meaning, choose O L. If the meaning stays the same, U L is enough.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wrote the morning routine with U L. But here the order matters. Write O L instead of U L: the opening O L tag at the start and the closing O L tag at the end.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The list needs the opening O L tag at the start.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a closing tag. The opening tag, without a slash, goes at the start.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The list needs the closing O L tag at the end.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s U L again. We need a numbered list, which is O L.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag makes a numbered list?", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s the O L tag. The closing one has a slash.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the opening O L in the first spot and the closing O L in the last.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The dots turned into numbers. Now the order is easy to see.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now look at two lists: before and after. Something changed in the list. So which tag did that?", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag did it?", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! O L turned the dots into numbers.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! A new L I added a new item.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! U L turned the numbers into dots.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: after, the dots became numbers. The O L tag adds numbers.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: after, the list has one more item. L I adds a new item.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: after, the numbers became dots. The U L tag adds dots.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare the list before and after: did the dots, the numbers or the number of items change?", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the number of items is the same, only the markers changed. Remember which list tag adds numbers?", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the markers are the same, but there are more items. Which tag makes one list item?", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the number of items is the same, only the numbers turned into other markers. Remember which list tag adds dots?", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you won’t mix up these three tags. Next, let’s read the whole page.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the whole plov recipe page. Let’s see how the browser reads it.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser reads code from top to bottom. First comes H one, the main heading.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Then H two and U L: the ingredients are in a bulleted list.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At the end, another H two and O L: the steps are in a numbered list.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own list. First it needs a heading. Type in H two what your list is about, then tap Done.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great heading! Now it needs items.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What will your list be about? Your favorite games, for example.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the tags are already in place.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: My favorite games. Then tap Done.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You have a heading; now the list itself. Type three items into the three L I tags, then tap Done. The browser adds the dots.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Your list is ready: it has a heading and three items.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Think of three things that fit your heading.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One item into each L I: the tags are in place.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: Football, Chess, Minecraft. Then tap Done.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, the second item in your list lost its dot! Its opening L I tag went missing. Drag the missing tag into the empty spot.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the closing L I. The opening tag, without a slash, starts the item.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the numbered list tag. We need the item tag.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! The second item has its dot again.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: what is the second item missing?", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The L I tag adds the dot. And an item starts with the opening tag, without a slash.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the item needs the opening L I at the start. Drag the glowing piece into the empty spot.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Here’s a list for a school bag, but it has a bug. Look at the browser: what looks wrong? Find the line with the bug and tap it.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first bug is found! Here’s the morning routine. What’s broken here?", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line is fine: the item is inside L I. Look at the browser: where’s the problem?", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! This item had no L I tag. That’s why it had no dot.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! This item had a number typed by hand. O L adds the number by itself, so there were two numbers.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: which item has no dot?", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The dot comes from the L I tag. Check that item’s line.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which line has a word outside L I?", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: which item has its number twice?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] O L adds the number itself. Which line has a number typed by hand?", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the second item: is there a number in its text?", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check lists like a real programmer.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence carefully: which tag is it about?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember: if order matters, use O L; if not, U L. The browser adds the numbers itself, and each item sits in its own L I. Does the sentence match that?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We have to type the numbers in O L ourselves.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the browser adds the numbers. We only write the items in L I.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each item goes in its own L I.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] L I is one list item. As many items, as many L I tags.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only O L works for a shopping list.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Order doesn’t matter for shopping, so U L is enough.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know the U L, O L and L I tags really well.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I typed a number in front of each step myself? Sadly, I was wrong. O L adds the numbers by itself, so the page shows two numbers: one, one. So you don’t type numbers in O L by hand.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your list!", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] U L is a bulleted list where the order doesn’t matter.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] O L is a numbered list; the browser adds the numbers.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And L I is one list item; it always sits inside U L or O L.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your page has neat lists. Next time we’ll meet links. See you!", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a closing tag. The opening tag, without a slash, goes first.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag starts with the bracket.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag ends with the bracket.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] U L or O L?", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Yana salom! O'tgan darsda sarlavha va abzaslarni o'rgandik. Bugun men osh retseptini sahifaga yozdim. Lekin qarang: mahsulotlar ham, qadamlar ham bitta qatorga yopishib qolgan. Nimani olish kerak, nimadan boshlash kerak, bilib bo'lmaydi. Keling, buni tuzatamiz. Aylantirish tugmasini bosing.": "uz001",
+    "Voy, qarang! Mahsulotlar alohida qatorlarga tizildi, har birining oldida nuqta bor.": "uz002",
+    "Tayyorlash qadamlari esa raqamlandi: bir, ikki, uch.": "uz003",
+    "Bugun shunday ro'yxatlar tuzishni o'rganasiz va o'z ro'yxatingizni yasaysiz. Lekin oldin kichik topishmoq. Men qadamlarni yozganimda har bir qadamning boshiga raqamni o'zim qo'shib qo'ydim: bir, ikki, uch. Menimcha, sahifada hammasi chiroyli chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Keling, mahsulotlardan boshlaymiz. Qarang: kodda uchta so'z bor, lekin brauzer ularni bitta qatorga yopishtirdi. Ro'yxat bo'lishi uchun bizga ikkita yangi [English pronunciation] tag [O'zbekcha tallaffuz] kerak bo'ladi.": "uz005",
+    "Birinchisi [English pronunciation] U L tag [O'zbekcha tallaffuz]-i. [English pronunciation] U L [O'zbekcha tallaffuz] inglizcha [English pronunciation] unordered list [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni tartibi muhim bo'lmagan ro'yxat degani. [English pronunciation] U L [O'zbekcha tallaffuz] butun ro'yxatni o'rab turadi.": "uz006",
+    "Ikkinchisi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i. [English pronunciation] L I [O'zbekcha tallaffuz] inglizcha [English pronunciation] list item [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni ro'yxat bandi degani. Har bir band alohida [English pronunciation] L I [O'zbekcha tallaffuz] ichiga yoziladi. Qarang.": "uz007",
+    "Brauzer har bir [English pronunciation] L I [O'zbekcha tallaffuz] oldiga o'zi nuqta qo'yadi. Eslab qoling: [English pronunciation] U L [O'zbekcha tallaffuz] butun ro'yxatni o'raydi, [English pronunciation] L I [O'zbekcha tallaffuz] esa har bir bandni. Shuning uchun [English pronunciation] L I [O'zbekcha tallaffuz] doim [English pronunciation] U L [O'zbekcha tallaffuz] ichida turadi.": "uz008",
+    "Endi navbat sizga. Qarang: sabzi ro'yxatda turibdi, lekin uning oldida nuqta yo'q. Chunki u [English pronunciation] L I [O'zbekcha tallaffuz] ichida emas. Sabzi so'zini [English pronunciation] L I tag [O'zbekcha tallaffuz]-iga o'rang: so'zdan oldin ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni yozing.": "uz009",
+    "Har bir band qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ichida turadi?": "uz010",
+    "Band [English pronunciation] tag [O'zbekcha tallaffuz]-i [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi. Uning yopuvchisida qiya chiziq bor.": "uz011",
+    "Birinchi joyga ochuvchi [English pronunciation] L I [O'zbekcha tallaffuz], ikkinchisiga yopuvchi [English pronunciation] L I [O'zbekcha tallaffuz] yozing.": "uz012",
+    "Zo'r! Sabzining oldida ham nuqta paydo bo'ldi. Endi u ham ro'yxat bandi bo'ladi.": "uz013",
+    "Oshga yana piyoz va yog' kerak bo'ladi. Ikkala bandni ro'yxatga olib boring. Diqqat qiling: ro'yxat yopuvchi [English pronunciation] U L tag [O'zbekcha tallaffuz]-ida tugaydi.": "uz014",
+    "Bu joy ro'yxatdan tashqarida turibdi: [English pronunciation] U L [O'zbekcha tallaffuz] allaqachon yopilgan. Bandni [English pronunciation] U L [O'zbekcha tallaffuz] ichiga qo'ying.": "uz015",
+    "Ro'yxat qayerda boshlanib, qayerda tugaydi?": "uz016",
+    "Ro'yxat ochuvchi [English pronunciation] U L [O'zbekcha tallaffuz] va yopuvchi [English pronunciation] U L [O'zbekcha tallaffuz] o'rtasida bo'ladi.": "uz017",
+    "Bandlarni yopuvchi [English pronunciation] U L tag [O'zbekcha tallaffuz]-idan oldingi bo'sh qatorlarga qo'ying.": "uz018",
+    "Barakalla! Endi ro'yxatda beshta mahsulot bor, hammasining oldida nuqta turibdi.": "uz019",
+    "Oldin bandni bosing.": "uz020",
+    "Mahsulotlar tayyor, endi tayyorlash qadamlariga o'tamiz. Bu yerda tartib muhim bo'ladi: oldin go'sht qovuriladi, keyin sabzi qo'shiladi. Lekin nuqtalar tartibni ko'rsatmaydi.": "uz021",
+    "Buning uchun [English pronunciation] O L tag [O'zbekcha tallaffuz]-i bor. [English pronunciation] O L [O'zbekcha tallaffuz] inglizcha [English pronunciation] ordered list [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni tartiblangan ro'yxat degani. Qarang, [English pronunciation] U L [O'zbekcha tallaffuz] o'rniga [English pronunciation] O L [O'zbekcha tallaffuz] yozamiz.": "uz022",
+    "Raqamlarni brauzer o'zi qo'yadi. Yangi band qo'shsak, keyingi raqam ham o'zi paydo bo'ladi.": "uz023",
+    "Demak, tartib muhim bo'lsa [English pronunciation] O L [O'zbekcha tallaffuz], muhim bo'lmasa [English pronunciation] U L [O'zbekcha tallaffuz] ishlatiladi. Bandlar esa ikkalasida ham [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi.": "uz024",
+    "Endi qadamlardan o'zingiz ro'yxat yig'ing. Qadamlarni ovqat tayyorlanadigan tartibda [English pronunciation] O L [O'zbekcha tallaffuz] ichidagi bo'sh qatorlarga qo'ying. Raqamlarni brauzer o'zi qo'yadi.": "uz025",
+    "Guruchni hozir solsak, go'sht xom qolib ketadi. Oldin qozonda nima qilinadi?": "uz026",
+    "Sabzi va piyozdan oldin qozonda bir narsa qovurilishi kerak bo'ladi. U nima?": "uz027",
+    "Guruch eng oxirida solinadi. Undan oldin nima qo'shiladi?": "uz028",
+    "Osh tayyorlash nimadan boshlanadi?": "uz029",
+    "Birinchi qadam go'shtni qovurish bo'ladi.": "uz030",
+    "Tartib shunday bo'ladi: oldin go'sht, keyin sabzi va piyoz, oxirida esa guruch.": "uz031",
+    "Ajoyib! Qadamlar to'g'ri tartibda turibdi, raqamlarni esa brauzer o'zi qo'ydi.": "uz032",
+    "Endi bizda uchta [English pronunciation] tag [O'zbekcha tallaffuz] bor: [English pronunciation] U L [O'zbekcha tallaffuz], [English pronunciation] O L [O'zbekcha tallaffuz] va [English pronunciation] L I [O'zbekcha tallaffuz]. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni uning ishi bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin uning ishini bosing.": "uz033",
+    "To'g'ri! [English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat yasaydi.": "uz034",
+    "To'g'ri! [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat yasaydi.": "uz035",
+    "To'g'ri! [English pronunciation] L I [O'zbekcha tallaffuz] ro'yxatning bitta bandi bo'ladi.": "uz036",
+    "[English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat yasaydi, unda raqam bo'lmaydi.": "uz037",
+    "[English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat yasaydi, raqamlarni brauzer o'zi qo'yadi.": "uz038",
+    "[English pronunciation] L I [O'zbekcha tallaffuz] butun ro'yxat emas, u faqat bitta band bo'ladi.": "uz039",
+    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] nuqta qo'yadi, qaysi biri raqam qo'yadi?": "uz040",
+    "[English pronunciation] O L [O'zbekcha tallaffuz] so'zida tartib bor, demak raqam ham bor bo'ladi.": "uz041",
+    "[English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat, [English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat, [English pronunciation] L I [O'zbekcha tallaffuz] esa bitta band bo'ladi.": "uz042",
+    "Qoyil! Uchala [English pronunciation] tag [O'zbekcha tallaffuz] ham o'z ishini topdi.": "uz043",
+    "Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.": "uz044",
+    "Xo'sh, qachon [English pronunciation] U L [O'zbekcha tallaffuz], qachon [English pronunciation] O L [O'zbekcha tallaffuz] kerak bo'ladi? Bitta savol yordam beradi: bandlarning o'rnini almashtirsak, ma'no o'zgaradimi?": "uz045",
+    "Mana, xaridlar ro'yxati. Non bilan sutning o'rnini almashtiramiz. Hech narsa o'zgarmadi, ikkalasini ham baribir olamiz. Demak, bu yerga [English pronunciation] U L [O'zbekcha tallaffuz] to'g'ri keladi.": "uz046",
+    "Endi ertalabki ishlarga qarang. Uyg'onish bilan yuvinishning o'rnini almashtiramiz. Voy, uyg'onmasdan yuvinib bo'lmaydi-ku! Ma'no buzildi. Demak, bu yerga [English pronunciation] O L [O'zbekcha tallaffuz] kerak bo'ladi.": "uz047",
+    "Eslab qoling: bandlarning o'rni almashganda ma'no buzilsa, [English pronunciation] O L [O'zbekcha tallaffuz] tanlanadi. Ma'no o'zgarmasa, [English pronunciation] U L [O'zbekcha tallaffuz] yetarli bo'ladi.": "uz048",
+    "Voy, men ertalabki ishlarni [English pronunciation] U L [O'zbekcha tallaffuz] bilan yozib qo'yibman. Lekin bu yerda tartib muhim bo'ladi. [English pronunciation] U L [O'zbekcha tallaffuz] o'rniga [English pronunciation] O L [O'zbekcha tallaffuz] yozing: boshiga ochuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-ini, oxiriga yopuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-ini qo'ying.": "uz049",
+    "Ro'yxat boshida ochuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-i kerak bo'ladi.": "uz050",
+    "Bu yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Ro'yxat boshida qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.": "uz051",
+    "Ro'yxat oxirida yopuvchi [English pronunciation] O L tag [O'zbekcha tallaffuz]-i kerak bo'ladi.": "uz052",
+    "Bu yana [English pronunciation] U L [O'zbekcha tallaffuz] bo'lib qoldi. Bizga raqamli ro'yxat kerak, ya'ni [English pronunciation] O L [O'zbekcha tallaffuz] degani.": "uz053",
+    "Raqamli ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi?": "uz054",
+    "Bu [English pronunciation] O L tag [O'zbekcha tallaffuz]-i bo'ladi. Uning yopuvchisida qiya chiziq bor.": "uz055",
+    "Birinchi joyga ochuvchi [English pronunciation] O L [O'zbekcha tallaffuz], oxirgisiga yopuvchi [English pronunciation] O L [O'zbekcha tallaffuz] yozing.": "uz056",
+    "Ajoyib! Nuqtalar raqamlarga aylandi. Endi tartib aniq ko'rinib turibdi.": "uz057",
+    "Endi ikkita ro'yxatga qarang: oldin va keyin. Ro'yxatda nimadir o'zgardi. Xo'sh, buni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qildi?": "uz058",
+    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] buni qildi?": "uz059",
+    "To'g'ri! [English pronunciation] O L [O'zbekcha tallaffuz] nuqtalarni raqamlarga aylantirdi.": "uz060",
+    "To'g'ri! Yangi [English pronunciation] L I [O'zbekcha tallaffuz] yangi band qo'shdi.": "uz061",
+    "To'g'ri! [English pronunciation] U L [O'zbekcha tallaffuz] raqamlarni nuqtalarga aylantirdi.": "uz062",
+    "Qarang: keyin nuqtalar raqamlarga aylandi. Raqam qo'yadigan [English pronunciation] tag [O'zbekcha tallaffuz] esa [English pronunciation] O L [O'zbekcha tallaffuz] bo'ladi.": "uz063",
+    "Qarang: keyin ro'yxatda bitta band ko'paydi. Yangi bandni [English pronunciation] L I [O'zbekcha tallaffuz] qo'shadi.": "uz064",
+    "Qarang: keyin raqamlar nuqtalarga aylandi. Nuqta qo'yadigan [English pronunciation] tag [O'zbekcha tallaffuz] esa [English pronunciation] U L [O'zbekcha tallaffuz] bo'ladi.": "uz065",
+    "Oldin va keyin ro'yxatni solishtiring: nuqtalar, raqamlar yoki bandlar soni o'zgardimi?": "uz066",
+    "Qarang: bandlar soni o'sha-o'sha, faqat belgisi o'zgardi. Raqam qo'yadigan ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi edi, esingizdami?": "uz067",
+    "Qarang: belgilar o'sha-o'sha, lekin bandlar ko'paydi. Ro'yxatning bitta bandini qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi?": "uz068",
+    "Qarang: bandlar soni o'sha-o'sha, faqat raqamlar o'rniga boshqa belgi chiqdi. Nuqta qo'yadigan ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i qaysi edi, esingizdami?": "uz069",
+    "Endi uchala [English pronunciation] tag [O'zbekcha tallaffuz]-ni ham adashtirmaysiz. Keyin butun sahifani birga o'qiymiz.": "uz070",
+    "Mana, osh retseptining butun sahifasi. Brauzer uni qanday o'qishini ko'raylik.": "uz071",
+    "Brauzer kodni tepadan pastga o'qiydi. Oldin [English pronunciation] H one [O'zbekcha tallaffuz] keladi, bu asosiy sarlavha bo'ladi.": "uz072",
+    "Keyin [English pronunciation] H two [O'zbekcha tallaffuz] va [English pronunciation] U L [O'zbekcha tallaffuz] keladi: mahsulotlar nuqtali ro'yxatda turibdi.": "uz073",
+    "Oxirida yana [English pronunciation] H two [O'zbekcha tallaffuz] va [English pronunciation] O L [O'zbekcha tallaffuz] keladi: qadamlar raqamli ro'yxatda turibdi.": "uz074",
+    "Endi o'z ro'yxatingizni yasang. Oldin unga sarlavha kerak bo'ladi. [English pronunciation] H two [O'zbekcha tallaffuz] ichiga ro'yxatingiz nima haqida ekanini yozing va Tayyorni bosing.": "uz075",
+    "Zo'r sarlavha! Endi unga bandlar kerak bo'ladi.": "uz076",
+    "Nima haqida ro'yxat tuzmoqchisiz? Masalan, sevimli o'yinlaringiz haqida.": "uz077",
+    "Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar allaqachon joyida turibdi.": "uz078",
+    "Masalan: Sevimli o'yinlarim. Keyin Tayyorni bosing.": "uz079",
+    "Sarlavha bor, endi ro'yxatning o'zi qoldi. Uchta [English pronunciation] L I [O'zbekcha tallaffuz] ichiga uchta band yozing va Tayyorni bosing. Nuqtalarni brauzer o'zi qo'yadi.": "uz080",
+    "Barakalla! Ro'yxatingiz tayyor: sarlavha ham, uchta band ham bor.": "uz081",
+    "Sarlavhangizga mos uchta narsani o'ylab toping.": "uz082",
+    "Har bir [English pronunciation] L I [O'zbekcha tallaffuz] ichiga bittadan band yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.": "uz083",
+    "Masalan: Futbol, Shaxmat, Minecraft. Keyin Tayyorni bosing.": "uz084",
+    "Voy, ro'yxatingizda ikkinchi bandning nuqtasi yo'qolib qoldi! Uning oldidagi ochuvchi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i tushib qolgan. Yetishmayotgan [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga olib boring.": "uz085",
+    "Bu yopuvchi [English pronunciation] L I tag [O'zbekcha tallaffuz]-i. Band boshida qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.": "uz086",
+    "Bu raqamli ro'yxat [English pronunciation] tag [O'zbekcha tallaffuz]-i. Bizga esa band [English pronunciation] tag [O'zbekcha tallaffuz]-i kerak bo'ladi.": "uz087",
+    "Ana endi joyida! Ikkinchi bandning oldida ham nuqta paydo bo'ldi.": "uz088",
+    "Brauzerga qarang: ikkinchi bandga nima yetishmayapti?": "uz089",
+    "Nuqtani [English pronunciation] L I tag [O'zbekcha tallaffuz]-i qo'yadi. Band boshida esa ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi, unda qiya chiziq bo'lmaydi.": "uz090",
+    "Demak, band boshiga ochuvchi [English pronunciation] L I [O'zbekcha tallaffuz] kerak. Yonib turgan bo'lakni bo'sh joyga olib boring.": "uz091",
+    "Endi o'zingizni sinab ko'ring. Mana, maktab sumkasi uchun ro'yxat, lekin unda xato bor. Brauzerga qarang: nima noto'g'ri ko'rinyapti? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.": "uz092",
+    "Zo'r, birinchi xato topildi! Mana ertalabki ishlar ro'yxati. Bu yerda nima buzilgan?": "uz093",
+    "Bu qator to'g'ri yozilgan: band [English pronunciation] L I [O'zbekcha tallaffuz] ichida turibdi. Brauzerga qarang: buzilish qayerda?": "uz094",
+    "Topdingiz! Bu bandda [English pronunciation] L I tag [O'zbekcha tallaffuz]-i yo'q edi. Shuning uchun uning oldida nuqta chiqmagan edi.": "uz095",
+    "Topdingiz! Bu bandga raqam qo'lda yozilgan edi. [English pronunciation] O L [O'zbekcha tallaffuz] raqamni o'zi qo'yadi, shuning uchun ikkita raqam chiqqan edi.": "uz096",
+    "Brauzerga qarang: qaysi bandning oldida nuqta yo'q?": "uz097",
+    "Nuqta [English pronunciation] L I tag [O'zbekcha tallaffuz]-idan keladi. O'sha bandning qatorini tekshiring.": "uz098",
+    "Qaysi qatorda so'z [English pronunciation] L I [O'zbekcha tallaffuz] ichida turmaydi?": "uz099",
+    "Brauzerga qarang: qaysi bandda raqam ikki marta chiqdi?": "uz100",
+    "[English pronunciation] O L [O'zbekcha tallaffuz] raqamni o'zi qo'yadi. Qaysi qatorda raqam qo'lda yozilgan?": "uz101",
+    "Ikkinchi bandga qarang: uning matnida raqam bormi?": "uz102",
+    "Ajoyib! Ikkala xato ham topildi. Siz endi ro'yxatlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz103",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz104",
+    "Gapni diqqat bilan o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida gapiryapti?": "uz105",
+    "Esingizdami: tartib muhim bo'lsa [English pronunciation] O L [O'zbekcha tallaffuz], muhim bo'lmasa [English pronunciation] U L [O'zbekcha tallaffuz] olinadi. Raqamlarni brauzer o'zi qo'yadi, har bir band esa o'z [English pronunciation] L I tag [O'zbekcha tallaffuz]-ida turadi. Gap shunga mos keladimi?": "uz106",
+    "Barakalla!": "uz107",
+    "[English pronunciation] O L [O'zbekcha tallaffuz] ichidagi raqamlarni o'zimiz yozishimiz kerak bo'ladi.": "uz108",
+    "Aslida raqamlarni brauzer o'zi qo'yadi. Biz faqat bandlarni [English pronunciation] L I [O'zbekcha tallaffuz] ichiga yozamiz.": "uz109",
+    "Har bir band alohida [English pronunciation] L I [O'zbekcha tallaffuz] ichida bo'ladi.": "uz110",
+    "[English pronunciation] L I [O'zbekcha tallaffuz] ro'yxatning bitta bandi bo'ladi. Nechta band bo'lsa, shuncha [English pronunciation] L I [O'zbekcha tallaffuz] bo'ladi.": "uz111",
+    "Xaridlar ro'yxati uchun faqat [English pronunciation] O L [O'zbekcha tallaffuz] to'g'ri keladi.": "uz112",
+    "Xaridlarda tartib muhim emas, shuning uchun [English pronunciation] U L [O'zbekcha tallaffuz] ham yetarli bo'ladi.": "uz113",
+    "Hammasi to'g'ri! Siz [English pronunciation] U L [O'zbekcha tallaffuz], [English pronunciation] O L [O'zbekcha tallaffuz] va [English pronunciation] L I tag [O'zbekcha tallaffuz]-larini yaxshi bilasiz.": "uz114",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men har bir qadamning boshiga raqamni o'zim yozgan edim? Afsuski, men adashibman. [English pronunciation] O L [O'zbekcha tallaffuz] raqamlarni o'zi qo'yadi, shuning uchun sahifada ikkita raqam chiqadi: bir, bir. Demak, [English pronunciation] O L [O'zbekcha tallaffuz] ichida raqamni qo'lda yozish kerak emas.": "uz115",
+    "Qarang, bu sizning ro'yxatingiz!": "uz116",
+    "[English pronunciation] U L [O'zbekcha tallaffuz] nuqtali ro'yxat bo'ladi, unda tartib muhim emas.": "uz117",
+    "[English pronunciation] O L [O'zbekcha tallaffuz] raqamli ro'yxat bo'ladi, raqamlarni brauzer o'zi qo'yadi.": "uz118",
+    "[English pronunciation] L I [O'zbekcha tallaffuz] esa ro'yxatning bitta bandi bo'ladi, u doim [English pronunciation] U L [O'zbekcha tallaffuz] yoki [English pronunciation] O L [O'zbekcha tallaffuz] ichida turadi.": "uz119",
+    "Tabriklayman! Endi sahifangizda tartibli ro'yxatlar bor. Keyingi darsda havolalar bilan tanishamiz. Ko'rishguncha!": "uz120",
+    "Bu yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Oldinga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] turadi.": "uz121",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi.": "uz122",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi.": "uz123",
+    "Voy, zo‘r!": "uz124",
+    "Ana! Chiqdi!": "uz125",
+    "Super!": "uz126",
+    "Qoyil!": "uz127",
+    "Ura!": "uz128",
+    "Zo‘r-ku!": "uz129",
+    "Yana bir bor urinib ko‘ring.": "uz130",
+    "Diqqat bilan qarang.": "uz131",
+    "Yaqin qoldingiz. Shoshilmang.": "uz132",
+    "[English pronunciation] U L [O'zbekcha tallaffuz] yoki [English pronunciation] O L [O'zbekcha tallaffuz]?": "uz133",
+    "To'g'rimi?": "uz134",
+    "To'g'ri yoki noto'g'ri?": "uz135",
+    "Salom, dunyo!": "uz136",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz137",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz138",
+  },
+  ru: {
+    "Привет снова! На прошлом уроке мы разобрали заголовки и абзацы. А сегодня я записал на страницу рецепт плова. Но смотри: и продукты, и шаги слиплись в одну строку. Что купить и с чего начать, не понять. Давай это исправим. Нажми Превратить.": "ru001",
+    "Ого, смотри! Продукты встали отдельными строками, у каждого точка.": "ru002",
+    "А шаги готовки получили номера: один, два, три.": "ru003",
+    "Сегодня ты научишься делать такие списки и соберёшь свой. Но сначала маленькая загадка. Когда я писал шаги, я сам поставил перед каждым номер: один, два, три. По-моему, на странице всё выйдет красиво. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Начнём с продуктов. Смотри: в коде три слова, но браузер склеил их в одну строку. Чтобы получился список, нужны два новых тега.": "ru005",
+    "Первый, тег [English pronunciation] U L [Русское произношение]. [English pronunciation] U L [Русское произношение], от английского [English pronunciation] unordered list [Русское произношение], то есть список, где порядок не важен. [English pronunciation] U L [Русское произношение] обнимает весь список.": "ru006",
+    "Второй, тег [English pronunciation] L I [Русское произношение]. [English pronunciation] L I [Русское произношение], от английского [English pronunciation] list item [Русское произношение], то есть пункт списка. Каждый пункт пишут в свой [English pronunciation] L I [Русское произношение]. Смотри.": "ru007",
+    "Браузер сам ставит точку перед каждым [English pronunciation] L I [Русское произношение]. Запомни: [English pronunciation] U L [Русское произношение] обнимает весь список, а [English pronunciation] L I [Русское произношение], каждый пункт. Поэтому [English pronunciation] L I [Русское произношение] всегда стоит внутри [English pronunciation] U L [Русское произношение].": "ru008",
+    "Теперь твоя очередь. Смотри: морковь стоит в списке, но точки перед ней нет. Потому что она не в [English pronunciation] L I [Русское произношение]. Оберни слово в тег [English pronunciation] L I [Русское произношение]: перед словом напиши открывающий тег, после, закрывающий.": "ru009",
+    "В каком теге стоит каждый пункт?": "ru010",
+    "Тег пункта, [English pronunciation] L I [Русское произношение]. В закрывающем есть косая черта.": "ru011",
+    "В первое место, открывающий [English pronunciation] L I [Русское произношение], во второе, закрывающий [English pronunciation] L I [Русское произношение].": "ru012",
+    "Огонь! Перед морковью тоже появилась точка. Теперь это тоже пункт списка.": "ru013",
+    "Для плова нужны ещё лук и масло. Перетащи оба пункта в список. Внимание: список заканчивается на закрывающем теге [English pronunciation] U L [Русское произношение].": "ru014",
+    "Это место за пределами списка: [English pronunciation] U L [Русское произношение] уже закрыт. Поставь пункт внутрь [English pronunciation] U L [Русское произношение].": "ru015",
+    "Где начинается и где кончается список?": "ru016",
+    "Список, между открывающим и закрывающим [English pronunciation] U L [Русское произношение].": "ru017",
+    "Поставь пункты в пустые строки перед закрывающим [English pronunciation] U L [Русское произношение].": "ru018",
+    "Молодец! Теперь в списке пять продуктов, и у всех есть точка.": "ru019",
+    "Сначала нажми пункт.": "ru020",
+    "Продукты готовы, переходим к шагам готовки. Здесь порядок важен: сначала жарят мясо, потом добавляют морковь. Но точки порядок не показывают.": "ru021",
+    "Для этого есть тег [English pronunciation] O L [Русское произношение]. [English pronunciation] O L [Русское произношение], от английского [English pronunciation] ordered list [Русское произношение], то есть упорядоченный список. Смотри, пишем [English pronunciation] O L [Русское произношение] вместо [English pronunciation] U L [Русское произношение].": "ru022",
+    "Номера браузер ставит сам. Добавим новый пункт, следующий номер тоже появится сам.": "ru023",
+    "Значит, если порядок важен, [English pronunciation] O L [Русское произношение], если нет, [English pronunciation] U L [Русское произношение]. А пункты в обоих, [English pronunciation] L I [Русское произношение].": "ru024",
+    "Теперь собери список из шагов сам. Ставь шаги в пустые строки внутри [English pronunciation] O L [Русское произношение] в том порядке, в каком готовят плов. Номера браузер поставит сам.": "ru025",
+    "Если засыпать рис сейчас, мясо останется сырым. Что делают в казане сначала?": "ru026",
+    "Перед морковью и луком в казане нужно кое-что обжарить. Что?": "ru027",
+    "Рис засыпают в самом конце. Что добавляют перед ним?": "ru028",
+    "С чего начинается плов?": "ru029",
+    "Первый шаг, обжарить мясо.": "ru030",
+    "Порядок такой: мясо, потом морковь и лук, а в конце рис.": "ru031",
+    "Отлично! Шаги стоят по порядку, а номера браузер поставил сам.": "ru032",
+    "Теперь у нас три тега: [English pronunciation] U L [Русское произношение], [English pronunciation] O L [Русское произношение] и [English pronunciation] L I [Русское произношение]. Соедини каждый тег с тем, что он делает. Сначала нажми тег, потом его дело.": "ru033",
+    "Верно! [English pronunciation] U L [Русское произношение] делает список с точками.": "ru034",
+    "Верно! [English pronunciation] O L [Русское произношение] делает список с номерами.": "ru035",
+    "Верно! [English pronunciation] L I [Русское произношение], один пункт списка.": "ru036",
+    "[English pronunciation] U L [Русское произношение] делает список с точками, номеров в нём нет.": "ru037",
+    "[English pronunciation] O L [Русское произношение] делает список с номерами, номера ставит браузер.": "ru038",
+    "[English pronunciation] L I [Русское произношение], не весь список, а только один пункт.": "ru039",
+    "Какой тег ставит точки, а какой номера?": "ru040",
+    "В [English pronunciation] O L [Русское произношение] есть порядок, значит, есть и номера.": "ru041",
+    "[English pronunciation] U L [Русское произношение], список с точками, [English pronunciation] O L [Русское произношение], с номерами, [English pronunciation] L I [Русское произношение], один пункт.": "ru042",
+    "Класс! Все три тега нашли своё дело.": "ru043",
+    "Сначала нажми тег.": "ru044",
+    "Так когда нужен [English pronunciation] U L [Русское произношение], а когда [English pronunciation] O L [Русское произношение]? Поможет один вопрос: если поменять пункты местами, смысл изменится?": "ru045",
+    "Вот список покупок. Меняем местами хлеб и молоко. Ничего не изменилось: купим и то и другое. Значит, здесь подходит [English pronunciation] U L [Русское произношение].": "ru046",
+    "А теперь утренние дела. Меняем местами просыпаюсь и умываюсь. Ой, не проснувшись, не умоешься! Смысл сломался. Значит, здесь нужен [English pronunciation] O L [Русское произношение].": "ru047",
+    "Запомни: если от перестановки пунктов смысл ломается, выбирай [English pronunciation] O L [Русское произношение]. Если не меняется, хватит [English pronunciation] U L [Русское произношение].": "ru048",
+    "Ой, я записал утренние дела через [English pronunciation] U L [Русское произношение]. А здесь порядок важен. Напиши [English pronunciation] O L [Русское произношение] вместо [English pronunciation] U L [Русское произношение]: в начале, открывающий тег [English pronunciation] O L [Русское произношение], в конце, закрывающий.": "ru049",
+    "В начале списка нужен открывающий тег [English pronunciation] O L [Русское произношение].": "ru050",
+    "Это закрывающий тег. В начале списка ставят открывающий, без косой черты.": "ru051",
+    "В конце списка нужен закрывающий тег [English pronunciation] O L [Русское произношение].": "ru052",
+    "Это снова [English pronunciation] U L [Русское произношение]. Нам нужен список с номерами, то есть [English pronunciation] O L [Русское произношение].": "ru053",
+    "Какой тег у списка с номерами?": "ru054",
+    "Это тег [English pronunciation] O L [Русское произношение]. В закрывающем есть косая черта.": "ru055",
+    "В первое место, открывающий [English pronunciation] O L [Русское произношение], в последнее, закрывающий [English pronunciation] O L [Русское произношение].": "ru056",
+    "Отлично! Точки стали номерами. Теперь порядок видно сразу.": "ru057",
+    "Теперь посмотри на два списка: до и после. В списке что-то изменилось. Ну и какой тег это сделал?": "ru058",
+    "Какой тег это сделал?": "ru059",
+    "Верно! [English pronunciation] O L [Русское произношение] превратил точки в номера.": "ru060",
+    "Верно! Новый [English pronunciation] L I [Русское произношение] добавил новый пункт.": "ru061",
+    "Верно! [English pronunciation] U L [Русское произношение] превратил номера в точки.": "ru062",
+    "Смотри: после точки стали номерами. Номера ставит тег [English pronunciation] O L [Русское произношение].": "ru063",
+    "Смотри: после в списке стало на один пункт больше. Новый пункт добавляет [English pronunciation] L I [Русское произношение].": "ru064",
+    "Смотри: после номера стали точками. Точки ставит тег [English pronunciation] U L [Русское произношение].": "ru065",
+    "Сравни список до и после: изменились точки, номера или число пунктов?": "ru066",
+    "Смотри: пунктов столько же, поменялись только значки. Помнишь, какой тег списка ставит номера?": "ru067",
+    "Смотри: значки те же, а пунктов стало больше. Какой тег делает один пункт списка?": "ru068",
+    "Смотри: пунктов столько же, только вместо номеров другие значки. Помнишь, какой тег списка ставит точки?": "ru069",
+    "Теперь эти три тега не перепутать. Дальше прочитаем всю страницу целиком.": "ru070",
+    "Вот вся страница рецепта плова. Посмотрим, как браузер её читает.": "ru071",
+    "Браузер читает код сверху вниз. Сначала [English pronunciation] H one [Русское произношение], главный заголовок.": "ru072",
+    "Потом [English pronunciation] H two [Русское произношение] и [English pronunciation] U L [Русское произношение]: продукты стоят в списке с точками.": "ru073",
+    "В конце снова [English pronunciation] H two [Русское произношение] и [English pronunciation] O L [Русское произношение]: шаги стоят в списке с номерами.": "ru074",
+    "Теперь сделай свой список. Сначала ему нужен заголовок. Напиши в [English pronunciation] H two [Русское произношение], о чём твой список, и нажми Готово.": "ru075",
+    "Классный заголовок! Теперь ему нужны пункты.": "ru076",
+    "О чём будет твой список? Например, о любимых играх.": "ru077",
+    "Пиши только слова, теги уже на месте.": "ru078",
+    "Например: Мои любимые игры. Потом нажми Готово.": "ru079",
+    "Заголовок есть, осталось сделать сам список. Напиши три пункта в три [English pronunciation] L I [Русское произношение] и нажми Готово. Точки браузер поставит сам.": "ru080",
+    "Молодец! Твой список готов: есть и заголовок, и три пункта.": "ru081",
+    "Придумай три вещи под свой заголовок.": "ru082",
+    "В каждый [English pronunciation] L I [Русское произношение], по одному пункту, теги на месте.": "ru083",
+    "Например: Футбол, Шахматы, Minecraft. Потом нажми Готово.": "ru084",
+    "Ой, в твоём списке у второго пункта пропала точка! Перед ним потерялся открывающий тег [English pronunciation] L I [Русское произношение]. Перетащи недостающий тег в пустое место.": "ru085",
+    "Это закрывающий [English pronunciation] L I [Русское произношение]. В начале пункта стоит открывающий, без косой черты.": "ru086",
+    "Это тег списка с номерами. А нам нужен тег пункта.": "ru087",
+    "Вот теперь порядок! У второго пункта тоже появилась точка.": "ru088",
+    "Посмотри на браузер: чего не хватает второму пункту?": "ru089",
+    "Точку ставит тег [English pronunciation] L I [Русское произношение]. А в начале пункта стоит открывающий тег, без косой черты.": "ru090",
+    "Значит, в начало пункта нужен открывающий [English pronunciation] L I [Русское произношение]. Перетащи горящий кусок в пустое место.": "ru091",
+    "Теперь проверь себя. Вот список для школьной сумки, но в нём ошибка. Посмотри на браузер: что выглядит не так? Найди строку с ошибкой и нажми её.": "ru092",
+    "Класс, первая ошибка найдена! Вот список утренних дел. Что сломано здесь?": "ru093",
+    "Эта строка в порядке: пункт стоит в [English pronunciation] L I [Русское произношение]. Посмотри на браузер: где поломка?": "ru094",
+    "Нашёл! У этого пункта не было тега [English pronunciation] L I [Русское произношение]. Поэтому перед ним не было точки.": "ru095",
+    "Нашёл! В этом пункте номер был вписан руками. [English pronunciation] O L [Русское произношение] ставит номер сам, поэтому номеров было два.": "ru096",
+    "Посмотри на браузер: у какого пункта нет точки?": "ru097",
+    "Точка берётся из тега [English pronunciation] L I [Русское произношение]. Проверь строку этого пункта.": "ru098",
+    "В какой строке слово не стоит в [English pronunciation] L I [Русское произношение]?": "ru099",
+    "Посмотри на браузер: у какого пункта номер дважды?": "ru100",
+    "[English pronunciation] O L [Русское произношение] ставит номер сам. В какой строке номер вписан руками?": "ru101",
+    "Посмотри на второй пункт: в его тексте есть номер?": "ru102",
+    "Супер! Обе ошибки найдены. Ты проверяешь списки как настоящий программист.": "ru103",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru104",
+    "Прочитай фразу внимательно: о каком теге она?": "ru105",
+    "Вспомни: если порядок важен, [English pronunciation] O L [Русское произношение], если нет, [English pronunciation] U L [Русское произношение]. Номера браузер ставит сам, а каждый пункт стоит в своём [English pronunciation] L I [Русское произношение]. Фраза с этим совпадает?": "ru106",
+    "Точно!": "ru107",
+    "Номера в [English pronunciation] O L [Русское произношение] нужно писать самим.": "ru108",
+    "На самом деле номера ставит браузер. Мы пишем только пункты в [English pronunciation] L I [Русское произношение].": "ru109",
+    "Каждый пункт стоит в своём [English pronunciation] L I [Русское произношение].": "ru110",
+    "[English pronunciation] L I [Русское произношение], один пункт списка. Сколько пунктов, столько и [English pronunciation] L I [Русское произношение].": "ru111",
+    "Для списка покупок подходит только [English pronunciation] O L [Русское произношение].": "ru112",
+    "В покупках порядок не важен, поэтому хватит и [English pronunciation] U L [Русское произношение].": "ru113",
+    "Всё верно! Ты отлично знаешь теги [English pronunciation] U L [Русское произношение], [English pronunciation] O L [Русское произношение] и [English pronunciation] L I [Русское произношение].": "ru114",
+    "Вернёмся к загадке. Помнишь, я сам вписал номер перед каждым шагом? Увы, я ошибся. [English pronunciation] O L [Русское произношение] ставит номера сам, поэтому на странице выходит два номера: один, один. Значит, в [English pronunciation] O L [Русское произношение] номер руками писать не нужно.": "ru115",
+    "Посмотри, это твой список!": "ru116",
+    "[English pronunciation] U L [Русское произношение], список с точками, порядок в нём не важен.": "ru117",
+    "[English pronunciation] O L [Русское произношение], список с номерами, номера ставит браузер.": "ru118",
+    "А [English pronunciation] L I [Русское произношение], один пункт списка, он всегда стоит внутри [English pronunciation] U L [Русское произношение] или [English pronunciation] O L [Русское произношение].": "ru119",
+    "Ура! Теперь на твоей странице есть аккуратные списки. На следующем уроке познакомимся со ссылками. До встречи!": "ru120",
+    "Это закрывающий тег. Впереди ставят открывающий, без косой черты.": "ru121",
+    "Тег начинается с уголка.": "ru122",
+    "В конце тега нужен уголок.": "ru123",
+    "Вау, классно!": "ru124",
+    "Есть! Получилось!": "ru125",
+    "Супер!": "ru126",
+    "Огонь!": "ru127",
+    "Ура!": "ru128",
+    "Вот это да!": "ru129",
+    "Попробуй ещё раз.": "ru130",
+    "Посмотри внимательно.": "ru131",
+    "Уже близко. Не спеши.": "ru132",
+    "[English pronunciation] U L [Русское произношение] или [English pronunciation] O L [Русское произношение]?": "ru133",
+    "Верно или нет?": "ru134",
+    "Привет, мир!": "ru135",
+    "Здесь нужны только слова, без угловых скобок.": "ru136",
+    "Молодец!": "ru137",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru138",
+  },
+  en: {
+    "Hi again! Last time we learned headings and paragraphs. Today I wrote a plov recipe on a page. But look: the ingredients and the steps are all stuck in one line. You can’t tell what to buy or where to start. Let’s fix it. Tap Transform.": "en001",
+    "Whoa, look! The ingredients lined up on separate lines, each with a dot.": "en002",
+    "And the cooking steps got numbers: one, two, three.": "en003",
+    "Today you’ll learn to make lists like these and build your own. But first, a little riddle. When I wrote the steps, I put a number in front of each one myself: one, two, three. I think it will look great on the page. So what do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Let’s start with the ingredients. Look: the code has three words, but the browser glued them into one line. To make a list, we need two new tags.": "en005",
+    "The first one is the U L tag. U L comes from unordered list: a list where the order doesn’t matter. U L wraps the whole list.": "en006",
+    "The second one is the L I tag. L I comes from list item: one point of the list. Each item goes into its own L I. Watch.": "en007",
+    "The browser puts a dot in front of each L I by itself. Remember: U L wraps the whole list, and L I wraps each item. That’s why L I always sits inside U L.": "en008",
+    "Now it’s your turn. Look: the carrots are in the list, but there’s no dot in front of them, because they aren’t inside L I. Wrap the word in L I: type the opening tag before it and the closing tag after it.": "en009",
+    "Which tag holds each item?": "en010",
+    "The item tag is L I. The closing one has a slash.": "en011",
+    "Type the opening L I in the first spot and the closing L I in the second.": "en012",
+    "Awesome! A dot appeared in front of the carrots too. Now they’re a list item as well.": "en013",
+    "The plov also needs onions and oil. Drag both items into the list. Careful: the list ends at the closing U L tag.": "en014",
+    "This spot is outside the list: U L is already closed. Put the item inside U L.": "en015",
+    "Where does the list start and end?": "en016",
+    "The list is between the opening and the closing U L.": "en017",
+    "Put the items into the empty lines before the closing U L.": "en018",
+    "Well done! Now the list has five ingredients, and each one has a dot.": "en019",
+    "Tap an item first.": "en020",
+    "The ingredients are done; now the cooking steps. Here the order matters: first you fry the meat, then you add the carrots. But dots don’t show the order.": "en021",
+    "For that there’s the O L tag. O L comes from ordered list: a list in order. Watch, we write O L instead of U L.": "en022",
+    "The browser adds the numbers by itself. If we add a new item, the next number appears by itself too.": "en023",
+    "So if the order matters, use O L; if not, use U L. The items in both are L I.": "en024",
+    "Now build the list of steps yourself. Put the steps into the empty lines inside O L in the order you cook. The browser will add the numbers.": "en025",
+    "If we add the rice now, the meat stays raw. What happens in the pot first?": "en026",
+    "Before the carrots and onions, something has to be fried in the pot. What is it?": "en027",
+    "The rice goes in last. What do we add before it?": "en028",
+    "What does making plov start with?": "en029",
+    "The first step is frying the meat.": "en030",
+    "The order is: meat, then carrots and onions, and rice at the end.": "en031",
+    "Great! The steps are in order, and the browser added the numbers by itself.": "en032",
+    "Now we have three tags: U L, O L and L I. Match each tag with what it does. Tap a tag first, then what it does.": "en033",
+    "Right! U L makes a bulleted list.": "en034",
+    "Right! O L makes a numbered list.": "en035",
+    "Right! L I is one list item.": "en036",
+    "U L makes a bulleted list, with no numbers.": "en037",
+    "O L makes a numbered list; the browser adds the numbers.": "en038",
+    "L I isn’t the whole list, only one item.": "en039",
+    "Which tag adds dots, and which adds numbers?": "en040",
+    "O L means order, so it has numbers.": "en041",
+    "U L is a bulleted list, O L is numbered, and L I is one item.": "en042",
+    "Brilliant! All three tags found their job.": "en043",
+    "Tap a tag first.": "en044",
+    "So when do we need U L, and when O L? One question helps: if we swap the items, does the meaning change?": "en045",
+    "Here’s a shopping list. We swap the bread and the milk. Nothing changed: we’ll buy both anyway. So U L fits here.": "en046",
+    "Now the morning routine. We swap waking up and washing. Oops, you can’t wash before you wake up! The meaning broke. So O L is needed here.": "en047",
+    "Remember: if swapping the items breaks the meaning, choose O L. If the meaning stays the same, U L is enough.": "en048",
+    "Oops, I wrote the morning routine with U L. But here the order matters. Write O L instead of U L: the opening O L tag at the start and the closing O L tag at the end.": "en049",
+    "The list needs the opening O L tag at the start.": "en050",
+    "That’s a closing tag. The opening tag, without a slash, goes at the start.": "en051",
+    "The list needs the closing O L tag at the end.": "en052",
+    "That’s U L again. We need a numbered list, which is O L.": "en053",
+    "Which tag makes a numbered list?": "en054",
+    "It’s the O L tag. The closing one has a slash.": "en055",
+    "Type the opening O L in the first spot and the closing O L in the last.": "en056",
+    "Great! The dots turned into numbers. Now the order is easy to see.": "en057",
+    "Now look at two lists: before and after. Something changed in the list. So which tag did that?": "en058",
+    "Which tag did it?": "en059",
+    "Right! O L turned the dots into numbers.": "en060",
+    "Right! A new L I added a new item.": "en061",
+    "Right! U L turned the numbers into dots.": "en062",
+    "Look: after, the dots became numbers. The O L tag adds numbers.": "en063",
+    "Look: after, the list has one more item. L I adds a new item.": "en064",
+    "Look: after, the numbers became dots. The U L tag adds dots.": "en065",
+    "Compare the list before and after: did the dots, the numbers or the number of items change?": "en066",
+    "Look: the number of items is the same, only the markers changed. Remember which list tag adds numbers?": "en067",
+    "Look: the markers are the same, but there are more items. Which tag makes one list item?": "en068",
+    "Look: the number of items is the same, only the numbers turned into other markers. Remember which list tag adds dots?": "en069",
+    "Now you won’t mix up these three tags. Next, let’s read the whole page.": "en070",
+    "Here’s the whole plov recipe page. Let’s see how the browser reads it.": "en071",
+    "The browser reads code from top to bottom. First comes H one, the main heading.": "en072",
+    "Then H two and U L: the ingredients are in a bulleted list.": "en073",
+    "At the end, another H two and O L: the steps are in a numbered list.": "en074",
+    "Now make your own list. First it needs a heading. Type in H two what your list is about, then tap Done.": "en075",
+    "Great heading! Now it needs items.": "en076",
+    "What will your list be about? Your favorite games, for example.": "en077",
+    "Type only words: the tags are already in place.": "en078",
+    "For example: My favorite games. Then tap Done.": "en079",
+    "You have a heading; now the list itself. Type three items into the three L I tags, then tap Done. The browser adds the dots.": "en080",
+    "Well done! Your list is ready: it has a heading and three items.": "en081",
+    "Think of three things that fit your heading.": "en082",
+    "One item into each L I: the tags are in place.": "en083",
+    "For example: Football, Chess, Minecraft. Then tap Done.": "en084",
+    "Oops, the second item in your list lost its dot! Its opening L I tag went missing. Drag the missing tag into the empty spot.": "en085",
+    "That’s the closing L I. The opening tag, without a slash, starts the item.": "en086",
+    "That’s the numbered list tag. We need the item tag.": "en087",
+    "That’s it! The second item has its dot again.": "en088",
+    "Look at the browser: what is the second item missing?": "en089",
+    "The L I tag adds the dot. And an item starts with the opening tag, without a slash.": "en090",
+    "So the item needs the opening L I at the start. Drag the glowing piece into the empty spot.": "en091",
+    "Now check yourself. Here’s a list for a school bag, but it has a bug. Look at the browser: what looks wrong? Find the line with the bug and tap it.": "en092",
+    "Great, the first bug is found! Here’s the morning routine. What’s broken here?": "en093",
+    "This line is fine: the item is inside L I. Look at the browser: where’s the problem?": "en094",
+    "Found it! This item had no L I tag. That’s why it had no dot.": "en095",
+    "Found it! This item had a number typed by hand. O L adds the number by itself, so there were two numbers.": "en096",
+    "Look at the browser: which item has no dot?": "en097",
+    "The dot comes from the L I tag. Check that item’s line.": "en098",
+    "Which line has a word outside L I?": "en099",
+    "Look at the browser: which item has its number twice?": "en100",
+    "O L adds the number itself. Which line has a number typed by hand?": "en101",
+    "Look at the second item: is there a number in its text?": "en102",
+    "Super! Both bugs are found. You check lists like a real programmer.": "en103",
+    "The last test. I’ll say something, and you choose: true or false.": "en104",
+    "Read the sentence carefully: which tag is it about?": "en105",
+    "Remember: if order matters, use O L; if not, U L. The browser adds the numbers itself, and each item sits in its own L I. Does the sentence match that?": "en106",
+    "Exactly!": "en107",
+    "We have to type the numbers in O L ourselves.": "en108",
+    "Actually the browser adds the numbers. We only write the items in L I.": "en109",
+    "Each item goes in its own L I.": "en110",
+    "L I is one list item. As many items, as many L I tags.": "en111",
+    "Only O L works for a shopping list.": "en112",
+    "Order doesn’t matter for shopping, so U L is enough.": "en113",
+    "All correct! You know the U L, O L and L I tags really well.": "en114",
+    "Back to our riddle. Remember, I typed a number in front of each step myself? Sadly, I was wrong. O L adds the numbers by itself, so the page shows two numbers: one, one. So you don’t type numbers in O L by hand.": "en115",
+    "Look, this is your list!": "en116",
+    "U L is a bulleted list where the order doesn’t matter.": "en117",
+    "O L is a numbered list; the browser adds the numbers.": "en118",
+    "And L I is one list item; it always sits inside U L or O L.": "en119",
+    "Hooray! Now your page has neat lists. Next time we’ll meet links. See you!": "en120",
+    "That’s a closing tag. The opening tag, without a slash, goes first.": "en121",
+    "A tag starts with the bracket.": "en122",
+    "A tag ends with the bracket.": "en123",
+    "Wow, awesome!": "en124",
+    "Yes! You did it!": "en125",
+    "Super!": "en126",
+    "Brilliant!": "en127",
+    "Hooray!": "en128",
+    "Amazing!": "en129",
+    "Try once more.": "en130",
+    "Take a closer look.": "en131",
+    "You are close. No rush.": "en132",
+    "U L or O L?": "en133",
+    "True or false?": "en134",
+    "Hello, world!": "en135",
+    "Only words here, no angle brackets.": "en136",
+    "Well done!": "en137",
+    "Everything in the window lives inside body.": "en138",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

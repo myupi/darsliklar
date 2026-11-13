@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8018,15 +7569,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14122,3 +13666,1035 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c5-sheet .kz-scene .kz-br.c5-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c5-sheet .kz-scene .kz-br.c5-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 169, ru 169, en 169; всего знаков 65604. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Batafsil o'qish", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men blog ochdim, ya'ni o'zim haqimda yozadigan sayt degani. Lekin qarang, u qoralamaga o'xshaydi: sarlavha kichkina, harflar eski kitobdagidek, havola tagida esa chiziq. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Sarlavha katta, boshqa shriftda va o'rtada, havola tagidagi chiziq esa yo'qoldi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga tegmadim. Matnning ko'rinishini [English pronunciation] CSS [O'zbekcha tallaffuz] o'zgartirdi: o'lcham, shrift, joylashuv va chiziq.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun matn bilan ishlaydigan beshta xususiyatni o'rganasiz. Lekin oldin kichik topishmoq. Birinchi urinishda men sarlavha uchun [English pronunciation] font-size [O'zbekcha tallaffuz] deb yozdim va yoniga faqat qirq sonini qo'ydim. Menimcha, sarlavha shunchaki katta bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodga qarang: [English pronunciation] font-size [O'zbekcha tallaffuz] qatorida son o'zgaryapti. Keyin brauzerga qarang: harflar shu zahoti kattalashadi yoki kichrayadi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-size [O'zbekcha tallaffuz] harflar qancha katta bo'lishini aytadi. Son katta bo'lsa, harflar ham katta. Son yonida doim [English pronunciation] px [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda shriftni kattalashtirib ko'rganmisiz? Bu xuddi shunday: yigirma to'rt piksel bo'lsa, matn yirikroq va o'qish osonroq.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi xususiyat [English pronunciation] font-size [O'zbekcha tallaffuz], ya'ni harf o'lchami degani. O'lcham piksellarda yoziladi: son va yonida [English pronunciation] px [O'zbekcha tallaffuz]. Piksel bu ekrandagi eng kichik nuqta. Oddiy matn odatda o'n olti piksel bo'ladi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzaslarga o'n ikki piksel beramiz. Qarang, matn kichrayib qoldi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi yigirma to'rt piksel. Matn kattalashdi. Son qancha katta bo'lsa, harflar ham shuncha katta.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaga esa qirq piksel. Endi u haqiqiy katta sarlavha.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] font-size [O'zbekcha tallaffuz] harf o'lchamini beradi: son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Sarlavhani qirq pikselga kattalashtiring: [English pronunciation] font-size [O'zbekcha tallaffuz] uchun qiymatni yozing. Px ni unutmang!", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat son yozildi. Brauzer bunday qiymatni tashlab yuboradi: son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, masalan 30[English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa o'lcham. Sarlavha qirq piksel bo'lishi kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing, masalan 30[English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat ikki qismdan: son va o'lcham birligi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son qirq, birlik esa [English pronunciation] px [O'zbekcha tallaffuz]. Ular o'rtasida bo'sh joy yo'q.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 40[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sarlavha endi katta va ko'zga tashlanadi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'lchamlarni yozuvlar bilan juftlang. Chapdan o'lchamni, o'ngdan esa shu o'lchamdagi yozuvni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n ikki piksel eng kichik o'lcham. Eng kichik yozuvni toping.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yigirma to'rt piksel o'rtacha o'lcham: oddiy matndan kattaroq.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qirq sakkiz piksel eng katta o'lcham. Eng katta yozuvni toping.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu eng kichigi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu o'rtachasi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu eng kattasi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdan o'lchamni tanlang.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son qancha katta bo'lsa, yozuv ham shuncha katta.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 12[English pronunciation] px [O'zbekcha tallaffuz] eng kichik, 48[English pronunciation] px [O'zbekcha tallaffuz] eng katta, 24[English pronunciation] px [O'zbekcha tallaffuz] o'rtada.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan juftlikni bosing.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! O'lchamni ko'z bilan ham taniysiz.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-family [O'zbekcha tallaffuz] qatoridagi so'zga va brauzerdagi harflar shakliga qarang: so'z o'zgarsa, harflar shakli ham o'zgaradi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-family [O'zbekcha tallaffuz] shriftni tanlaydi. [English pronunciation] serif [O'zbekcha tallaffuz] bilan harflar uchida kichik chiziqchalar bor, xuddi kitobdagidek. [English pronunciation] sans-serif [O'zbekcha tallaffuz] bilan harflar silliq. [English pronunciation] monospace [O'zbekcha tallaffuz] bilan hamma harf bir xil kenglikda.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kitobdagi harflar va telefondagi harflarni solishtiring: ular har xil ko'rinadi. Saytda ham sarlavha uchun bir shrift, matn uchun boshqasini tanlash mumkin.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi xususiyat [English pronunciation] font-family [O'zbekcha tallaffuz], ya'ni shrift degani. Hozir brauzer oddiy shriftni ishlatyapti: harflarda kichik oyoqchalar bor, xuddi kitobdagidek. Bunday shriftlar [English pronunciation] serif [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] sans-serif [O'zbekcha tallaffuz] yozamiz. Oyoqchalar yo'qoldi, harflar silliq va zamonaviy bo'ldi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] monospace [O'zbekcha tallaffuz] da esa har bir harf bir xil kenglikda, xuddi kod muharriridagidek.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shrift nomini ham yozish mumkin, masalan [English pronunciation] Georgia [O'zbekcha tallaffuz]. Vergul bilan zaxira shriftni qo'yamiz: [English pronunciation] Georgia [O'zbekcha tallaffuz] topilmasa, brauzer [English pronunciation] serif [O'zbekcha tallaffuz] ni oladi. Agar shrift nomi ikki so'zdan iborat bo'lsa, uni qo'shtirnoqqa olamiz, masalan [English pronunciation] Courier New [O'zbekcha tallaffuz].", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] font-family [O'zbekcha tallaffuz] shriftni tanlaydi: [English pronunciation] serif [O'zbekcha tallaffuz], [English pronunciation] sans-serif [O'zbekcha tallaffuz], [English pronunciation] monospace [O'zbekcha tallaffuz] yoki shrift nomi va vergul bilan zaxira.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingiz yig'ing. Blog kod muharririga o'xshasin: shrift [English pronunciation] Courier New [O'zbekcha tallaffuz], zaxirasi esa [English pronunciation] monospace [O'zbekcha tallaffuz]. Bo'laklarni to'g'ri tartibda bosing yoki suring.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] px [O'zbekcha tallaffuz] o'lcham uchun edi, shriftga kerak emas.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib boshqacha: oldin qo'shtirnoqdagi shrift nomi, keyin vergul, oxirida zaxira shrift.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin asosiy shrift, keyin zaxira.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shrift nomi qo'shtirnoqda, keyin vergul, keyin [English pronunciation] monospace [O'zbekcha tallaffuz].", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan bo'lakni bosing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Blog endi kod muharririga o'xshaydi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men yozuvni ko'rsataman, siz esa uni qaysi shrift berganini tanlang.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflarga qarang: oyoqchalari bormi? [English pronunciation] monospace [O'zbekcha tallaffuz] da hatto ingichka I ham keng m qancha joy olsa, shuncha joy oladi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] serif [O'zbekcha tallaffuz] oyoqchali, [English pronunciation] sans-serif [O'zbekcha tallaffuz] silliq, [English pronunciation] monospace [O'zbekcha tallaffuz] da esa harflar bir xil kenglikda.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir harf bir xil kenglikda, demak bu [English pronunciation] monospace [O'zbekcha tallaffuz].", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar silliq, oyoqchalari yo'q. Demak bu [English pronunciation] sans-serif [O'zbekcha tallaffuz].", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflarda kichik oyoqchalar bor, demak bu [English pronunciation] serif [O'zbekcha tallaffuz].", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Shriftni ko'rib taniysiz.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval abzaslarga qarang: harflar qalinlashadi. Keyin havolaga qarang: uning tagidagi chiziq yo'qoladi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-weight [O'zbekcha tallaffuz] harflar qalinligini beradi: [English pronunciation] bold [O'zbekcha tallaffuz] qalin, [English pronunciation] normal [O'zbekcha tallaffuz] oddiy. [English pronunciation] text-decoration [O'zbekcha tallaffuz] esa chiziq beradi: [English pronunciation] underline [O'zbekcha tallaffuz] tagida, [English pronunciation] line-through [O'zbekcha tallaffuz] ustidan, [English pronunciation] none [O'zbekcha tallaffuz] chiziqsiz.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Daftarda muhim so'zni qalin qilib yozasiz, xatoni esa ustidan chizib qo'yasiz. Saytda buni [English pronunciation] bold [O'zbekcha tallaffuz] va [English pronunciation] line-through [O'zbekcha tallaffuz] qiladi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana ikki foydali xususiyat bor. [English pronunciation] font-weight [O'zbekcha tallaffuz] harflar qalinligini beradi, [English pronunciation] text-decoration [O'zbekcha tallaffuz] esa matn ustidagi yoki ostidagi chiziqni.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzaslarga [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] bold [O'zbekcha tallaffuz] yozamiz. Harflar qalin bo'ldi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalar tagida odatda chiziq bo'ladi. [English pronunciation] text-decoration [O'zbekcha tallaffuz]: [English pronunciation] none [O'zbekcha tallaffuz] uni olib tashlaydi, [English pronunciation] none [O'zbekcha tallaffuz] ya'ni hech narsa degani. [English pronunciation] underline [O'zbekcha tallaffuz] esa chiziqni qaytaradi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha odatda qalin. [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] normal [O'zbekcha tallaffuz] yozsak, u oddiy qalinlikda bo'ladi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlik uchun: [English pronunciation] bold [O'zbekcha tallaffuz] yoki [English pronunciation] normal [O'zbekcha tallaffuz]. [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziq uchun: [English pronunciation] underline [O'zbekcha tallaffuz], [English pronunciation] line-through [O'zbekcha tallaffuz] yoki [English pronunciation] none [O'zbekcha tallaffuz].", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval qiziq bir narsa: [English pronunciation] line-through [O'zbekcha tallaffuz] so'zni xuddi daftardagi xatoni chizib qo'ygandek o'chiradi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havola tagidagi chiziqni olib tashlang: [English pronunciation] text-decoration [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-decoration [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] underline [O'zbekcha tallaffuz] chiziqni qo'yadi, u esa allaqachon bor. Bizga chiziqsiz qiymat kerak.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] line-through [O'zbekcha tallaffuz] so'zni o'chirilgandek qildi. Bizga chiziqsiz qiymat kerak.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Chiziqsiz degani [English pronunciation] none [O'zbekcha tallaffuz].", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rsatuvni eslang: [English pronunciation] text-decoration [O'zbekcha tallaffuz] dan keyin qaysi so'z havola tagidagi chiziqni olib tashladi?", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-decoration [O'zbekcha tallaffuz] ning chiziqsiz qiymati to'rt harfli so'z.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Havola endi toza, tagida chiziq yo'q.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men yozuvni ko'rsataman, siz esa uni qaysi xususiyat o'zgartirganini tanlang: [English pronunciation] font-weight [O'zbekcha tallaffuz] yoki [English pronunciation] text-decoration [O'zbekcha tallaffuz].", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Harflarning o'zi o'zgardimi yoki ularga chiziq qo'shildimi?", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qalinlik [English pronunciation] font-weight [O'zbekcha tallaffuz] dan, chiziq esa [English pronunciation] text-decoration [O'zbekcha tallaffuz] dan.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar qalin bo'ldi, demak bu [English pronunciation] font-weight [O'zbekcha tallaffuz].", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] So'z tagida chiziq paydo bo'ldi, demak bu [English pronunciation] text-decoration [O'zbekcha tallaffuz].", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] So'z ustidan chiziq o'tdi, bu ham [English pronunciation] text-decoration [O'zbekcha tallaffuz].", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Katta sarlavha qalin emas, oddiy bo'ldi. Bu [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] normal [O'zbekcha tallaffuz].", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Qalinlik va chiziqni adashtirmaysiz.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaga qarang: u qatorning chap tomoniga, o'rtasiga va o'ng tomoniga ko'chadi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-align [O'zbekcha tallaffuz] matn qatorning qaysi tomonida turishini aytadi: [English pronunciation] left [O'zbekcha tallaffuz] bo'lsa chapda, [English pronunciation] center [O'zbekcha tallaffuz] bo'lsa o'rtada, [English pronunciation] right [O'zbekcha tallaffuz] bo'lsa o'ngda.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kitob muqovasida nom odatda o'rtada turadi. Sayt sarlavhasini ham shunday o'rtaga qo'yish mumkin: [English pronunciation] text-align center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi xususiyat [English pronunciation] text-align [O'zbekcha tallaffuz], ya'ni matnni qatorning qaysi tomoniga qo'yish degani. Odatda matn chapda turadi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaga [English pronunciation] text-align [O'zbekcha tallaffuz]: [English pronunciation] center [O'zbekcha tallaffuz] yozamiz. Sarlavha o'rtaga keldi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] right [O'zbekcha tallaffuz] yozsak, o'ng tomonga o'tadi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] left [O'zbekcha tallaffuz] esa yana chapga qaytaradi. Bu qiymat odatiy.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] text-align [O'zbekcha tallaffuz] matnni qatorda joylaydi: [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] yoki [English pronunciation] right [O'zbekcha tallaffuz].", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhani o'rtaga qo'ying: [English pronunciation] text-align [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-align [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] middle so'zini brauzer tanimaydi. O'rta degani [English pronunciation] CSS [O'zbekcha tallaffuz] da [English pronunciation] center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha chetga ketdi. Bizga o'rta kerak.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. O'rta degani [English pronunciation] center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'rta inglizcha qanday ataladi?", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-align [O'zbekcha tallaffuz] ning uchta qiymati: [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz]. Bizga o'rtadagisi kerak.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sarlavha o'rtada, blog chiroyli ko'rinyapti.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va buzilgan qoidani bosing.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: uning natijasi sahifada ko'rinib turibdi. Nima o'zgarmay qoldi?", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! O'ttiz ikki sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi, shuning uchun brauzer bu qoidani tashlab yubordi.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! middle degan qiymat yo'q, o'rta degani [English pronunciation] center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: nima kutilganidek chiqmadi?", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sarlavha kattalashmadi. Uning o'lchami yonida birlik bormi?", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzaslar o'rtaga kelmadi. [English pronunciation] text-align [O'zbekcha tallaffuz] qiymatiga qarang.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato birinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: middle. O'sha qatorni bosing.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz matnni haqiqiy dizayner kabi tekshiryapsiz.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzaslardagi harflarni qalin qiling: P uchun [English pronunciation] font-weight [O'zbekcha tallaffuz] xususiyatini yozing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzaslar uchun P selektori kerak.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qalinlikni [English pronunciation] font-weight [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Qalin degani [English pronunciation] bold [O'zbekcha tallaffuz].", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar qalin bo'lmadi. Bizga [English pronunciation] bold [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Abzaslar qaysi selektor bilan tanlanadi? Qalinlik uchun qaysi xususiyat kerak?", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor P, xususiyat [English pronunciation] font-weight [O'zbekcha tallaffuz], qiymat [English pronunciation] bold [O'zbekcha tallaffuz].", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Abzaslar qalin bo'ldi. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z sahifangizni bezang. Sarlavha uchun istalgan o'lchamni yozing, butun sahifa uchun esa istalgan shriftni. Keyin Tayyorni bosing.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sarlavha qanchalik katta bo'lsin? Qaysi shrift sizga yoqadi?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'lcham son va [English pronunciation] px [O'zbekcha tallaffuz] bilan, shrift esa nom yoki [English pronunciation] serif [O'zbekcha tallaffuz], [English pronunciation] sans-serif [O'zbekcha tallaffuz], [English pronunciation] monospace [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, o'lchamga 36[English pronunciation] px [O'zbekcha tallaffuz], shriftga [English pronunciation] sans-serif [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning blogingiz.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapda qaysi xususiyat haqida gap ketyapti?", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Dars esingizdami: [English pronunciation] font-size [O'zbekcha tallaffuz] son va [English pronunciation] px [O'zbekcha tallaffuz] bilan, [English pronunciation] text-align [O'zbekcha tallaffuz] joylaydi, [English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlik beradi, [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziq. Gap shunga mos keladimi?", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-size [O'zbekcha tallaffuz] ga faqat son yozsa ham bo'ladi, [English pronunciation] px [O'zbekcha tallaffuz] shart emas.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] px [O'zbekcha tallaffuz] kerak. Usiz brauzer qiymatni tashlab yuboradi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-align [O'zbekcha tallaffuz]: [English pronunciation] center [O'zbekcha tallaffuz] matnni o'rtaga qo'yadi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] center [O'zbekcha tallaffuz] o'rta degani.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] bold [O'zbekcha tallaffuz] harflarni qalin qiladi.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: [English pronunciation] bold [O'zbekcha tallaffuz] qalin degani.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-decoration [O'zbekcha tallaffuz]: [English pronunciation] none [O'zbekcha tallaffuz] havola tagiga chiziq qo'yadi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] none [O'zbekcha tallaffuz] chiziqni olib tashlaydi. Chiziqni [English pronunciation] underline [O'zbekcha tallaffuz] qo'yadi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz matn bilan ishlashni bilasiz.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] font-size [O'zbekcha tallaffuz] ga faqat qirq sonini yozgan edim? Afsuski, men adashibman. O'lchamga birlik kerak, masalan [English pronunciation] px [O'zbekcha tallaffuz]. Usiz brauzer qoidani tashlab yuboradi va sarlavha kichkinaligicha qoladi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning blogingiz, o'zingiz tanlagan o'lcham va shrift bilan!", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-size [O'zbekcha tallaffuz] o'lchamni, [English pronunciation] font-family [O'zbekcha tallaffuz] shriftni beradi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlikni, [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziqni boshqaradi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] text-align [O'zbekcha tallaffuz] esa matnni chapga, o'rtaga yoki o'ngga qo'yadi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi matningiz siz xohlagandek ko'rinadi. Keyingi darsda elementlar o'lchamlari bilan ishlaymiz. Ko'rishguncha!", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun men o'yin yasadim.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U juda oddiy, lekin qiziqarli.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi shrift?", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu yozuvni qaysi kod beradi?", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi xususiyat?", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu yozuvni qaysi xususiyat o'zgartirdi?", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Читать дальше", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я завёл блог, то есть сайт, где пишу о себе. Но смотри, он похож на черновик: заголовок маленький, буквы как в старой книге, а под ссылкой черта. Нажми Превратить.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Заголовок крупный, другим шрифтом и по центру, а черта под ссылкой исчезла.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] я не трогал. Вид текста поменял [English pronunciation] CSS [Русское произношение]: размер, шрифт, положение и черту.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты узнаешь пять свойств для текста. Но сначала маленькая загадка. В первый раз я написал для заголовка [English pronunciation] font-size [Русское произношение] и поставил рядом просто число сорок. По-моему, заголовок просто станет большим. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на код: в строке [English pronunciation] font-size [Русское произношение] меняется число. Потом посмотри в браузер: буквы сразу становятся крупнее или мельче.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-size [Русское произношение] говорит, какого размера буквы. Больше число, крупнее буквы. Рядом с числом всегда пишут [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Помнишь, в телефоне можно сделать шрифт крупнее? Это то же самое: двадцать четыре пикселя, текст крупнее, читать легче.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первое свойство, [English pronunciation] font-size [Русское произношение], то есть размер букв. Размер пишут в пикселях: число и рядом [English pronunciation] px [Русское произношение]. Пиксель, это самая маленькая точка на экране. Обычный текст, обычно шестнадцать пикселей.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дадим абзацам двенадцать пикселей. Смотри, текст стал мелким.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь двадцать четыре пикселя. Текст стал крупным. Чем больше число, тем крупнее буквы.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А заголовку, сорок пикселей. Теперь это настоящий большой заголовок.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] font-size [Русское произношение] задаёт размер букв: число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Сделай заголовок размером сорок пикселей: впиши значение для [English pronunciation] font-size [Русское произношение]. Не забудь [English pronunciation] px [Русское произношение]!", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написано только число. Браузер такое значение выбрасывает: добавь к числу [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение], например 30[English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой размер. Заголовок должен быть сорок пикселей.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: пиши слитно, например 30[English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение из двух частей: число и единица.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число сорок, единица [English pronunciation] px [Русское произношение]. Между ними пробела нет.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши 40[English pronunciation] px [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Заголовок теперь крупный и заметный.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соедини размеры с надписями. Нажми размер слева, а потом надпись такого размера справа.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Двенадцать пикселей, самый маленький размер. Найди самую мелкую надпись.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Двадцать четыре пикселя, средний размер: крупнее обычного текста.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сорок восемь пикселей, самый большой размер. Найди самую крупную надпись.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это самая мелкая.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это средняя.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это самая крупная.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери размер слева.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чем больше число, тем крупнее надпись.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 12[English pronunciation] px [Русское произношение], самая мелкая, 48[English pronunciation] px [Русское произношение], самая крупная, 24[English pronunciation] px [Русское произношение], посередине.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую пару.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Ты узнаёшь размер даже на глаз.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на слово в строке [English pronunciation] font-family [Русское произношение] и на форму букв в браузере: меняется слово, меняется и форма букв.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-family [Русское произношение] выбирает шрифт. В [English pronunciation] serif [Русское произношение] у букв маленькие засечки, как в книге. В [English pronunciation] sans-serif [Русское произношение] буквы гладкие. В [English pronunciation] monospace [Русское произношение] все буквы одной ширины.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сравни буквы в книге и в телефоне: они выглядят по-разному. На сайте тоже можно взять один шрифт для заголовка, а другой для текста.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Второе свойство, [English pronunciation] font-family [Русское произношение], то есть шрифт. Сейчас браузер показывает обычный шрифт: у букв маленькие засечки, как в книге. Такие шрифты называются [English pronunciation] serif [Русское произношение].", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем [English pronunciation] sans-serif [Русское произношение]. Засечки пропали, буквы стали гладкими и современными.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А в [English pronunciation] monospace [Русское произношение] каждая буква одинаковой ширины, как в редакторе кода.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Можно написать и имя шрифта, например [English pronunciation] Georgia [Русское произношение]. Через запятую ставим запасной: если [English pronunciation] Georgia [Русское произношение] нет, браузер возьмёт [English pronunciation] serif [Русское произношение]. А если в имени шрифта два слова, его берут в кавычки, например [English pronunciation] Courier New [Русское произношение].", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] font-family [Русское произношение] выбирает шрифт: [English pronunciation] serif [Русское произношение], [English pronunciation] sans-serif [Русское произношение], [English pronunciation] monospace [Русское произношение] или имя шрифта и запасной через запятую.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери сам. Пусть блог будет похож на редактор кода: шрифт [English pronunciation] Courier New [Русское произношение], а запасной, [English pronunciation] monospace [Русское произношение]. Нажимай или перетаскивай кусочки в правильном порядке.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] px [Русское произношение] был для размера, шрифту он не нужен.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок другой: сначала имя шрифта в кавычках, потом запятая, в конце запасной шрифт.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала основной шрифт, потом запасной.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя шрифта в кавычках, потом запятая, потом [English pronunciation] monospace [Русское произношение].", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящий кусочек.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Теперь блог похож на редактор кода.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу надпись, а ты выбери, какой шрифт её дал.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на буквы: есть ли засечки? В [English pronunciation] monospace [Русское произношение] даже узкая I занимает столько же места, сколько широкая m.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] serif [Русское произношение], с засечками, [English pronunciation] sans-serif [Русское произношение], гладкий, в [English pronunciation] monospace [Русское произношение] буквы одинаковой ширины.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все буквы одинаковой ширины, значит, это [English pronunciation] monospace [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Буквы гладкие, без засечек. Значит, это [English pronunciation] sans-serif [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У букв маленькие засечки, значит, это [English pronunciation] serif [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты узнаёшь шрифт на глаз.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала посмотри на абзацы: буквы становятся жирными. Потом на ссылку: черта под ней пропадает.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-weight [Русское произношение] задаёт толщину букв: [English pronunciation] bold [Русское произношение], жирно, [English pronunciation] normal [Русское произношение], обычно. А [English pronunciation] text-decoration [Русское произношение], черту: [English pronunciation] underline [Русское произношение] снизу, [English pronunciation] line-through [Русское произношение] поверх, [English pronunciation] none [Русское произношение], без черты.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В тетради важное слово ты пишешь жирно, а ошибку зачёркиваешь. На сайте это делают [English pronunciation] bold [Русское произношение] и [English pronunciation] line-through [Русское произношение].", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть ещё два полезных свойства. [English pronunciation] font-weight [Русское произношение] задаёт жирность букв, а [English pronunciation] text-decoration [Русское произношение], черту на тексте или под ним.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем абзацам [English pronunciation] font-weight [Русское произношение]: [English pronunciation] bold [Русское произношение]. Буквы стали жирными.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под ссылками обычно есть черта. [English pronunciation] text-decoration [Русское произношение]: [English pronunciation] none [Русское произношение] её убирает: [English pronunciation] none [Русское произношение] значит ничего. А [English pronunciation] underline [Русское произношение] возвращает черту.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок обычно жирный. Если написать [English pronunciation] font-weight [Русское произношение]: [English pronunciation] normal [Русское произношение], он станет обычной толщины.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] font-weight [Русское произношение], для жирности: [English pronunciation] bold [Русское произношение] или [English pronunciation] normal [Русское произношение]. [English pronunciation] text-decoration [Русское произношение], для черты: [English pronunciation] underline [Русское произношение], [English pronunciation] line-through [Русское произношение] или [English pronunciation] none [Русское произношение].", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала интересное: [English pronunciation] line-through [Русское произношение] зачёркивает слово, как ошибку в тетради.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Убери черту под ссылкой: впиши значение для [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение для [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] underline [Русское произношение] ставит черту, а она и так есть. Нам нужно значение без черты.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] line-through [Русское произношение] зачеркнул слово. Нам нужно значение без черты.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Без черты, это [English pronunciation] none [Русское произношение].", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни показ: каким словом после [English pronunciation] text-decoration [Русское произношение] Коди убрал черту под ссылкой?", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение [English pronunciation] text-decoration [Русское произношение] без черты, слово из четырёх букв.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Ссылка теперь чистая, черты нет.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу надпись, а ты выбери, какое свойство её изменило: [English pronunciation] font-weight [Русское произношение] или [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Изменились сами буквы или к ним добавилась черта?", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Жирность, от [English pronunciation] font-weight [Русское произношение], черта, от [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Буквы стали жирными, значит, это [English pronunciation] font-weight [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под словом появилась черта, значит, это [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово перечёркнуто, это тоже [English pronunciation] text-decoration [Русское произношение].", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Крупный заголовок стал не жирным, а обычным. Это [English pronunciation] font-weight [Русское произношение]: [English pronunciation] normal [Русское произношение].", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь жирность и черту.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на заголовок: он переезжает влево, в середину и вправо строки.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] text-align [Русское произношение] говорит, у какого края строки стоит текст: [English pronunciation] left [Русское произношение], слева, [English pronunciation] center [Русское произношение], по центру, [English pronunciation] right [Русское произношение], справа.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На обложке книги название обычно стоит посередине. Заголовок сайта тоже можно поставить по центру: [English pronunciation] text-align center [Русское произношение].", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее свойство, [English pronunciation] text-align [Русское произношение], то есть к какому краю строки поставить текст. Обычно текст стоит слева.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем заголовку [English pronunciation] text-align [Русское произношение]: [English pronunciation] center [Русское произношение]. Заголовок встал по центру.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать [English pronunciation] right [Русское произношение], он уедет вправо.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] left [Русское произношение] вернёт его влево. Это значение по умолчанию.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] text-align [Русское произношение] ставит текст в строке: [English pronunciation] left [Русское произношение], [English pronunciation] center [Русское произношение] или [English pronunciation] right [Русское произношение].", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поставь заголовок по центру: впиши значение для [English pronunciation] text-align [Русское произношение].", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение для [English pronunciation] text-align [Русское произношение].", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово middle браузер не знает. По центру в [English pronunciation] CSS [Русское произношение], это [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок ушёл к краю. Нам нужна середина.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. По центру, это [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как центр по-английски?", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У [English pronunciation] text-align [Русское произношение] три значения: [English pronunciation] left [Русское произношение], [English pronunciation] center [Русское произношение] и [English pronunciation] right [Русское произношение]. Нам нужно среднее.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Заголовок по центру, блог смотрится красиво.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми сломанное правило.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило?", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: его результат виден на странице. Что не изменилось?", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! После тридцати двух не было [English pronunciation] px [Русское произношение], поэтому браузер выбросил это правило.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! Значения middle нет, по центру, это [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что вышло не так, как ждали?", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Заголовок не стал крупнее. Есть ли единица у его размера?", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзацы не встали по центру. Посмотри на значение [English pronunciation] text-align [Русское произношение].", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в первом правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: middle. Нажми эту строку.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь текст как настоящий дизайнер.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком сам. Сделай буквы в абзацах жирными: напиши для P свойство [English pronunciation] font-weight [Русское произношение].", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для абзацев нужен селектор P.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Жирность задаёт свойство [English pronunciation] font-weight [Русское произношение].", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Жирный, это [English pronunciation] bold [Русское произношение].", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Буквы не стали жирными. Нам нужен [English pronunciation] bold [Русское произношение].", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каким селектором выбирают абзацы? Какое свойство нужно для жирности?", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор P, свойство [English pronunciation] font-weight [Русское произношение], значение [English pronunciation] bold [Русское произношение].", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Абзацы стали жирными. Ты сам написал правило.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь укрась свою страницу. Впиши любой размер для заголовка и любой шрифт для всей страницы. Потом нажми Готово.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Насколько большим будет заголовок? Какой шрифт тебе нравится?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Размер, число и [English pronunciation] px [Русское произношение], шрифт, имя или [English pronunciation] serif [Русское произношение], [English pronunciation] sans-serif [Русское произношение], [English pronunciation] monospace [Русское произношение].", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, впиши 36[English pronunciation] px [Русское произношение] для размера и [English pronunciation] sans-serif [Русское произношение] для шрифта. Потом нажми Готово.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твой блог.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О каком свойстве эта фраза?", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни урок: [English pronunciation] font-size [Русское произношение], число и [English pronunciation] px [Русское произношение], [English pronunciation] text-align [Русское произношение] выравнивает, [English pronunciation] font-weight [Русское произношение] даёт жирность, [English pronunciation] text-decoration [Русское произношение], черту. Фраза с этим совпадает?", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] font-size [Русское произношение] можно писать просто число, [English pronunciation] px [Русское произношение] не обязателен.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] px [Русское произношение] нужен. Без него браузер выбрасывает значение.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] text-align [Русское произношение]: [English pronunciation] center [Русское произношение] ставит текст по центру.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] center [Русское произношение], это по центру.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-weight [Русское произношение]: [English pronunciation] bold [Русское произношение] делает буквы жирными.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: [English pronunciation] bold [Русское произношение], жирный.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] text-decoration [Русское произношение]: [English pronunciation] none [Русское произношение] ставит черту под ссылкой.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] none [Русское произношение] убирает черту. Черту ставит [English pronunciation] underline [Русское произношение].", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты умеешь работать с текстом.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал в [English pronunciation] font-size [Русское произношение] просто число сорок? Увы, я ошибся. Размеру нужна единица, например [English pronunciation] px [Русское произношение]. Без неё браузер выбрасывает правило, и заголовок остаётся маленьким.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой блог с размером и шрифтом, которые ты выбрал сам!", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-size [Русское произношение] задаёт размер, [English pronunciation] font-family [Русское произношение], шрифт.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] font-weight [Русское произношение] управляет жирностью, [English pronunciation] text-decoration [Русское произношение], чертой.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] text-align [Русское произношение] ставит текст влево, по центру или вправо.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твой текст выглядит так, как ты хочешь. На следующем уроке поработаем с размерами элементов. До встречи!", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня я сделал игру.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Она простая, но интересная.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой шрифт?", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код даёт эту надпись?", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство?", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство изменило эту надпись?", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read more", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I started a blog, that is, a site where I write about myself. But look, it looks like a draft: the heading is small, the letters look like an old book, and the link has a line under it. Tap Transform.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The heading is big, in another font and centered, and the line under the link is gone.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I didn’t touch the H T M L. CSS changed how the text looks: the size, the font, the position and the line.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn five properties for text. But first, a little riddle. The first time, I wrote font-size for the heading and put just the number forty next to it. I think the heading will simply get big. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the code: the number in the font-size line changes. Then look at the browser: the letters get bigger or smaller right away.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-size says how big the letters are. A bigger number means bigger letters. You always write px next to the number.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Have you ever made the text bigger on a phone? It’s the same thing: twenty-four pixels means bigger text that’s easier to read.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first property is font-size, meaning the size of the letters. The size is written in pixels: a number with px next to it. A pixel is the smallest dot on the screen. Normal text is usually sixteen pixels.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s give the paragraphs twelve pixels. Look, the text got small.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now twenty-four pixels. The text got big. The bigger the number, the bigger the letters.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And forty pixels for the heading. Now it’s a real big heading.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So font-size sets the size of the letters: a number and px.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the heading forty pixels: type the value for font-size. Don’t forget px!", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: a number and px.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number. The browser throws a value like that away: add px to the number.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and px, for example 30px.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different size. The heading should be forty pixels.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No space between the number and px: write them together, like 30px.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value has two parts: a number and a unit.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is forty and the unit is px. No space between them.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type 40px and tap Check.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The heading is big and eye-catching now.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now match the sizes with the words. Tap a size on the left, then the word of that size on the right.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Twelve pixels is the smallest size. Find the smallest word.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Twenty-four pixels is a medium size: bigger than normal text.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Forty-eight pixels is the biggest size. Find the biggest word.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the smallest.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the medium one.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the biggest.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First pick a size on the left.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bigger the number, the bigger the word.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 12px is the smallest, 48px the biggest, and 24px in between.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing pair.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can tell the size just by looking.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the word in the font-family line and at the shape of the letters in the browser: when the word changes, the letters change shape.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-family picks the font. serif letters have little feet, like in a book. sans-serif letters are smooth. In monospace every letter has the same width.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Compare the letters in a book and on a phone: they look different. On a site you can also pick one font for headings and another for text.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second property is font-family, meaning the font. Right now the browser uses its normal font: the letters have little feet, like in a book. Fonts like that are called serif.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write sans-serif. The little feet are gone, and the letters look smooth and modern.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And in monospace every letter has the same width, like in a code editor.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can also write a font name, for example Georgia. After a comma we put a backup: if Georgia isn’t there, the browser takes serif. And if a font name has two words, we put it in quotes, for example Courier New.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So font-family picks the font: serif, sans-serif, monospace, or a font name with a backup after a comma.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build it yourself. Let the blog look like a code editor: the font is Courier New, and the backup is monospace. Tap or drag the pieces in the right order.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] px was for the size, a font doesn’t need it.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is different: first the font name in quotes, then a comma, and the backup font last.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The main font first, then the backup.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The font name in quotes, then a comma, then monospace.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing piece.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Now the blog looks like a code editor.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show some words, and you pick the font that made them.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the letters: do they have little feet? In monospace even a thin I takes as much room as a wide m.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] serif has feet, sans-serif is smooth, and monospace letters are all the same width.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Every letter is the same width, so it’s monospace.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The letters are smooth with no feet. So it’s sans-serif.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The letters have little feet, so it’s serif.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can recognize a font by sight.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First look at the paragraphs: the letters get bold. Then look at the link: the line under it disappears.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-weight sets how thick the letters are: bold is thick, normal is regular. text-decoration sets a line: underline below, line-through across, none for no line.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In a notebook you write an important word in bold and cross out a mistake. On a site, bold and line-through do that.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are two more useful properties. font-weight sets how thick the letters are, and text-decoration sets a line on or under the text.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write font-weight: bold for the paragraphs. The letters got thick.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Links usually have a line under them. text-decoration: none removes it: none means nothing. And underline brings the line back.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A heading is usually bold. If we write font-weight: normal, it becomes normal thickness.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So font-weight is for thickness: bold or normal. text-decoration is for lines: underline, line-through or none.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First, something fun: line-through crosses the word out, like a mistake in a notebook.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remove the line under the link: type the value for text-decoration.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a value for text-decoration.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] underline adds the line, and it’s already there. We need the value for no line.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] line-through crossed the word out. We need the value for no line.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. No line is none.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the demo: which word after text-decoration removed the line under the link?", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The no-line value of text-decoration is a four-letter word.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type none and tap Check.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The link is clean now, with no line.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show some words, and you pick which property changed them: font-weight or text-decoration.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did the letters themselves change, or was a line added?", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Thickness comes from font-weight, and lines come from text-decoration.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The letters got thick, so it’s font-weight.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A line appeared under the word, so it’s text-decoration.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word is crossed out, that’s text-decoration too.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The big heading isn’t bold, it’s regular. That’s font-weight: normal.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up weight and lines.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the heading: it moves to the left, the middle and the right of the line.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] text-align says which side of the line the text sits on: left on the left, center in the middle, right on the right.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a book cover the title usually sits in the middle. You can put a site heading in the middle too: text-align center.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last property is text-align, meaning which side of the line the text goes to. Normally text sits on the left.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write text-align: center for the heading. The heading moved to the center.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If we write right, it moves to the right.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And left brings it back to the left. That’s the default value.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So text-align places text on the line: left, center or right.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Center the heading: type the value for text-align.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a value for text-align.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser doesn’t know middle. Centered in CSS is center.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading went to an edge. We need the middle.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Centered is center.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What is the middle called in English?", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] text-align has three values: left, center and right. We need the middle one.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type center and tap Check.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The heading is centered, and the blog looks nice.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules, but one doesn’t work. Look at the page and tap the broken rule.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule?", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see its result on the page. What didn’t change?", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was no px after thirty-two, so the browser threw the rule away.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There’s no middle value; centered is center.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what didn’t come out as expected?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The heading didn’t get bigger. Does its size have a unit?", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraphs didn’t center. Look at the text-align value.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the first rule: no px. Tap that line.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: middle. Tap that line.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both are found. You check text like a real designer.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. Make the letters in the paragraphs bold: write the font-weight property for P.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value in curly braces.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraphs need the P selector.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The font-weight property sets the thickness.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Thick is bold.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The letters didn’t get thick. We need bold.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which selector picks the paragraphs? Which property is for thickness?", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is P, the property font-weight, the value bold.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The paragraphs are bold. You wrote the rule yourself.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now decorate your own page. Type any size for the heading and any font for the whole page. Then tap Done.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How big should the heading be? Which font do you like?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The size is a number and px; the font is a name or serif, sans-serif, monospace.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type 36px for the size and sans-serif for the font. Then tap Done.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! That’s your blog.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property is the sentence about?", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the lesson: font-size is a number and px, text-align aligns, font-weight sets thickness, text-decoration sets lines. Does the sentence match that?", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can write just a number in font-size; px isn’t needed.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually px is needed. Without it the browser throws the value away.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] text-align: center centers the text.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: center means the middle.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-weight: bold makes the letters thick.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: bold means thick.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] text-decoration: none puts a line under a link.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually none removes the line. underline adds it.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know how to work with text.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrote just the number forty in font-size? Sadly, I was wrong. A size needs a unit, like px. Without it the browser throws the rule away, and the heading stays small.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your blog with the size and font you picked yourself!", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-size sets the size, and font-family sets the font.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] font-weight controls thickness, and text-decoration controls lines.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And text-align puts text on the left, in the center or on the right.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your text looks the way you want. Next time we’ll work with element sizes. See you!", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today I made a game.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s simple, but fun.", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which font?", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code makes these words?", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property?", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property changed these words?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Batafsil o'qish": "uz001",
+    "Salom! Men blog ochdim, ya'ni o'zim haqimda yozadigan sayt degani. Lekin qarang, u qoralamaga o'xshaydi: sarlavha kichkina, harflar eski kitobdagidek, havola tagida esa chiziq. Aylantirish tugmasini bosing.": "uz002",
+    "Mana! Sarlavha katta, boshqa shriftda va o'rtada, havola tagidagi chiziq esa yo'qoldi.": "uz003",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga tegmadim. Matnning ko'rinishini [English pronunciation] CSS [O'zbekcha tallaffuz] o'zgartirdi: o'lcham, shrift, joylashuv va chiziq.": "uz004",
+    "Bugun matn bilan ishlaydigan beshta xususiyatni o'rganasiz. Lekin oldin kichik topishmoq. Birinchi urinishda men sarlavha uchun [English pronunciation] font-size [O'zbekcha tallaffuz] deb yozdim va yoniga faqat qirq sonini qo'ydim. Menimcha, sarlavha shunchaki katta bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz005",
+    "Kodga qarang: [English pronunciation] font-size [O'zbekcha tallaffuz] qatorida son o'zgaryapti. Keyin brauzerga qarang: harflar shu zahoti kattalashadi yoki kichrayadi.": "uz006",
+    "[English pronunciation] font-size [O'zbekcha tallaffuz] harflar qancha katta bo'lishini aytadi. Son katta bo'lsa, harflar ham katta. Son yonida doim [English pronunciation] px [O'zbekcha tallaffuz] yoziladi.": "uz007",
+    "Telefonda shriftni kattalashtirib ko'rganmisiz? Bu xuddi shunday: yigirma to'rt piksel bo'lsa, matn yirikroq va o'qish osonroq.": "uz008",
+    "Birinchi xususiyat [English pronunciation] font-size [O'zbekcha tallaffuz], ya'ni harf o'lchami degani. O'lcham piksellarda yoziladi: son va yonida [English pronunciation] px [O'zbekcha tallaffuz]. Piksel bu ekrandagi eng kichik nuqta. Oddiy matn odatda o'n olti piksel bo'ladi.": "uz009",
+    "Abzaslarga o'n ikki piksel beramiz. Qarang, matn kichrayib qoldi.": "uz010",
+    "Endi yigirma to'rt piksel. Matn kattalashdi. Son qancha katta bo'lsa, harflar ham shuncha katta.": "uz011",
+    "Sarlavhaga esa qirq piksel. Endi u haqiqiy katta sarlavha.": "uz012",
+    "Demak, [English pronunciation] font-size [O'zbekcha tallaffuz] harf o'lchamini beradi: son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz013",
+    "Endi navbat sizga. Sarlavhani qirq pikselga kattalashtiring: [English pronunciation] font-size [O'zbekcha tallaffuz] uchun qiymatni yozing. Px ni unutmang!": "uz014",
+    "Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz015",
+    "Faqat son yozildi. Brauzer bunday qiymatni tashlab yuboradi: son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.": "uz016",
+    "Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, masalan 30[English pronunciation] px [O'zbekcha tallaffuz].": "uz017",
+    "Bu boshqa o'lcham. Sarlavha qirq piksel bo'lishi kerak.": "uz018",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing, masalan 30[English pronunciation] px [O'zbekcha tallaffuz].": "uz019",
+    "Qiymat ikki qismdan: son va o'lcham birligi.": "uz020",
+    "Son qirq, birlik esa [English pronunciation] px [O'zbekcha tallaffuz]. Ular o'rtasida bo'sh joy yo'q.": "uz021",
+    "40[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz022",
+    "Zo'r! Sarlavha endi katta va ko'zga tashlanadi.": "uz023",
+    "Endi o'lchamlarni yozuvlar bilan juftlang. Chapdan o'lchamni, o'ngdan esa shu o'lchamdagi yozuvni bosing.": "uz024",
+    "O'n ikki piksel eng kichik o'lcham. Eng kichik yozuvni toping.": "uz025",
+    "Yigirma to'rt piksel o'rtacha o'lcham: oddiy matndan kattaroq.": "uz026",
+    "Qirq sakkiz piksel eng katta o'lcham. Eng katta yozuvni toping.": "uz027",
+    "To'g'ri, bu eng kichigi.": "uz028",
+    "To'g'ri, bu o'rtachasi.": "uz029",
+    "To'g'ri, bu eng kattasi.": "uz030",
+    "Oldin chapdan o'lchamni tanlang.": "uz031",
+    "Son qancha katta bo'lsa, yozuv ham shuncha katta.": "uz032",
+    "12[English pronunciation] px [O'zbekcha tallaffuz] eng kichik, 48[English pronunciation] px [O'zbekcha tallaffuz] eng katta, 24[English pronunciation] px [O'zbekcha tallaffuz] o'rtada.": "uz033",
+    "Yonib turgan juftlikni bosing.": "uz034",
+    "Ajoyib! O'lchamni ko'z bilan ham taniysiz.": "uz035",
+    "[English pronunciation] font-family [O'zbekcha tallaffuz] qatoridagi so'zga va brauzerdagi harflar shakliga qarang: so'z o'zgarsa, harflar shakli ham o'zgaradi.": "uz036",
+    "[English pronunciation] font-family [O'zbekcha tallaffuz] shriftni tanlaydi. [English pronunciation] serif [O'zbekcha tallaffuz] bilan harflar uchida kichik chiziqchalar bor, xuddi kitobdagidek. [English pronunciation] sans-serif [O'zbekcha tallaffuz] bilan harflar silliq. [English pronunciation] monospace [O'zbekcha tallaffuz] bilan hamma harf bir xil kenglikda.": "uz037",
+    "Kitobdagi harflar va telefondagi harflarni solishtiring: ular har xil ko'rinadi. Saytda ham sarlavha uchun bir shrift, matn uchun boshqasini tanlash mumkin.": "uz038",
+    "Ikkinchi xususiyat [English pronunciation] font-family [O'zbekcha tallaffuz], ya'ni shrift degani. Hozir brauzer oddiy shriftni ishlatyapti: harflarda kichik oyoqchalar bor, xuddi kitobdagidek. Bunday shriftlar [English pronunciation] serif [O'zbekcha tallaffuz] deyiladi.": "uz039",
+    "[English pronunciation] sans-serif [O'zbekcha tallaffuz] yozamiz. Oyoqchalar yo'qoldi, harflar silliq va zamonaviy bo'ldi.": "uz040",
+    "[English pronunciation] monospace [O'zbekcha tallaffuz] da esa har bir harf bir xil kenglikda, xuddi kod muharriridagidek.": "uz041",
+    "Shrift nomini ham yozish mumkin, masalan [English pronunciation] Georgia [O'zbekcha tallaffuz]. Vergul bilan zaxira shriftni qo'yamiz: [English pronunciation] Georgia [O'zbekcha tallaffuz] topilmasa, brauzer [English pronunciation] serif [O'zbekcha tallaffuz] ni oladi. Agar shrift nomi ikki so'zdan iborat bo'lsa, uni qo'shtirnoqqa olamiz, masalan [English pronunciation] Courier New [O'zbekcha tallaffuz].": "uz042",
+    "Demak, [English pronunciation] font-family [O'zbekcha tallaffuz] shriftni tanlaydi: [English pronunciation] serif [O'zbekcha tallaffuz], [English pronunciation] sans-serif [O'zbekcha tallaffuz], [English pronunciation] monospace [O'zbekcha tallaffuz] yoki shrift nomi va vergul bilan zaxira.": "uz043",
+    "Endi o'zingiz yig'ing. Blog kod muharririga o'xshasin: shrift [English pronunciation] Courier New [O'zbekcha tallaffuz], zaxirasi esa [English pronunciation] monospace [O'zbekcha tallaffuz]. Bo'laklarni to'g'ri tartibda bosing yoki suring.": "uz044",
+    "[English pronunciation] px [O'zbekcha tallaffuz] o'lcham uchun edi, shriftga kerak emas.": "uz045",
+    "Tartib boshqacha: oldin qo'shtirnoqdagi shrift nomi, keyin vergul, oxirida zaxira shrift.": "uz046",
+    "Oldin asosiy shrift, keyin zaxira.": "uz047",
+    "Shrift nomi qo'shtirnoqda, keyin vergul, keyin [English pronunciation] monospace [O'zbekcha tallaffuz].": "uz048",
+    "Yonib turgan bo'lakni bosing.": "uz049",
+    "Barakalla! Blog endi kod muharririga o'xshaydi.": "uz050",
+    "Endi o'zingizni sinab ko'ring. Men yozuvni ko'rsataman, siz esa uni qaysi shrift berganini tanlang.": "uz051",
+    "Harflarga qarang: oyoqchalari bormi? [English pronunciation] monospace [O'zbekcha tallaffuz] da hatto ingichka I ham keng m qancha joy olsa, shuncha joy oladi.": "uz052",
+    "[English pronunciation] serif [O'zbekcha tallaffuz] oyoqchali, [English pronunciation] sans-serif [O'zbekcha tallaffuz] silliq, [English pronunciation] monospace [O'zbekcha tallaffuz] da esa harflar bir xil kenglikda.": "uz053",
+    "Har bir harf bir xil kenglikda, demak bu [English pronunciation] monospace [O'zbekcha tallaffuz].": "uz054",
+    "Harflar silliq, oyoqchalari yo'q. Demak bu [English pronunciation] sans-serif [O'zbekcha tallaffuz].": "uz055",
+    "Harflarda kichik oyoqchalar bor, demak bu [English pronunciation] serif [O'zbekcha tallaffuz].": "uz056",
+    "Barakalla!": "uz057",
+    "Hammasi to'g'ri! Shriftni ko'rib taniysiz.": "uz058",
+    "Avval abzaslarga qarang: harflar qalinlashadi. Keyin havolaga qarang: uning tagidagi chiziq yo'qoladi.": "uz059",
+    "[English pronunciation] font-weight [O'zbekcha tallaffuz] harflar qalinligini beradi: [English pronunciation] bold [O'zbekcha tallaffuz] qalin, [English pronunciation] normal [O'zbekcha tallaffuz] oddiy. [English pronunciation] text-decoration [O'zbekcha tallaffuz] esa chiziq beradi: [English pronunciation] underline [O'zbekcha tallaffuz] tagida, [English pronunciation] line-through [O'zbekcha tallaffuz] ustidan, [English pronunciation] none [O'zbekcha tallaffuz] chiziqsiz.": "uz060",
+    "Daftarda muhim so'zni qalin qilib yozasiz, xatoni esa ustidan chizib qo'yasiz. Saytda buni [English pronunciation] bold [O'zbekcha tallaffuz] va [English pronunciation] line-through [O'zbekcha tallaffuz] qiladi.": "uz061",
+    "Yana ikki foydali xususiyat bor. [English pronunciation] font-weight [O'zbekcha tallaffuz] harflar qalinligini beradi, [English pronunciation] text-decoration [O'zbekcha tallaffuz] esa matn ustidagi yoki ostidagi chiziqni.": "uz062",
+    "Abzaslarga [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] bold [O'zbekcha tallaffuz] yozamiz. Harflar qalin bo'ldi.": "uz063",
+    "Havolalar tagida odatda chiziq bo'ladi. [English pronunciation] text-decoration [O'zbekcha tallaffuz]: [English pronunciation] none [O'zbekcha tallaffuz] uni olib tashlaydi, [English pronunciation] none [O'zbekcha tallaffuz] ya'ni hech narsa degani. [English pronunciation] underline [O'zbekcha tallaffuz] esa chiziqni qaytaradi.": "uz064",
+    "Sarlavha odatda qalin. [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] normal [O'zbekcha tallaffuz] yozsak, u oddiy qalinlikda bo'ladi.": "uz065",
+    "Demak, [English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlik uchun: [English pronunciation] bold [O'zbekcha tallaffuz] yoki [English pronunciation] normal [O'zbekcha tallaffuz]. [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziq uchun: [English pronunciation] underline [O'zbekcha tallaffuz], [English pronunciation] line-through [O'zbekcha tallaffuz] yoki [English pronunciation] none [O'zbekcha tallaffuz].": "uz066",
+    "Avval qiziq bir narsa: [English pronunciation] line-through [O'zbekcha tallaffuz] so'zni xuddi daftardagi xatoni chizib qo'ygandek o'chiradi.": "uz067",
+    "Havola tagidagi chiziqni olib tashlang: [English pronunciation] text-decoration [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz068",
+    "[English pronunciation] text-decoration [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz069",
+    "[English pronunciation] underline [O'zbekcha tallaffuz] chiziqni qo'yadi, u esa allaqachon bor. Bizga chiziqsiz qiymat kerak.": "uz070",
+    "[English pronunciation] line-through [O'zbekcha tallaffuz] so'zni o'chirilgandek qildi. Bizga chiziqsiz qiymat kerak.": "uz071",
+    "Brauzer bu qiymatni tanimadi. Chiziqsiz degani [English pronunciation] none [O'zbekcha tallaffuz].": "uz072",
+    "Ko'rsatuvni eslang: [English pronunciation] text-decoration [O'zbekcha tallaffuz] dan keyin qaysi so'z havola tagidagi chiziqni olib tashladi?": "uz073",
+    "[English pronunciation] text-decoration [O'zbekcha tallaffuz] ning chiziqsiz qiymati to'rt harfli so'z.": "uz074",
+    "[English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz075",
+    "Zo'r! Havola endi toza, tagida chiziq yo'q.": "uz076",
+    "Endi o'zingizni sinab ko'ring. Men yozuvni ko'rsataman, siz esa uni qaysi xususiyat o'zgartirganini tanlang: [English pronunciation] font-weight [O'zbekcha tallaffuz] yoki [English pronunciation] text-decoration [O'zbekcha tallaffuz].": "uz077",
+    "Harflarning o'zi o'zgardimi yoki ularga chiziq qo'shildimi?": "uz078",
+    "Qalinlik [English pronunciation] font-weight [O'zbekcha tallaffuz] dan, chiziq esa [English pronunciation] text-decoration [O'zbekcha tallaffuz] dan.": "uz079",
+    "Harflar qalin bo'ldi, demak bu [English pronunciation] font-weight [O'zbekcha tallaffuz].": "uz080",
+    "So'z tagida chiziq paydo bo'ldi, demak bu [English pronunciation] text-decoration [O'zbekcha tallaffuz].": "uz081",
+    "So'z ustidan chiziq o'tdi, bu ham [English pronunciation] text-decoration [O'zbekcha tallaffuz].": "uz082",
+    "Katta sarlavha qalin emas, oddiy bo'ldi. Bu [English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] normal [O'zbekcha tallaffuz].": "uz083",
+    "Hammasi to'g'ri! Qalinlik va chiziqni adashtirmaysiz.": "uz084",
+    "Sarlavhaga qarang: u qatorning chap tomoniga, o'rtasiga va o'ng tomoniga ko'chadi.": "uz085",
+    "[English pronunciation] text-align [O'zbekcha tallaffuz] matn qatorning qaysi tomonida turishini aytadi: [English pronunciation] left [O'zbekcha tallaffuz] bo'lsa chapda, [English pronunciation] center [O'zbekcha tallaffuz] bo'lsa o'rtada, [English pronunciation] right [O'zbekcha tallaffuz] bo'lsa o'ngda.": "uz086",
+    "Kitob muqovasida nom odatda o'rtada turadi. Sayt sarlavhasini ham shunday o'rtaga qo'yish mumkin: [English pronunciation] text-align center [O'zbekcha tallaffuz].": "uz087",
+    "Oxirgi xususiyat [English pronunciation] text-align [O'zbekcha tallaffuz], ya'ni matnni qatorning qaysi tomoniga qo'yish degani. Odatda matn chapda turadi.": "uz088",
+    "Sarlavhaga [English pronunciation] text-align [O'zbekcha tallaffuz]: [English pronunciation] center [O'zbekcha tallaffuz] yozamiz. Sarlavha o'rtaga keldi.": "uz089",
+    "[English pronunciation] right [O'zbekcha tallaffuz] yozsak, o'ng tomonga o'tadi.": "uz090",
+    "[English pronunciation] left [O'zbekcha tallaffuz] esa yana chapga qaytaradi. Bu qiymat odatiy.": "uz091",
+    "Demak, [English pronunciation] text-align [O'zbekcha tallaffuz] matnni qatorda joylaydi: [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] yoki [English pronunciation] right [O'zbekcha tallaffuz].": "uz092",
+    "Sarlavhani o'rtaga qo'ying: [English pronunciation] text-align [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz093",
+    "[English pronunciation] text-align [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz094",
+    "middle so'zini brauzer tanimaydi. O'rta degani [English pronunciation] CSS [O'zbekcha tallaffuz] da [English pronunciation] center [O'zbekcha tallaffuz].": "uz095",
+    "Sarlavha chetga ketdi. Bizga o'rta kerak.": "uz096",
+    "Brauzer bu qiymatni tanimadi. O'rta degani [English pronunciation] center [O'zbekcha tallaffuz].": "uz097",
+    "O'rta inglizcha qanday ataladi?": "uz098",
+    "[English pronunciation] text-align [O'zbekcha tallaffuz] ning uchta qiymati: [English pronunciation] left [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz]. Bizga o'rtadagisi kerak.": "uz099",
+    "[English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz100",
+    "Ajoyib! Sarlavha o'rtada, blog chiroyli ko'rinyapti.": "uz101",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va buzilgan qoidani bosing.": "uz102",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?": "uz103",
+    "Bu qoida ishlayapti: uning natijasi sahifada ko'rinib turibdi. Nima o'zgarmay qoldi?": "uz104",
+    "Topdingiz! O'ttiz ikki sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi, shuning uchun brauzer bu qoidani tashlab yubordi.": "uz105",
+    "Topdingiz! middle degan qiymat yo'q, o'rta degani [English pronunciation] center [O'zbekcha tallaffuz].": "uz106",
+    "Sahifaga qarang: nima kutilganidek chiqmadi?": "uz107",
+    "Sarlavha kattalashmadi. Uning o'lchami yonida birlik bormi?": "uz108",
+    "Abzaslar o'rtaga kelmadi. [English pronunciation] text-align [O'zbekcha tallaffuz] qiymatiga qarang.": "uz109",
+    "Xato birinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.": "uz110",
+    "Xato ikkinchi qoidada: middle. O'sha qatorni bosing.": "uz111",
+    "Super! Ikkalasi ham topildi. Siz matnni haqiqiy dizayner kabi tekshiryapsiz.": "uz112",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzaslardagi harflarni qalin qiling: P uchun [English pronunciation] font-weight [O'zbekcha tallaffuz] xususiyatini yozing.": "uz113",
+    "Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.": "uz114",
+    "Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.": "uz115",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz116",
+    "Abzaslar uchun P selektori kerak.": "uz117",
+    "Qalinlikni [English pronunciation] font-weight [O'zbekcha tallaffuz] xususiyati beradi.": "uz118",
+    "Brauzer bu qiymatni tanimadi. Qalin degani [English pronunciation] bold [O'zbekcha tallaffuz].": "uz119",
+    "Harflar qalin bo'lmadi. Bizga [English pronunciation] bold [O'zbekcha tallaffuz] kerak.": "uz120",
+    "Abzaslar qaysi selektor bilan tanlanadi? Qalinlik uchun qaysi xususiyat kerak?": "uz121",
+    "Selektor P, xususiyat [English pronunciation] font-weight [O'zbekcha tallaffuz], qiymat [English pronunciation] bold [O'zbekcha tallaffuz].": "uz122",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz123",
+    "Ajoyib! Abzaslar qalin bo'ldi. Qoidani o'zingiz yozdingiz.": "uz124",
+    "Endi o'z sahifangizni bezang. Sarlavha uchun istalgan o'lchamni yozing, butun sahifa uchun esa istalgan shriftni. Keyin Tayyorni bosing.": "uz125",
+    "Sarlavha qanchalik katta bo'lsin? Qaysi shrift sizga yoqadi?": "uz126",
+    "O'lcham son va [English pronunciation] px [O'zbekcha tallaffuz] bilan, shrift esa nom yoki [English pronunciation] serif [O'zbekcha tallaffuz], [English pronunciation] sans-serif [O'zbekcha tallaffuz], [English pronunciation] monospace [O'zbekcha tallaffuz] bilan.": "uz127",
+    "Masalan, o'lchamga 36[English pronunciation] px [O'zbekcha tallaffuz], shriftga [English pronunciation] sans-serif [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.": "uz128",
+    "Voy, qanday chiroyli! Bu sizning blogingiz.": "uz129",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz130",
+    "Gapda qaysi xususiyat haqida gap ketyapti?": "uz131",
+    "Dars esingizdami: [English pronunciation] font-size [O'zbekcha tallaffuz] son va [English pronunciation] px [O'zbekcha tallaffuz] bilan, [English pronunciation] text-align [O'zbekcha tallaffuz] joylaydi, [English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlik beradi, [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziq. Gap shunga mos keladimi?": "uz132",
+    "[English pronunciation] font-size [O'zbekcha tallaffuz] ga faqat son yozsa ham bo'ladi, [English pronunciation] px [O'zbekcha tallaffuz] shart emas.": "uz133",
+    "Aslida [English pronunciation] px [O'zbekcha tallaffuz] kerak. Usiz brauzer qiymatni tashlab yuboradi.": "uz134",
+    "[English pronunciation] text-align [O'zbekcha tallaffuz]: [English pronunciation] center [O'zbekcha tallaffuz] matnni o'rtaga qo'yadi.": "uz135",
+    "To'g'ri: [English pronunciation] center [O'zbekcha tallaffuz] o'rta degani.": "uz136",
+    "[English pronunciation] font-weight [O'zbekcha tallaffuz]: [English pronunciation] bold [O'zbekcha tallaffuz] harflarni qalin qiladi.": "uz137",
+    "Shunday: [English pronunciation] bold [O'zbekcha tallaffuz] qalin degani.": "uz138",
+    "[English pronunciation] text-decoration [O'zbekcha tallaffuz]: [English pronunciation] none [O'zbekcha tallaffuz] havola tagiga chiziq qo'yadi.": "uz139",
+    "Aslida [English pronunciation] none [O'zbekcha tallaffuz] chiziqni olib tashlaydi. Chiziqni [English pronunciation] underline [O'zbekcha tallaffuz] qo'yadi.": "uz140",
+    "Hammasi to'g'ri! Siz matn bilan ishlashni bilasiz.": "uz141",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] font-size [O'zbekcha tallaffuz] ga faqat qirq sonini yozgan edim? Afsuski, men adashibman. O'lchamga birlik kerak, masalan [English pronunciation] px [O'zbekcha tallaffuz]. Usiz brauzer qoidani tashlab yuboradi va sarlavha kichkinaligicha qoladi.": "uz142",
+    "Qarang, bu sizning blogingiz, o'zingiz tanlagan o'lcham va shrift bilan!": "uz143",
+    "[English pronunciation] font-size [O'zbekcha tallaffuz] o'lchamni, [English pronunciation] font-family [O'zbekcha tallaffuz] shriftni beradi.": "uz144",
+    "[English pronunciation] font-weight [O'zbekcha tallaffuz] qalinlikni, [English pronunciation] text-decoration [O'zbekcha tallaffuz] chiziqni boshqaradi.": "uz145",
+    "[English pronunciation] text-align [O'zbekcha tallaffuz] esa matnni chapga, o'rtaga yoki o'ngga qo'yadi.": "uz146",
+    "Tabriklayman! Endi matningiz siz xohlagandek ko'rinadi. Keyingi darsda elementlar o'lchamlari bilan ishlaymiz. Ko'rishguncha!": "uz147",
+    "Voy, zo‘r!": "uz148",
+    "Ana! Chiqdi!": "uz149",
+    "Super!": "uz150",
+    "Qoyil!": "uz151",
+    "Ura!": "uz152",
+    "Zo‘r-ku!": "uz153",
+    "Yana bir bor urinib ko‘ring.": "uz154",
+    "Diqqat bilan qarang.": "uz155",
+    "Yaqin qoldingiz. Shoshilmang.": "uz156",
+    "Bugun men o'yin yasadim.": "uz157",
+    "U juda oddiy, lekin qiziqarli.": "uz158",
+    "Salom!": "uz159",
+    "Qaysi shrift?": "uz160",
+    "Bu yozuvni qaysi kod beradi?": "uz161",
+    "Qaysi xususiyat?": "uz162",
+    "Bu yozuvni qaysi xususiyat o'zgartirdi?": "uz163",
+    "To'g'rimi?": "uz164",
+    "To'g'ri yoki noto'g'ri?": "uz165",
+    "Salom, dunyo!": "uz166",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz167",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz168",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz169",
+  },
+  ru: {
+    "Читать дальше": "ru001",
+    "Привет! Я завёл блог, то есть сайт, где пишу о себе. Но смотри, он похож на черновик: заголовок маленький, буквы как в старой книге, а под ссылкой черта. Нажми Превратить.": "ru002",
+    "Вот! Заголовок крупный, другим шрифтом и по центру, а черта под ссылкой исчезла.": "ru003",
+    "[English pronunciation] HTML [Русское произношение] я не трогал. Вид текста поменял [English pronunciation] CSS [Русское произношение]: размер, шрифт, положение и черту.": "ru004",
+    "Сегодня ты узнаешь пять свойств для текста. Но сначала маленькая загадка. В первый раз я написал для заголовка [English pronunciation] font-size [Русское произношение] и поставил рядом просто число сорок. По-моему, заголовок просто станет большим. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru005",
+    "Посмотри на код: в строке [English pronunciation] font-size [Русское произношение] меняется число. Потом посмотри в браузер: буквы сразу становятся крупнее или мельче.": "ru006",
+    "[English pronunciation] font-size [Русское произношение] говорит, какого размера буквы. Больше число, крупнее буквы. Рядом с числом всегда пишут [English pronunciation] px [Русское произношение].": "ru007",
+    "Помнишь, в телефоне можно сделать шрифт крупнее? Это то же самое: двадцать четыре пикселя, текст крупнее, читать легче.": "ru008",
+    "Первое свойство, [English pronunciation] font-size [Русское произношение], то есть размер букв. Размер пишут в пикселях: число и рядом [English pronunciation] px [Русское произношение]. Пиксель, это самая маленькая точка на экране. Обычный текст, обычно шестнадцать пикселей.": "ru009",
+    "Дадим абзацам двенадцать пикселей. Смотри, текст стал мелким.": "ru010",
+    "Теперь двадцать четыре пикселя. Текст стал крупным. Чем больше число, тем крупнее буквы.": "ru011",
+    "А заголовку, сорок пикселей. Теперь это настоящий большой заголовок.": "ru012",
+    "Значит, [English pronunciation] font-size [Русское произношение] задаёт размер букв: число и [English pronunciation] px [Русское произношение].": "ru013",
+    "Теперь твоя очередь. Сделай заголовок размером сорок пикселей: впиши значение для [English pronunciation] font-size [Русское произношение]. Не забудь [English pronunciation] px [Русское произношение]!": "ru014",
+    "Впиши значение: число и [English pronunciation] px [Русское произношение].": "ru015",
+    "Написано только число. Браузер такое значение выбрасывает: добавь к числу [English pronunciation] px [Русское произношение].": "ru016",
+    "Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение], например 30[English pronunciation] px [Русское произношение].": "ru017",
+    "Это другой размер. Заголовок должен быть сорок пикселей.": "ru018",
+    "Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: пиши слитно, например 30[English pronunciation] px [Русское произношение].": "ru019",
+    "Значение из двух частей: число и единица.": "ru020",
+    "Число сорок, единица [English pronunciation] px [Русское произношение]. Между ними пробела нет.": "ru021",
+    "Впиши 40[English pronunciation] px [Русское произношение] и нажми Проверить.": "ru022",
+    "Огонь! Заголовок теперь крупный и заметный.": "ru023",
+    "Теперь соедини размеры с надписями. Нажми размер слева, а потом надпись такого размера справа.": "ru024",
+    "Двенадцать пикселей, самый маленький размер. Найди самую мелкую надпись.": "ru025",
+    "Двадцать четыре пикселя, средний размер: крупнее обычного текста.": "ru026",
+    "Сорок восемь пикселей, самый большой размер. Найди самую крупную надпись.": "ru027",
+    "Верно, это самая мелкая.": "ru028",
+    "Верно, это средняя.": "ru029",
+    "Верно, это самая крупная.": "ru030",
+    "Сначала выбери размер слева.": "ru031",
+    "Чем больше число, тем крупнее надпись.": "ru032",
+    "12[English pronunciation] px [Русское произношение], самая мелкая, 48[English pronunciation] px [Русское произношение], самая крупная, 24[English pronunciation] px [Русское произношение], посередине.": "ru033",
+    "Нажми горящую пару.": "ru034",
+    "Отлично! Ты узнаёшь размер даже на глаз.": "ru035",
+    "Посмотри на слово в строке [English pronunciation] font-family [Русское произношение] и на форму букв в браузере: меняется слово, меняется и форма букв.": "ru036",
+    "[English pronunciation] font-family [Русское произношение] выбирает шрифт. В [English pronunciation] serif [Русское произношение] у букв маленькие засечки, как в книге. В [English pronunciation] sans-serif [Русское произношение] буквы гладкие. В [English pronunciation] monospace [Русское произношение] все буквы одной ширины.": "ru037",
+    "Сравни буквы в книге и в телефоне: они выглядят по-разному. На сайте тоже можно взять один шрифт для заголовка, а другой для текста.": "ru038",
+    "Второе свойство, [English pronunciation] font-family [Русское произношение], то есть шрифт. Сейчас браузер показывает обычный шрифт: у букв маленькие засечки, как в книге. Такие шрифты называются [English pronunciation] serif [Русское произношение].": "ru039",
+    "Пишем [English pronunciation] sans-serif [Русское произношение]. Засечки пропали, буквы стали гладкими и современными.": "ru040",
+    "А в [English pronunciation] monospace [Русское произношение] каждая буква одинаковой ширины, как в редакторе кода.": "ru041",
+    "Можно написать и имя шрифта, например [English pronunciation] Georgia [Русское произношение]. Через запятую ставим запасной: если [English pronunciation] Georgia [Русское произношение] нет, браузер возьмёт [English pronunciation] serif [Русское произношение]. А если в имени шрифта два слова, его берут в кавычки, например [English pronunciation] Courier New [Русское произношение].": "ru042",
+    "Значит, [English pronunciation] font-family [Русское произношение] выбирает шрифт: [English pronunciation] serif [Русское произношение], [English pronunciation] sans-serif [Русское произношение], [English pronunciation] monospace [Русское произношение] или имя шрифта и запасной через запятую.": "ru043",
+    "Теперь собери сам. Пусть блог будет похож на редактор кода: шрифт [English pronunciation] Courier New [Русское произношение], а запасной, [English pronunciation] monospace [Русское произношение]. Нажимай или перетаскивай кусочки в правильном порядке.": "ru044",
+    "[English pronunciation] px [Русское произношение] был для размера, шрифту он не нужен.": "ru045",
+    "Порядок другой: сначала имя шрифта в кавычках, потом запятая, в конце запасной шрифт.": "ru046",
+    "Сначала основной шрифт, потом запасной.": "ru047",
+    "Имя шрифта в кавычках, потом запятая, потом [English pronunciation] monospace [Русское произношение].": "ru048",
+    "Нажми горящий кусочек.": "ru049",
+    "Молодец! Теперь блог похож на редактор кода.": "ru050",
+    "Теперь проверь себя. Я покажу надпись, а ты выбери, какой шрифт её дал.": "ru051",
+    "Посмотри на буквы: есть ли засечки? В [English pronunciation] monospace [Русское произношение] даже узкая I занимает столько же места, сколько широкая m.": "ru052",
+    "[English pronunciation] serif [Русское произношение], с засечками, [English pronunciation] sans-serif [Русское произношение], гладкий, в [English pronunciation] monospace [Русское произношение] буквы одинаковой ширины.": "ru053",
+    "Все буквы одинаковой ширины, значит, это [English pronunciation] monospace [Русское произношение].": "ru054",
+    "Буквы гладкие, без засечек. Значит, это [English pronunciation] sans-serif [Русское произношение].": "ru055",
+    "У букв маленькие засечки, значит, это [English pronunciation] serif [Русское произношение].": "ru056",
+    "Точно!": "ru057",
+    "Всё верно! Ты узнаёшь шрифт на глаз.": "ru058",
+    "Сначала посмотри на абзацы: буквы становятся жирными. Потом на ссылку: черта под ней пропадает.": "ru059",
+    "[English pronunciation] font-weight [Русское произношение] задаёт толщину букв: [English pronunciation] bold [Русское произношение], жирно, [English pronunciation] normal [Русское произношение], обычно. А [English pronunciation] text-decoration [Русское произношение], черту: [English pronunciation] underline [Русское произношение] снизу, [English pronunciation] line-through [Русское произношение] поверх, [English pronunciation] none [Русское произношение], без черты.": "ru060",
+    "В тетради важное слово ты пишешь жирно, а ошибку зачёркиваешь. На сайте это делают [English pronunciation] bold [Русское произношение] и [English pronunciation] line-through [Русское произношение].": "ru061",
+    "Есть ещё два полезных свойства. [English pronunciation] font-weight [Русское произношение] задаёт жирность букв, а [English pronunciation] text-decoration [Русское произношение], черту на тексте или под ним.": "ru062",
+    "Пишем абзацам [English pronunciation] font-weight [Русское произношение]: [English pronunciation] bold [Русское произношение]. Буквы стали жирными.": "ru063",
+    "Под ссылками обычно есть черта. [English pronunciation] text-decoration [Русское произношение]: [English pronunciation] none [Русское произношение] её убирает: [English pronunciation] none [Русское произношение] значит ничего. А [English pronunciation] underline [Русское произношение] возвращает черту.": "ru064",
+    "Заголовок обычно жирный. Если написать [English pronunciation] font-weight [Русское произношение]: [English pronunciation] normal [Русское произношение], он станет обычной толщины.": "ru065",
+    "Значит, [English pronunciation] font-weight [Русское произношение], для жирности: [English pronunciation] bold [Русское произношение] или [English pronunciation] normal [Русское произношение]. [English pronunciation] text-decoration [Русское произношение], для черты: [English pronunciation] underline [Русское произношение], [English pronunciation] line-through [Русское произношение] или [English pronunciation] none [Русское произношение].": "ru066",
+    "Сначала интересное: [English pronunciation] line-through [Русское произношение] зачёркивает слово, как ошибку в тетради.": "ru067",
+    "Убери черту под ссылкой: впиши значение для [English pronunciation] text-decoration [Русское произношение].": "ru068",
+    "Впиши значение для [English pronunciation] text-decoration [Русское произношение].": "ru069",
+    "[English pronunciation] underline [Русское произношение] ставит черту, а она и так есть. Нам нужно значение без черты.": "ru070",
+    "[English pronunciation] line-through [Русское произношение] зачеркнул слово. Нам нужно значение без черты.": "ru071",
+    "Браузер не узнал это значение. Без черты, это [English pronunciation] none [Русское произношение].": "ru072",
+    "Вспомни показ: каким словом после [English pronunciation] text-decoration [Русское произношение] Коди убрал черту под ссылкой?": "ru073",
+    "Значение [English pronunciation] text-decoration [Русское произношение] без черты, слово из четырёх букв.": "ru074",
+    "Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.": "ru075",
+    "Огонь! Ссылка теперь чистая, черты нет.": "ru076",
+    "Теперь проверь себя. Я покажу надпись, а ты выбери, какое свойство её изменило: [English pronunciation] font-weight [Русское произношение] или [English pronunciation] text-decoration [Русское произношение].": "ru077",
+    "Изменились сами буквы или к ним добавилась черта?": "ru078",
+    "Жирность, от [English pronunciation] font-weight [Русское произношение], черта, от [English pronunciation] text-decoration [Русское произношение].": "ru079",
+    "Буквы стали жирными, значит, это [English pronunciation] font-weight [Русское произношение].": "ru080",
+    "Под словом появилась черта, значит, это [English pronunciation] text-decoration [Русское произношение].": "ru081",
+    "Слово перечёркнуто, это тоже [English pronunciation] text-decoration [Русское произношение].": "ru082",
+    "Крупный заголовок стал не жирным, а обычным. Это [English pronunciation] font-weight [Русское произношение]: [English pronunciation] normal [Русское произношение].": "ru083",
+    "Всё верно! Ты не путаешь жирность и черту.": "ru084",
+    "Посмотри на заголовок: он переезжает влево, в середину и вправо строки.": "ru085",
+    "[English pronunciation] text-align [Русское произношение] говорит, у какого края строки стоит текст: [English pronunciation] left [Русское произношение], слева, [English pronunciation] center [Русское произношение], по центру, [English pronunciation] right [Русское произношение], справа.": "ru086",
+    "На обложке книги название обычно стоит посередине. Заголовок сайта тоже можно поставить по центру: [English pronunciation] text-align center [Русское произношение].": "ru087",
+    "Последнее свойство, [English pronunciation] text-align [Русское произношение], то есть к какому краю строки поставить текст. Обычно текст стоит слева.": "ru088",
+    "Пишем заголовку [English pronunciation] text-align [Русское произношение]: [English pronunciation] center [Русское произношение]. Заголовок встал по центру.": "ru089",
+    "Если написать [English pronunciation] right [Русское произношение], он уедет вправо.": "ru090",
+    "А [English pronunciation] left [Русское произношение] вернёт его влево. Это значение по умолчанию.": "ru091",
+    "Значит, [English pronunciation] text-align [Русское произношение] ставит текст в строке: [English pronunciation] left [Русское произношение], [English pronunciation] center [Русское произношение] или [English pronunciation] right [Русское произношение].": "ru092",
+    "Поставь заголовок по центру: впиши значение для [English pronunciation] text-align [Русское произношение].": "ru093",
+    "Впиши значение для [English pronunciation] text-align [Русское произношение].": "ru094",
+    "Слово middle браузер не знает. По центру в [English pronunciation] CSS [Русское произношение], это [English pronunciation] center [Русское произношение].": "ru095",
+    "Заголовок ушёл к краю. Нам нужна середина.": "ru096",
+    "Браузер не узнал это значение. По центру, это [English pronunciation] center [Русское произношение].": "ru097",
+    "Как центр по-английски?": "ru098",
+    "У [English pronunciation] text-align [Русское произношение] три значения: [English pronunciation] left [Русское произношение], [English pronunciation] center [Русское произношение] и [English pronunciation] right [Русское произношение]. Нам нужно среднее.": "ru099",
+    "Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.": "ru100",
+    "Отлично! Заголовок по центру, блог смотрится красиво.": "ru101",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми сломанное правило.": "ru102",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило?": "ru103",
+    "Это правило работает: его результат виден на странице. Что не изменилось?": "ru104",
+    "Нашёл! После тридцати двух не было [English pronunciation] px [Русское произношение], поэтому браузер выбросил это правило.": "ru105",
+    "Нашёл! Значения middle нет, по центру, это [English pronunciation] center [Русское произношение].": "ru106",
+    "Посмотри на страницу: что вышло не так, как ждали?": "ru107",
+    "Заголовок не стал крупнее. Есть ли единица у его размера?": "ru108",
+    "Абзацы не встали по центру. Посмотри на значение [English pronunciation] text-align [Русское произношение].": "ru109",
+    "Ошибка в первом правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.": "ru110",
+    "Ошибка во втором правиле: middle. Нажми эту строку.": "ru111",
+    "Супер! Обе найдены. Ты проверяешь текст как настоящий дизайнер.": "ru112",
+    "Теперь напиши правило целиком сам. Сделай буквы в абзацах жирными: напиши для P свойство [English pronunciation] font-weight [Русское произношение].": "ru113",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru114",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru115",
+    "Между свойством и значением нет двоеточия.": "ru116",
+    "Для абзацев нужен селектор P.": "ru117",
+    "Жирность задаёт свойство [English pronunciation] font-weight [Русское произношение].": "ru118",
+    "Браузер не узнал это значение. Жирный, это [English pronunciation] bold [Русское произношение].": "ru119",
+    "Буквы не стали жирными. Нам нужен [English pronunciation] bold [Русское произношение].": "ru120",
+    "Каким селектором выбирают абзацы? Какое свойство нужно для жирности?": "ru121",
+    "Селектор P, свойство [English pronunciation] font-weight [Русское произношение], значение [English pronunciation] bold [Русское произношение].": "ru122",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru123",
+    "Отлично! Абзацы стали жирными. Ты сам написал правило.": "ru124",
+    "Теперь укрась свою страницу. Впиши любой размер для заголовка и любой шрифт для всей страницы. Потом нажми Готово.": "ru125",
+    "Насколько большим будет заголовок? Какой шрифт тебе нравится?": "ru126",
+    "Размер, число и [English pronunciation] px [Русское произношение], шрифт, имя или [English pronunciation] serif [Русское произношение], [English pronunciation] sans-serif [Русское произношение], [English pronunciation] monospace [Русское произношение].": "ru127",
+    "Например, впиши 36[English pronunciation] px [Русское произношение] для размера и [English pronunciation] sans-serif [Русское произношение] для шрифта. Потом нажми Готово.": "ru128",
+    "Ого, как красиво! Это твой блог.": "ru129",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru130",
+    "О каком свойстве эта фраза?": "ru131",
+    "Вспомни урок: [English pronunciation] font-size [Русское произношение], число и [English pronunciation] px [Русское произношение], [English pronunciation] text-align [Русское произношение] выравнивает, [English pronunciation] font-weight [Русское произношение] даёт жирность, [English pronunciation] text-decoration [Русское произношение], черту. Фраза с этим совпадает?": "ru132",
+    "В [English pronunciation] font-size [Русское произношение] можно писать просто число, [English pronunciation] px [Русское произношение] не обязателен.": "ru133",
+    "На самом деле [English pronunciation] px [Русское произношение] нужен. Без него браузер выбрасывает значение.": "ru134",
+    "[English pronunciation] text-align [Русское произношение]: [English pronunciation] center [Русское произношение] ставит текст по центру.": "ru135",
+    "Верно: [English pronunciation] center [Русское произношение], это по центру.": "ru136",
+    "[English pronunciation] font-weight [Русское произношение]: [English pronunciation] bold [Русское произношение] делает буквы жирными.": "ru137",
+    "Так и есть: [English pronunciation] bold [Русское произношение], жирный.": "ru138",
+    "[English pronunciation] text-decoration [Русское произношение]: [English pronunciation] none [Русское произношение] ставит черту под ссылкой.": "ru139",
+    "На самом деле [English pronunciation] none [Русское произношение] убирает черту. Черту ставит [English pronunciation] underline [Русское произношение].": "ru140",
+    "Всё верно! Ты умеешь работать с текстом.": "ru141",
+    "Вернёмся к загадке. Помнишь, я написал в [English pronunciation] font-size [Русское произношение] просто число сорок? Увы, я ошибся. Размеру нужна единица, например [English pronunciation] px [Русское произношение]. Без неё браузер выбрасывает правило, и заголовок остаётся маленьким.": "ru142",
+    "Смотри, это твой блог с размером и шрифтом, которые ты выбрал сам!": "ru143",
+    "[English pronunciation] font-size [Русское произношение] задаёт размер, [English pronunciation] font-family [Русское произношение], шрифт.": "ru144",
+    "[English pronunciation] font-weight [Русское произношение] управляет жирностью, [English pronunciation] text-decoration [Русское произношение], чертой.": "ru145",
+    "А [English pronunciation] text-align [Русское произношение] ставит текст влево, по центру или вправо.": "ru146",
+    "Ура! Теперь твой текст выглядит так, как ты хочешь. На следующем уроке поработаем с размерами элементов. До встречи!": "ru147",
+    "Вау, классно!": "ru148",
+    "Есть! Получилось!": "ru149",
+    "Супер!": "ru150",
+    "Огонь!": "ru151",
+    "Ура!": "ru152",
+    "Вот это да!": "ru153",
+    "Попробуй ещё раз.": "ru154",
+    "Посмотри внимательно.": "ru155",
+    "Уже близко. Не спеши.": "ru156",
+    "Сегодня я сделал игру.": "ru157",
+    "Она простая, но интересная.": "ru158",
+    "Привет!": "ru159",
+    "Какой шрифт?": "ru160",
+    "Какой код даёт эту надпись?": "ru161",
+    "Какое свойство?": "ru162",
+    "Какое свойство изменило эту надпись?": "ru163",
+    "Верно или нет?": "ru164",
+    "Привет, мир!": "ru165",
+    "Здесь нужны только слова, без угловых скобок.": "ru166",
+    "Молодец!": "ru167",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru168",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru169",
+  },
+  en: {
+    "Read more": "en001",
+    "Hi! I started a blog, that is, a site where I write about myself. But look, it looks like a draft: the heading is small, the letters look like an old book, and the link has a line under it. Tap Transform.": "en002",
+    "There! The heading is big, in another font and centered, and the line under the link is gone.": "en003",
+    "I didn’t touch the H T M L. CSS changed how the text looks: the size, the font, the position and the line.": "en004",
+    "Today you’ll learn five properties for text. But first, a little riddle. The first time, I wrote font-size for the heading and put just the number forty next to it. I think the heading will simply get big. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en005",
+    "Look at the code: the number in the font-size line changes. Then look at the browser: the letters get bigger or smaller right away.": "en006",
+    "font-size says how big the letters are. A bigger number means bigger letters. You always write px next to the number.": "en007",
+    "Have you ever made the text bigger on a phone? It’s the same thing: twenty-four pixels means bigger text that’s easier to read.": "en008",
+    "The first property is font-size, meaning the size of the letters. The size is written in pixels: a number with px next to it. A pixel is the smallest dot on the screen. Normal text is usually sixteen pixels.": "en009",
+    "Let’s give the paragraphs twelve pixels. Look, the text got small.": "en010",
+    "Now twenty-four pixels. The text got big. The bigger the number, the bigger the letters.": "en011",
+    "And forty pixels for the heading. Now it’s a real big heading.": "en012",
+    "So font-size sets the size of the letters: a number and px.": "en013",
+    "Now it’s your turn. Make the heading forty pixels: type the value for font-size. Don’t forget px!": "en014",
+    "Type the value: a number and px.": "en015",
+    "Only a number. The browser throws a value like that away: add px to the number.": "en016",
+    "The browser didn’t recognize that value. Write a number and px, for example 30px.": "en017",
+    "That’s a different size. The heading should be forty pixels.": "en018",
+    "No space between the number and px: write them together, like 30px.": "en019",
+    "The value has two parts: a number and a unit.": "en020",
+    "The number is forty and the unit is px. No space between them.": "en021",
+    "Type 40px and tap Check.": "en022",
+    "Awesome! The heading is big and eye-catching now.": "en023",
+    "Now match the sizes with the words. Tap a size on the left, then the word of that size on the right.": "en024",
+    "Twelve pixels is the smallest size. Find the smallest word.": "en025",
+    "Twenty-four pixels is a medium size: bigger than normal text.": "en026",
+    "Forty-eight pixels is the biggest size. Find the biggest word.": "en027",
+    "Right, that’s the smallest.": "en028",
+    "Right, that’s the medium one.": "en029",
+    "Right, that’s the biggest.": "en030",
+    "First pick a size on the left.": "en031",
+    "The bigger the number, the bigger the word.": "en032",
+    "12px is the smallest, 48px the biggest, and 24px in between.": "en033",
+    "Tap the glowing pair.": "en034",
+    "Great! You can tell the size just by looking.": "en035",
+    "Look at the word in the font-family line and at the shape of the letters in the browser: when the word changes, the letters change shape.": "en036",
+    "font-family picks the font. serif letters have little feet, like in a book. sans-serif letters are smooth. In monospace every letter has the same width.": "en037",
+    "Compare the letters in a book and on a phone: they look different. On a site you can also pick one font for headings and another for text.": "en038",
+    "The second property is font-family, meaning the font. Right now the browser uses its normal font: the letters have little feet, like in a book. Fonts like that are called serif.": "en039",
+    "We write sans-serif. The little feet are gone, and the letters look smooth and modern.": "en040",
+    "And in monospace every letter has the same width, like in a code editor.": "en041",
+    "You can also write a font name, for example Georgia. After a comma we put a backup: if Georgia isn’t there, the browser takes serif. And if a font name has two words, we put it in quotes, for example Courier New.": "en042",
+    "So font-family picks the font: serif, sans-serif, monospace, or a font name with a backup after a comma.": "en043",
+    "Now build it yourself. Let the blog look like a code editor: the font is Courier New, and the backup is monospace. Tap or drag the pieces in the right order.": "en044",
+    "px was for the size, a font doesn’t need it.": "en045",
+    "The order is different: first the font name in quotes, then a comma, and the backup font last.": "en046",
+    "The main font first, then the backup.": "en047",
+    "The font name in quotes, then a comma, then monospace.": "en048",
+    "Tap the glowing piece.": "en049",
+    "Well done! Now the blog looks like a code editor.": "en050",
+    "Now check yourself. I’ll show some words, and you pick the font that made them.": "en051",
+    "Look at the letters: do they have little feet? In monospace even a thin I takes as much room as a wide m.": "en052",
+    "serif has feet, sans-serif is smooth, and monospace letters are all the same width.": "en053",
+    "Every letter is the same width, so it’s monospace.": "en054",
+    "The letters are smooth with no feet. So it’s sans-serif.": "en055",
+    "The letters have little feet, so it’s serif.": "en056",
+    "Exactly!": "en057",
+    "All correct! You can recognize a font by sight.": "en058",
+    "First look at the paragraphs: the letters get bold. Then look at the link: the line under it disappears.": "en059",
+    "font-weight sets how thick the letters are: bold is thick, normal is regular. text-decoration sets a line: underline below, line-through across, none for no line.": "en060",
+    "In a notebook you write an important word in bold and cross out a mistake. On a site, bold and line-through do that.": "en061",
+    "There are two more useful properties. font-weight sets how thick the letters are, and text-decoration sets a line on or under the text.": "en062",
+    "We write font-weight: bold for the paragraphs. The letters got thick.": "en063",
+    "Links usually have a line under them. text-decoration: none removes it: none means nothing. And underline brings the line back.": "en064",
+    "A heading is usually bold. If we write font-weight: normal, it becomes normal thickness.": "en065",
+    "So font-weight is for thickness: bold or normal. text-decoration is for lines: underline, line-through or none.": "en066",
+    "First, something fun: line-through crosses the word out, like a mistake in a notebook.": "en067",
+    "Remove the line under the link: type the value for text-decoration.": "en068",
+    "Type a value for text-decoration.": "en069",
+    "underline adds the line, and it’s already there. We need the value for no line.": "en070",
+    "line-through crossed the word out. We need the value for no line.": "en071",
+    "The browser didn’t recognize that value. No line is none.": "en072",
+    "Remember the demo: which word after text-decoration removed the line under the link?": "en073",
+    "The no-line value of text-decoration is a four-letter word.": "en074",
+    "Type none and tap Check.": "en075",
+    "Awesome! The link is clean now, with no line.": "en076",
+    "Now check yourself. I’ll show some words, and you pick which property changed them: font-weight or text-decoration.": "en077",
+    "Did the letters themselves change, or was a line added?": "en078",
+    "Thickness comes from font-weight, and lines come from text-decoration.": "en079",
+    "The letters got thick, so it’s font-weight.": "en080",
+    "A line appeared under the word, so it’s text-decoration.": "en081",
+    "The word is crossed out, that’s text-decoration too.": "en082",
+    "The big heading isn’t bold, it’s regular. That’s font-weight: normal.": "en083",
+    "All correct! You don’t mix up weight and lines.": "en084",
+    "Look at the heading: it moves to the left, the middle and the right of the line.": "en085",
+    "text-align says which side of the line the text sits on: left on the left, center in the middle, right on the right.": "en086",
+    "On a book cover the title usually sits in the middle. You can put a site heading in the middle too: text-align center.": "en087",
+    "The last property is text-align, meaning which side of the line the text goes to. Normally text sits on the left.": "en088",
+    "We write text-align: center for the heading. The heading moved to the center.": "en089",
+    "If we write right, it moves to the right.": "en090",
+    "And left brings it back to the left. That’s the default value.": "en091",
+    "So text-align places text on the line: left, center or right.": "en092",
+    "Center the heading: type the value for text-align.": "en093",
+    "Type a value for text-align.": "en094",
+    "The browser doesn’t know middle. Centered in CSS is center.": "en095",
+    "The heading went to an edge. We need the middle.": "en096",
+    "The browser didn’t recognize that value. Centered is center.": "en097",
+    "What is the middle called in English?": "en098",
+    "text-align has three values: left, center and right. We need the middle one.": "en099",
+    "Type center and tap Check.": "en100",
+    "Great! The heading is centered, and the blog looks nice.": "en101",
+    "Now check yourself. There are three rules, but one doesn’t work. Look at the page and tap the broken rule.": "en102",
+    "Great, the first one is found! Now something else broke. Which rule?": "en103",
+    "This rule works: you can see its result on the page. What didn’t change?": "en104",
+    "Found it! There was no px after thirty-two, so the browser threw the rule away.": "en105",
+    "Found it! There’s no middle value; centered is center.": "en106",
+    "Look at the page: what didn’t come out as expected?": "en107",
+    "The heading didn’t get bigger. Does its size have a unit?": "en108",
+    "The paragraphs didn’t center. Look at the text-align value.": "en109",
+    "The bug is in the first rule: no px. Tap that line.": "en110",
+    "The bug is in the second rule: middle. Tap that line.": "en111",
+    "Super! Both are found. You check text like a real designer.": "en112",
+    "Now write the whole rule yourself. Make the letters in the paragraphs bold: write the font-weight property for P.": "en113",
+    "Write the rule: first the selector, then the property and value in curly braces.": "en114",
+    "The rule needs curly braces: an opening one and a closing one.": "en115",
+    "There’s no colon between the property and the value.": "en116",
+    "The paragraphs need the P selector.": "en117",
+    "The font-weight property sets the thickness.": "en118",
+    "The browser didn’t recognize that value. Thick is bold.": "en119",
+    "The letters didn’t get thick. We need bold.": "en120",
+    "Which selector picks the paragraphs? Which property is for thickness?": "en121",
+    "The selector is P, the property font-weight, the value bold.": "en122",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en123",
+    "Great! The paragraphs are bold. You wrote the rule yourself.": "en124",
+    "Now decorate your own page. Type any size for the heading and any font for the whole page. Then tap Done.": "en125",
+    "How big should the heading be? Which font do you like?": "en126",
+    "The size is a number and px; the font is a name or serif, sans-serif, monospace.": "en127",
+    "For example, type 36px for the size and sans-serif for the font. Then tap Done.": "en128",
+    "Wow, how pretty! That’s your blog.": "en129",
+    "The last test. I’ll say something, and you choose: true or false.": "en130",
+    "Which property is the sentence about?": "en131",
+    "Remember the lesson: font-size is a number and px, text-align aligns, font-weight sets thickness, text-decoration sets lines. Does the sentence match that?": "en132",
+    "You can write just a number in font-size; px isn’t needed.": "en133",
+    "Actually px is needed. Without it the browser throws the value away.": "en134",
+    "text-align: center centers the text.": "en135",
+    "Right: center means the middle.": "en136",
+    "font-weight: bold makes the letters thick.": "en137",
+    "That’s right: bold means thick.": "en138",
+    "text-decoration: none puts a line under a link.": "en139",
+    "Actually none removes the line. underline adds it.": "en140",
+    "All correct! You know how to work with text.": "en141",
+    "Back to our riddle. Remember, I wrote just the number forty in font-size? Sadly, I was wrong. A size needs a unit, like px. Without it the browser throws the rule away, and the heading stays small.": "en142",
+    "Look, this is your blog with the size and font you picked yourself!": "en143",
+    "font-size sets the size, and font-family sets the font.": "en144",
+    "font-weight controls thickness, and text-decoration controls lines.": "en145",
+    "And text-align puts text on the left, in the center or on the right.": "en146",
+    "Hooray! Now your text looks the way you want. Next time we’ll work with element sizes. See you!": "en147",
+    "Wow, awesome!": "en148",
+    "Yes! You did it!": "en149",
+    "Super!": "en150",
+    "Brilliant!": "en151",
+    "Hooray!": "en152",
+    "Amazing!": "en153",
+    "Try once more.": "en154",
+    "Take a closer look.": "en155",
+    "You are close. No rush.": "en156",
+    "Today I made a game.": "en157",
+    "It’s simple, but fun.": "en158",
+    "Hello!": "en159",
+    "Which font?": "en160",
+    "Which code makes these words?": "en161",
+    "Which property?": "en162",
+    "Which property changed these words?": "en163",
+    "True or false?": "en164",
+    "Hello, world!": "en165",
+    "Only words here, no angle brackets.": "en166",
+    "Well done!": "en167",
+    "Everything in the window lives inside body.": "en168",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en169",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8051,15 +7602,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14907,3 +14451,1109 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c16-sheet .kz-br.c16-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 181, ru 182, en 181; всего знаков 62844. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Qarang, kompyuterda saytim chiroyli: tepada banner, pastda uchta karta. Lekin hozir oyna telefondek torayadi. Qarang, nima bo'ladi: banner ekrandan chiqib ketdi, kartalar esa siqilib qoldi. Saytni ko'pchilik telefondan ochadi-ku! Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Endi banner ekranga to'liq sig'di, kartalar esa telefonda ustma-ust turibdi. Pastdagi tugmalar bilan kompyuter va telefonni almashtirib ko'ring.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni ikki narsa qildi. Birinchisi foiz, ya'ni oynaning qancha qismi degani. Ikkinchisi [English pronunciation] media [O'zbekcha tallaffuz], ya'ni ekran o'lchamiga qarab ishlaydigan qoida degani. Sayt ekranga moslashdi. Buni moslashuvchan sayt deyishadi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun saytni har qanday ekranga moslashni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] media [O'zbekcha tallaffuz] qoidasini kodning eng tepasiga yozgan edim, oddiy qoidalardan oldin. Menimcha, joyi muhim emas, baribir ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bannerga va o'ng tepadagi belgiga qarang: telefonda u qizarib, sahifa oynadan keng ekanini ko'rsatadi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Piksel doim bir xil, foiz esa oynaga qarab o'zgaradi. Yuz foiz bu butun en.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suv stakanni to'ldiradi, stakan katta bo'lsa ham, kichik bo'lsa ham. Yuz foizli banner ham har qanday oynani to'ldiradi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin bannerni ko'ramiz. Hozir uning eni yetti yuz piksel. Kompyuterda u bemalol sig'adi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi oyna telefondek: uch yuz oltmish piksel. Yetti yuz piksel bunga sig'maydi, sayt yon tomonga suriladigan bo'lib qoldi. Pastdagi aylantirish chizig'iga qarang.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuz foiz ya'ni butun en degani. Banner oyna qancha keng bo'lsa, shuncha bo'ladi. Telefonda u ekranga roppa-rosa sig'di.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kompyuterda ham xuddi shu qoida: banner yana butun en bo'ylab. Bitta qoida ikki ekranga ham mos keldi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, piksel doim bir xil, foiz esa oynaga qarab o'zgaradi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Banner har qanday ekranda butun en bo'ylab tursin: eni uchun qiymat yozing. Keyin kompyuter va telefonni almashtirib tekshiring.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Piksel doim bir xil: telefonda yoki kompyuterda u mos kelmaydi. Foiz kerak.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin foiz belgisi yo'q.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu enning bir qismi. Butun en necha foiz?", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va foiz belgisini yozing.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Butun en foizda kerak.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Butun narsa necha foiz bo'ladi?", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Butun narsa yuz foiz.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuz deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Banner endi har qanday ekranga sig'adi. Telefon va kompyuterni almashtirib ko'ring.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang: piksel yoki foiz.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kattalik doim bir xilmi yoki oynaga qarab o'zgaradimi?", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Doim bir xil bo'lsa, piksel. Oynaning qismi bo'lsa, foiz.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Logotip har qanday ekranda roppa-rosa qirq piksel.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Doim bir xil o'lcham, demak piksel.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm oynaning yarmini egallasin.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynaning yarmi bu ellik foiz.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Banner har qanday ekranda butun en bo'ylab tursin.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Butun en bu yuz foiz.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma doim bir xil: yuz yigirma piksel.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Doim bir xil, demak piksel.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Piksel va foizni adashtirmaysiz.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalarga va oyna kengligiga qarang: oyna tor bo'lganda ular ustma-ust turadi, keng bo'lganda qatorga.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] media [O'zbekcha tallaffuz] ichidagi qoidalar faqat shart bajarilganda ishlaydi. [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz piksel, oyna olti yuzdan keng bo'lmasa degani.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yomg'ir yog'sagina soyabon ochasiz. [English pronunciation] media [O'zbekcha tallaffuz] qoidasi ham faqat oyna tor bo'lsagina ishlaydi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kartalar. Kompyuterda ular qatorda chiroyli turibdi. Telefonda-chi? Keling, ko'ramiz.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda kartalar siqilib qoldi, yozuvlar zo'rg'a sig'yapti. Telefonda ularni ustma-ust qo'ysak yaxshi bo'lardi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] media [O'zbekcha tallaffuz] qoidasi. Qavs ichida shart: [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz piksel, ya'ni oyna olti yuz pikseldan katta bo'lmasa degani. Ichidagi qoida faqat shunda ishlaydi. Telefonda kartalar ustma-ust turdi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kompyuterda oyna sakkiz yuz piksel, bu olti yuzdan katta. Shart bajarilmadi, qoida uxlab yotibdi, kartalar yana qatorda.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] media [O'zbekcha tallaffuz] ichidagi qoidalar faqat shart bajarilganda ishlaydi.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kartalar olti yuz piksel va undan tor oynalarda ustma-ust tursin: shartdagi qiymatni yozing.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Busiz brauzer butun [English pronunciation] media [O'zbekcha tallaffuz] qoidasini tashlab yuboradi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa chegara. Olti yuz piksel kerak.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegara olti yuz piksel.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] harflari kerak.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Olti yuz va [English pronunciation] px [O'zbekcha tallaffuz] deb yozing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Telefonda kartalar ustma-ust. Kompyuterni ham tekshirib ko'ring.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men oyna kengligini va [English pronunciation] media [O'zbekcha tallaffuz] shartini ko'rsataman, siz esa qoida ishlaydimi yoki uxlaydimi, shuni tanlang.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyna kengligini shartdagi son bilan solishtiring.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] max-width [O'zbekcha tallaffuz] bo'lsa, oyna shu sondan katta bo'lmaganda ishlaydi. Teng bo'lsa ham ishlaydi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uch yuz oltmish olti yuzdan kichik, qoida ishlaydi.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sakkiz yuz olti yuzdan katta, qoida uxlaydi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Olti yuz roppa-rosa chegarada. Katta emas, demak ishlaydi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Media shartini brauzerdek o'qiysiz.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bannerga qarang: telefonda u yo'qoladi, kompyuterda esa joyida turadi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] media [O'zbekcha tallaffuz] ichida telefon uchun istalgan o'zgarishni yozish mumkin: joylashuv, o'lcham, yashirish. [English pronunciation] display none [O'zbekcha tallaffuz] elementni yashiradi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sumkaga safar uchun hamma narsani solmaysiz, keraksizini uyda qoldirasiz. Telefonda ham keraksiz narsani [English pronunciation] display none [O'zbekcha tallaffuz] bilan yashirasiz.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media ichida faqat kartalar emas, istalgan narsani o'zgartirish mumkin. Masalan, telefonda ekran kichik, banner esa ko'p joy egallaydi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bitta [English pronunciation] media [O'zbekcha tallaffuz] qoidasi: [English pronunciation] display none [O'zbekcha tallaffuz], ya'ni yashirish degani. Telefonda banner g'oyib bo'ldi, kartalarga joy ko'paydi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kompyuterda esa banner joyida: u yerda shart bajarilmaydi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] media [O'zbekcha tallaffuz] ichida telefon uchun o'zgarishlar yoziladi: joylashuv, o'lcham, yashirish.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Telefonda banner ko'rinmasin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qiymat bilan banner ko'rinib turibdi. Yashirish uchun boshqa so'z kerak.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'qqizinchi darsdagi yashirish so'zini eslang.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashirish [English pronunciation] none [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Telefonda banner yashirindi, kompyuterda esa joyida.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa qoida qayerda yozilishini tanlang: hamma ekranlar uchunmi yoki [English pronunciation] media [O'zbekcha tallaffuz] ichidami.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu faqat telefonda kerakmi yoki hamma joyda?", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat tor ekranda bo'lsa, [English pronunciation] media [O'zbekcha tallaffuz] ichida. Hamma joyda bo'lsa, oddiy qoida.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda kartalar ustma-ust tursin.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat telefonda, demak [English pronunciation] media [O'zbekcha tallaffuz] ichida.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Banner hamma ekranda to'q sariq bo'lsin.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma ekranda, demak oddiy qoida.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda banner yashirinsin.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartalar o'rtasida hamma ekranda sakkiz piksel bo'lsin.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma ekranda bir xil, demak oddiy qoida.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Qaysi qoida qayerga yozilishini bilasiz.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar shartga qarang: qavslar bormi, son yonida [English pronunciation] px [O'zbekcha tallaffuz] bormi, max yoki min yozilganmi? Keyin kartochkalarga qarang.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart qavs ichida yoziladi, son [English pronunciation] px [O'zbekcha tallaffuz] bilan. Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak, [English pronunciation] min-width [O'zbekcha tallaffuz] esa keng oynalarda ishlaydi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n ikki yoshdan kichiklarga va o'n ikki yoshdan kattalarga degan yozuvlar teskari ma'noni beradi. max va min ham shunday teskari.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media qoidasida ham xatolar bo'ladi. Keling, uchtasini telefonda ko'ramiz. Hozir hammasi to'g'ri: kartalar ustma-ust.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: shart qavssiz yozilgan. Brauzer uni tushunmadi va butun [English pronunciation] media [O'zbekcha tallaffuz] qoidasini tashlab yubordi. Kartalar yana qatorda.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: olti yuz yozilgan, lekin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Bu ham xato, brauzer qoidani yana tashlab yubordi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi ayyorroq: max o'rniga min. [English pronunciation] min-width [O'zbekcha tallaffuz] ya'ni oyna olti yuz piksel yoki undan keng bo'lsa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, shart qavs ichida, son [English pronunciation] px [O'zbekcha tallaffuz] bilan yoziladi, telefon uchun esa [English pronunciation] max-width [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men telefonda kartalar ustma-ust tursin deb yozdim, lekin ular qatorda turibdi! Maydonda mening shartim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shartni yozing.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart hali qavssiz. Uni ochuvchi va yopuvchi qavs ichiga oling.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sondan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak, [English pronunciation] min-width [O'zbekcha tallaffuz] emas.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu shartni tanimadi. Qavs, [English pronunciation] max-width [O'zbekcha tallaffuz], ikki nuqta va son [English pronunciation] px [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegara boshqa. Olti yuz piksel qolsin.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shartning chetlariga qarang.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media sharti doim qavs ichida yoziladi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochuvchi qavs tugmasini bosing: u boshiga turadi. Keyin kursorni eng oxiriga qo'yib, yopuvchi qavsni bosing. Yoki hammasini o'chirib, kod ostidagi namunani ko'chiring.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Telefonda kartalar ustma-ust.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Sayt telefonda ochilgan. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Chegarada [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Telefon uchun min emas, max kerak edi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kartalar telefonda ustma-ust turibdimi?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartalar qatorda. Media shartidagi sonni tekshiring.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kartalar qatorda. Shart [English pronunciation] max-width [O'zbekcha tallaffuz] mi yoki [English pronunciation] min-width [O'zbekcha tallaffuz] mi?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato [English pronunciation] media [O'zbekcha tallaffuz] qoidasida: olti yuzdan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato [English pronunciation] media [O'zbekcha tallaffuz] qoidasida: [English pronunciation] min-width [O'zbekcha tallaffuz]. O'sha qatorni bosing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz saytlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] media [O'zbekcha tallaffuz] qoidasini boshidan oxirigacha o'zingiz yozing. Olti yuz piksel va undan tor oynada banner yashirinsin. Keyin telefon va kompyuterni almashtirib tekshiring.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin [English pronunciation] media [O'zbekcha tallaffuz] va shart, keyin figurali qavslar ichida banner qoidasi.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida kuchukcha belgisi va [English pronunciation] media [O'zbekcha tallaffuz] so'zidan boshlanadi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] media [O'zbekcha tallaffuz] so'zidan oldin kuchukcha belgisi kerak.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Figurali qavslarni tekshiring: [English pronunciation] media [O'zbekcha tallaffuz] ning o'z qavslari va ichida banner qoidasining qavslari.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart qavs ichida bo'lishi kerak.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer shartni tanimadi. [English pronunciation] max-width [O'zbekcha tallaffuz], ikki nuqta va son [English pronunciation] px [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tor oyna uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegara boshqa. Olti yuz piksel kerak.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichkaridagi selektor: nuqta va banner klassi.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashirishni [English pronunciation] display [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashirish uchun [English pronunciation] none [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] media [O'zbekcha tallaffuz] va qavs ichida shart, keyin figurali qavs ichida banner qoidasi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart: [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz [English pronunciation] px [O'zbekcha tallaffuz]. Ichida: nuqta banner, [English pronunciation] display none [O'zbekcha tallaffuz].", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Telefonda banner yashirin, kompyuterda joyida. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingizni moslashtiring. Chegarani, tor oynadagi banner rangini va kartalar rangini o'zingiz tanlang. Keyin telefon va kompyuterni almashtirib, Tayyorni bosing.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegarada [English pronunciation] px [O'zbekcha tallaffuz] yo'q.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uch yuz oltmishdan ming pikselgacha bo'lgan chegarani yozing, aks holda farqni ko'rmaysiz.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisiga chegara [English pronunciation] px [O'zbekcha tallaffuz] bilan, keyingilariga rang nomlari.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: olti yuz [English pronunciation] px [O'zbekcha tallaffuz], [English pronunciation] gold [O'zbekcha tallaffuz] va [English pronunciation] white [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Saytingiz endi har qanday ekranga moslashadi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: foiz, shart yoki qoidaning joyi?", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: foiz oynaga qarab o'zgaradi, [English pronunciation] media [O'zbekcha tallaffuz] faqat shart bajarilsa ishlaydi, pastdagi qoida g'olib.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuz foizli banner oyna qancha keng bo'lsa, shuncha keng bo'ladi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: foiz oynaga qarab o'zgaradi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida to'rt yuz piksellik oynada ishlaydi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: to'rt yuz olti yuzdan kichik.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media ichidagi qoidalar hamma ekranda ishlaydi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida ular faqat shart bajarilganda ishlaydi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday yozilsa, telefonda banner ekranga sig'adi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida sig'maydi: ikkala qoidaning kuchi bir xil, pastdagisi g'olib bo'ladi. Pastda esa yetti yuz piksel turibdi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz moslashuvchan saytni yaxshi tushunasiz.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] media [O'zbekcha tallaffuz] qoidasini eng tepaga yozgan edim? Qarang: telefonda banner baribir ekrandan chiqib ketdi! Men adashibman. Ikkala qoida bir xil kuchli, bunday paytda brauzer pastdagisini oladi. Pastda esa yetti yuz piksel turibdi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media qoidasini pastga ko'chirsak, telefonda u g'olib bo'ladi. Banner ekranga sig'di. Mana!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning moslashuvchan saytingiz!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Foiz o'lchamni oynaga moslaydi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media qoidasi shart bajarilganda ishlaydi.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] va qavs ichidagi son [English pronunciation] px [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Media esa oddiy qoidalardan keyin, pastda yoziladi.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi saytingiz telefonda ham, kompyuterda ham chiroyli. Siz [English pronunciation] CSS [O'zbekcha tallaffuz] ning hamma asosiy mavzularini o'tdingiz. Keyingi darsda hammasini birlashtirib, o'z saytingizni boshidan oxirigacha yaratasiz. Ko'rishguncha!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi o'yin chiqdi! Hoziroq o'ynang va do'stlaringizni chaqiring!", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] px [O'zbekcha tallaffuz] yoki foiz?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buning uchun nima kerak?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ishlaydimi?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu oynada qoida ishlaydimi?", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Telefonda yana nima?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] @[English pronunciation] media [O'zbekcha tallaffuz] ichidami?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoida qayerda yoziladi?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Смотри, на компьютере мой сайт красивый: сверху баннер, ниже три карточки. Но сейчас окно сузится, как у телефона. Смотри, что будет: баннер вылез за экран, а карточки сжались. А ведь сайты чаще всего открывают с телефона! Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Теперь баннер помещается в экран, а карточки на телефоне стоят друг под другом. Переключай компьютер и телефон кнопками внизу.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделали две вещи. Проценты, то есть какая часть окна, и [English pronunciation] media [Русское произношение], то есть правило, которое смотрит на размер экрана. Сайт подстроился под экран. Это называют адаптивным сайтом.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься подстраивать сайт под любой экран. Но сначала загадка. В первый раз я написал правило [English pronunciation] media [Русское произношение] в самом верху кода, до обычных правил. По-моему, место не важно, всё равно сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на баннер и на метку справа вверху: на телефоне она краснеет и показывает, что страница шире окна.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиксели всегда одинаковые, а проценты меняются вместе с окном. Сто процентов, вся ширина.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вода заполняет стакан, большой он или маленький. Баннер в сто процентов так же заполняет любое окно.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала посмотрим на баннер. Сейчас его ширина семьсот пикселей. На компьютере он спокойно помещается.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь окно как у телефона: триста шестьдесят пикселей. Семьсот пикселей сюда не влезают, сайт стал прокручиваться вбок. Посмотри на полосу прокрутки внизу.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сто процентов, то есть вся ширина. Баннер такой же широкий, как окно. На телефоне он поместился ровно по экрану.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И на компьютере то же правило: баннер снова во всю ширину. Одно правило подошло обоим экранам.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, пиксели всегда одинаковые, а проценты меняются вместе с окном.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Пусть баннер на любом экране будет во всю ширину: впиши значение ширины. Потом проверь на компьютере и на телефоне.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиксели всегда одинаковые: на телефоне или на компьютере они не подойдут. Нужны проценты.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а знака процента нет.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это только часть ширины. Сколько процентов, вся ширина?", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и знак процента.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужна вся ширина в процентах.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сколько процентов, это всё целиком?", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё целиком, это сто процентов.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши сто, потом нажми внизу кнопку со знаком процента и Проверить.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь баннер помещается на любом экране. Переключи телефон и компьютер.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно: пиксели или проценты.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Размер всегда один и тот же или меняется вместе с окном?", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всегда одинаковый, пиксели. Часть окна, проценты.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Логотип на любом экране ровно сорок пикселей.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Размер всегда одинаковый, значит, пиксели.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинка должна занимать половину окна.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Половина окна, это пятьдесят процентов.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Баннер на любом экране во всю ширину.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вся ширина, это сто процентов.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка всегда одинаковая: сто двадцать пикселей.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всегда одинаковая, значит, пиксели.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь пиксели и проценты.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на карточки и ширину окна: в узком окне они друг под другом, в широком, в ряд.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правила внутри [English pronunciation] media [Русское произношение] работают, только когда выполнено условие. [English pronunciation] max-width [Русское произношение] шестьсот пикселей, значит, окно не шире шестисот.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Зонт открывают, только когда идёт дождь. Правило [English pronunciation] media [Русское произношение] так же работает, только когда окно узкое.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь карточки. На компьютере они красиво стоят в ряд. А на телефоне? Давай посмотрим.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На телефоне карточки сжались, надписи еле помещаются. На телефоне лучше поставить их друг под другом.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило [English pronunciation] media [Русское произношение]. В скобках условие: [English pronunciation] max-width [Русское произношение] шестьсот пикселей, то есть если окно не шире шестисот пикселей. Правило внутри работает только тогда. На телефоне карточки встали друг под другом.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На компьютере окно восемьсот пикселей, это больше шестисот. Условие не выполнено, правило спит, карточки снова в ряд.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, правила внутри [English pronunciation] media [Русское произношение] работают, только когда выполнено условие.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть карточки встают друг под другом в окнах шириной шестьсот пикселей и уже: впиши значение в условие.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а [English pronunciation] px [Русское произношение] нет. Без них браузер выбросит всё правило [English pronunciation] media [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая граница. Нужно шестьсот пикселей.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Граница, шестьсот пикселей.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны число и буквы [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши шестьсот и [English pronunciation] px [Русское произношение], потом нажми Проверить.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! На телефоне карточки друг под другом. Проверь и на компьютере.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу ширину окна и условие [English pronunciation] media [Русское произношение], а ты выбери: правило сработает или будет спать.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сравни ширину окна с числом в условии.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] max-width [Русское произношение], работает, если окно не шире этого числа. Если равно, тоже работает.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Триста шестьдесят меньше шестисот, правило работает.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Восемьсот больше шестисот, правило спит.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Шестьсот, ровно граница. Не больше, значит, работает.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты читаешь условие [English pronunciation] media [Русское произношение], как браузер.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на баннер: на телефоне он пропадает, а на компьютере остаётся.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] media [Русское произношение] можно писать любые изменения для телефона: расположение, размеры, что спрятать. [English pronunciation] display none [Русское произношение] прячет элемент.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В дорогу не берут всё подряд, лишнее оставляют дома. На телефоне лишнее так же прячут через [English pronunciation] display none [Русское произношение].", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] media [Русское произношение] можно менять не только карточки, а что угодно. Например, на телефоне экран маленький, а баннер занимает много места.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ещё одно правило [English pronunciation] media [Русское произношение]: [English pronunciation] display none [Русское произношение], то есть спрятать. На телефоне баннер исчез, карточкам стало просторнее.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А на компьютере баннер на месте: там условие не выполняется.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, внутри [English pronunciation] media [Русское произношение] пишут изменения для телефона: расположение, размеры, что спрятать.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть на телефоне баннера не видно: впиши значение для [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С этим значением баннер виден. Чтобы спрятать, нужно другое слово.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни слово спрятать из девятого урока.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спрятать, это [English pronunciation] none [Русское произношение].", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На телефоне баннер спрятан, а на компьютере на месте.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, где пишется правило: для всех экранов или внутри [English pronunciation] media [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это нужно только на телефоне или везде?", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Только на узком экране, внутри [English pronunciation] media [Русское произношение]. Везде, обычное правило.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На телефоне карточки должны стоять друг под другом.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Только на телефоне, значит, внутри [English pronunciation] media [Русское произношение].", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Баннер должен быть оранжевым на всех экранах.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На всех экранах, значит, обычное правило.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На телефоне баннер должен быть спрятан.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между карточками на всех экранах восемь пикселей.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Везде одинаково, значит, обычное правило.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты знаешь, какое правило куда писать.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на условие: есть ли скобки, есть ли [English pronunciation] px [Русское произношение] у числа, написано max или min? Потом на карточки.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие пишут в скобках, число, с [English pronunciation] px [Русское произношение]. Для телефона нужен [English pronunciation] max-width [Русское произношение], а [English pronunciation] min-width [Русское произношение] работает на широких окнах.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Надписи до двенадцати лет и от двенадцати лет значат противоположное. max и min, так же наоборот.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в правиле [English pronunciation] media [Русское произношение] бывают ошибки. Давай посмотрим на три на телефоне. Сейчас всё правильно: карточки друг под другом.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: условие без скобок. Браузер его не понял и выбросил всё правило [English pronunciation] media [Русское произношение]. Карточки снова в ряд.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: написано шестьсот, а [English pronunciation] px [Русское произношение] нет. Это тоже ошибка, браузер снова выбросил правило.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья, хитрее: min вместо max. [English pronunciation] min-width [Русское произношение], то есть если окно шестьсот пикселей или шире. Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, условие пишут в скобках, число, с [English pronunciation] px [Русское произношение], а для телефона нужен [English pronunciation] max-width [Русское произношение].", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал, чтобы на телефоне карточки стояли друг под другом, а они в ряд! В поле, моё условие. Найди ошибку и исправь.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши условие.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие всё ещё без скобок. Возьми его в открывающую и закрывающую скобки.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После числа нет [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для телефона нужен [English pronunciation] max-width [Русское произношение], а не [English pronunciation] min-width [Русское произношение].", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это условие. Скобки, [English pronunciation] max-width [Русское произношение], двоеточие и число с [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Граница другая. Пусть останется шестьсот пикселей.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на края условия.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие [English pronunciation] media [Русское произношение] всегда пишут в скобках.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми кнопку (, скобка встанет в начало. Потом поставь курсор в самый конец и нажми ). Или сотри всё и перепиши образец под кодом.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! На телефоне карточки друг под другом.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Сайт открыт на телефоне. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! У границы не было [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Для телефона нужен был max, а не min.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Карточки на телефоне стоят друг под другом?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки в ряд. Проверь число в условии [English pronunciation] media [Русское произношение].", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Карточки в ряд. В условии [English pronunciation] max-width [Русское произношение] или [English pronunciation] min-width [Русское произношение]?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле [English pronunciation] media [Русское произношение]: после шестисот нет [English pronunciation] px [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле [English pronunciation] media [Русское произношение]: [English pronunciation] min-width [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь сайты как настоящий разработчик.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило [English pronunciation] media [Русское произношение] целиком. Пусть в окнах шириной шестьсот пикселей и уже баннер прячется. Потом проверь на телефоне и на компьютере.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала [English pronunciation] media [Русское произношение] и условие, потом в фигурных скобках правило для баннера.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило начинается со знака собачки и слова [English pronunciation] media [Русское произношение].", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед словом [English pronunciation] media [Русское произношение] нужен знак собачки.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Проверь фигурные скобки: свои у [English pronunciation] media [Русское произношение] и внутри, у правила баннера.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие должно быть в скобках.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал условие. [English pronunciation] max-width [Русское произношение], двоеточие и число с [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для узкого окна нужен [English pronunciation] max-width [Русское произношение].", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Граница другая. Нужно шестьсот пикселей.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор внутри: точка и класс баннера.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прячет свойство [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чтобы спрятать, нужно [English pronunciation] none [Русское произношение].", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала [English pronunciation] media [Русское произношение] и условие в скобках, потом в фигурных скобках правило для баннера.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие: [English pronunciation] max-width [Русское произношение] 600[English pronunciation] px [Русское произношение]. Внутри: точка banner, [English pronunciation] display none [Русское произношение].", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На телефоне баннер спрятан, на компьютере на месте. Правило написано тобой целиком.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь подстрой свой сайт. Сам выбери границу, цвет баннера и цвет карточек в узком окне. Потом переключи телефон и компьютер и нажми Готово.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У границы нет [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши границу от трёхсот шестидесяти до тысячи пикселей, иначе разницы не увидишь.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первое, граница с [English pronunciation] px [Русское произношение], в следующие, названия цветов.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: 600[English pronunciation] px [Русское произношение], [English pronunciation] gold [Русское произношение] и [English pronunciation] white [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Твой сайт теперь подстраивается под любой экран.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о процентах, об условии или о месте правила?", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: проценты меняются с окном, [English pronunciation] media [Русское произношение] работает только при выполненном условии, побеждает правило, что ниже.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Баннер шириной сто процентов такой же широкий, как окно.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: проценты меняются вместе с окном.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сработает в окне шириной четыреста пикселей.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: четыреста меньше шестисот.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правила внутри [English pronunciation] media [Русское произношение] работают на всех экранах.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле они работают только при выполненном условии.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать так, на телефоне баннер поместится в экран.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле не поместится: оба правила одной силы, а побеждает то, что ниже. А ниже стоит 700[English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично понимаешь адаптивный сайт.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал правило [English pronunciation] media [Русское произношение] в самом верху? Смотри: на телефоне баннер всё равно вылез за экран! Я ошибся. Оба правила одной силы, и тогда браузер берёт то, что ниже. А ниже стоит семьсот пикселей.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перенесём правило [English pronunciation] media [Русское произношение] вниз, и на телефоне оно победит. Баннер поместился в экран. Вот!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой адаптивный сайт!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Проценты подстраивают размер под окно.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило [English pronunciation] media [Русское произношение] работает, когда выполнено условие.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для телефона, [English pronunciation] max-width [Русское произношение] и число с [English pronunciation] px [Русское произношение] в скобках.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] media [Русское произношение] пишут после обычных правил, внизу.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твой сайт красивый и на телефоне, и на компьютере. Все главные темы [English pronunciation] CSS [Русское произношение] позади. На следующем уроке соберёшь всё вместе и сделаешь свой сайт от начала до конца. До встречи!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вышла новая игра! Играй прямо сейчас и зови друзей!", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] px [Русское произношение] или проценты?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что для этого нужно?", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сработает?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сработает ли правило в этом окне?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что ещё на телефоне?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Внутри @[English pronunciation] media [Русское произношение]?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где пишется правило?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Look, my site looks great on a computer: a banner on top, three cards below. But now the window will get narrow, like a phone. Watch what happens: the banner sticks out of the screen, and the cards get squeezed. And most people open sites on their phones! Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! Now the banner fits the screen, and on a phone the cards stack one under another. Switch between computer and phone with the buttons below.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two things did it. Percent, meaning what part of the window, and media, meaning a rule that looks at the screen size. The site adapted to the screen. That’s called a responsive site.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to fit a site to any screen. But first, a riddle. The first time, I put the media rule at the very top of the code, before the ordinary rules. I think the place doesn’t matter, it’ll still work. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the banner and the label at the top right: on a phone it turns red and shows the page is wider than the window.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pixels always stay the same, and percent changes with the window. A hundred percent is the full width.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Water fills a glass, whether it’s big or small. A hundred percent banner fills any window the same way.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First, the banner. Right now it’s seven hundred pixels wide. On a computer it fits easily.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the window is like a phone: three hundred sixty pixels. Seven hundred pixels don’t fit, so the site scrolls sideways. Look at the scrollbar at the bottom.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hundred percent means the whole width. The banner is as wide as the window. On a phone it fits the screen exactly.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a computer, the same rule: the banner is again the full width. One rule fits both screens.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So pixels always stay the same, and percent changes with the window.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the banner full width on any screen: type the width value. Then check it on the computer and the phone.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pixels always stay the same: they won’t fit on a phone or a computer. We need percent.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no percent sign.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That’s only part of the width. What percent is the whole width?", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and a percent sign.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need the whole width in percent.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How many percent is the whole thing?", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The whole thing is a hundred percent.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a hundred, then tap the percent sign button below and Check.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the banner fits any screen. Switch between phone and computer.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick what’s needed: pixels or percent.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is the size always the same, or does it change with the window?", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Always the same: pixels. A part of the window: percent.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The logo is exactly forty pixels on any screen.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The size never changes, so pixels.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The picture should take half the window.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Half the window is fifty percent.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The banner is full width on any screen.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The whole width is a hundred percent.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button is always the same: a hundred twenty pixels.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Always the same, so pixels.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up pixels and percent.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the cards and the window width: in a narrow window they stack, in a wide one they sit in a row.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Rules inside media only work when the condition is met. max-width six hundred pixels means the window is no wider than six hundred.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You open an umbrella only when it rains. A media rule works only when the window is narrow.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the cards. On a computer they look nice in a row. And on a phone? Let’s see.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a phone the cards are squeezed, and the labels barely fit. On a phone it’s better to stack them.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is a media rule. In brackets is a condition: max-width six hundred pixels, meaning if the window is no wider than six hundred pixels. The rule inside works only then. On a phone the cards stacked.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a computer the window is eight hundred pixels, more than six hundred. The condition isn’t met, the rule sleeps, and the cards are in a row again.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the rules inside media only work when the condition is met.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Make the cards stack in windows six hundred pixels wide and narrower: type the value in the condition.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no px. Without it the browser throws the whole media rule away.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and px.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different breakpoint. We need six hundred pixels.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The breakpoint is six hundred pixels.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You need the number and the letters px.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type six hundred and px, then tap Check.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! On a phone the cards stack. Check the computer too.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I’ll show the window width and a media condition, and you pick: will the rule work or sleep?", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Compare the window width with the number in the condition.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] max-width works if the window is no wider than that number. Equal counts too.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three hundred sixty is less than six hundred, so the rule works.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Eight hundred is more than six hundred, so the rule sleeps.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Six hundred is exactly the breakpoint. It’s not more, so it works.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You read media conditions like a browser.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the banner: on a phone it disappears, and on a computer it stays.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside media you can write any change for a phone: layout, sizes, what to hide. display none hides an element.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You don’t pack everything for a trip; you leave extras at home. On a phone you hide extras with display none.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside media you can change anything, not just the cards. For example, a phone screen is small, and the banner takes up a lot of space.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One more media rule: display none, meaning hide. On a phone the banner disappeared, and the cards got more room.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a computer the banner is still there: the condition isn’t met.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So inside media you write the changes for a phone: layout, sizes, what to hide.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Make the banner invisible on a phone: type the value for display.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With that value the banner is still visible. To hide it you need another word.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for display.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember the word for hiding from lesson nine.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Hiding is none.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type none and tap Check.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The banner is hidden on a phone and still there on a computer.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick where the rule goes: for all screens or inside media.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is this needed only on a phone, or everywhere?", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only on a narrow screen: inside media. Everywhere: an ordinary rule.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a phone the cards should stack.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only on a phone, so inside media.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The banner should be orange on every screen.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On every screen, so an ordinary rule.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a phone the banner should be hidden.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There should be eight pixels between the cards on every screen.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The same everywhere, so an ordinary rule.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know which rule goes where.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time, look at the condition: are there brackets, does the number have px, is it max or min? Then look at the cards.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The condition goes in brackets, the number with px. A phone needs max-width; min-width works on wide windows.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Signs saying under twelve and twelve and over mean opposite things. max and min are opposites the same way.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Media rules have mistakes too. Let’s look at three on a phone. Right now everything is correct: the cards are stacked.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: the condition has no brackets. The browser didn’t understand it and threw the whole media rule away. The cards are in a row again.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: six hundred is written, but no px. That’s a mistake too, and the browser threw the rule away again.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third is sneakier: min instead of max. min-width means if the window is six hundred pixels or wider. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the condition goes in brackets, the number has px, and a phone needs max-width.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wrote that the cards should stack on a phone, but they’re in a row! My condition is in the field. Find the mistake and fix it.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the condition.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The condition still has no brackets. Put it inside an opening and a closing bracket.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no px after the number.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A phone needs max-width, not min-width.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that condition. Brackets, max-width, a colon and a number with px.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The breakpoint is different. Keep it at six hundred pixels.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the edges of the condition.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A media condition is always written in brackets.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the opening bracket button: it goes to the start. Then put the cursor at the very end and tap the closing one. Or erase everything and copy the example under the code.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! On a phone the cards stack.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. The site is open on a phone. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule doesn’t work?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The breakpoint had no px.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! A phone needed max, not min.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Are the cards stacked on the phone?", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards are in a row. Check the number in the media condition.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The cards are in a row. Is the condition max-width or min-width?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the media rule: no px after six hundred. Tap that line.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the media rule: min-width. Tap that line.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check sites like a real developer.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole media rule yourself. Hide the banner in windows six hundred pixels wide and narrower. Then check on the phone and the computer.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first media and the condition, then the banner rule inside curly braces.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule starts with the at sign and the word media.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word media needs the at sign before it.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the curly braces: media’s own, and inside them the banner rule’s.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The condition must be in brackets.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize the condition. max-width, a colon and a number with px.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A narrow window needs max-width.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The breakpoint is different. We need six hundred pixels.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector inside: a dot and the banner’s class.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The display property does the hiding.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] To hide it you need none.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First media and the condition in brackets, then the banner rule in curly braces.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Condition: max-width 600px. Inside: dot banner, display none.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The banner is hidden on a phone and there on a computer. You wrote the whole rule yourself.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own site responsive. Choose the breakpoint, the banner color and the card color for a narrow window. Then switch phone and computer and tap Done.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The breakpoint has no px.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write a breakpoint from three hundred sixty to a thousand pixels, otherwise you won’t see a difference.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the first, a breakpoint with px; in the others, color names.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: 600px, gold and white. Then tap Done.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! Your site now adapts to any screen.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the sentence about: percent, the condition or where the rule goes?", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: percent changes with the window, media only works when its condition is met, and the lower rule wins.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A banner at a hundred percent is as wide as the window.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: percent changes with the window.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule works in a window four hundred pixels wide.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: four hundred is less than six hundred.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rules inside media work on every screen.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually they only work when the condition is met.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Written like this, the banner fits the screen on a phone.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually it won’t fit: both rules are equally strong, and the lower one wins. And the lower one says 700px.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You understand responsive sites really well.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I put the media rule at the very top? Look: on a phone the banner still sticks out of the screen! I was wrong. Both rules are equally strong, and then the browser takes the lower one. And the lower one says seven hundred pixels.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Move the media rule to the bottom, and on a phone it wins. The banner fits the screen. There!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your responsive site!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Percent fits the size to the window.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A media rule works when its condition is met.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For a phone: max-width and a number with px in brackets.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And media goes after the ordinary rules, at the bottom.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your site looks good on both phone and computer. You’ve covered all the main CSS topics. Next lesson you’ll put it all together and build your own site from start to finish. See you!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A new game is out! Play right now and invite your friends!", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] px or percent?", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does this need?", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Will it work?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Will the rule work in this window?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What else on a phone?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Inside @media?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where does the rule go?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Qarang, kompyuterda saytim chiroyli: tepada banner, pastda uchta karta. Lekin hozir oyna telefondek torayadi. Qarang, nima bo'ladi: banner ekrandan chiqib ketdi, kartalar esa siqilib qoldi. Saytni ko'pchilik telefondan ochadi-ku! Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Endi banner ekranga to'liq sig'di, kartalar esa telefonda ustma-ust turibdi. Pastdagi tugmalar bilan kompyuter va telefonni almashtirib ko'ring.": "uz002",
+    "Buni ikki narsa qildi. Birinchisi foiz, ya'ni oynaning qancha qismi degani. Ikkinchisi [English pronunciation] media [O'zbekcha tallaffuz], ya'ni ekran o'lchamiga qarab ishlaydigan qoida degani. Sayt ekranga moslashdi. Buni moslashuvchan sayt deyishadi.": "uz003",
+    "Bugun saytni har qanday ekranga moslashni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] media [O'zbekcha tallaffuz] qoidasini kodning eng tepasiga yozgan edim, oddiy qoidalardan oldin. Menimcha, joyi muhim emas, baribir ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Bannerga va o'ng tepadagi belgiga qarang: telefonda u qizarib, sahifa oynadan keng ekanini ko'rsatadi.": "uz005",
+    "Piksel doim bir xil, foiz esa oynaga qarab o'zgaradi. Yuz foiz bu butun en.": "uz006",
+    "Suv stakanni to'ldiradi, stakan katta bo'lsa ham, kichik bo'lsa ham. Yuz foizli banner ham har qanday oynani to'ldiradi.": "uz007",
+    "Oldin bannerni ko'ramiz. Hozir uning eni yetti yuz piksel. Kompyuterda u bemalol sig'adi.": "uz008",
+    "Endi oyna telefondek: uch yuz oltmish piksel. Yetti yuz piksel bunga sig'maydi, sayt yon tomonga suriladigan bo'lib qoldi. Pastdagi aylantirish chizig'iga qarang.": "uz009",
+    "Yuz foiz ya'ni butun en degani. Banner oyna qancha keng bo'lsa, shuncha bo'ladi. Telefonda u ekranga roppa-rosa sig'di.": "uz010",
+    "Kompyuterda ham xuddi shu qoida: banner yana butun en bo'ylab. Bitta qoida ikki ekranga ham mos keldi.": "uz011",
+    "Demak, piksel doim bir xil, foiz esa oynaga qarab o'zgaradi.": "uz012",
+    "Endi navbat sizga. Banner har qanday ekranda butun en bo'ylab tursin: eni uchun qiymat yozing. Keyin kompyuter va telefonni almashtirib tekshiring.": "uz013",
+    "Qiymatni yozing.": "uz014",
+    "Piksel doim bir xil: telefonda yoki kompyuterda u mos kelmaydi. Foiz kerak.": "uz015",
+    "Son bor, lekin foiz belgisi yo'q.": "uz016",
+    "Bu enning bir qismi. Butun en necha foiz?": "uz017",
+    "Brauzer bu qiymatni tanimadi. Son va foiz belgisini yozing.": "uz018",
+    "Bu boshqa qiymat. Butun en foizda kerak.": "uz019",
+    "Butun narsa necha foiz bo'ladi?": "uz020",
+    "Butun narsa yuz foiz.": "uz021",
+    "Yuz deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.": "uz022",
+    "Zo'r! Banner endi har qanday ekranga sig'adi. Telefon va kompyuterni almashtirib ko'ring.": "uz023",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang: piksel yoki foiz.": "uz024",
+    "Kattalik doim bir xilmi yoki oynaga qarab o'zgaradimi?": "uz025",
+    "Doim bir xil bo'lsa, piksel. Oynaning qismi bo'lsa, foiz.": "uz026",
+    "Logotip har qanday ekranda roppa-rosa qirq piksel.": "uz027",
+    "Doim bir xil o'lcham, demak piksel.": "uz028",
+    "Rasm oynaning yarmini egallasin.": "uz029",
+    "Oynaning yarmi bu ellik foiz.": "uz030",
+    "Banner har qanday ekranda butun en bo'ylab tursin.": "uz031",
+    "Butun en bu yuz foiz.": "uz032",
+    "Tugma doim bir xil: yuz yigirma piksel.": "uz033",
+    "Doim bir xil, demak piksel.": "uz034",
+    "Barakalla!": "uz035",
+    "Hammasi to'g'ri! Piksel va foizni adashtirmaysiz.": "uz036",
+    "Kartochkalarga va oyna kengligiga qarang: oyna tor bo'lganda ular ustma-ust turadi, keng bo'lganda qatorga.": "uz037",
+    "[English pronunciation] media [O'zbekcha tallaffuz] ichidagi qoidalar faqat shart bajarilganda ishlaydi. [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz piksel, oyna olti yuzdan keng bo'lmasa degani.": "uz038",
+    "Yomg'ir yog'sagina soyabon ochasiz. [English pronunciation] media [O'zbekcha tallaffuz] qoidasi ham faqat oyna tor bo'lsagina ishlaydi.": "uz039",
+    "Endi kartalar. Kompyuterda ular qatorda chiroyli turibdi. Telefonda-chi? Keling, ko'ramiz.": "uz040",
+    "Telefonda kartalar siqilib qoldi, yozuvlar zo'rg'a sig'yapti. Telefonda ularni ustma-ust qo'ysak yaxshi bo'lardi.": "uz041",
+    "Bu [English pronunciation] media [O'zbekcha tallaffuz] qoidasi. Qavs ichida shart: [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz piksel, ya'ni oyna olti yuz pikseldan katta bo'lmasa degani. Ichidagi qoida faqat shunda ishlaydi. Telefonda kartalar ustma-ust turdi.": "uz042",
+    "Kompyuterda oyna sakkiz yuz piksel, bu olti yuzdan katta. Shart bajarilmadi, qoida uxlab yotibdi, kartalar yana qatorda.": "uz043",
+    "Demak, [English pronunciation] media [O'zbekcha tallaffuz] ichidagi qoidalar faqat shart bajarilganda ishlaydi.": "uz044",
+    "Endi siz. Kartalar olti yuz piksel va undan tor oynalarda ustma-ust tursin: shartdagi qiymatni yozing.": "uz045",
+    "Son bor, lekin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Busiz brauzer butun [English pronunciation] media [O'zbekcha tallaffuz] qoidasini tashlab yuboradi.": "uz046",
+    "Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.": "uz047",
+    "Bu boshqa chegara. Olti yuz piksel kerak.": "uz048",
+    "Chegara olti yuz piksel.": "uz049",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] harflari kerak.": "uz050",
+    "Olti yuz va [English pronunciation] px [O'zbekcha tallaffuz] deb yozing, keyin Tekshirishni bosing.": "uz051",
+    "Barakalla! Telefonda kartalar ustma-ust. Kompyuterni ham tekshirib ko'ring.": "uz052",
+    "Endi o'zingizni sinab ko'ring. Men oyna kengligini va [English pronunciation] media [O'zbekcha tallaffuz] shartini ko'rsataman, siz esa qoida ishlaydimi yoki uxlaydimi, shuni tanlang.": "uz053",
+    "Oyna kengligini shartdagi son bilan solishtiring.": "uz054",
+    "[English pronunciation] max-width [O'zbekcha tallaffuz] bo'lsa, oyna shu sondan katta bo'lmaganda ishlaydi. Teng bo'lsa ham ishlaydi.": "uz055",
+    "Uch yuz oltmish olti yuzdan kichik, qoida ishlaydi.": "uz056",
+    "Sakkiz yuz olti yuzdan katta, qoida uxlaydi.": "uz057",
+    "Olti yuz roppa-rosa chegarada. Katta emas, demak ishlaydi.": "uz058",
+    "Hammasi to'g'ri! Media shartini brauzerdek o'qiysiz.": "uz059",
+    "Bannerga qarang: telefonda u yo'qoladi, kompyuterda esa joyida turadi.": "uz060",
+    "[English pronunciation] media [O'zbekcha tallaffuz] ichida telefon uchun istalgan o'zgarishni yozish mumkin: joylashuv, o'lcham, yashirish. [English pronunciation] display none [O'zbekcha tallaffuz] elementni yashiradi.": "uz061",
+    "Sumkaga safar uchun hamma narsani solmaysiz, keraksizini uyda qoldirasiz. Telefonda ham keraksiz narsani [English pronunciation] display none [O'zbekcha tallaffuz] bilan yashirasiz.": "uz062",
+    "Media ichida faqat kartalar emas, istalgan narsani o'zgartirish mumkin. Masalan, telefonda ekran kichik, banner esa ko'p joy egallaydi.": "uz063",
+    "Yana bitta [English pronunciation] media [O'zbekcha tallaffuz] qoidasi: [English pronunciation] display none [O'zbekcha tallaffuz], ya'ni yashirish degani. Telefonda banner g'oyib bo'ldi, kartalarga joy ko'paydi.": "uz064",
+    "Kompyuterda esa banner joyida: u yerda shart bajarilmaydi.": "uz065",
+    "Demak, [English pronunciation] media [O'zbekcha tallaffuz] ichida telefon uchun o'zgarishlar yoziladi: joylashuv, o'lcham, yashirish.": "uz066",
+    "Endi siz. Telefonda banner ko'rinmasin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz067",
+    "Bu qiymat bilan banner ko'rinib turibdi. Yashirish uchun boshqa so'z kerak.": "uz068",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz069",
+    "To'qqizinchi darsdagi yashirish so'zini eslang.": "uz070",
+    "Yashirish [English pronunciation] none [O'zbekcha tallaffuz] deyiladi.": "uz071",
+    "[English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz072",
+    "Ajoyib! Telefonda banner yashirindi, kompyuterda esa joyida.": "uz073",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa qoida qayerda yozilishini tanlang: hamma ekranlar uchunmi yoki [English pronunciation] media [O'zbekcha tallaffuz] ichidami.": "uz074",
+    "Bu faqat telefonda kerakmi yoki hamma joyda?": "uz075",
+    "Faqat tor ekranda bo'lsa, [English pronunciation] media [O'zbekcha tallaffuz] ichida. Hamma joyda bo'lsa, oddiy qoida.": "uz076",
+    "Telefonda kartalar ustma-ust tursin.": "uz077",
+    "Faqat telefonda, demak [English pronunciation] media [O'zbekcha tallaffuz] ichida.": "uz078",
+    "Banner hamma ekranda to'q sariq bo'lsin.": "uz079",
+    "Hamma ekranda, demak oddiy qoida.": "uz080",
+    "Telefonda banner yashirinsin.": "uz081",
+    "Kartalar o'rtasida hamma ekranda sakkiz piksel bo'lsin.": "uz082",
+    "Hamma ekranda bir xil, demak oddiy qoida.": "uz083",
+    "Hammasi to'g'ri! Qaysi qoida qayerga yozilishini bilasiz.": "uz084",
+    "Har safar shartga qarang: qavslar bormi, son yonida [English pronunciation] px [O'zbekcha tallaffuz] bormi, max yoki min yozilganmi? Keyin kartochkalarga qarang.": "uz085",
+    "Shart qavs ichida yoziladi, son [English pronunciation] px [O'zbekcha tallaffuz] bilan. Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak, [English pronunciation] min-width [O'zbekcha tallaffuz] esa keng oynalarda ishlaydi.": "uz086",
+    "O'n ikki yoshdan kichiklarga va o'n ikki yoshdan kattalarga degan yozuvlar teskari ma'noni beradi. max va min ham shunday teskari.": "uz087",
+    "Media qoidasida ham xatolar bo'ladi. Keling, uchtasini telefonda ko'ramiz. Hozir hammasi to'g'ri: kartalar ustma-ust.": "uz088",
+    "Birinchisi: shart qavssiz yozilgan. Brauzer uni tushunmadi va butun [English pronunciation] media [O'zbekcha tallaffuz] qoidasini tashlab yubordi. Kartalar yana qatorda.": "uz089",
+    "Ikkinchisi: olti yuz yozilgan, lekin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Bu ham xato, brauzer qoidani yana tashlab yubordi.": "uz090",
+    "Uchinchisi ayyorroq: max o'rniga min. [English pronunciation] min-width [O'zbekcha tallaffuz] ya'ni oyna olti yuz piksel yoki undan keng bo'lsa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!": "uz091",
+    "Demak, shart qavs ichida, son [English pronunciation] px [O'zbekcha tallaffuz] bilan yoziladi, telefon uchun esa [English pronunciation] max-width [O'zbekcha tallaffuz] kerak.": "uz092",
+    "Voy, men telefonda kartalar ustma-ust tursin deb yozdim, lekin ular qatorda turibdi! Maydonda mening shartim turibdi. Xatoni toping va tuzating.": "uz093",
+    "Shartni yozing.": "uz094",
+    "Shart hali qavssiz. Uni ochuvchi va yopuvchi qavs ichiga oling.": "uz095",
+    "Sondan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q.": "uz096",
+    "Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak, [English pronunciation] min-width [O'zbekcha tallaffuz] emas.": "uz097",
+    "Brauzer bu shartni tanimadi. Qavs, [English pronunciation] max-width [O'zbekcha tallaffuz], ikki nuqta va son [English pronunciation] px [O'zbekcha tallaffuz] bilan.": "uz098",
+    "Chegara boshqa. Olti yuz piksel qolsin.": "uz099",
+    "Shartning chetlariga qarang.": "uz100",
+    "Media sharti doim qavs ichida yoziladi.": "uz101",
+    "Ochuvchi qavs tugmasini bosing: u boshiga turadi. Keyin kursorni eng oxiriga qo'yib, yopuvchi qavsni bosing. Yoki hammasini o'chirib, kod ostidagi namunani ko'chiring.": "uz102",
+    "Ura, ishladi! Telefonda kartalar ustma-ust.": "uz103",
+    "Endi o'zingizni sinab ko'ring. Sayt telefonda ochilgan. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.": "uz104",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?": "uz105",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz106",
+    "Topdingiz! Chegarada [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.": "uz107",
+    "Topdingiz! Telefon uchun min emas, max kerak edi.": "uz108",
+    "Kartalar telefonda ustma-ust turibdimi?": "uz109",
+    "Kartalar qatorda. Media shartidagi sonni tekshiring.": "uz110",
+    "Kartalar qatorda. Shart [English pronunciation] max-width [O'zbekcha tallaffuz] mi yoki [English pronunciation] min-width [O'zbekcha tallaffuz] mi?": "uz111",
+    "Xato [English pronunciation] media [O'zbekcha tallaffuz] qoidasida: olti yuzdan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.": "uz112",
+    "Xato [English pronunciation] media [O'zbekcha tallaffuz] qoidasida: [English pronunciation] min-width [O'zbekcha tallaffuz]. O'sha qatorni bosing.": "uz113",
+    "Super! Ikkalasi ham topildi. Siz saytlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz114",
+    "Endi [English pronunciation] media [O'zbekcha tallaffuz] qoidasini boshidan oxirigacha o'zingiz yozing. Olti yuz piksel va undan tor oynada banner yashirinsin. Keyin telefon va kompyuterni almashtirib tekshiring.": "uz115",
+    "Qoidani yozing: oldin [English pronunciation] media [O'zbekcha tallaffuz] va shart, keyin figurali qavslar ichida banner qoidasi.": "uz116",
+    "Qoida kuchukcha belgisi va [English pronunciation] media [O'zbekcha tallaffuz] so'zidan boshlanadi.": "uz117",
+    "[English pronunciation] media [O'zbekcha tallaffuz] so'zidan oldin kuchukcha belgisi kerak.": "uz118",
+    "Figurali qavslarni tekshiring: [English pronunciation] media [O'zbekcha tallaffuz] ning o'z qavslari va ichida banner qoidasining qavslari.": "uz119",
+    "Shart qavs ichida bo'lishi kerak.": "uz120",
+    "Brauzer shartni tanimadi. [English pronunciation] max-width [O'zbekcha tallaffuz], ikki nuqta va son [English pronunciation] px [O'zbekcha tallaffuz] bilan.": "uz121",
+    "Tor oyna uchun [English pronunciation] max-width [O'zbekcha tallaffuz] kerak.": "uz122",
+    "Chegara boshqa. Olti yuz piksel kerak.": "uz123",
+    "Ichkaridagi selektor: nuqta va banner klassi.": "uz124",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz125",
+    "Yashirishni [English pronunciation] display [O'zbekcha tallaffuz] xususiyati beradi.": "uz126",
+    "Yashirish uchun [English pronunciation] none [O'zbekcha tallaffuz] kerak.": "uz127",
+    "Oldin [English pronunciation] media [O'zbekcha tallaffuz] va qavs ichida shart, keyin figurali qavs ichida banner qoidasi.": "uz128",
+    "Shart: [English pronunciation] max-width [O'zbekcha tallaffuz] olti yuz [English pronunciation] px [O'zbekcha tallaffuz]. Ichida: nuqta banner, [English pronunciation] display none [O'zbekcha tallaffuz].": "uz129",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz130",
+    "Ajoyib! Telefonda banner yashirin, kompyuterda joyida. Qoidani o'zingiz yozdingiz.": "uz131",
+    "Endi o'z saytingizni moslashtiring. Chegarani, tor oynadagi banner rangini va kartalar rangini o'zingiz tanlang. Keyin telefon va kompyuterni almashtirib, Tayyorni bosing.": "uz132",
+    "Chegarada [English pronunciation] px [O'zbekcha tallaffuz] yo'q.": "uz133",
+    "Uch yuz oltmishdan ming pikselgacha bo'lgan chegarani yozing, aks holda farqni ko'rmaysiz.": "uz134",
+    "Har bir maydonga bitta qiymat yozing.": "uz135",
+    "Birinchisiga chegara [English pronunciation] px [O'zbekcha tallaffuz] bilan, keyingilariga rang nomlari.": "uz136",
+    "Masalan: olti yuz [English pronunciation] px [O'zbekcha tallaffuz], [English pronunciation] gold [O'zbekcha tallaffuz] va [English pronunciation] white [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz137",
+    "Voy, zo'r! Saytingiz endi har qanday ekranga moslashadi.": "uz138",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz139",
+    "Gap nima haqida: foiz, shart yoki qoidaning joyi?": "uz140",
+    "Esingizdami: foiz oynaga qarab o'zgaradi, [English pronunciation] media [O'zbekcha tallaffuz] faqat shart bajarilsa ishlaydi, pastdagi qoida g'olib.": "uz141",
+    "Yuz foizli banner oyna qancha keng bo'lsa, shuncha keng bo'ladi.": "uz142",
+    "To'g'ri: foiz oynaga qarab o'zgaradi.": "uz143",
+    "Bu qoida to'rt yuz piksellik oynada ishlaydi.": "uz144",
+    "To'g'ri: to'rt yuz olti yuzdan kichik.": "uz145",
+    "Media ichidagi qoidalar hamma ekranda ishlaydi.": "uz146",
+    "Aslida ular faqat shart bajarilganda ishlaydi.": "uz147",
+    "Shunday yozilsa, telefonda banner ekranga sig'adi.": "uz148",
+    "Aslida sig'maydi: ikkala qoidaning kuchi bir xil, pastdagisi g'olib bo'ladi. Pastda esa yetti yuz piksel turibdi.": "uz149",
+    "Hammasi to'g'ri! Siz moslashuvchan saytni yaxshi tushunasiz.": "uz150",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] media [O'zbekcha tallaffuz] qoidasini eng tepaga yozgan edim? Qarang: telefonda banner baribir ekrandan chiqib ketdi! Men adashibman. Ikkala qoida bir xil kuchli, bunday paytda brauzer pastdagisini oladi. Pastda esa yetti yuz piksel turibdi.": "uz151",
+    "Media qoidasini pastga ko'chirsak, telefonda u g'olib bo'ladi. Banner ekranga sig'di. Mana!": "uz152",
+    "Qarang, bu sizning moslashuvchan saytingiz!": "uz153",
+    "Foiz o'lchamni oynaga moslaydi.": "uz154",
+    "Media qoidasi shart bajarilganda ishlaydi.": "uz155",
+    "Telefon uchun [English pronunciation] max-width [O'zbekcha tallaffuz] va qavs ichidagi son [English pronunciation] px [O'zbekcha tallaffuz] bilan.": "uz156",
+    "Media esa oddiy qoidalardan keyin, pastda yoziladi.": "uz157",
+    "Tabriklayman! Endi saytingiz telefonda ham, kompyuterda ham chiroyli. Siz [English pronunciation] CSS [O'zbekcha tallaffuz] ning hamma asosiy mavzularini o'tdingiz. Keyingi darsda hammasini birlashtirib, o'z saytingizni boshidan oxirigacha yaratasiz. Ko'rishguncha!": "uz158",
+    "Voy, zo‘r!": "uz159",
+    "Ana! Chiqdi!": "uz160",
+    "Super!": "uz161",
+    "Qoyil!": "uz162",
+    "Ura!": "uz163",
+    "Zo‘r-ku!": "uz164",
+    "Yana bir bor urinib ko‘ring.": "uz165",
+    "Diqqat bilan qarang.": "uz166",
+    "Yaqin qoldingiz. Shoshilmang.": "uz167",
+    "Yangi o'yin chiqdi! Hoziroq o'ynang va do'stlaringizni chaqiring!": "uz168",
+    "[English pronunciation] px [O'zbekcha tallaffuz] yoki foiz?": "uz169",
+    "Buning uchun nima kerak?": "uz170",
+    "Ishlaydimi?": "uz171",
+    "Bu oynada qoida ishlaydimi?": "uz172",
+    "Telefonda yana nima?": "uz173",
+    "@[English pronunciation] media [O'zbekcha tallaffuz] ichidami?": "uz174",
+    "Qoida qayerda yoziladi?": "uz175",
+    "To'g'rimi?": "uz176",
+    "To'g'rimi yoki noto'g'rimi?": "uz177",
+    "Salom, dunyo!": "uz178",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz179",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz180",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz181",
+  },
+  ru: {
+    "Привет! Смотри, на компьютере мой сайт красивый: сверху баннер, ниже три карточки. Но сейчас окно сузится, как у телефона. Смотри, что будет: баннер вылез за экран, а карточки сжались. А ведь сайты чаще всего открывают с телефона! Нажми Превратить.": "ru001",
+    "Вот! Теперь баннер помещается в экран, а карточки на телефоне стоят друг под другом. Переключай компьютер и телефон кнопками внизу.": "ru002",
+    "Это сделали две вещи. Проценты, то есть какая часть окна, и [English pronunciation] media [Русское произношение], то есть правило, которое смотрит на размер экрана. Сайт подстроился под экран. Это называют адаптивным сайтом.": "ru003",
+    "Сегодня ты научишься подстраивать сайт под любой экран. Но сначала загадка. В первый раз я написал правило [English pronunciation] media [Русское произношение] в самом верху кода, до обычных правил. По-моему, место не важно, всё равно сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на баннер и на метку справа вверху: на телефоне она краснеет и показывает, что страница шире окна.": "ru005",
+    "Пиксели всегда одинаковые, а проценты меняются вместе с окном. Сто процентов, вся ширина.": "ru006",
+    "Вода заполняет стакан, большой он или маленький. Баннер в сто процентов так же заполняет любое окно.": "ru007",
+    "Сначала посмотрим на баннер. Сейчас его ширина семьсот пикселей. На компьютере он спокойно помещается.": "ru008",
+    "Теперь окно как у телефона: триста шестьдесят пикселей. Семьсот пикселей сюда не влезают, сайт стал прокручиваться вбок. Посмотри на полосу прокрутки внизу.": "ru009",
+    "Сто процентов, то есть вся ширина. Баннер такой же широкий, как окно. На телефоне он поместился ровно по экрану.": "ru010",
+    "И на компьютере то же правило: баннер снова во всю ширину. Одно правило подошло обоим экранам.": "ru011",
+    "Значит, пиксели всегда одинаковые, а проценты меняются вместе с окном.": "ru012",
+    "Теперь твоя очередь. Пусть баннер на любом экране будет во всю ширину: впиши значение ширины. Потом проверь на компьютере и на телефоне.": "ru013",
+    "Впиши значение.": "ru014",
+    "Пиксели всегда одинаковые: на телефоне или на компьютере они не подойдут. Нужны проценты.": "ru015",
+    "Число есть, а знака процента нет.": "ru016",
+    "Это только часть ширины. Сколько процентов, вся ширина?": "ru017",
+    "Браузер не узнал это значение. Напиши число и знак процента.": "ru018",
+    "Это другое значение. Нужна вся ширина в процентах.": "ru019",
+    "Сколько процентов, это всё целиком?": "ru020",
+    "Всё целиком, это сто процентов.": "ru021",
+    "Впиши сто, потом нажми внизу кнопку со знаком процента и Проверить.": "ru022",
+    "Огонь! Теперь баннер помещается на любом экране. Переключи телефон и компьютер.": "ru023",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно: пиксели или проценты.": "ru024",
+    "Размер всегда один и тот же или меняется вместе с окном?": "ru025",
+    "Всегда одинаковый, пиксели. Часть окна, проценты.": "ru026",
+    "Логотип на любом экране ровно сорок пикселей.": "ru027",
+    "Размер всегда одинаковый, значит, пиксели.": "ru028",
+    "Картинка должна занимать половину окна.": "ru029",
+    "Половина окна, это пятьдесят процентов.": "ru030",
+    "Баннер на любом экране во всю ширину.": "ru031",
+    "Вся ширина, это сто процентов.": "ru032",
+    "Кнопка всегда одинаковая: сто двадцать пикселей.": "ru033",
+    "Всегда одинаковая, значит, пиксели.": "ru034",
+    "Точно!": "ru035",
+    "Всё верно! Ты не путаешь пиксели и проценты.": "ru036",
+    "Посмотри на карточки и ширину окна: в узком окне они друг под другом, в широком, в ряд.": "ru037",
+    "Правила внутри [English pronunciation] media [Русское произношение] работают, только когда выполнено условие. [English pronunciation] max-width [Русское произношение] шестьсот пикселей, значит, окно не шире шестисот.": "ru038",
+    "Зонт открывают, только когда идёт дождь. Правило [English pronunciation] media [Русское произношение] так же работает, только когда окно узкое.": "ru039",
+    "Теперь карточки. На компьютере они красиво стоят в ряд. А на телефоне? Давай посмотрим.": "ru040",
+    "На телефоне карточки сжались, надписи еле помещаются. На телефоне лучше поставить их друг под другом.": "ru041",
+    "Это правило [English pronunciation] media [Русское произношение]. В скобках условие: [English pronunciation] max-width [Русское произношение] шестьсот пикселей, то есть если окно не шире шестисот пикселей. Правило внутри работает только тогда. На телефоне карточки встали друг под другом.": "ru042",
+    "На компьютере окно восемьсот пикселей, это больше шестисот. Условие не выполнено, правило спит, карточки снова в ряд.": "ru043",
+    "Значит, правила внутри [English pronunciation] media [Русское произношение] работают, только когда выполнено условие.": "ru044",
+    "Теперь ты. Пусть карточки встают друг под другом в окнах шириной шестьсот пикселей и уже: впиши значение в условие.": "ru045",
+    "Число есть, а [English pronunciation] px [Русское произношение] нет. Без них браузер выбросит всё правило [English pronunciation] media [Русское произношение].": "ru046",
+    "Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение].": "ru047",
+    "Это другая граница. Нужно шестьсот пикселей.": "ru048",
+    "Граница, шестьсот пикселей.": "ru049",
+    "Нужны число и буквы [English pronunciation] px [Русское произношение].": "ru050",
+    "Впиши шестьсот и [English pronunciation] px [Русское произношение], потом нажми Проверить.": "ru051",
+    "Молодец! На телефоне карточки друг под другом. Проверь и на компьютере.": "ru052",
+    "Теперь проверь себя. Я покажу ширину окна и условие [English pronunciation] media [Русское произношение], а ты выбери: правило сработает или будет спать.": "ru053",
+    "Сравни ширину окна с числом в условии.": "ru054",
+    "[English pronunciation] max-width [Русское произношение], работает, если окно не шире этого числа. Если равно, тоже работает.": "ru055",
+    "Триста шестьдесят меньше шестисот, правило работает.": "ru056",
+    "Восемьсот больше шестисот, правило спит.": "ru057",
+    "Шестьсот, ровно граница. Не больше, значит, работает.": "ru058",
+    "Всё верно! Ты читаешь условие [English pronunciation] media [Русское произношение], как браузер.": "ru059",
+    "Посмотри на баннер: на телефоне он пропадает, а на компьютере остаётся.": "ru060",
+    "Внутри [English pronunciation] media [Русское произношение] можно писать любые изменения для телефона: расположение, размеры, что спрятать. [English pronunciation] display none [Русское произношение] прячет элемент.": "ru061",
+    "В дорогу не берут всё подряд, лишнее оставляют дома. На телефоне лишнее так же прячут через [English pronunciation] display none [Русское произношение].": "ru062",
+    "Внутри [English pronunciation] media [Русское произношение] можно менять не только карточки, а что угодно. Например, на телефоне экран маленький, а баннер занимает много места.": "ru063",
+    "Ещё одно правило [English pronunciation] media [Русское произношение]: [English pronunciation] display none [Русское произношение], то есть спрятать. На телефоне баннер исчез, карточкам стало просторнее.": "ru064",
+    "А на компьютере баннер на месте: там условие не выполняется.": "ru065",
+    "Значит, внутри [English pronunciation] media [Русское произношение] пишут изменения для телефона: расположение, размеры, что спрятать.": "ru066",
+    "Теперь ты. Пусть на телефоне баннера не видно: впиши значение для [English pronunciation] display [Русское произношение].": "ru067",
+    "С этим значением баннер виден. Чтобы спрятать, нужно другое слово.": "ru068",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].": "ru069",
+    "Вспомни слово спрятать из девятого урока.": "ru070",
+    "Спрятать, это [English pronunciation] none [Русское произношение].": "ru071",
+    "Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.": "ru072",
+    "Отлично! На телефоне баннер спрятан, а на компьютере на месте.": "ru073",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, где пишется правило: для всех экранов или внутри [English pronunciation] media [Русское произношение].": "ru074",
+    "Это нужно только на телефоне или везде?": "ru075",
+    "Только на узком экране, внутри [English pronunciation] media [Русское произношение]. Везде, обычное правило.": "ru076",
+    "На телефоне карточки должны стоять друг под другом.": "ru077",
+    "Только на телефоне, значит, внутри [English pronunciation] media [Русское произношение].": "ru078",
+    "Баннер должен быть оранжевым на всех экранах.": "ru079",
+    "На всех экранах, значит, обычное правило.": "ru080",
+    "На телефоне баннер должен быть спрятан.": "ru081",
+    "Между карточками на всех экранах восемь пикселей.": "ru082",
+    "Везде одинаково, значит, обычное правило.": "ru083",
+    "Всё верно! Ты знаешь, какое правило куда писать.": "ru084",
+    "Каждый раз смотри на условие: есть ли скобки, есть ли [English pronunciation] px [Русское произношение] у числа, написано max или min? Потом на карточки.": "ru085",
+    "Условие пишут в скобках, число, с [English pronunciation] px [Русское произношение]. Для телефона нужен [English pronunciation] max-width [Русское произношение], а [English pronunciation] min-width [Русское произношение] работает на широких окнах.": "ru086",
+    "Надписи до двенадцати лет и от двенадцати лет значат противоположное. max и min, так же наоборот.": "ru087",
+    "И в правиле [English pronunciation] media [Русское произношение] бывают ошибки. Давай посмотрим на три на телефоне. Сейчас всё правильно: карточки друг под другом.": "ru088",
+    "Первая: условие без скобок. Браузер его не понял и выбросил всё правило [English pronunciation] media [Русское произношение]. Карточки снова в ряд.": "ru089",
+    "Вторая: написано шестьсот, а [English pronunciation] px [Русское произношение] нет. Это тоже ошибка, браузер снова выбросил правило.": "ru090",
+    "Третья, хитрее: min вместо max. [English pronunciation] min-width [Русское произношение], то есть если окно шестьсот пикселей или шире. Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!": "ru091",
+    "Значит, условие пишут в скобках, число, с [English pronunciation] px [Русское произношение], а для телефона нужен [English pronunciation] max-width [Русское произношение].": "ru092",
+    "Ой, я написал, чтобы на телефоне карточки стояли друг под другом, а они в ряд! В поле, моё условие. Найди ошибку и исправь.": "ru093",
+    "Впиши условие.": "ru094",
+    "Условие всё ещё без скобок. Возьми его в открывающую и закрывающую скобки.": "ru095",
+    "После числа нет [English pronunciation] px [Русское произношение].": "ru096",
+    "Для телефона нужен [English pronunciation] max-width [Русское произношение], а не [English pronunciation] min-width [Русское произношение].": "ru097",
+    "Браузер не узнал это условие. Скобки, [English pronunciation] max-width [Русское произношение], двоеточие и число с [English pronunciation] px [Русское произношение].": "ru098",
+    "Граница другая. Пусть останется шестьсот пикселей.": "ru099",
+    "Посмотри на края условия.": "ru100",
+    "Условие [English pronunciation] media [Русское произношение] всегда пишут в скобках.": "ru101",
+    "Нажми кнопку (, скобка встанет в начало. Потом поставь курсор в самый конец и нажми ). Или сотри всё и перепиши образец под кодом.": "ru102",
+    "Ура, заработало! На телефоне карточки друг под другом.": "ru103",
+    "Теперь проверь себя. Сайт открыт на телефоне. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.": "ru104",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?": "ru105",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru106",
+    "Есть! У границы не было [English pronunciation] px [Русское произношение].": "ru107",
+    "Есть! Для телефона нужен был max, а не min.": "ru108",
+    "Карточки на телефоне стоят друг под другом?": "ru109",
+    "Карточки в ряд. Проверь число в условии [English pronunciation] media [Русское произношение].": "ru110",
+    "Карточки в ряд. В условии [English pronunciation] max-width [Русское произношение] или [English pronunciation] min-width [Русское произношение]?": "ru111",
+    "Ошибка в правиле [English pronunciation] media [Русское произношение]: после шестисот нет [English pronunciation] px [Русское произношение]. Нажми эту строку.": "ru112",
+    "Ошибка в правиле [English pronunciation] media [Русское произношение]: [English pronunciation] min-width [Русское произношение]. Нажми эту строку.": "ru113",
+    "Супер! Обе найдены. Ты проверяешь сайты как настоящий разработчик.": "ru114",
+    "Теперь напиши правило [English pronunciation] media [Русское произношение] целиком. Пусть в окнах шириной шестьсот пикселей и уже баннер прячется. Потом проверь на телефоне и на компьютере.": "ru115",
+    "Напиши правило: сначала [English pronunciation] media [Русское произношение] и условие, потом в фигурных скобках правило для баннера.": "ru116",
+    "Правило начинается со знака собачки и слова [English pronunciation] media [Русское произношение].": "ru117",
+    "Перед словом [English pronunciation] media [Русское произношение] нужен знак собачки.": "ru118",
+    "Проверь фигурные скобки: свои у [English pronunciation] media [Русское произношение] и внутри, у правила баннера.": "ru119",
+    "Условие должно быть в скобках.": "ru120",
+    "Браузер не узнал условие. [English pronunciation] max-width [Русское произношение], двоеточие и число с [English pronunciation] px [Русское произношение].": "ru121",
+    "Для узкого окна нужен [English pronunciation] max-width [Русское произношение].": "ru122",
+    "Граница другая. Нужно шестьсот пикселей.": "ru123",
+    "Селектор внутри: точка и класс баннера.": "ru124",
+    "Между свойством и значением нет двоеточия.": "ru125",
+    "Прячет свойство [English pronunciation] display [Русское произношение].": "ru126",
+    "Чтобы спрятать, нужно [English pronunciation] none [Русское произношение].": "ru127",
+    "Сначала [English pronunciation] media [Русское произношение] и условие в скобках, потом в фигурных скобках правило для баннера.": "ru128",
+    "Условие: [English pronunciation] max-width [Русское произношение] 600[English pronunciation] px [Русское произношение]. Внутри: точка banner, [English pronunciation] display none [Русское произношение].": "ru129",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru130",
+    "Отлично! На телефоне баннер спрятан, на компьютере на месте. Правило написано тобой целиком.": "ru131",
+    "Теперь подстрой свой сайт. Сам выбери границу, цвет баннера и цвет карточек в узком окне. Потом переключи телефон и компьютер и нажми Готово.": "ru132",
+    "У границы нет [English pronunciation] px [Русское произношение].": "ru133",
+    "Напиши границу от трёхсот шестидесяти до тысячи пикселей, иначе разницы не увидишь.": "ru134",
+    "В каждое поле, одно значение.": "ru135",
+    "В первое, граница с [English pronunciation] px [Русское произношение], в следующие, названия цветов.": "ru136",
+    "Например: 600[English pronunciation] px [Русское произношение], [English pronunciation] gold [Русское произношение] и [English pronunciation] white [Русское произношение]. Потом нажми Готово.": "ru137",
+    "Ого, классно! Твой сайт теперь подстраивается под любой экран.": "ru138",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru139",
+    "О чём фраза: о процентах, об условии или о месте правила?": "ru140",
+    "Вспомни: проценты меняются с окном, [English pronunciation] media [Русское произношение] работает только при выполненном условии, побеждает правило, что ниже.": "ru141",
+    "Баннер шириной сто процентов такой же широкий, как окно.": "ru142",
+    "Верно: проценты меняются вместе с окном.": "ru143",
+    "Это правило сработает в окне шириной четыреста пикселей.": "ru144",
+    "Верно: четыреста меньше шестисот.": "ru145",
+    "Правила внутри [English pronunciation] media [Русское произношение] работают на всех экранах.": "ru146",
+    "На самом деле они работают только при выполненном условии.": "ru147",
+    "Если написать так, на телефоне баннер поместится в экран.": "ru148",
+    "На самом деле не поместится: оба правила одной силы, а побеждает то, что ниже. А ниже стоит 700[English pronunciation] px [Русское произношение].": "ru149",
+    "Всё верно! Ты отлично понимаешь адаптивный сайт.": "ru150",
+    "Вернёмся к загадке. Помнишь, я написал правило [English pronunciation] media [Русское произношение] в самом верху? Смотри: на телефоне баннер всё равно вылез за экран! Я ошибся. Оба правила одной силы, и тогда браузер берёт то, что ниже. А ниже стоит семьсот пикселей.": "ru151",
+    "Перенесём правило [English pronunciation] media [Русское произношение] вниз, и на телефоне оно победит. Баннер поместился в экран. Вот!": "ru152",
+    "Смотри, это твой адаптивный сайт!": "ru153",
+    "Проценты подстраивают размер под окно.": "ru154",
+    "Правило [English pronunciation] media [Русское произношение] работает, когда выполнено условие.": "ru155",
+    "Для телефона, [English pronunciation] max-width [Русское произношение] и число с [English pronunciation] px [Русское произношение] в скобках.": "ru156",
+    "А [English pronunciation] media [Русское произношение] пишут после обычных правил, внизу.": "ru157",
+    "Ура! Теперь твой сайт красивый и на телефоне, и на компьютере. Все главные темы [English pronunciation] CSS [Русское произношение] позади. На следующем уроке соберёшь всё вместе и сделаешь свой сайт от начала до конца. До встречи!": "ru158",
+    "Вау, классно!": "ru159",
+    "Есть! Получилось!": "ru160",
+    "Супер!": "ru161",
+    "Огонь!": "ru162",
+    "Ура!": "ru163",
+    "Вот это да!": "ru164",
+    "Попробуй ещё раз.": "ru165",
+    "Посмотри внимательно.": "ru166",
+    "Уже близко. Не спеши.": "ru167",
+    "Вышла новая игра! Играй прямо сейчас и зови друзей!": "ru168",
+    "[English pronunciation] px [Русское произношение] или проценты?": "ru169",
+    "Что для этого нужно?": "ru170",
+    "Сработает?": "ru171",
+    "Сработает ли правило в этом окне?": "ru172",
+    "Что ещё на телефоне?": "ru173",
+    "Внутри @[English pronunciation] media [Русское произношение]?": "ru174",
+    "Где пишется правило?": "ru175",
+    "Верно или нет?": "ru176",
+    "Верно или неверно?": "ru177",
+    "Привет, мир!": "ru178",
+    "Здесь нужны только слова, без угловых скобок.": "ru179",
+    "Молодец!": "ru180",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru181",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru182",
+  },
+  en: {
+    "Hi! Look, my site looks great on a computer: a banner on top, three cards below. But now the window will get narrow, like a phone. Watch what happens: the banner sticks out of the screen, and the cards get squeezed. And most people open sites on their phones! Tap Transform.": "en001",
+    "There! Now the banner fits the screen, and on a phone the cards stack one under another. Switch between computer and phone with the buttons below.": "en002",
+    "Two things did it. Percent, meaning what part of the window, and media, meaning a rule that looks at the screen size. The site adapted to the screen. That’s called a responsive site.": "en003",
+    "Today you’ll learn to fit a site to any screen. But first, a riddle. The first time, I put the media rule at the very top of the code, before the ordinary rules. I think the place doesn’t matter, it’ll still work. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the banner and the label at the top right: on a phone it turns red and shows the page is wider than the window.": "en005",
+    "Pixels always stay the same, and percent changes with the window. A hundred percent is the full width.": "en006",
+    "Water fills a glass, whether it’s big or small. A hundred percent banner fills any window the same way.": "en007",
+    "First, the banner. Right now it’s seven hundred pixels wide. On a computer it fits easily.": "en008",
+    "Now the window is like a phone: three hundred sixty pixels. Seven hundred pixels don’t fit, so the site scrolls sideways. Look at the scrollbar at the bottom.": "en009",
+    "A hundred percent means the whole width. The banner is as wide as the window. On a phone it fits the screen exactly.": "en010",
+    "On a computer, the same rule: the banner is again the full width. One rule fits both screens.": "en011",
+    "So pixels always stay the same, and percent changes with the window.": "en012",
+    "Now it’s your turn. Make the banner full width on any screen: type the width value. Then check it on the computer and the phone.": "en013",
+    "Type the value.": "en014",
+    "Pixels always stay the same: they won’t fit on a phone or a computer. We need percent.": "en015",
+    "There’s a number but no percent sign.": "en016",
+    "That’s only part of the width. What percent is the whole width?": "en017",
+    "The browser didn’t recognize that value. Write a number and a percent sign.": "en018",
+    "That’s a different value. We need the whole width in percent.": "en019",
+    "How many percent is the whole thing?": "en020",
+    "The whole thing is a hundred percent.": "en021",
+    "Type a hundred, then tap the percent sign button below and Check.": "en022",
+    "Awesome! Now the banner fits any screen. Switch between phone and computer.": "en023",
+    "Now check yourself. I’ll say a task, and you pick what’s needed: pixels or percent.": "en024",
+    "Is the size always the same, or does it change with the window?": "en025",
+    "Always the same: pixels. A part of the window: percent.": "en026",
+    "The logo is exactly forty pixels on any screen.": "en027",
+    "The size never changes, so pixels.": "en028",
+    "The picture should take half the window.": "en029",
+    "Half the window is fifty percent.": "en030",
+    "The banner is full width on any screen.": "en031",
+    "The whole width is a hundred percent.": "en032",
+    "The button is always the same: a hundred twenty pixels.": "en033",
+    "Always the same, so pixels.": "en034",
+    "Exactly!": "en035",
+    "All correct! You don’t mix up pixels and percent.": "en036",
+    "Look at the cards and the window width: in a narrow window they stack, in a wide one they sit in a row.": "en037",
+    "Rules inside media only work when the condition is met. max-width six hundred pixels means the window is no wider than six hundred.": "en038",
+    "You open an umbrella only when it rains. A media rule works only when the window is narrow.": "en039",
+    "Now the cards. On a computer they look nice in a row. And on a phone? Let’s see.": "en040",
+    "On a phone the cards are squeezed, and the labels barely fit. On a phone it’s better to stack them.": "en041",
+    "This is a media rule. In brackets is a condition: max-width six hundred pixels, meaning if the window is no wider than six hundred pixels. The rule inside works only then. On a phone the cards stacked.": "en042",
+    "On a computer the window is eight hundred pixels, more than six hundred. The condition isn’t met, the rule sleeps, and the cards are in a row again.": "en043",
+    "So the rules inside media only work when the condition is met.": "en044",
+    "Your turn. Make the cards stack in windows six hundred pixels wide and narrower: type the value in the condition.": "en045",
+    "There’s a number but no px. Without it the browser throws the whole media rule away.": "en046",
+    "The browser didn’t recognize that value. Write a number and px.": "en047",
+    "That’s a different breakpoint. We need six hundred pixels.": "en048",
+    "The breakpoint is six hundred pixels.": "en049",
+    "You need the number and the letters px.": "en050",
+    "Type six hundred and px, then tap Check.": "en051",
+    "Well done! On a phone the cards stack. Check the computer too.": "en052",
+    "Now check yourself. I’ll show the window width and a media condition, and you pick: will the rule work or sleep?": "en053",
+    "Compare the window width with the number in the condition.": "en054",
+    "max-width works if the window is no wider than that number. Equal counts too.": "en055",
+    "Three hundred sixty is less than six hundred, so the rule works.": "en056",
+    "Eight hundred is more than six hundred, so the rule sleeps.": "en057",
+    "Six hundred is exactly the breakpoint. It’s not more, so it works.": "en058",
+    "All correct! You read media conditions like a browser.": "en059",
+    "Look at the banner: on a phone it disappears, and on a computer it stays.": "en060",
+    "Inside media you can write any change for a phone: layout, sizes, what to hide. display none hides an element.": "en061",
+    "You don’t pack everything for a trip; you leave extras at home. On a phone you hide extras with display none.": "en062",
+    "Inside media you can change anything, not just the cards. For example, a phone screen is small, and the banner takes up a lot of space.": "en063",
+    "One more media rule: display none, meaning hide. On a phone the banner disappeared, and the cards got more room.": "en064",
+    "On a computer the banner is still there: the condition isn’t met.": "en065",
+    "So inside media you write the changes for a phone: layout, sizes, what to hide.": "en066",
+    "Your turn. Make the banner invisible on a phone: type the value for display.": "en067",
+    "With that value the banner is still visible. To hide it you need another word.": "en068",
+    "The browser didn’t recognize that word. Check the word for display.": "en069",
+    "Remember the word for hiding from lesson nine.": "en070",
+    "Hiding is none.": "en071",
+    "Type none and tap Check.": "en072",
+    "Great! The banner is hidden on a phone and still there on a computer.": "en073",
+    "Now check yourself. I’ll say a task, and you pick where the rule goes: for all screens or inside media.": "en074",
+    "Is this needed only on a phone, or everywhere?": "en075",
+    "Only on a narrow screen: inside media. Everywhere: an ordinary rule.": "en076",
+    "On a phone the cards should stack.": "en077",
+    "Only on a phone, so inside media.": "en078",
+    "The banner should be orange on every screen.": "en079",
+    "On every screen, so an ordinary rule.": "en080",
+    "On a phone the banner should be hidden.": "en081",
+    "There should be eight pixels between the cards on every screen.": "en082",
+    "The same everywhere, so an ordinary rule.": "en083",
+    "All correct! You know which rule goes where.": "en084",
+    "Each time, look at the condition: are there brackets, does the number have px, is it max or min? Then look at the cards.": "en085",
+    "The condition goes in brackets, the number with px. A phone needs max-width; min-width works on wide windows.": "en086",
+    "Signs saying under twelve and twelve and over mean opposite things. max and min are opposites the same way.": "en087",
+    "Media rules have mistakes too. Let’s look at three on a phone. Right now everything is correct: the cards are stacked.": "en088",
+    "The first: the condition has no brackets. The browser didn’t understand it and threw the whole media rule away. The cards are in a row again.": "en089",
+    "The second: six hundred is written, but no px. That’s a mistake too, and the browser threw the rule away again.": "en090",
+    "The third is sneakier: min instead of max. min-width means if the window is six hundred pixels or wider. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!": "en091",
+    "So the condition goes in brackets, the number has px, and a phone needs max-width.": "en092",
+    "Oops, I wrote that the cards should stack on a phone, but they’re in a row! My condition is in the field. Find the mistake and fix it.": "en093",
+    "Type the condition.": "en094",
+    "The condition still has no brackets. Put it inside an opening and a closing bracket.": "en095",
+    "There’s no px after the number.": "en096",
+    "A phone needs max-width, not min-width.": "en097",
+    "The browser didn’t recognize that condition. Brackets, max-width, a colon and a number with px.": "en098",
+    "The breakpoint is different. Keep it at six hundred pixels.": "en099",
+    "Look at the edges of the condition.": "en100",
+    "A media condition is always written in brackets.": "en101",
+    "Tap the opening bracket button: it goes to the start. Then put the cursor at the very end and tap the closing one. Or erase everything and copy the example under the code.": "en102",
+    "Hooray, it works! On a phone the cards stack.": "en103",
+    "Now check yourself. The site is open on a phone. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.": "en104",
+    "Great, the first one is found! Now something else broke. Which rule doesn’t work?": "en105",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en106",
+    "Found it! The breakpoint had no px.": "en107",
+    "Found it! A phone needed max, not min.": "en108",
+    "Are the cards stacked on the phone?": "en109",
+    "The cards are in a row. Check the number in the media condition.": "en110",
+    "The cards are in a row. Is the condition max-width or min-width?": "en111",
+    "The bug is in the media rule: no px after six hundred. Tap that line.": "en112",
+    "The bug is in the media rule: min-width. Tap that line.": "en113",
+    "Super! Both found. You check sites like a real developer.": "en114",
+    "Now write the whole media rule yourself. Hide the banner in windows six hundred pixels wide and narrower. Then check on the phone and the computer.": "en115",
+    "Write the rule: first media and the condition, then the banner rule inside curly braces.": "en116",
+    "The rule starts with the at sign and the word media.": "en117",
+    "The word media needs the at sign before it.": "en118",
+    "Check the curly braces: media’s own, and inside them the banner rule’s.": "en119",
+    "The condition must be in brackets.": "en120",
+    "The browser didn’t recognize the condition. max-width, a colon and a number with px.": "en121",
+    "A narrow window needs max-width.": "en122",
+    "The breakpoint is different. We need six hundred pixels.": "en123",
+    "The selector inside: a dot and the banner’s class.": "en124",
+    "There’s no colon between the property and the value.": "en125",
+    "The display property does the hiding.": "en126",
+    "To hide it you need none.": "en127",
+    "First media and the condition in brackets, then the banner rule in curly braces.": "en128",
+    "Condition: max-width 600px. Inside: dot banner, display none.": "en129",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en130",
+    "Great! The banner is hidden on a phone and there on a computer. You wrote the whole rule yourself.": "en131",
+    "Now make your own site responsive. Choose the breakpoint, the banner color and the card color for a narrow window. Then switch phone and computer and tap Done.": "en132",
+    "The breakpoint has no px.": "en133",
+    "Write a breakpoint from three hundred sixty to a thousand pixels, otherwise you won’t see a difference.": "en134",
+    "One value in each field.": "en135",
+    "In the first, a breakpoint with px; in the others, color names.": "en136",
+    "For example: 600px, gold and white. Then tap Done.": "en137",
+    "Wow, great! Your site now adapts to any screen.": "en138",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en139",
+    "What’s the sentence about: percent, the condition or where the rule goes?": "en140",
+    "Remember: percent changes with the window, media only works when its condition is met, and the lower rule wins.": "en141",
+    "A banner at a hundred percent is as wide as the window.": "en142",
+    "Right: percent changes with the window.": "en143",
+    "This rule works in a window four hundred pixels wide.": "en144",
+    "Right: four hundred is less than six hundred.": "en145",
+    "The rules inside media work on every screen.": "en146",
+    "Actually they only work when the condition is met.": "en147",
+    "Written like this, the banner fits the screen on a phone.": "en148",
+    "Actually it won’t fit: both rules are equally strong, and the lower one wins. And the lower one says 700px.": "en149",
+    "All correct! You understand responsive sites really well.": "en150",
+    "Back to our riddle. Remember, I put the media rule at the very top? Look: on a phone the banner still sticks out of the screen! I was wrong. Both rules are equally strong, and then the browser takes the lower one. And the lower one says seven hundred pixels.": "en151",
+    "Move the media rule to the bottom, and on a phone it wins. The banner fits the screen. There!": "en152",
+    "Look, this is your responsive site!": "en153",
+    "Percent fits the size to the window.": "en154",
+    "A media rule works when its condition is met.": "en155",
+    "For a phone: max-width and a number with px in brackets.": "en156",
+    "And media goes after the ordinary rules, at the bottom.": "en157",
+    "Hooray! Now your site looks good on both phone and computer. You’ve covered all the main CSS topics. Next lesson you’ll put it all together and build your own site from start to finish. See you!": "en158",
+    "Wow, awesome!": "en159",
+    "Yes! You did it!": "en160",
+    "Super!": "en161",
+    "Brilliant!": "en162",
+    "Hooray!": "en163",
+    "Amazing!": "en164",
+    "Try once more.": "en165",
+    "Take a closer look.": "en166",
+    "You are close. No rush.": "en167",
+    "A new game is out! Play right now and invite your friends!": "en168",
+    "px or percent?": "en169",
+    "What does this need?": "en170",
+    "Will it work?": "en171",
+    "Will the rule work in this window?": "en172",
+    "What else on a phone?": "en173",
+    "Inside @media?": "en174",
+    "Where does the rule go?": "en175",
+    "True or false?": "en176",
+    "Hello, world!": "en177",
+    "Only words here, no angle brackets.": "en178",
+    "Well done!": "en179",
+    "Everything in the window lives inside body.": "en180",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en181",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

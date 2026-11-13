@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -7858,15 +7409,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13325,3 +12869,429 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .a1-fin .a1-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 68, ru 68, en 68; всего знаков 28117. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening brauzerim. Unda beshta sevimli sahifam ochiq turibdi: musiqa, o'yinlar, ob-havo, kino va yana bitta bo'sh varaq. Kecha ularni yangilamoqchi edim, lekin nimadir bo'ldi. Keling, birga ko'ramiz. Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Sahifalarning kodi o'chib ketdi. Varaqlarda nom yo'q, oyna esa bo'm-bo'sh.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'tgan darsda sahifa qanday tuzilishini ko'rdik. Endi shu bilim bilan beshta varaqni birma-bir tuzatamiz. Bu safar kodni o'zingiz yozasiz, men esa yoningizdaman. Beshinchi varaq esa sizning o'z sahifangiz bo'ladi!", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi varaq: musiqa. Kod deyarli joyida, faqat sahifa nomi yo'qolgan. Esingizdami, sahifa nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-i ichida yoziladi, brauzer esa uni varaqda ko'rsatadi. [English pronunciation] title [O'zbekcha tallaffuz] ichiga Musiqa deb yozing-da, Tekshirishni bosing.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Varaqda Musiqa yonib turibdi. Birinchi sahifa tirildi!", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa nomi qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-da yashaydi? Koddan [English pronunciation] title tag [O'zbekcha tallaffuz]-ini toping.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari o'rtasidagi bo'sh joyga yozing.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, kitoblar sahifasida shunday bo'ladi. Siz esa Musiqa deb yozing.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi varaq tayyor, endi o'yinlar. Bu yerda [English pronunciation] title [O'zbekcha tallaffuz] qatori butunlay o'chib ketgan. [English pronunciation] head [O'zbekcha tallaffuz] ichidagi bo'sh qatorga uni boshidan oxirigacha yozing: ochuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i, O'yinlar degan nom va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Butun qatorni o'zingiz yozdingiz, O'yinlar varag'i yondi!", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-ida yoziladi, [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida turadi. Shu bo'sh qatorga yozing.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qator uch qismdan iborat: ochuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i, nom va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da qiya chiziq bor.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sport sahifasining qatori. Siz ham xuddi shunday yozing, faqat nomi O'yinlar.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki varaq yondi! Uchinchisi: ob-havo. Nomi joyida, lekin oyna bo'sh: [English pronunciation] body [O'zbekcha tallaffuz] qismi butunlay yo'qolgan. Esingizdami, oynada ko'rinadigan hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi. [English pronunciation] head [O'zbekcha tallaffuz] yopilgan joydan keyin [English pronunciation] body [O'zbekcha tallaffuz] qismini yozing, ichiga esa ob-havo haqida bir gap.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Oynada matn paydo bo'ldi. Ob-havo yana ishlayapti!", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynada ko'rinadigan matn [English pronunciation] body [O'zbekcha tallaffuz] ichida yoziladi. [English pronunciation] head [O'zbekcha tallaffuz] yopilgandan keyin [English pronunciation] body [O'zbekcha tallaffuz] boshlanadi.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uch qator yozing: ochuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-i, keyin matn, keyin yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-i.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, salom yozilgan [English pronunciation] body [O'zbekcha tallaffuz] qismi. Siz ham shunday yozing, faqat o'z matningiz bilan.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta varaq tayyor! To'rtinchisi: kino. Qarang, bu yerda g'alati: sahifaning hamma matni varaqqa chiqib ketgan, oyna esa bo'sh. Demak, kodning bir qatori buzilgan. Oldin o'sha qatorni toping va ustiga bosing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] title [O'zbekcha tallaffuz] ochildi, lekin yopilmadi. Shuning uchun brauzer qolgan hamma narsani nomga qo'shib yubordi. Endi shu qatorni tuzating.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, ishladi! Matn oynaga qaytdi, varaqda esa faqat Kino. Buzilgan joyni xuddi haqiqiy dasturchidek topdingiz!", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu maxsus birinchi qator, u joyida. Varaqqa nima chiqqaniga qarang.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] shu yerda ochiladi va eng oxirida yopiladi. Bu qator joyida.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] shu yerda ochiladi va pastroqda yopiladi. Bu qator joyida.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, u joyida. Lekin brauzer uni nomning bir qismi deb o'qiyapti. Nega? Bir qator tepaga qarang.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] body [O'zbekcha tallaffuz] to'g'ri ochilgan. Lekin brauzer bu qatorni ham nomga qo'shib yubordi. Sababi teparoqda.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu oynada chiqishi kerak bo'lgan matn. U joyida, lekin varaqqa chiqib ketgan. Sababi teparoqda.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] body [O'zbekcha tallaffuz] shu yerda yopiladi, bu qator joyida.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] shu yerda yopiladi, bu qator joyida.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Varaqda nom bilan birga butun sahifa matni turibdi. Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'z qismini yopishni unutdi?", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Sahifa nomi yozilgan qatorga qarang: nomdan keyin nima yetishmayapti?", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, to'g'ri yopilgan qator. Siz ham nomdan keyin yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini qo'shing.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta varaq yonib turibdi! Endi beshinchisi: sizning sahifangiz. Bu yerda faqat ramka bor: [English pronunciation] doctype [O'zbekcha tallaffuz] qatori va [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. Uning ichiga sahifani o'zingiz yozing. Oldin [English pronunciation] head [O'zbekcha tallaffuz] qismi, uning ichida [English pronunciation] title [O'zbekcha tallaffuz] va o'z nomingiz. Keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi va ichida istalgan matn. Chizma yo'l ko'rsatib turadi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu juda zo'r chiqdi! Butun sahifani o'zingiz yozdingiz. Varaqda sizning nomingiz yonib turibdi!", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chizmaga qarang: [English pronunciation] HTML [O'zbekcha tallaffuz] ichida oldin [English pronunciation] head [O'zbekcha tallaffuz], keyin [English pronunciation] body [O'zbekcha tallaffuz] keladi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] ichiga [English pronunciation] title [O'zbekcha tallaffuz] yozing, [English pronunciation] title [O'zbekcha tallaffuz] ichiga esa nom. Har bir ochilgan [English pronunciation] tag [O'zbekcha tallaffuz] o'z yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bilan yopiladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sport sahifasining ichki qismi. Xuddi shunday yozing, faqat o'z nomingiz va o'z matningiz bilan.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik mashq: qoida o'sha, so'zlar boshqa.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, endi bu qoida sizniki! Davom etamiz.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, beshta varaqning hammasi yonib turibdi! Sahifalarni siz qutqardingiz.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa nomini [English pronunciation] title tag [O'zbekcha tallaffuz]-iga yozdingiz, brauzer uni varaqda ko'rsatdi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi matnni [English pronunciation] body [O'zbekcha tallaffuz] ichiga joyladingiz.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochilgan har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni yopdingiz va buzilgan qatorni ham topdingiz.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida esa butun sahifani o'zingiz yozdingiz. Bu juda kuchli bo'ldi! Keyingi darsda sahifaga katta sarlavha va abzaslar qo'shamiz.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. Kodni shu yerga yozing.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu teskari chiziq. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da oddiy qiya chiziq turadi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchakli qavslar ichida [English pronunciation] tag [O'zbekcha tallaffuz] nomi bo'lishi kerak.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi: oldin ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yozing.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] allaqachon bor: tepada va pastda. Uning ichiga yozing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Doctype qatori allaqachon eng tepada turibdi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] ichiga sahifa nomini yozing.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] yopilmadi, shuning uchun qolgan hamma narsa varaqqa chiqib ketdi. Nomdan keyin yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yozing.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] hali yopilmadi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idan oldin yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yozing.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu matnni oynada baribir ko'rsatadi. Lekin bizning qoidamiz bo'yicha oynadagi matn [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn juda qisqa: kamida ikki harf yozing.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это мой браузер. Здесь открыты пять моих любимых страниц: музыка, игры, погода, кино и ещё одна пустая вкладка. Вчера я хотел их обновить, но что-то случилось. Давай посмотрим вместе. Нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! Код страниц стёрся. На вкладках нет названий, а окно совсем пустое.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На прошлом уроке мы разобрали, как устроена страница. Теперь с этими знаниями починим пять вкладок по одной. В этот раз код пишешь ты, а я рядом. А пятая вкладка станет твоей собственной страницей!", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая вкладка: музыка. Код почти цел, пропало только название страницы. Помнишь, название пишут внутри тега [English pronunciation] title [Русское произношение], а браузер показывает его на вкладке. Впиши в [English pronunciation] title [Русское произношение] слово Музыка и нажми Проверить.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На вкладке горит Музыка. Первая страница ожила!", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Где живёт название страницы? Найди в коде тег [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши в пустое место между открывающим и закрывающим тегом [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, у страницы про книги, так. А ты впиши Музыка.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая вкладка готова, теперь игры. Здесь строка [English pronunciation] title [Русское произношение] стёрлась целиком. Напиши её от начала до конца в пустой строке внутри [English pronunciation] head [Русское произношение]: открывающий тег [English pronunciation] title [Русское произношение], название Игры и закрывающий тег [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Вся строка написана твоими руками, и вкладка Игры загорелась!", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название пишут в теге [English pronunciation] title [Русское произношение], а [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение]. Пиши в эту пустую строку.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В строке три части: открывающий тег [English pronunciation] title [Русское произношение], название и закрывающий тег [English pronunciation] title [Русское произношение]. В закрывающем есть косая черта.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот строка страницы про спорт. Напиши так же, только с названием Игры.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две вкладки горят! Третья: погода. Название на месте, но окно пустое: часть [English pronunciation] body [Русское произношение] пропала целиком. Помнишь, всё, что видно в окне, стоит внутри [English pronunciation] body [Русское произношение]. После того места, где закрылся [English pronunciation] head [Русское произношение], напиши часть [English pronunciation] body [Русское произношение], а внутри, пару слов о погоде.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! В окне появился текст. Погода снова работает!", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст, который виден в окне, пишут внутри [English pronunciation] body [Русское произношение]. После закрытого [English pronunciation] head [Русское произношение] начинается [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши три строки: открывающий тег [English pronunciation] body [Русское произношение], потом текст, потом закрывающий тег [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот часть [English pronunciation] body [Русское произношение] с приветствием. Напиши так же, только со своим текстом.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три вкладки готовы! Четвёртая: кино. Смотри, тут странно: весь текст страницы уехал на вкладку, а окно пустое. Значит, одна строка кода сломана. Сначала найди эту строку и нажми на неё.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашлась! [English pronunciation] title [Русское произношение] открыт, но не закрыт. Поэтому браузер приклеил к названию всё остальное. Теперь почини эту строку.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Текст вернулся в окно, а на вкладке только Кино. Поломка найдена, как у настоящего программиста!", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это особая первая строка, она в порядке. Посмотри, что попало на вкладку.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] открывается здесь и закрывается в самом конце. Эта строка в порядке.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] открывается здесь и закрывается ниже. Эта строка в порядке.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это закрывающий тег [English pronunciation] head [Русское произношение], он на месте. Но браузер читает его как часть названия. Почему? Посмотри на строку выше.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] body [Русское произношение] открыт как надо. Но браузер и эту строку приклеил к названию. Причина выше.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это текст, который должен быть в окне. Он на месте, но уехал на вкладку. Причина выше.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] body [Русское произношение] закрывается здесь, эта строка в порядке.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] закрывается здесь, эта строка в порядке.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] На вкладке рядом с названием стоит весь текст страницы. Какой тег забыл закрыть свою часть?", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на строку с названием страницы: чего не хватает после названия?", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот правильно закрытая строка. Добавь после названия закрывающий тег [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре вкладки горят! Теперь пятая: твоя страница. Здесь есть только рамка: строка [English pronunciation] doctype [Русское произношение] и тег [English pronunciation] HTML [Русское произношение]. Внутри напиши страницу сам. Сначала часть [English pronunciation] head [Русское произношение], в ней [English pronunciation] title [Русское произношение] и твоё название. Потом часть [English pronunciation] body [Русское произношение] и внутри любой текст. Схема подскажет дорогу.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Это было мощно! Вся страница твоя, и на вкладке горит твоё название!", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на схему: внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение], потом [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] head [Русское произношение] напиши [English pronunciation] title [Русское произношение], а в [English pronunciation] title [Русское произношение], название. Каждый открытый тег закрывается своим закрывающим.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот внутренняя часть страницы про спорт. Напиши так же, только со своим названием и своим текстом.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! Теперь ещё одно маленькое задание: правило то же, слова другие.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот, теперь это правило твоё! Идём дальше.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, все пять вкладок горят! Страницы спасены, и это твоя работа.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название страницы стояло в теге [English pronunciation] title [Русское произношение], и браузер показал его на вкладке.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст для окна оказался внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый открытый тег закрыт, и сломанная строка найдена.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А в конце вся страница написана твоими руками. Это было мощно! На следующем уроке добавим на страницу большой заголовок и абзацы.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши код здесь.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это обратная черта. В закрывающем теге стоит обычная косая черта.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри уголков должно быть имя тега.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]: сначала напиши открывающий тег [English pronunciation] head [Русское произношение].", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] уже есть: сверху и снизу. Пиши внутри него.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строка [English pronunciation] doctype [Русское произношение] уже стоит в самом верху.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши название страницы внутри [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] не закрыт, поэтому всё остальное уехало на вкладку. После названия напиши закрывающий тег [English pronunciation] title [Русское произношение].", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] ещё не закрыт. Перед [English pronunciation] body [Русское произношение] напиши закрывающий тег [English pronunciation] head [Русское произношение].", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер всё равно покажет этот текст в окне. Но по нашему правилу текст окна стоит внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст слишком короткий: хотя бы две буквы.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my browser. Five of my favourite pages are open here: music, games, weather, movies and one more empty tab. Yesterday I tried to refresh them, but something happened. Let’s look together. Tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The pages’ code got erased. The tabs have no names, and the window is empty.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Last lesson we saw how a page is built. Now let’s use that to fix the five tabs one by one. This time you write the code, and I’ll be right here. And the fifth tab will become your very own page!", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first tab is music. The code is almost fine, only the page name is gone. Remember, the name goes inside the title tag, and the browser shows it on the tab. Type Music inside title and tap Check.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Music is shining on the tab. The first page is back!", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where does the page name live? Find the title tag in the code.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type in the empty spot between the opening and closing title tags.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For a page about books, it looks like this. You type Music.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first tab is done, now games. Here the title line is gone completely. Write it from start to end in the empty line inside head: the opening title tag, the name Games and the closing title tag.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! You wrote the whole line, and the Games tab lit up!", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name goes in the title tag, and title sits inside head. Type in this empty line.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The line has three parts: the opening title tag, the name and the closing title tag. The closing one has a slash.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the line for a sport page. Write it the same way, just with the name Games.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two tabs are lit! The third is weather. The name is there, but the window is empty: the body part is gone. Remember, everything you see in the window sits inside body. After the place where head closes, write the body part, with a few words about the weather inside.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Text appeared in the window. The weather works again!", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Text you see in the window goes inside body. body starts after head closes.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write three lines: the opening body tag, then the text, then the closing body tag.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s a body part with a greeting. Write it the same way, with your own text.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three tabs are done! The fourth is movies. Look, something’s odd here: all the page text went onto the tab, and the window is empty. So one line of code is broken. First find that line and tap it.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! title opens but never closes. That’s why the browser glued everything else to the name. Now fix this line.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes, it works! The text is back in the window, and the tab just says Movies. You found the bug like a real developer!", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the special first line, it’s fine. Look at what ended up on the tab.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H T M L opens here and closes at the very end. This line is fine.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head opens here and closes further down. This line is fine.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the closing head tag, it’s in place. But the browser reads it as part of the name. Why? Look one line up.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] body opens just fine. But the browser glued this line to the name too. The reason is higher up.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the text that should be in the window. It’s in place, but it went onto the tab. The reason is higher up.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] body closes here, this line is fine.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H T M L closes here, this line is fine.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The tab shows the whole page text next to the name. Which tag forgot to close its part?", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the line with the page name: what’s missing after the name?", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s a properly closed line. Add the closing title tag after the name.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four tabs are lit! Now the fifth one: your page. There’s only a frame here: the doctype line and the H T M L tag. Write the page inside it yourself. First the head part, with title and your own name in it. Then the body part with any text inside. The plan will show you the way.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That was awesome! You wrote the whole page. Your name is shining on the tab!", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the plan: inside H T M L, first head, then body.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside head write title, and the name inside title. Every opened tag is closed by its own closing tag.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the inside of a sport page. Write it the same way, with your own name and text.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Nice! Now one more small task: same rule, different words.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There, now this rule is yours! Let’s keep going.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, all five tabs are lit! You saved the pages.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You wrote the page name in the title tag, and the browser showed it on the tab.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You put the window text inside body.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You closed every opened tag and even found the broken line.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And at the end you wrote a whole page yourself. That was awesome! Next lesson we’ll add a big heading and paragraphs to the page.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the code here.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a backslash. A closing tag uses a normal slash.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There should be a tag name between the brackets.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title lives inside head: write the opening head tag first.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H T M L is already there, at the top and bottom. Write inside it.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The doctype line is already at the very top.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the page name inside title.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title isn’t closed, so everything else went onto the tab. Add the closing title tag after the name.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head isn’t closed yet. Add the closing head tag before body.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser will still show this text in the window. But by our rule, window text goes inside body.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The text is too short: at least two letters.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening brauzerim. Unda beshta sevimli sahifam ochiq turibdi: musiqa, o'yinlar, ob-havo, kino va yana bitta bo'sh varaq. Kecha ularni yangilamoqchi edim, lekin nimadir bo'ldi. Keling, birga ko'ramiz. Yangilash tugmasini bosing.": "uz001",
+    "Voy! Sahifalarning kodi o'chib ketdi. Varaqlarda nom yo'q, oyna esa bo'm-bo'sh.": "uz002",
+    "O'tgan darsda sahifa qanday tuzilishini ko'rdik. Endi shu bilim bilan beshta varaqni birma-bir tuzatamiz. Bu safar kodni o'zingiz yozasiz, men esa yoningizdaman. Beshinchi varaq esa sizning o'z sahifangiz bo'ladi!": "uz003",
+    "Birinchi varaq: musiqa. Kod deyarli joyida, faqat sahifa nomi yo'qolgan. Esingizdami, sahifa nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-i ichida yoziladi, brauzer esa uni varaqda ko'rsatadi. [English pronunciation] title [O'zbekcha tallaffuz] ichiga Musiqa deb yozing-da, Tekshirishni bosing.": "uz004",
+    "Ajoyib! Varaqda Musiqa yonib turibdi. Birinchi sahifa tirildi!": "uz005",
+    "Sahifa nomi qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-da yashaydi? Koddan [English pronunciation] title tag [O'zbekcha tallaffuz]-ini toping.": "uz006",
+    "Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari o'rtasidagi bo'sh joyga yozing.": "uz007",
+    "Masalan, kitoblar sahifasida shunday bo'ladi. Siz esa Musiqa deb yozing.": "uz008",
+    "Birinchi varaq tayyor, endi o'yinlar. Bu yerda [English pronunciation] title [O'zbekcha tallaffuz] qatori butunlay o'chib ketgan. [English pronunciation] head [O'zbekcha tallaffuz] ichidagi bo'sh qatorga uni boshidan oxirigacha yozing: ochuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i, O'yinlar degan nom va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i.": "uz009",
+    "Barakalla! Butun qatorni o'zingiz yozdingiz, O'yinlar varag'i yondi!": "uz010",
+    "Sahifa nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-ida yoziladi, [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida turadi. Shu bo'sh qatorga yozing.": "uz011",
+    "Qator uch qismdan iborat: ochuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i, nom va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da qiya chiziq bor.": "uz012",
+    "Mana, sport sahifasining qatori. Siz ham xuddi shunday yozing, faqat nomi O'yinlar.": "uz013",
+    "Ikki varaq yondi! Uchinchisi: ob-havo. Nomi joyida, lekin oyna bo'sh: [English pronunciation] body [O'zbekcha tallaffuz] qismi butunlay yo'qolgan. Esingizdami, oynada ko'rinadigan hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi. [English pronunciation] head [O'zbekcha tallaffuz] yopilgan joydan keyin [English pronunciation] body [O'zbekcha tallaffuz] qismini yozing, ichiga esa ob-havo haqida bir gap.": "uz014",
+    "Zo'r! Oynada matn paydo bo'ldi. Ob-havo yana ishlayapti!": "uz015",
+    "Oynada ko'rinadigan matn [English pronunciation] body [O'zbekcha tallaffuz] ichida yoziladi. [English pronunciation] head [O'zbekcha tallaffuz] yopilgandan keyin [English pronunciation] body [O'zbekcha tallaffuz] boshlanadi.": "uz016",
+    "Uch qator yozing: ochuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-i, keyin matn, keyin yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-i.": "uz017",
+    "Mana, salom yozilgan [English pronunciation] body [O'zbekcha tallaffuz] qismi. Siz ham shunday yozing, faqat o'z matningiz bilan.": "uz018",
+    "Uchta varaq tayyor! To'rtinchisi: kino. Qarang, bu yerda g'alati: sahifaning hamma matni varaqqa chiqib ketgan, oyna esa bo'sh. Demak, kodning bir qatori buzilgan. Oldin o'sha qatorni toping va ustiga bosing.": "uz019",
+    "Topdingiz! [English pronunciation] title [O'zbekcha tallaffuz] ochildi, lekin yopilmadi. Shuning uchun brauzer qolgan hamma narsani nomga qo'shib yubordi. Endi shu qatorni tuzating.": "uz020",
+    "Voy, ishladi! Matn oynaga qaytdi, varaqda esa faqat Kino. Buzilgan joyni xuddi haqiqiy dasturchidek topdingiz!": "uz021",
+    "Bu maxsus birinchi qator, u joyida. Varaqqa nima chiqqaniga qarang.": "uz022",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] shu yerda ochiladi va eng oxirida yopiladi. Bu qator joyida.": "uz023",
+    "[English pronunciation] head [O'zbekcha tallaffuz] shu yerda ochiladi va pastroqda yopiladi. Bu qator joyida.": "uz024",
+    "Bu yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, u joyida. Lekin brauzer uni nomning bir qismi deb o'qiyapti. Nega? Bir qator tepaga qarang.": "uz025",
+    "[English pronunciation] body [O'zbekcha tallaffuz] to'g'ri ochilgan. Lekin brauzer bu qatorni ham nomga qo'shib yubordi. Sababi teparoqda.": "uz026",
+    "Bu oynada chiqishi kerak bo'lgan matn. U joyida, lekin varaqqa chiqib ketgan. Sababi teparoqda.": "uz027",
+    "[English pronunciation] body [O'zbekcha tallaffuz] shu yerda yopiladi, bu qator joyida.": "uz028",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] shu yerda yopiladi, bu qator joyida.": "uz029",
+    "Varaqda nom bilan birga butun sahifa matni turibdi. Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'z qismini yopishni unutdi?": "uz030",
+    "Sahifa nomi yozilgan qatorga qarang: nomdan keyin nima yetishmayapti?": "uz031",
+    "Mana, to'g'ri yopilgan qator. Siz ham nomdan keyin yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini qo'shing.": "uz032",
+    "To'rtta varaq yonib turibdi! Endi beshinchisi: sizning sahifangiz. Bu yerda faqat ramka bor: [English pronunciation] doctype [O'zbekcha tallaffuz] qatori va [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. Uning ichiga sahifani o'zingiz yozing. Oldin [English pronunciation] head [O'zbekcha tallaffuz] qismi, uning ichida [English pronunciation] title [O'zbekcha tallaffuz] va o'z nomingiz. Keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi va ichida istalgan matn. Chizma yo'l ko'rsatib turadi.": "uz033",
+    "Bu juda zo'r chiqdi! Butun sahifani o'zingiz yozdingiz. Varaqda sizning nomingiz yonib turibdi!": "uz034",
+    "Chizmaga qarang: [English pronunciation] HTML [O'zbekcha tallaffuz] ichida oldin [English pronunciation] head [O'zbekcha tallaffuz], keyin [English pronunciation] body [O'zbekcha tallaffuz] keladi.": "uz035",
+    "[English pronunciation] head [O'zbekcha tallaffuz] ichiga [English pronunciation] title [O'zbekcha tallaffuz] yozing, [English pronunciation] title [O'zbekcha tallaffuz] ichiga esa nom. Har bir ochilgan [English pronunciation] tag [O'zbekcha tallaffuz] o'z yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bilan yopiladi.": "uz036",
+    "Mana, sport sahifasining ichki qismi. Xuddi shunday yozing, faqat o'z nomingiz va o'z matningiz bilan.": "uz037",
+    "Zo'r! Endi yana bir kichik mashq: qoida o'sha, so'zlar boshqa.": "uz038",
+    "Mana, endi bu qoida sizniki! Davom etamiz.": "uz039",
+    "Qarang, beshta varaqning hammasi yonib turibdi! Sahifalarni siz qutqardingiz.": "uz040",
+    "Sahifa nomini [English pronunciation] title tag [O'zbekcha tallaffuz]-iga yozdingiz, brauzer uni varaqda ko'rsatdi.": "uz041",
+    "Oynadagi matnni [English pronunciation] body [O'zbekcha tallaffuz] ichiga joyladingiz.": "uz042",
+    "Ochilgan har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni yopdingiz va buzilgan qatorni ham topdingiz.": "uz043",
+    "Oxirida esa butun sahifani o'zingiz yozdingiz. Bu juda kuchli bo'ldi! Keyingi darsda sahifaga katta sarlavha va abzaslar qo'shamiz.": "uz044",
+    "Hozircha bo'sh. Kodni shu yerga yozing.": "uz045",
+    "Bu teskari chiziq. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da oddiy qiya chiziq turadi.": "uz046",
+    "Burchakli qavslar ichida [English pronunciation] tag [O'zbekcha tallaffuz] nomi bo'lishi kerak.": "uz047",
+    "[English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi: oldin ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yozing.": "uz048",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] allaqachon bor: tepada va pastda. Uning ichiga yozing.": "uz049",
+    "Doctype qatori allaqachon eng tepada turibdi.": "uz050",
+    "[English pronunciation] title [O'zbekcha tallaffuz] ichiga sahifa nomini yozing.": "uz051",
+    "[English pronunciation] title [O'zbekcha tallaffuz] yopilmadi, shuning uchun qolgan hamma narsa varaqqa chiqib ketdi. Nomdan keyin yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yozing.": "uz052",
+    "[English pronunciation] head [O'zbekcha tallaffuz] hali yopilmadi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idan oldin yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yozing.": "uz053",
+    "Brauzer bu matnni oynada baribir ko'rsatadi. Lekin bizning qoidamiz bo'yicha oynadagi matn [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz054",
+    "Matn juda qisqa: kamida ikki harf yozing.": "uz055",
+    "Voy, zo‘r!": "uz056",
+    "Ana! Chiqdi!": "uz057",
+    "Super!": "uz058",
+    "Qoyil!": "uz059",
+    "Ura!": "uz060",
+    "Zo‘r-ku!": "uz061",
+    "Yana bir bor urinib ko‘ring.": "uz062",
+    "Diqqat bilan qarang.": "uz063",
+    "Yaqin qoldingiz. Shoshilmang.": "uz064",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz065",
+    "Salom!": "uz066",
+    "Barakalla!": "uz067",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz068",
+  },
+  ru: {
+    "Привет! Это мой браузер. Здесь открыты пять моих любимых страниц: музыка, игры, погода, кино и ещё одна пустая вкладка. Вчера я хотел их обновить, но что-то случилось. Давай посмотрим вместе. Нажми Обновить.": "ru001",
+    "Ой! Код страниц стёрся. На вкладках нет названий, а окно совсем пустое.": "ru002",
+    "На прошлом уроке мы разобрали, как устроена страница. Теперь с этими знаниями починим пять вкладок по одной. В этот раз код пишешь ты, а я рядом. А пятая вкладка станет твоей собственной страницей!": "ru003",
+    "Первая вкладка: музыка. Код почти цел, пропало только название страницы. Помнишь, название пишут внутри тега [English pronunciation] title [Русское произношение], а браузер показывает его на вкладке. Впиши в [English pronunciation] title [Русское произношение] слово Музыка и нажми Проверить.": "ru004",
+    "Отлично! На вкладке горит Музыка. Первая страница ожила!": "ru005",
+    "Где живёт название страницы? Найди в коде тег [English pronunciation] title [Русское произношение].": "ru006",
+    "Пиши в пустое место между открывающим и закрывающим тегом [English pronunciation] title [Русское произношение].": "ru007",
+    "Например, у страницы про книги, так. А ты впиши Музыка.": "ru008",
+    "Первая вкладка готова, теперь игры. Здесь строка [English pronunciation] title [Русское произношение] стёрлась целиком. Напиши её от начала до конца в пустой строке внутри [English pronunciation] head [Русское произношение]: открывающий тег [English pronunciation] title [Русское произношение], название Игры и закрывающий тег [English pronunciation] title [Русское произношение].": "ru009",
+    "Вот это да! Вся строка написана твоими руками, и вкладка Игры загорелась!": "ru010",
+    "Название пишут в теге [English pronunciation] title [Русское произношение], а [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение]. Пиши в эту пустую строку.": "ru011",
+    "В строке три части: открывающий тег [English pronunciation] title [Русское произношение], название и закрывающий тег [English pronunciation] title [Русское произношение]. В закрывающем есть косая черта.": "ru012",
+    "Вот строка страницы про спорт. Напиши так же, только с названием Игры.": "ru013",
+    "Две вкладки горят! Третья: погода. Название на месте, но окно пустое: часть [English pronunciation] body [Русское произношение] пропала целиком. Помнишь, всё, что видно в окне, стоит внутри [English pronunciation] body [Русское произношение]. После того места, где закрылся [English pronunciation] head [Русское произношение], напиши часть [English pronunciation] body [Русское произношение], а внутри, пару слов о погоде.": "ru014",
+    "Огонь! В окне появился текст. Погода снова работает!": "ru015",
+    "Текст, который виден в окне, пишут внутри [English pronunciation] body [Русское произношение]. После закрытого [English pronunciation] head [Русское произношение] начинается [English pronunciation] body [Русское произношение].": "ru016",
+    "Напиши три строки: открывающий тег [English pronunciation] body [Русское произношение], потом текст, потом закрывающий тег [English pronunciation] body [Русское произношение].": "ru017",
+    "Вот часть [English pronunciation] body [Русское произношение] с приветствием. Напиши так же, только со своим текстом.": "ru018",
+    "Три вкладки готовы! Четвёртая: кино. Смотри, тут странно: весь текст страницы уехал на вкладку, а окно пустое. Значит, одна строка кода сломана. Сначала найди эту строку и нажми на неё.": "ru019",
+    "Нашлась! [English pronunciation] title [Русское произношение] открыт, но не закрыт. Поэтому браузер приклеил к названию всё остальное. Теперь почини эту строку.": "ru020",
+    "Ура, заработало! Текст вернулся в окно, а на вкладке только Кино. Поломка найдена, как у настоящего программиста!": "ru021",
+    "Это особая первая строка, она в порядке. Посмотри, что попало на вкладку.": "ru022",
+    "[English pronunciation] HTML [Русское произношение] открывается здесь и закрывается в самом конце. Эта строка в порядке.": "ru023",
+    "[English pronunciation] head [Русское произношение] открывается здесь и закрывается ниже. Эта строка в порядке.": "ru024",
+    "Это закрывающий тег [English pronunciation] head [Русское произношение], он на месте. Но браузер читает его как часть названия. Почему? Посмотри на строку выше.": "ru025",
+    "[English pronunciation] body [Русское произношение] открыт как надо. Но браузер и эту строку приклеил к названию. Причина выше.": "ru026",
+    "Это текст, который должен быть в окне. Он на месте, но уехал на вкладку. Причина выше.": "ru027",
+    "[English pronunciation] body [Русское произношение] закрывается здесь, эта строка в порядке.": "ru028",
+    "[English pronunciation] HTML [Русское произношение] закрывается здесь, эта строка в порядке.": "ru029",
+    "На вкладке рядом с названием стоит весь текст страницы. Какой тег забыл закрыть свою часть?": "ru030",
+    "Посмотри на строку с названием страницы: чего не хватает после названия?": "ru031",
+    "Вот правильно закрытая строка. Добавь после названия закрывающий тег [English pronunciation] title [Русское произношение].": "ru032",
+    "Четыре вкладки горят! Теперь пятая: твоя страница. Здесь есть только рамка: строка [English pronunciation] doctype [Русское произношение] и тег [English pronunciation] HTML [Русское произношение]. Внутри напиши страницу сам. Сначала часть [English pronunciation] head [Русское произношение], в ней [English pronunciation] title [Русское произношение] и твоё название. Потом часть [English pronunciation] body [Русское произношение] и внутри любой текст. Схема подскажет дорогу.": "ru033",
+    "Это было мощно! Вся страница твоя, и на вкладке горит твоё название!": "ru034",
+    "Посмотри на схему: внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение], потом [English pronunciation] body [Русское произношение].": "ru035",
+    "Внутри [English pronunciation] head [Русское произношение] напиши [English pronunciation] title [Русское произношение], а в [English pronunciation] title [Русское произношение], название. Каждый открытый тег закрывается своим закрывающим.": "ru036",
+    "Вот внутренняя часть страницы про спорт. Напиши так же, только со своим названием и своим текстом.": "ru037",
+    "Здорово! Теперь ещё одно маленькое задание: правило то же, слова другие.": "ru038",
+    "Вот, теперь это правило твоё! Идём дальше.": "ru039",
+    "Смотри, все пять вкладок горят! Страницы спасены, и это твоя работа.": "ru040",
+    "Название страницы стояло в теге [English pronunciation] title [Русское произношение], и браузер показал его на вкладке.": "ru041",
+    "Текст для окна оказался внутри [English pronunciation] body [Русское произношение].": "ru042",
+    "Каждый открытый тег закрыт, и сломанная строка найдена.": "ru043",
+    "А в конце вся страница написана твоими руками. Это было мощно! На следующем уроке добавим на страницу большой заголовок и абзацы.": "ru044",
+    "Пока пусто. Пиши код здесь.": "ru045",
+    "Это обратная черта. В закрывающем теге стоит обычная косая черта.": "ru046",
+    "Внутри уголков должно быть имя тега.": "ru047",
+    "[English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]: сначала напиши открывающий тег [English pronunciation] head [Русское произношение].": "ru048",
+    "[English pronunciation] HTML [Русское произношение] уже есть: сверху и снизу. Пиши внутри него.": "ru049",
+    "Строка [English pronunciation] doctype [Русское произношение] уже стоит в самом верху.": "ru050",
+    "Напиши название страницы внутри [English pronunciation] title [Русское произношение].": "ru051",
+    "[English pronunciation] title [Русское произношение] не закрыт, поэтому всё остальное уехало на вкладку. После названия напиши закрывающий тег [English pronunciation] title [Русское произношение].": "ru052",
+    "[English pronunciation] head [Русское произношение] ещё не закрыт. Перед [English pronunciation] body [Русское произношение] напиши закрывающий тег [English pronunciation] head [Русское произношение].": "ru053",
+    "Браузер всё равно покажет этот текст в окне. Но по нашему правилу текст окна стоит внутри [English pronunciation] body [Русское произношение].": "ru054",
+    "Текст слишком короткий: хотя бы две буквы.": "ru055",
+    "Вау, классно!": "ru056",
+    "Есть! Получилось!": "ru057",
+    "Супер!": "ru058",
+    "Огонь!": "ru059",
+    "Ура!": "ru060",
+    "Вот это да!": "ru061",
+    "Попробуй ещё раз.": "ru062",
+    "Посмотри внимательно.": "ru063",
+    "Уже близко. Не спеши.": "ru064",
+    "Здесь нужны только слова, без угловых скобок.": "ru065",
+    "Привет!": "ru066",
+    "Молодец!": "ru067",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru068",
+  },
+  en: {
+    "Hi! This is my browser. Five of my favourite pages are open here: music, games, weather, movies and one more empty tab. Yesterday I tried to refresh them, but something happened. Let’s look together. Tap Refresh.": "en001",
+    "Oh no! The pages’ code got erased. The tabs have no names, and the window is empty.": "en002",
+    "Last lesson we saw how a page is built. Now let’s use that to fix the five tabs one by one. This time you write the code, and I’ll be right here. And the fifth tab will become your very own page!": "en003",
+    "The first tab is music. The code is almost fine, only the page name is gone. Remember, the name goes inside the title tag, and the browser shows it on the tab. Type Music inside title and tap Check.": "en004",
+    "Great! Music is shining on the tab. The first page is back!": "en005",
+    "Where does the page name live? Find the title tag in the code.": "en006",
+    "Type in the empty spot between the opening and closing title tags.": "en007",
+    "For a page about books, it looks like this. You type Music.": "en008",
+    "The first tab is done, now games. Here the title line is gone completely. Write it from start to end in the empty line inside head: the opening title tag, the name Games and the closing title tag.": "en009",
+    "Wow! You wrote the whole line, and the Games tab lit up!": "en010",
+    "The name goes in the title tag, and title sits inside head. Type in this empty line.": "en011",
+    "The line has three parts: the opening title tag, the name and the closing title tag. The closing one has a slash.": "en012",
+    "Here’s the line for a sport page. Write it the same way, just with the name Games.": "en013",
+    "Two tabs are lit! The third is weather. The name is there, but the window is empty: the body part is gone. Remember, everything you see in the window sits inside body. After the place where head closes, write the body part, with a few words about the weather inside.": "en014",
+    "Awesome! Text appeared in the window. The weather works again!": "en015",
+    "Text you see in the window goes inside body. body starts after head closes.": "en016",
+    "Write three lines: the opening body tag, then the text, then the closing body tag.": "en017",
+    "Here’s a body part with a greeting. Write it the same way, with your own text.": "en018",
+    "Three tabs are done! The fourth is movies. Look, something’s odd here: all the page text went onto the tab, and the window is empty. So one line of code is broken. First find that line and tap it.": "en019",
+    "Found it! title opens but never closes. That’s why the browser glued everything else to the name. Now fix this line.": "en020",
+    "Yes, it works! The text is back in the window, and the tab just says Movies. You found the bug like a real developer!": "en021",
+    "That’s the special first line, it’s fine. Look at what ended up on the tab.": "en022",
+    "H T M L opens here and closes at the very end. This line is fine.": "en023",
+    "head opens here and closes further down. This line is fine.": "en024",
+    "That’s the closing head tag, it’s in place. But the browser reads it as part of the name. Why? Look one line up.": "en025",
+    "body opens just fine. But the browser glued this line to the name too. The reason is higher up.": "en026",
+    "That’s the text that should be in the window. It’s in place, but it went onto the tab. The reason is higher up.": "en027",
+    "body closes here, this line is fine.": "en028",
+    "H T M L closes here, this line is fine.": "en029",
+    "The tab shows the whole page text next to the name. Which tag forgot to close its part?": "en030",
+    "Look at the line with the page name: what’s missing after the name?": "en031",
+    "Here’s a properly closed line. Add the closing title tag after the name.": "en032",
+    "Four tabs are lit! Now the fifth one: your page. There’s only a frame here: the doctype line and the H T M L tag. Write the page inside it yourself. First the head part, with title and your own name in it. Then the body part with any text inside. The plan will show you the way.": "en033",
+    "That was awesome! You wrote the whole page. Your name is shining on the tab!": "en034",
+    "Look at the plan: inside H T M L, first head, then body.": "en035",
+    "Inside head write title, and the name inside title. Every opened tag is closed by its own closing tag.": "en036",
+    "Here’s the inside of a sport page. Write it the same way, with your own name and text.": "en037",
+    "Nice! Now one more small task: same rule, different words.": "en038",
+    "There, now this rule is yours! Let’s keep going.": "en039",
+    "Look, all five tabs are lit! You saved the pages.": "en040",
+    "You wrote the page name in the title tag, and the browser showed it on the tab.": "en041",
+    "You put the window text inside body.": "en042",
+    "You closed every opened tag and even found the broken line.": "en043",
+    "And at the end you wrote a whole page yourself. That was awesome! Next lesson we’ll add a big heading and paragraphs to the page.": "en044",
+    "It’s empty so far. Write the code here.": "en045",
+    "That’s a backslash. A closing tag uses a normal slash.": "en046",
+    "There should be a tag name between the brackets.": "en047",
+    "title lives inside head: write the opening head tag first.": "en048",
+    "H T M L is already there, at the top and bottom. Write inside it.": "en049",
+    "The doctype line is already at the very top.": "en050",
+    "Write the page name inside title.": "en051",
+    "title isn’t closed, so everything else went onto the tab. Add the closing title tag after the name.": "en052",
+    "head isn’t closed yet. Add the closing head tag before body.": "en053",
+    "The browser will still show this text in the window. But by our rule, window text goes inside body.": "en054",
+    "The text is too short: at least two letters.": "en055",
+    "Wow, awesome!": "en056",
+    "Yes! You did it!": "en057",
+    "Super!": "en058",
+    "Brilliant!": "en059",
+    "Hooray!": "en060",
+    "Amazing!": "en061",
+    "Try once more.": "en062",
+    "Take a closer look.": "en063",
+    "You are close. No rush.": "en064",
+    "Only words here, no angle brackets.": "en065",
+    "Hello!": "en066",
+    "Well done!": "en067",
+    "Everything in the window lives inside body.": "en068",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

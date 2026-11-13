@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8047,15 +7598,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14007,3 +13551,945 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .z7-ta.is-grow { min-height: 7.4em; }
 @media (prefers-reduced-motion: reduce) { .r28 .z7-ta { transition: none; } }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 154, ru 154, en 154; всего знаков 62539. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! O'tgan darsda klub anketasini yasadik. Lekin javoblar chalkash bo'lib ketdi. Bir kishi Minecraft deb yozibdi, boshqasi mainkraft, uchinchisi esa katta harflar bilan yozibdi. O'zi haqidagi uzun gap bitta qatorga sig'madi. Anketani yuboradigan tugma esa umuman yo'q. Keling, buni to'g'rilaymiz. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! O'yinni endi yozish shart emas: uni ro'yxatdan tanlaysiz. O'zingiz haqida yozish uchun katta maydon chiqdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastda esa tugma paydo bo'ldi. Uni bosib, anketani yuborish mumkin.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun shunday ro'yxat, katta maydon va tugma yasashni o'rganasiz va o'zingizning anketangizni yasaysiz. Lekin oldin kichik topishmoq. Men boshqa sahifada o'yinlar ro'yxatini yasadim: [English pronunciation] select tag [O'zbekcha tallaffuz]-ini ochdim va ichiga Minecraft, Futbol, Shaxmat deb yozdim, xolos. Menimcha, endi ro'yxatda uchta o'yin chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, o'yinlar ro'yxatini birga yasaymiz. O'yin yozuvidan keyin yangi [English pronunciation] tag [O'zbekcha tallaffuz] qo'yamiz.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] select tag [O'zbekcha tallaffuz]-i. [English pronunciation] select [O'zbekcha tallaffuz] inglizcha so'z, ya'ni tanlash degani. U ochiladigan ro'yxat yasaydi: yonida kichik strelka bor. Lekin hozir ro'yxat bo'sh, chunki ichida hali hech qanday variant yo'q.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir variant [English pronunciation] option tag [O'zbekcha tallaffuz]-ida yoziladi. [English pronunciation] option [O'zbekcha tallaffuz] ya'ni variant degani. Uchta o'yinni uchta [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozdik. Qarang, birinchi variant maydonda o'zi ko'rinib turibdi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxatni bosganda u ochiladi va hamma variantlar ko'rinadi. Futbolni tanladik, endi maydonda Futbol turibdi. Endi har kim o'yin nomini bir xil yozadi, harf xatosi bo'lmaydi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: [English pronunciation] select [O'zbekcha tallaffuz] ro'yxat yasaydi, uning ichidagi har bir [English pronunciation] option [O'zbekcha tallaffuz] esa bitta variant bo'ladi. Ikkalasi ham yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Ro'yxatda faqat ikkita o'yin bor, Shaxmat esa yo'q. Kodga qarang: Shaxmat qatorida ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun brauzer uni ro'yxatga qo'shmadi. [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing va Tekshirishni bosing.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchakli qavslar o'rtasiga [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavslar joyida turibdi. Bu yerga faqat [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. [English pronunciation] select [O'zbekcha tallaffuz] ichida boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Ro'yxatning bitta varianti uchun [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Shaxmat ro'yxatga chiqmadi. Nomni harfma-harf yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Boshqa ikkita qatorda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bor?", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang: nomi o'sha yerda yozilgan.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] option [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Shaxmat ro'yxatga qo'shildi. Endi ro'yxatda uchta o'yin bor.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxat ochiq turibdi. Kodda bitta [English pronunciation] option [O'zbekcha tallaffuz] qatori yonadi. Siz ro'yxatda shu qator chiqargan variantni bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yongan qator qaysi variantni chiqaradi?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi men qatorlarni almashtirdim. Qarang, ro'yxatda ham tartib o'zgardi. Yongan qator qaysi variantni chiqaradi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oxirgisi. Men yangi qator qo'shdim. U ro'yxatda qayerda chiqdi?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Bu [English pronunciation] option [O'zbekcha tallaffuz] qatori Futbol variantini chiqaradi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Variantlar kod qatorlari tartibida turadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Oxirgi [English pronunciation] option [O'zbekcha tallaffuz] ro'yxatning oxirida chiqadi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu boshqa variant. Ro'yxatda variantlar kod qatorlari tartibida turadi: yongan qator nechanchi o'rinda turibdi?", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin kodda yongan qatorni toping, keyin ochiq ro'yxatga qarang.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir [English pronunciation] option [O'zbekcha tallaffuz] qatori ro'yxatda bitta variant bo'ladi. [English pronunciation] option [O'zbekcha tallaffuz] ichida qaysi so'z yozilgan bo'lsa, ro'yxatda ham o'sha so'z chiqadi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Endi har bir [English pronunciation] option [O'zbekcha tallaffuz] qatori qaysi variantni chiqarishini bilasiz.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingiz haqidagi maydonga qaraymiz. Bu yerga odatda bir nechta gap yoziladi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozir bu oddiy [English pronunciation] input [O'zbekcha tallaffuz]. U bitta qator bo'ladi, shuning uchun uzun gap sig'madi: oxiri yashirinib qoldi. O'qish ham, tekshirish ham noqulay.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] input [O'zbekcha tallaffuz] o'rniga [English pronunciation] textarea [O'zbekcha tallaffuz] qo'yamiz. [English pronunciation] textarea [O'zbekcha tallaffuz] ya'ni matn maydoni degani. Qarang, maydon katta bo'ldi va gap keyingi qatorga o'tdi. Burchagidagi chiziqlardan tortib, maydonni yana kattalashtirish mumkin.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat qiling: [English pronunciation] input [O'zbekcha tallaffuz]'dan farqli, [English pronunciation] textarea [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi. [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasiga yozilgan matn esa maydon ichida tayyor holda chiqadi. Qarang, Salom degan gap maydonning ichida turibdi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli katta maydon yasaydi va doim yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi katta maydonni o'zingiz yig'ing. Kodda to'rtta bo'sh joy bor: [English pronunciation] tag [O'zbekcha tallaffuz] boshi, kulrang ishora, burchakli qavs va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Bitta bo'lak esa ortiqcha.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] type [O'zbekcha tallaffuz] atributi [English pronunciation] input [O'zbekcha tallaffuz] uchun bo'ladi. [English pronunciation] textarea [O'zbekcha tallaffuz] doim katta matn maydoni, unga [English pronunciation] type [O'zbekcha tallaffuz] kerak emas.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] doim burchakli qavs va nomi bilan boshlanadi. Oldin [English pronunciation] textarea [O'zbekcha tallaffuz] boshini qo'ying.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomidan keyin atribut keladi: kulrang ishora.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Atributdan keyin ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] burchakli qavs bilan yopiladi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] keladi. [English pronunciation] textarea [O'zbekcha tallaffuz]'ga u albatta kerak bo'ladi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] tag [O'zbekcha tallaffuz] nima bilan boshlanadi?", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bo'lib [English pronunciation] textarea [O'zbekcha tallaffuz] boshi, keyin [English pronunciation] placeholder [O'zbekcha tallaffuz] keladi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib shunday bo'ladi: [English pronunciation] textarea [O'zbekcha tallaffuz] boshi, [English pronunciation] placeholder [O'zbekcha tallaffuz], burchakli qavs va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. [English pronunciation] type [O'zbekcha tallaffuz] kerak emas.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Katta maydon tayyor, ichida kulrang ishora turibdi. Ortiqcha bo'lakni ham to'g'ri tashlab ketdingiz.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun uchta yangi [English pronunciation] tag [O'zbekcha tallaffuz]-ni ko'rdik: [English pronunciation] select [O'zbekcha tallaffuz], [English pronunciation] option [O'zbekcha tallaffuz] va [English pronunciation] textarea [O'zbekcha tallaffuz]. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni sahifada u chiqaradigan narsa bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin narsani bosing.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] select [O'zbekcha tallaffuz] ro'yxat yasaydi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] option [O'zbekcha tallaffuz] ro'yxatdagi bitta variant bo'ladi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] textarea [O'zbekcha tallaffuz] katta maydon yasaydi.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] select [O'zbekcha tallaffuz] butun ro'yxatni yasaydi: yonida strelkasi bor maydon.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] option [O'zbekcha tallaffuz] ro'yxat ichidagi bitta qator bo'ladi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli maydon bo'ladi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir narsaga qarang: u ro'yxatmi yoki maydonmi?", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Strelkali maydon butun ro'yxat bo'ladi, ya'ni [English pronunciation] select [O'zbekcha tallaffuz] degani.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Strelkali maydon [English pronunciation] select [O'zbekcha tallaffuz], bitta variant [English pronunciation] option [O'zbekcha tallaffuz], katta maydon esa [English pronunciation] textarea [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Uchala [English pronunciation] tag [O'zbekcha tallaffuz]-ni ham ko'rib turib ajratyapsiz.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Anketa deyarli tayyor, faqat uni yuboradigan tugma yo'q. Keling, [English pronunciation] form [O'zbekcha tallaffuz] ichiga tugma qo'shamiz.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] button tag [O'zbekcha tallaffuz]-i. [English pronunciation] button [O'zbekcha tallaffuz] inglizcha so'z, ya'ni tugma degani. Tugmaning yozuvi ochuvchi va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasiga yoziladi: Yuborish. Qarang, anketa ostida kulrang tugma chiqdi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmani bosdim. Tugma [English pronunciation] form [O'zbekcha tallaffuz] ichida turgani uchun anketa yuborildi. Lekin bizda hali server yo'q. Server, ya'ni javoblarni qabul qiladigan kompyuter degani. Shuning uchun sahifa shunchaki qaytadan ochildi va maydonlar tozalandi. Haqiqiy saytlarda bu javoblar serverga boradi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: [English pronunciation] button [O'zbekcha tallaffuz] tugma yasaydi, [English pronunciation] form [O'zbekcha tallaffuz] ichidagi tugma esa anketani yuboradi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men [English pronunciation] textarea [O'zbekcha tallaffuz]'ni yopishni unutibman! Qarang, brauzer tugma kodini ham maydon ichidagi matn deb o'yladi. Tugma esa yo'qoldi. [English pronunciation] textarea [O'zbekcha tallaffuz]'dan keyin yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni yozing va Tekshirishni bosing.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da nomdan oldin qiya chiziq turadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi. Uni boshiga qo'shing.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi. Uni oxiriga qo'shing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] ichida boshqa nom yozilgan. Bu yerda [English pronunciation] textarea [O'zbekcha tallaffuz] kerak bo'ladi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiya chiziq birinchi burchakli qavsdan keyin darrov turadi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maydon qayerda tugashi kerak?", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] o'sha nom bo'ladi, faqat qiya chiziq bilan.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin burchakli qavs, keyin qiya chiziq, keyin [English pronunciation] textarea [O'zbekcha tallaffuz] va oxirida yana burchakli qavs qo'ying.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Maydon yopildi va tugma joyiga qaytdi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi ikkita holatga qarang: oldin va keyin. Kodda bitta narsa qo'shildi va anketa boshqacha bo'lib qoldi. Xo'sh, nima qo'shildi?", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodga nima qo'shildi?", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Yangi [English pronunciation] option [O'zbekcha tallaffuz] qo'shildi, ro'yxatda bitta variant ko'paydi.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Yopuvchi [English pronunciation] textarea [O'zbekcha tallaffuz] qo'shildi, tugma maydondan chiqdi.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] button [O'zbekcha tallaffuz] qo'shildi, anketa ostida tugma chiqdi.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin ro'yxatda kamroq variant bor edi, keyin bittasi qo'shildi. Variantni [English pronunciation] option [O'zbekcha tallaffuz] qo'shadi.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin tugma kodi maydon ichida matn bo'lib turgan edi, keyin tugma chiqdi. Buni yopuvchi [English pronunciation] textarea [O'zbekcha tallaffuz] qiladi.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin anketada tugma yo'q edi, keyin paydo bo'ldi. Tugmani [English pronunciation] button [O'zbekcha tallaffuz] yasaydi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin va keyin kartochkalarini solishtiring: anketada nima o'zgardi?", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ro'yxatda nechta variant bor edi va nechta bo'ldi? Ro'yxatga variantni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shadi, esingizdami?", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin tugma kodi maydon ichida matn edi, keyin tugma chiqdi. Maydonni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] tugatadi, esingizdami?", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin anketa ostida hech narsa yo'q edi, keyin tugma chiqdi. Tugmani qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi, esingizdami?", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] option tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, yopuvchi [English pronunciation] textarea tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] button tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi anketa nimaga boshqacha ko'rinishini kodga qarab bilasiz. Keyin butun anketani birga o'qib chiqamiz.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, butun anketa tayyor. Keling, brauzer uni qanday o'qishini ko'ramiz. Brauzer kodni har doimgidek tepadan pastga o'qiydi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin o'yin yozuvi va ochiladigan ro'yxat chiqdi. Bu yerda o'yin tanlanadi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyin o'zingiz haqidagi yozuv va katta maydon chiqdi. Bu yerga bir nechta gap yoziladi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng oxirida tugma chiqdi. Hammasi [English pronunciation] form [O'zbekcha tallaffuz] ichida, shuning uchun tugma butun anketani yuboradi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizning anketangizni yasang. Kodda [English pronunciation] form [O'zbekcha tallaffuz], katta maydon va tugma tayyor turibdi, faqat tugma yozuvi yo'q. Tugmada nima deb yozilsin? Shuni [English pronunciation] button tag [O'zbekcha tallaffuz]-lari o'rtasiga yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r tugma! Endi ro'yxatingizga o'z variantingizni qo'shamiz.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmani bosganda nima bo'ladi? Shuni yozing.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Jo'natish. Keyin Tayyorni bosing.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi ro'yxatga o'zingizning variantingizni qo'shing. Sizga qaysi o'yin yoqadi? Uni yangi [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozing va ro'yxatda u qanday chiqqanini ko'ring. Keyin Tayyorni bosing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Variantingiz ro'yxatga qo'shildi. Endi anketangizni ochgan odam uni tanlay oladi.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sevimli o'yiningiz qaysi? Shuni yozing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] option tag [O'zbekcha tallaffuz]-lari joyida turibdi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Voleybol. Keyin Tayyorni bosing.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men ro'yxatingizga Basketbolni qo'shmoqchi edim va uni [English pronunciation] select [O'zbekcha tallaffuz] ichiga shunchaki yozib qo'ydim. Lekin qarang, ro'yxatda u yo'q! To'g'ri qatorni bo'sh joyga olib boring.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. [English pronunciation] select [O'zbekcha tallaffuz] ichida u ishlamaydi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] P abzas yasaydi. Ochiladigan ro'yxatga u variant qo'shmaydi.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Brauzerga qarang: Basketbol ro'yxatga chiqdimi? Kodda unga nima yetishmayapti?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ochiladigan ro'yxatga variantni faqat bitta [English pronunciation] tag [O'zbekcha tallaffuz] qo'sha oladi. Tepadagi qatorlarga qarang: o'yinlar qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ichida turibdi?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadagi qatorlar kabi [English pronunciation] option tag [O'zbekcha tallaffuz]-i bilan yozilgan bo'lakni bo'sh joyga olib boring.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana endi joyida! Basketbol ro'yxatga qo'shildi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Mana, klub anketasi, lekin unda xato bor. Brauzerga qarang: nima noto'g'ri ko'rinyapti? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi ro'yxatdan bitta o'yin yo'qoldi. Bu yerda nima buzilgan?", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator to'g'ri yozilgan. Brauzerga qarang: nima joyida emas?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] textarea [O'zbekcha tallaffuz] yopilmagan edi. Shuning uchun tugma kodi maydon ichida matn bo'lib qolgan edi.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] option [O'zbekcha tallaffuz] so'zida bitta harf tushib qolgan edi. Brauzer bunday [English pronunciation] tag [O'zbekcha tallaffuz]-ni bilmaydi, shuning uchun Futbol ro'yxatga chiqmagan edi.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: tugma qayerda?", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugma kodi maydon ichida turibdi. Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yopilmagan?", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] textarea [O'zbekcha tallaffuz] qatoriga qarang: yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bormi?", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: ro'yxatda qaysi o'yin yo'q?", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Futbol qatoriga qarang va [English pronunciation] tag [O'zbekcha tallaffuz] nomini harfma-harf o'qing.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ikkinchi qatorga qarang: [English pronunciation] option [O'zbekcha tallaffuz] to'liq yozilganmi?", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala xato ham topildi. Siz anketalarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida? Pastdagi kodga ham qarang.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] select [O'zbekcha tallaffuz] ichida har bir variant [English pronunciation] option tag [O'zbekcha tallaffuz]-ida turadi, esingizdami? [English pronunciation] textarea [O'zbekcha tallaffuz] va [English pronunciation] button [O'zbekcha tallaffuz] esa yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi. Gap shunga mos keladimi?", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] textarea [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bo'lmasa, keyingi kod ham maydon ichidagi matnga aylanadi.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] button [O'zbekcha tallaffuz] ham [English pronunciation] input [O'zbekcha tallaffuz] kabi yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-siz yoziladi.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] button [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi: tugma yozuvi [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasida turadi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] select [O'zbekcha tallaffuz] ichiga [English pronunciation] option [O'zbekcha tallaffuz] tegisiz yozilgan so'z ham ro'yxatda chiqadi.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] option [O'zbekcha tallaffuz] tegisiz so'zni brauzer ro'yxatga qo'shmaydi. Har bir variant [English pronunciation] option [O'zbekcha tallaffuz] ichida bo'lishi kerak.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz ro'yxat, katta maydon va tugmani yaxshi bilasiz.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] select [O'zbekcha tallaffuz] ichiga o'yinlar nomini shunchaki yozib qo'ygan edim? Afsuski, men adashibman. [English pronunciation] option [O'zbekcha tallaffuz] tegisiz so'zlarni brauzer ro'yxatga qo'shmaydi, shuning uchun ro'yxat bo'm-bo'sh qoldi. Demak, har bir variantni [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozish kerak.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning anketangiz! Unda sizning variantingiz va sizning tugmangiz bor.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] select [O'zbekcha tallaffuz] ochiladigan ro'yxat yasaydi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] option [O'zbekcha tallaffuz] ro'yxatdagi bitta variant bo'ladi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli katta maydon yasaydi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] button [O'zbekcha tallaffuz] esa tugma yasaydi va [English pronunciation] form [O'zbekcha tallaffuz] ichida anketani yuboradi.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi sahifangiz savol bera oladi, javob tanlata oladi va anketani yubora oladi. Keyingi darsda haqiqiy saytlar qanday qismlardan tuzilganini ko'ramiz. Ko'rishguncha!", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men 12 yoshdaman, futbol o'ynashni va o'yinlar yasashni yaxshi ko'raman.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men futbolni yaxshi ko'raman.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! На прошлом уроке мы сделали анкету клуба. Но ответы пришли вразнобой. Один написал Minecraft, другой mainkraft, третий большими буквами. Длинный рассказ о себе не влез в одну строку. А кнопки, чтобы отправить анкету, нет совсем. Давай исправим. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Игру теперь не надо писать: её выбирают из списка. А для рассказа о себе появилось большое поле.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А внизу появилась кнопка. Нажмёшь её, и анкета отправится.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету. Но сначала маленькая загадка. Я сделал на другой странице список игр: открыл тег [English pronunciation] select [Русское произношение] и просто написал внутри Minecraft, Футбол, Шахматы. По-моему, теперь в списке будут три игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Давай сделаем список игр вместе. После подписи про игру ставим новый тег.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тег [English pronunciation] select [Русское произношение]. [English pronunciation] select [Русское произношение], английское слово, то есть выбрать. Он делает выпадающий список: справа маленькая стрелка. Но сейчас список пустой, потому что внутри ещё нет ни одного варианта.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый вариант пишут в теге [English pronunciation] option [Русское произношение], то есть вариант. Три игры, три [English pronunciation] option [Русское произношение]. Смотри, первый вариант сам виден в поле.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажмёшь на список, он раскроется, и видны все варианты. Выбрали Футбол, теперь в поле Футбол. Теперь у всех название игры одинаковое, без опечаток.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: [English pronunciation] select [Русское произношение] делает список, а каждый [English pronunciation] option [Русское произношение] внутри, один вариант. Оба пишут с закрывающим тегом.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. В списке только две игры, а Шахмат нет. Посмотри на код: в строке Шахмат у открывающего тега нет имени. Поэтому браузер не добавил её в список. Впиши имя тега и нажми Проверить.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя тега между уголками.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скобки уже на месте. Здесь нужно только имя тега.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] li, для обычных списков ul и ol. Внутри [English pronunciation] select [Русское произношение] нужен другой тег.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот тег делает другое. Нужен тег для одного варианта списка.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого тега нет, поэтому Шахматы не попали в список. Напиши имя буква в букву.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег в двух других строках?", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на закрывающий тег: имя написано там.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя тега, [English pronunciation] option [Русское произношение]. Впиши его между уголками.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Шахматы попали в список. Теперь в нём три игры.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Список раскрыт. В коде горит одна строка [English pronunciation] option [Русское произношение]. А ты нажми в списке вариант, который она выводит.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой вариант выводит горящая строка?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь я поменял строки местами. Смотри, порядок в списке тоже поменялся. Какой вариант выводит горящая строка?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Последняя. Я добавил новую строку. Где она появилась в списке?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Эта строка [English pronunciation] option [Русское произношение] выводит вариант Футбол.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Варианты стоят в порядке строк кода.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Последний [English pronunciation] option [Русское произношение], в конце списка.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это другой вариант. В списке варианты идут в порядке строк кода: какая по счёту горящая строка?", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала найди горящую строку в коде, потом посмотри на раскрытый список.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждая строка [English pronunciation] option [Русское произношение], один вариант в списке. Какое слово написано внутри [English pronunciation] option [Русское произношение], такое и появится в списке.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Теперь ты знаешь, какой вариант выводит каждая строка [English pronunciation] option [Русское произношение].", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь посмотрим на поле О себе. Сюда обычно пишут несколько предложений.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сейчас это обычный [English pronunciation] input [Русское произношение]. Он в одну строку, поэтому длинное предложение не влезло: конец спрятался. Неудобно ни читать, ни проверять.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь вместо [English pronunciation] input [Русское произношение] ставим [English pronunciation] textarea [Русское произношение], то есть текстовое поле. Смотри, поле стало большим, и предложение перешло на следующую строку. А за уголок в углу поле можно растянуть ещё.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обрати внимание: в отличие от [English pronunciation] input [Русское произношение], [English pronunciation] textarea [Русское произношение] пишут с закрывающим тегом. А текст между тегами сразу появляется внутри поля. Смотри, приветствие уже стоит внутри.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] textarea [Русское произношение] делает большое поле на несколько строк и всегда пишется с закрывающим тегом.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери большое поле сам. В коде четыре пустых места: начало тега, серая подсказка, уголок и закрывающий тег. А один кусок лишний.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Атрибут [English pronunciation] type [Русское произношение], для [English pronunciation] input [Русское произношение]. [English pronunciation] textarea [Русское произношение] и так большое текстовое поле, [English pronunciation] type [Русское произношение] ему не нужен.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег всегда начинается с уголка и имени. Сначала поставь начало [English pronunciation] textarea [Русское произношение].", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После имени тега идёт атрибут, серая подсказка.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После атрибута открывающий тег закрывается уголком.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце, закрывающий тег. [English pronunciation] textarea [Русское произношение] без него нельзя.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С чего начинается тег?", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала начало [English pronunciation] textarea [Русское произношение], потом [English pronunciation] placeholder [Русское произношение].", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок такой: начало [English pronunciation] textarea [Русское произношение], [English pronunciation] placeholder [Русское произношение], уголок и закрывающий тег. [English pronunciation] type [Русское произношение] не нужен.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Большое поле готово, в нём серая подсказка. И лишний кусок ты правильно не взял.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня у нас три новых тега: [English pronunciation] select [Русское произношение], [English pronunciation] option [Русское произношение] и [English pronunciation] textarea [Русское произношение]. Соедини каждый тег с тем, что он выводит на странице. Сначала нажми тег, потом вещь.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] select [Русское произношение] делает список.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] option [Русское произношение], один вариант в списке.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] textarea [Русское произношение] делает большое поле.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] select [Русское произношение] делает весь список: поле со стрелкой.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] option [Русское произношение], одна строка внутри списка.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] textarea [Русское произношение], поле на несколько строк.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на каждую вещь: это список или поле?", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле со стрелкой, весь список, то есть [English pronunciation] select [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле со стрелкой, [English pronunciation] select [Русское произношение], один вариант, [English pronunciation] option [Русское произношение], большое поле, [English pronunciation] textarea [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты различаешь все три тега с первого взгляда.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми тег.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Анкета почти готова, не хватает только кнопки, чтобы её отправить. Добавим кнопку внутрь [English pronunciation] form [Русское произношение].", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тег [English pronunciation] button [Русское произношение], то есть кнопка. Надпись кнопки пишут между открывающим и закрывающим тегом: Отправить. Смотри, под анкетой появилась серая кнопка.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я нажал кнопку. Кнопка стоит внутри [English pronunciation] form [Русское произношение], поэтому анкета отправилась. Но у нас пока нет места, которое принимает ответы, то есть сервера. Поэтому страница просто открылась заново, а поля очистились. На настоящих сайтах ответы уходят на сервер.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: [English pronunciation] button [Русское произношение] делает кнопку, а кнопка внутри [English pronunciation] form [Русское произношение] отправляет анкету.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я забыл закрыть [English pronunciation] textarea [Русское произношение]! Смотри, браузер решил, что код кнопки, тоже текст внутри поля. А сама кнопка пропала. Напиши закрывающий тег после [English pronunciation] textarea [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это открывающий тег. В закрывающем перед именем стоит косая черта.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег начинается с уголка. Добавь его в начало.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце тега нужен уголок. Добавь его в конец.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри тега другое имя. Здесь нужен [English pronunciation] textarea [Русское произношение].", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Косая черта стоит сразу после первого уголка.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где должно кончаться поле?", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег, то же имя, но с косой чертой.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала уголок, потом косая черта, потом [English pronunciation] textarea [Русское произношение] и в конце снова уголок.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Поле закрыто, и кнопка вернулась на место.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь посмотри на два состояния: до и после. В код добавили одну вещь, и анкета изменилась. Ну и что добавили?", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что добавили в код?", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили [English pronunciation] option [Русское произношение], в списке стало на вариант больше.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили закрывающий [English pronunciation] textarea [Русское произношение], кнопка вышла из поля.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили [English pronunciation] button [Русское произношение], под анкетой появилась кнопка.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала вариантов было меньше, потом добавился ещё один. Вариант добавляет [English pronunciation] option [Русское произношение].", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала код кнопки был текстом внутри поля, потом появилась кнопка. Это делает закрывающий [English pronunciation] textarea [Русское произношение].", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала кнопки не было, потом она появилась. Кнопку делает [English pronunciation] button [Русское произношение].", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни карточки До и После: что изменилось в анкете?", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сколько вариантов было в списке и сколько стало? Вспомни, какой тег добавляет вариант в список.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала код кнопки был текстом в поле, потом появилась кнопка. Вспомни, какой тег заканчивает поле.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала под анкетой ничего не было, потом появилась кнопка. Вспомни, какой тег делает кнопку.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, выбери кнопку с тегом [English pronunciation] option [Русское произношение].", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, выбери кнопку с закрывающим тегом [English pronunciation] textarea [Русское произношение].", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, выбери кнопку с тегом [English pronunciation] button [Русское произношение].", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты по коду понимаешь, почему анкета выглядит так. Дальше прочитаем всю анкету вместе.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот вся анкета готова. Посмотрим, как браузер её читает: как всегда, сверху вниз.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала подпись про игру и выпадающий список. Здесь выбирают игру.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Потом подпись О себе и большое поле. Сюда пишут несколько предложений.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в самом конце, кнопка. Всё внутри [English pronunciation] form [Русское произношение], поэтому кнопка отправляет всю анкету.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свою анкету. В коде уже есть [English pronunciation] form [Русское произношение], большое поле и кнопка, нет только надписи на кнопке. Что на ней написать? Впиши это между тегами [English pronunciation] button [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Классная кнопка! Теперь добавим в список свой вариант.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что будет, когда нажмут кнопку? Это и напиши.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги на месте.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Записаться. Потом нажми Готово.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь добавь в список свой вариант. Какая игра нравится тебе? Впиши её в новый [English pronunciation] option [Русское произношение] и посмотри, как она появилась в списке. Потом нажми Готово.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Твой вариант в списке. Теперь его сможет выбрать любой, кто откроет анкету.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Какая твоя любимая игра? Это и напиши.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги [English pronunciation] option [Русское произношение] на месте.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Волейбол. Потом нажми Готово.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я хотел добавить в твой список Баскетбол и просто написал его внутри [English pronunciation] select [Русское произношение]. Но смотри, в списке его нет! Перетащи правильную строку в пустое место.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] li, для обычных списков ul и ol. Внутри [English pronunciation] select [Русское произношение] он не работает.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] P делает абзац. В выпадающий список он вариант не добавит.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на браузер: Баскетбол попал в список? Чего ему не хватает в коде?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вариант в выпадающий список может добавить только один тег. Посмотри на строки выше: в каком теге стоят игры?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи в пустое место кусок с тегом [English pronunciation] option [Русское произношение], как в строках выше.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот теперь порядок! Баскетбол в списке.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Вот анкета клуба, но в ней ошибка. Посмотри на браузер: что выглядит не так? Найди строку с ошибкой и нажми её.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь из списка пропала одна игра. Что сломано здесь?", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка в порядке. Посмотри на браузер: что не на месте?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! [English pronunciation] textarea [Русское произношение] не был закрыт. Поэтому код кнопки оказался текстом внутри поля.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В слове [English pronunciation] option [Русское произношение] пропала буква. Браузер не знает такого тега, поэтому Футбол не попал в список.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: где кнопка?", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Код кнопки стоит внутри поля. Какой тег не закрыт?", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на строку [English pronunciation] textarea [Русское произношение]: есть закрывающий тег?", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: какой игры нет в списке?", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку Футбол и прочитай имя тега по буквам.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на вторую строку: [English pronunciation] option [Русское произношение] написан полностью?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь анкеты как настоящий программист.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни: в [English pronunciation] select [Русское произношение] каждый вариант стоит в теге [English pronunciation] option [Русское произношение]. А [English pronunciation] textarea [Русское произношение] и [English pronunciation] button [Русское произношение] пишут с закрывающим тегом. Фраза с этим совпадает?", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] textarea [Русское произношение] пишут с закрывающим тегом.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без закрывающего тега и следующий код станет текстом внутри поля.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] button [Русское произношение], как и [English pronunciation] input [Русское произношение], пишут без закрывающего тега.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] button [Русское произношение] пишут с закрывающим тегом: надпись кнопки стоит между тегами.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово внутри [English pronunciation] select [Русское произношение] без тега [English pronunciation] option [Русское произношение] тоже появится в списке.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без [English pronunciation] option [Русское произношение] браузер не добавит слово в список. Каждый вариант должен быть внутри [English pronunciation] option [Русское произношение].", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь список, большое поле и кнопку.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я просто написал названия игр внутри [English pronunciation] select [Русское произношение]? Увы, я ошибся. Без тега [English pronunciation] option [Русское произношение] браузер не добавляет слова в список, поэтому список остался совсем пустым. Значит, каждый вариант нужно писать внутри [English pronunciation] option [Русское произношение].", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя анкета! В ней твой вариант и твоя кнопка.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] select [Русское произношение] делает выпадающий список.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] option [Русское произношение], один вариант в списке.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] textarea [Русское произношение] делает большое поле на несколько строк.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] button [Русское произношение] делает кнопку, которая внутри [English pronunciation] form [Русское произношение] отправляет анкету.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твоя страница умеет спрашивать, предлагать выбор и отправлять анкету. На следующем уроке посмотрим, из каких частей состоят настоящие сайты. До встречи!", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мне 12 лет, я люблю играть в футбол и делать игры.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я люблю футбол.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Last time we made the club form. But the answers came in all over the place. One person wrote Minecraft, another wrote mainkraft, a third wrote it in capitals. A long story about yourself didn’t fit on one line. And there’s no button to send the form at all. Let’s fix this. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! Now you don’t type the game, you pick it from a list. And a big field appeared for writing about yourself.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And a button appeared at the bottom. Tap it to send the form.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form. But first, a little riddle. On another page I made a list of games: I opened the select tag and simply wrote Minecraft, Football, Chess inside it. I think the list will now have three games. So what do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s make the list of games together. After the game caption we add a new tag.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the select tag. select is an English word for choosing. It makes a drop-down list with a small arrow on the right. But right now the list is empty, because there are no choices inside it yet.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each choice goes in an option tag. option means a choice. Three games, three options. Look, the first choice shows up in the field by itself.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the list and it opens, showing all the choices. We picked Football, so now the field shows Football. Now everyone writes the game name the same way, with no typos.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: select makes the list, and each option inside it is one choice. Both have a closing tag.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Now it’s your turn. The list has only two games, and Chess is missing. Look at the code: in the Chess line the opening tag has no name. That’s why the browser didn’t add it to the list. Type the tag name and tap Check.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the tag name between the brackets.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The brackets are already there. Only the tag name goes here.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] li is for ordinary ul and ol lists. Inside select you need a different tag.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That tag does something else. You need the tag for one choice in the list.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such tag, so Chess didn’t make it into the list. Type the name letter by letter.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What tag is in the other two lines?", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the closing tag: the name is written there.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The tag name is option. Type it between the brackets.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Chess is in the list. Now there are three games.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The list is open. One option line lights up in the code. Tap the choice in the list that this line shows.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which choice does the lit line show?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now I swapped the lines. Look, the order in the list changed too. Which choice does the lit line show?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The last one. I added a new line. Where did it show up in the list?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! This option line shows the Football choice.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The choices are in the same order as the code lines.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The last option is at the end of the list.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That’s a different choice. The choices in the list follow the order of the code lines: which position is the lit line in?", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First find the lit line in the code, then look at the open list.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each option line is one choice in the list. Whatever word is inside option, that word shows up in the list.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Now you know which choice each option line shows.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s look at the About you field. People usually write several sentences here.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right now it’s an ordinary input. It’s one line, so the long sentence didn’t fit: the end is hidden. It’s hard to read and to check.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we put textarea instead of input. textarea means a text area. Look, the field got bigger and the sentence moved onto the next line. You can drag the little corner to make the field even bigger.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Note: unlike input, textarea has a closing tag. And the text between the tags appears inside the field right away. Look, the greeting is already inside.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So textarea makes a big field for several lines, and it always has a closing tag.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build the big field yourself. The code has four empty spots: the start of the tag, the grey hint, the bracket and the closing tag. And one piece isn’t needed.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The type attribute is for input. textarea is always a big text field, so it doesn’t need type.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag always starts with a bracket and its name. Put the start of textarea first.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the tag name comes the attribute: the grey hint.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the attribute, the opening tag ends with a bracket.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At the end comes the closing tag. textarea must have it.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does a tag start with?", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First the start of textarea, then placeholder.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is: the start of textarea, placeholder, the bracket and the closing tag. No type.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The big field is ready, with a grey hint inside. And you were right to leave the extra piece.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today we met three new tags: select, option and textarea. Match each tag with the thing it shows on the page. Tap a tag first, then the thing.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! select makes the list.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! option is one choice in the list.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! textarea makes a big field.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] select makes the whole list: a field with an arrow.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] option is one line inside the list.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] textarea is a field for several lines.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at each thing: is it a list or a field?", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field with an arrow is the whole list: select.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field with an arrow is select, one choice is option, and the big field is textarea.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant! You can tell all three tags apart at a glance.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a tag first.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The form is almost ready; it only needs a button to send it. Let’s add a button inside form.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the button tag. button means a button. The button’s label goes between the opening and closing tags: Send. Look, a grey button appeared under the form.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I tapped the button. The button is inside form, so the form was sent. But we don’t have a place that receives the answers yet, a server. So the page just opened again and the fields were cleared. On real sites the answers go to a server.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: button makes a button, and a button inside form sends the form.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I forgot to close textarea! Look, the browser thought the button’s code was text inside the field too. And the button itself is gone. Type the closing tag after textarea and tap Check.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the opening tag. The closing one has a slash before the name.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag starts with the bracket. Add it at the start.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag ends with the bracket. Add it at the end.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a different name inside the tag. Here you need textarea.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The slash goes right after the first bracket.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where should the field end?", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The closing tag is the same name with a slash.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First a bracket, then the slash, then textarea, and another bracket at the end.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The field is closed, and the button is back.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now look at two states: before and after. One thing was added to the code, and the form changed. So what was added?", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What was added to the code?", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! A new option was added, so the list has one more choice.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The closing textarea was added, so the button came out of the field.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! button was added, so a button appeared under the form.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: first there were fewer choices, then one more appeared. option adds a choice.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: first the button’s code was text inside the field, then the button appeared. The closing textarea does that.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: first there was no button, then it appeared. button makes a button.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare the Before and After cards: what changed in the form?", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] How many choices were in the list, and how many are there now? Remember which tag adds a choice to the list.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First the button’s code was text in the field, then the button appeared. Remember which tag ends the field.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First there was nothing under the form, then a button appeared. Remember which tag makes a button.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So choose the button with the option tag.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So choose the button with the closing textarea tag.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So choose the button with the button tag.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you can tell from the code why the form looks the way it does. Next, let’s read the whole form together.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the whole form, all done. Let’s see how the browser reads it: as always, from top to bottom.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First the game caption and the drop-down list. This is where you pick the game.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Then the About you caption and the big field. This is where you write a few sentences.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And at the very end, the button. Everything is inside form, so the button sends the whole form.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Now make your own form. The code already has form, a big field and a button; only the button’s label is missing. What should it say? Type it between the button tags. Then tap Done.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great button! Now let’s add your own choice to the list.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens when someone taps the button? Write that.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the tags are in place.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: Sign up. Then tap Done.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now add your own choice to the list. What game do you like? Type it into the new option and see how it shows up in the list. Then tap Done.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Your choice is in the list. Now anyone who opens your form can pick it.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What’s your favorite game? Write that.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the option tags are in place.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: Volleyball. Then tap Done.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I wanted to add Basketball to your list and just wrote it inside select. But look, it’s not in the list! Drag the right line into the empty spot.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] li is for ordinary ul and ol lists. It doesn’t work inside select.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] P makes a paragraph. It won’t add a choice to a drop-down list.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: did Basketball make it into the list? What is it missing in the code?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Only one tag can add a choice to a drop-down list. Look at the lines above: which tag are the games in?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag the piece with the option tag into the empty spot, just like the lines above.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! Basketball is in the list.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Here’s the club form, but it has a bug. Look at the browser: what looks wrong? Find the line with the bug and tap it.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Great, the first bug is found! Now one game is missing from the list. What’s broken here?", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line is fine. Look at the browser: what’s out of place?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! textarea wasn’t closed. That’s why the button’s code ended up as text inside the field.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! A letter was missing from the word option. The browser doesn’t know that tag, so Football didn’t make it into the list.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: where’s the button?", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The button’s code is inside the field. Which tag isn’t closed?", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the textarea line: is there a closing tag?", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look at the browser: which game is missing from the list?", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the Football line and read the tag name letter by letter.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the second line: is option spelled in full?", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check forms like a real programmer.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read the sentence piece by piece: which tag is it about? Look at the code below too.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember: inside select, every choice sits in an option tag. And textarea and button are written with a closing tag. Does the sentence match that?", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] textarea is written with a closing tag.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Without the closing tag, the code after it turns into text inside the field.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Like input, button has no closing tag.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] button has a closing tag: the button’s label goes between the tags.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A word inside select without an option tag still shows up in the list.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Without option the browser won’t add the word to the list. Each choice must be inside option.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know the list, the big field and the button really well.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I just wrote the game names inside select? Sadly, I was wrong. Without the option tag the browser doesn’t add words to the list, so the list stayed completely empty. So every choice has to go inside option.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your form! It has your choice and your button.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] select makes a drop-down list.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] option is one choice in the list.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] textarea makes a big field for several lines.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And button makes a button that sends the form when it’s inside form.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your page can ask questions, offer choices and send a form. Next time we’ll see what parts real websites are made of. See you!", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I’m 12, and I love playing football and making games.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I love football.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! O'tgan darsda klub anketasini yasadik. Lekin javoblar chalkash bo'lib ketdi. Bir kishi Minecraft deb yozibdi, boshqasi mainkraft, uchinchisi esa katta harflar bilan yozibdi. O'zi haqidagi uzun gap bitta qatorga sig'madi. Anketani yuboradigan tugma esa umuman yo'q. Keling, buni to'g'rilaymiz. Aylantirish tugmasini bosing.": "uz001",
+    "Voy, qarang! O'yinni endi yozish shart emas: uni ro'yxatdan tanlaysiz. O'zingiz haqida yozish uchun katta maydon chiqdi.": "uz002",
+    "Pastda esa tugma paydo bo'ldi. Uni bosib, anketani yuborish mumkin.": "uz003",
+    "Bugun shunday ro'yxat, katta maydon va tugma yasashni o'rganasiz va o'zingizning anketangizni yasaysiz. Lekin oldin kichik topishmoq. Men boshqa sahifada o'yinlar ro'yxatini yasadim: [English pronunciation] select tag [O'zbekcha tallaffuz]-ini ochdim va ichiga Minecraft, Futbol, Shaxmat deb yozdim, xolos. Menimcha, endi ro'yxatda uchta o'yin chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Keling, o'yinlar ro'yxatini birga yasaymiz. O'yin yozuvidan keyin yangi [English pronunciation] tag [O'zbekcha tallaffuz] qo'yamiz.": "uz005",
+    "Bu [English pronunciation] select tag [O'zbekcha tallaffuz]-i. [English pronunciation] select [O'zbekcha tallaffuz] inglizcha so'z, ya'ni tanlash degani. U ochiladigan ro'yxat yasaydi: yonida kichik strelka bor. Lekin hozir ro'yxat bo'sh, chunki ichida hali hech qanday variant yo'q.": "uz006",
+    "Har bir variant [English pronunciation] option tag [O'zbekcha tallaffuz]-ida yoziladi. [English pronunciation] option [O'zbekcha tallaffuz] ya'ni variant degani. Uchta o'yinni uchta [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozdik. Qarang, birinchi variant maydonda o'zi ko'rinib turibdi.": "uz007",
+    "Ro'yxatni bosganda u ochiladi va hamma variantlar ko'rinadi. Futbolni tanladik, endi maydonda Futbol turibdi. Endi har kim o'yin nomini bir xil yozadi, harf xatosi bo'lmaydi.": "uz008",
+    "Eslab qoling: [English pronunciation] select [O'zbekcha tallaffuz] ro'yxat yasaydi, uning ichidagi har bir [English pronunciation] option [O'zbekcha tallaffuz] esa bitta variant bo'ladi. Ikkalasi ham yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.": "uz009",
+    "Endi navbat sizga. Ro'yxatda faqat ikkita o'yin bor, Shaxmat esa yo'q. Kodga qarang: Shaxmat qatorida ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun brauzer uni ro'yxatga qo'shmadi. [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing va Tekshirishni bosing.": "uz010",
+    "Burchakli qavslar o'rtasiga [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.": "uz011",
+    "Qavslar joyida turibdi. Bu yerga faqat [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.": "uz012",
+    "li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. [English pronunciation] select [O'zbekcha tallaffuz] ichida boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz013",
+    "Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Ro'yxatning bitta varianti uchun [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz014",
+    "Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Shaxmat ro'yxatga chiqmadi. Nomni harfma-harf yozing.": "uz015",
+    "Boshqa ikkita qatorda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bor?": "uz016",
+    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang: nomi o'sha yerda yozilgan.": "uz017",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] option [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.": "uz018",
+    "Zo'r! Shaxmat ro'yxatga qo'shildi. Endi ro'yxatda uchta o'yin bor.": "uz019",
+    "Ro'yxat ochiq turibdi. Kodda bitta [English pronunciation] option [O'zbekcha tallaffuz] qatori yonadi. Siz ro'yxatda shu qator chiqargan variantni bosing.": "uz020",
+    "Yongan qator qaysi variantni chiqaradi?": "uz021",
+    "Endi men qatorlarni almashtirdim. Qarang, ro'yxatda ham tartib o'zgardi. Yongan qator qaysi variantni chiqaradi?": "uz022",
+    "Oxirgisi. Men yangi qator qo'shdim. U ro'yxatda qayerda chiqdi?": "uz023",
+    "To'g'ri! Bu [English pronunciation] option [O'zbekcha tallaffuz] qatori Futbol variantini chiqaradi.": "uz024",
+    "To'g'ri! Variantlar kod qatorlari tartibida turadi.": "uz025",
+    "To'g'ri! Oxirgi [English pronunciation] option [O'zbekcha tallaffuz] ro'yxatning oxirida chiqadi.": "uz026",
+    "Bu boshqa variant. Ro'yxatda variantlar kod qatorlari tartibida turadi: yongan qator nechanchi o'rinda turibdi?": "uz027",
+    "Oldin kodda yongan qatorni toping, keyin ochiq ro'yxatga qarang.": "uz028",
+    "Har bir [English pronunciation] option [O'zbekcha tallaffuz] qatori ro'yxatda bitta variant bo'ladi. [English pronunciation] option [O'zbekcha tallaffuz] ichida qaysi so'z yozilgan bo'lsa, ro'yxatda ham o'sha so'z chiqadi.": "uz029",
+    "Barakalla! Endi har bir [English pronunciation] option [O'zbekcha tallaffuz] qatori qaysi variantni chiqarishini bilasiz.": "uz030",
+    "Endi o'zingiz haqidagi maydonga qaraymiz. Bu yerga odatda bir nechta gap yoziladi.": "uz031",
+    "Hozir bu oddiy [English pronunciation] input [O'zbekcha tallaffuz]. U bitta qator bo'ladi, shuning uchun uzun gap sig'madi: oxiri yashirinib qoldi. O'qish ham, tekshirish ham noqulay.": "uz032",
+    "Endi [English pronunciation] input [O'zbekcha tallaffuz] o'rniga [English pronunciation] textarea [O'zbekcha tallaffuz] qo'yamiz. [English pronunciation] textarea [O'zbekcha tallaffuz] ya'ni matn maydoni degani. Qarang, maydon katta bo'ldi va gap keyingi qatorga o'tdi. Burchagidagi chiziqlardan tortib, maydonni yana kattalashtirish mumkin.": "uz033",
+    "Diqqat qiling: [English pronunciation] input [O'zbekcha tallaffuz]'dan farqli, [English pronunciation] textarea [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi. [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasiga yozilgan matn esa maydon ichida tayyor holda chiqadi. Qarang, Salom degan gap maydonning ichida turibdi.": "uz034",
+    "Demak, [English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli katta maydon yasaydi va doim yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.": "uz035",
+    "Endi katta maydonni o'zingiz yig'ing. Kodda to'rtta bo'sh joy bor: [English pronunciation] tag [O'zbekcha tallaffuz] boshi, kulrang ishora, burchakli qavs va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Bitta bo'lak esa ortiqcha.": "uz036",
+    "[English pronunciation] type [O'zbekcha tallaffuz] atributi [English pronunciation] input [O'zbekcha tallaffuz] uchun bo'ladi. [English pronunciation] textarea [O'zbekcha tallaffuz] doim katta matn maydoni, unga [English pronunciation] type [O'zbekcha tallaffuz] kerak emas.": "uz037",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] doim burchakli qavs va nomi bilan boshlanadi. Oldin [English pronunciation] textarea [O'zbekcha tallaffuz] boshini qo'ying.": "uz038",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nomidan keyin atribut keladi: kulrang ishora.": "uz039",
+    "Atributdan keyin ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] burchakli qavs bilan yopiladi.": "uz040",
+    "Oxirida yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] keladi. [English pronunciation] textarea [O'zbekcha tallaffuz]'ga u albatta kerak bo'ladi.": "uz041",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nima bilan boshlanadi?": "uz042",
+    "Birinchi bo'lib [English pronunciation] textarea [O'zbekcha tallaffuz] boshi, keyin [English pronunciation] placeholder [O'zbekcha tallaffuz] keladi.": "uz043",
+    "Tartib shunday bo'ladi: [English pronunciation] textarea [O'zbekcha tallaffuz] boshi, [English pronunciation] placeholder [O'zbekcha tallaffuz], burchakli qavs va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. [English pronunciation] type [O'zbekcha tallaffuz] kerak emas.": "uz044",
+    "Ajoyib! Katta maydon tayyor, ichida kulrang ishora turibdi. Ortiqcha bo'lakni ham to'g'ri tashlab ketdingiz.": "uz045",
+    "Bugun uchta yangi [English pronunciation] tag [O'zbekcha tallaffuz]-ni ko'rdik: [English pronunciation] select [O'zbekcha tallaffuz], [English pronunciation] option [O'zbekcha tallaffuz] va [English pronunciation] textarea [O'zbekcha tallaffuz]. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni sahifada u chiqaradigan narsa bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin narsani bosing.": "uz046",
+    "To'g'ri! [English pronunciation] select [O'zbekcha tallaffuz] ro'yxat yasaydi.": "uz047",
+    "To'g'ri! [English pronunciation] option [O'zbekcha tallaffuz] ro'yxatdagi bitta variant bo'ladi.": "uz048",
+    "To'g'ri! [English pronunciation] textarea [O'zbekcha tallaffuz] katta maydon yasaydi.": "uz049",
+    "[English pronunciation] select [O'zbekcha tallaffuz] butun ro'yxatni yasaydi: yonida strelkasi bor maydon.": "uz050",
+    "[English pronunciation] option [O'zbekcha tallaffuz] ro'yxat ichidagi bitta qator bo'ladi.": "uz051",
+    "[English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli maydon bo'ladi.": "uz052",
+    "Har bir narsaga qarang: u ro'yxatmi yoki maydonmi?": "uz053",
+    "Strelkali maydon butun ro'yxat bo'ladi, ya'ni [English pronunciation] select [O'zbekcha tallaffuz] degani.": "uz054",
+    "Strelkali maydon [English pronunciation] select [O'zbekcha tallaffuz], bitta variant [English pronunciation] option [O'zbekcha tallaffuz], katta maydon esa [English pronunciation] textarea [O'zbekcha tallaffuz] bo'ladi.": "uz055",
+    "Qoyil! Uchala [English pronunciation] tag [O'zbekcha tallaffuz]-ni ham ko'rib turib ajratyapsiz.": "uz056",
+    "Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.": "uz057",
+    "Anketa deyarli tayyor, faqat uni yuboradigan tugma yo'q. Keling, [English pronunciation] form [O'zbekcha tallaffuz] ichiga tugma qo'shamiz.": "uz058",
+    "Bu [English pronunciation] button tag [O'zbekcha tallaffuz]-i. [English pronunciation] button [O'zbekcha tallaffuz] inglizcha so'z, ya'ni tugma degani. Tugmaning yozuvi ochuvchi va yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasiga yoziladi: Yuborish. Qarang, anketa ostida kulrang tugma chiqdi.": "uz059",
+    "Tugmani bosdim. Tugma [English pronunciation] form [O'zbekcha tallaffuz] ichida turgani uchun anketa yuborildi. Lekin bizda hali server yo'q. Server, ya'ni javoblarni qabul qiladigan kompyuter degani. Shuning uchun sahifa shunchaki qaytadan ochildi va maydonlar tozalandi. Haqiqiy saytlarda bu javoblar serverga boradi.": "uz060",
+    "Eslab qoling: [English pronunciation] button [O'zbekcha tallaffuz] tugma yasaydi, [English pronunciation] form [O'zbekcha tallaffuz] ichidagi tugma esa anketani yuboradi.": "uz061",
+    "Voy, men [English pronunciation] textarea [O'zbekcha tallaffuz]'ni yopishni unutibman! Qarang, brauzer tugma kodini ham maydon ichidagi matn deb o'yladi. Tugma esa yo'qoldi. [English pronunciation] textarea [O'zbekcha tallaffuz]'dan keyin yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni yozing va Tekshirishni bosing.": "uz062",
+    "Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da nomdan oldin qiya chiziq turadi.": "uz063",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi. Uni boshiga qo'shing.": "uz064",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi. Uni oxiriga qo'shing.": "uz065",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] ichida boshqa nom yozilgan. Bu yerda [English pronunciation] textarea [O'zbekcha tallaffuz] kerak bo'ladi.": "uz066",
+    "Qiya chiziq birinchi burchakli qavsdan keyin darrov turadi.": "uz067",
+    "Maydon qayerda tugashi kerak?": "uz068",
+    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] o'sha nom bo'ladi, faqat qiya chiziq bilan.": "uz069",
+    "Oldin burchakli qavs, keyin qiya chiziq, keyin [English pronunciation] textarea [O'zbekcha tallaffuz] va oxirida yana burchakli qavs qo'ying.": "uz070",
+    "Zo'r! Maydon yopildi va tugma joyiga qaytdi.": "uz071",
+    "Endi ikkita holatga qarang: oldin va keyin. Kodda bitta narsa qo'shildi va anketa boshqacha bo'lib qoldi. Xo'sh, nima qo'shildi?": "uz072",
+    "Kodga nima qo'shildi?": "uz073",
+    "To'g'ri! Yangi [English pronunciation] option [O'zbekcha tallaffuz] qo'shildi, ro'yxatda bitta variant ko'paydi.": "uz074",
+    "To'g'ri! Yopuvchi [English pronunciation] textarea [O'zbekcha tallaffuz] qo'shildi, tugma maydondan chiqdi.": "uz075",
+    "To'g'ri! [English pronunciation] button [O'zbekcha tallaffuz] qo'shildi, anketa ostida tugma chiqdi.": "uz076",
+    "Qarang: oldin ro'yxatda kamroq variant bor edi, keyin bittasi qo'shildi. Variantni [English pronunciation] option [O'zbekcha tallaffuz] qo'shadi.": "uz077",
+    "Qarang: oldin tugma kodi maydon ichida matn bo'lib turgan edi, keyin tugma chiqdi. Buni yopuvchi [English pronunciation] textarea [O'zbekcha tallaffuz] qiladi.": "uz078",
+    "Qarang: oldin anketada tugma yo'q edi, keyin paydo bo'ldi. Tugmani [English pronunciation] button [O'zbekcha tallaffuz] yasaydi.": "uz079",
+    "Oldin va keyin kartochkalarini solishtiring: anketada nima o'zgardi?": "uz080",
+    "Ro'yxatda nechta variant bor edi va nechta bo'ldi? Ro'yxatga variantni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shadi, esingizdami?": "uz081",
+    "Oldin tugma kodi maydon ichida matn edi, keyin tugma chiqdi. Maydonni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] tugatadi, esingizdami?": "uz082",
+    "Oldin anketa ostida hech narsa yo'q edi, keyin tugma chiqdi. Tugmani qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi, esingizdami?": "uz083",
+    "Demak, [English pronunciation] option tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.": "uz084",
+    "Demak, yopuvchi [English pronunciation] textarea tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.": "uz085",
+    "Demak, [English pronunciation] button tag [O'zbekcha tallaffuz]-i yozilgan tugmani tanlang.": "uz086",
+    "Endi anketa nimaga boshqacha ko'rinishini kodga qarab bilasiz. Keyin butun anketani birga o'qib chiqamiz.": "uz087",
+    "Mana, butun anketa tayyor. Keling, brauzer uni qanday o'qishini ko'ramiz. Brauzer kodni har doimgidek tepadan pastga o'qiydi.": "uz088",
+    "Oldin o'yin yozuvi va ochiladigan ro'yxat chiqdi. Bu yerda o'yin tanlanadi.": "uz089",
+    "Keyin o'zingiz haqidagi yozuv va katta maydon chiqdi. Bu yerga bir nechta gap yoziladi.": "uz090",
+    "Eng oxirida tugma chiqdi. Hammasi [English pronunciation] form [O'zbekcha tallaffuz] ichida, shuning uchun tugma butun anketani yuboradi.": "uz091",
+    "Endi o'zingizning anketangizni yasang. Kodda [English pronunciation] form [O'zbekcha tallaffuz], katta maydon va tugma tayyor turibdi, faqat tugma yozuvi yo'q. Tugmada nima deb yozilsin? Shuni [English pronunciation] button tag [O'zbekcha tallaffuz]-lari o'rtasiga yozing. Keyin Tayyorni bosing.": "uz092",
+    "Zo'r tugma! Endi ro'yxatingizga o'z variantingizni qo'shamiz.": "uz093",
+    "Tugmani bosganda nima bo'ladi? Shuni yozing.": "uz094",
+    "Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.": "uz095",
+    "Masalan: Jo'natish. Keyin Tayyorni bosing.": "uz096",
+    "Endi ro'yxatga o'zingizning variantingizni qo'shing. Sizga qaysi o'yin yoqadi? Uni yangi [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozing va ro'yxatda u qanday chiqqanini ko'ring. Keyin Tayyorni bosing.": "uz097",
+    "Ajoyib! Variantingiz ro'yxatga qo'shildi. Endi anketangizni ochgan odam uni tanlay oladi.": "uz098",
+    "Sevimli o'yiningiz qaysi? Shuni yozing.": "uz099",
+    "Faqat so'z yozing, [English pronunciation] option tag [O'zbekcha tallaffuz]-lari joyida turibdi.": "uz100",
+    "Masalan: Voleybol. Keyin Tayyorni bosing.": "uz101",
+    "Men ro'yxatingizga Basketbolni qo'shmoqchi edim va uni [English pronunciation] select [O'zbekcha tallaffuz] ichiga shunchaki yozib qo'ydim. Lekin qarang, ro'yxatda u yo'q! To'g'ri qatorni bo'sh joyga olib boring.": "uz102",
+    "li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. [English pronunciation] select [O'zbekcha tallaffuz] ichida u ishlamaydi.": "uz103",
+    "P abzas yasaydi. Ochiladigan ro'yxatga u variant qo'shmaydi.": "uz104",
+    "Brauzerga qarang: Basketbol ro'yxatga chiqdimi? Kodda unga nima yetishmayapti?": "uz105",
+    "Ochiladigan ro'yxatga variantni faqat bitta [English pronunciation] tag [O'zbekcha tallaffuz] qo'sha oladi. Tepadagi qatorlarga qarang: o'yinlar qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ichida turibdi?": "uz106",
+    "Tepadagi qatorlar kabi [English pronunciation] option tag [O'zbekcha tallaffuz]-i bilan yozilgan bo'lakni bo'sh joyga olib boring.": "uz107",
+    "Ana endi joyida! Basketbol ro'yxatga qo'shildi.": "uz108",
+    "Endi o'zingizni sinab ko'ring. Mana, klub anketasi, lekin unda xato bor. Brauzerga qarang: nima noto'g'ri ko'rinyapti? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.": "uz109",
+    "Zo'r, birinchi xato topildi! Endi ro'yxatdan bitta o'yin yo'qoldi. Bu yerda nima buzilgan?": "uz110",
+    "Bu qator to'g'ri yozilgan. Brauzerga qarang: nima joyida emas?": "uz111",
+    "Topdingiz! [English pronunciation] textarea [O'zbekcha tallaffuz] yopilmagan edi. Shuning uchun tugma kodi maydon ichida matn bo'lib qolgan edi.": "uz112",
+    "Topdingiz! [English pronunciation] option [O'zbekcha tallaffuz] so'zida bitta harf tushib qolgan edi. Brauzer bunday [English pronunciation] tag [O'zbekcha tallaffuz]-ni bilmaydi, shuning uchun Futbol ro'yxatga chiqmagan edi.": "uz113",
+    "Brauzerga qarang: tugma qayerda?": "uz114",
+    "Tugma kodi maydon ichida turibdi. Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yopilmagan?": "uz115",
+    "[English pronunciation] textarea [O'zbekcha tallaffuz] qatoriga qarang: yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bormi?": "uz116",
+    "Brauzerga qarang: ro'yxatda qaysi o'yin yo'q?": "uz117",
+    "Futbol qatoriga qarang va [English pronunciation] tag [O'zbekcha tallaffuz] nomini harfma-harf o'qing.": "uz118",
+    "Ikkinchi qatorga qarang: [English pronunciation] option [O'zbekcha tallaffuz] to'liq yozilganmi?": "uz119",
+    "Ajoyib! Ikkala xato ham topildi. Siz anketalarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz120",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz121",
+    "Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida? Pastdagi kodga ham qarang.": "uz122",
+    "[English pronunciation] select [O'zbekcha tallaffuz] ichida har bir variant [English pronunciation] option tag [O'zbekcha tallaffuz]-ida turadi, esingizdami? [English pronunciation] textarea [O'zbekcha tallaffuz] va [English pronunciation] button [O'zbekcha tallaffuz] esa yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi. Gap shunga mos keladimi?": "uz123",
+    "Barakalla!": "uz124",
+    "[English pronunciation] textarea [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.": "uz125",
+    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bo'lmasa, keyingi kod ham maydon ichidagi matnga aylanadi.": "uz126",
+    "[English pronunciation] button [O'zbekcha tallaffuz] ham [English pronunciation] input [O'zbekcha tallaffuz] kabi yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-siz yoziladi.": "uz127",
+    "[English pronunciation] button [O'zbekcha tallaffuz] yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi: tugma yozuvi [English pronunciation] tag [O'zbekcha tallaffuz]-lar o'rtasida turadi.": "uz128",
+    "[English pronunciation] select [O'zbekcha tallaffuz] ichiga [English pronunciation] option [O'zbekcha tallaffuz] tegisiz yozilgan so'z ham ro'yxatda chiqadi.": "uz129",
+    "[English pronunciation] option [O'zbekcha tallaffuz] tegisiz so'zni brauzer ro'yxatga qo'shmaydi. Har bir variant [English pronunciation] option [O'zbekcha tallaffuz] ichida bo'lishi kerak.": "uz130",
+    "Hammasi to'g'ri! Siz ro'yxat, katta maydon va tugmani yaxshi bilasiz.": "uz131",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] select [O'zbekcha tallaffuz] ichiga o'yinlar nomini shunchaki yozib qo'ygan edim? Afsuski, men adashibman. [English pronunciation] option [O'zbekcha tallaffuz] tegisiz so'zlarni brauzer ro'yxatga qo'shmaydi, shuning uchun ro'yxat bo'm-bo'sh qoldi. Demak, har bir variantni [English pronunciation] option [O'zbekcha tallaffuz] ichiga yozish kerak.": "uz132",
+    "Qarang, bu sizning anketangiz! Unda sizning variantingiz va sizning tugmangiz bor.": "uz133",
+    "[English pronunciation] select [O'zbekcha tallaffuz] ochiladigan ro'yxat yasaydi.": "uz134",
+    "[English pronunciation] option [O'zbekcha tallaffuz] ro'yxatdagi bitta variant bo'ladi.": "uz135",
+    "[English pronunciation] textarea [O'zbekcha tallaffuz] bir nechta qatorli katta maydon yasaydi.": "uz136",
+    "[English pronunciation] button [O'zbekcha tallaffuz] esa tugma yasaydi va [English pronunciation] form [O'zbekcha tallaffuz] ichida anketani yuboradi.": "uz137",
+    "Tabriklayman! Endi sahifangiz savol bera oladi, javob tanlata oladi va anketani yubora oladi. Keyingi darsda haqiqiy saytlar qanday qismlardan tuzilganini ko'ramiz. Ko'rishguncha!": "uz138",
+    "Voy, zo‘r!": "uz139",
+    "Ana! Chiqdi!": "uz140",
+    "Super!": "uz141",
+    "Qoyil!": "uz142",
+    "Ura!": "uz143",
+    "Zo‘r-ku!": "uz144",
+    "Yana bir bor urinib ko‘ring.": "uz145",
+    "Diqqat bilan qarang.": "uz146",
+    "Yaqin qoldingiz. Shoshilmang.": "uz147",
+    "Men 12 yoshdaman, futbol o'ynashni va o'yinlar yasashni yaxshi ko'raman.": "uz148",
+    "Salom! Men futbolni yaxshi ko'raman.": "uz149",
+    "To'g'rimi?": "uz150",
+    "To'g'ri yoki noto'g'ri?": "uz151",
+    "Salom, dunyo!": "uz152",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz153",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz154",
+  },
+  ru: {
+    "Привет! На прошлом уроке мы сделали анкету клуба. Но ответы пришли вразнобой. Один написал Minecraft, другой mainkraft, третий большими буквами. Длинный рассказ о себе не влез в одну строку. А кнопки, чтобы отправить анкету, нет совсем. Давай исправим. Нажми Превратить.": "ru001",
+    "Ого, смотри! Игру теперь не надо писать: её выбирают из списка. А для рассказа о себе появилось большое поле.": "ru002",
+    "А внизу появилась кнопка. Нажмёшь её, и анкета отправится.": "ru003",
+    "Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету. Но сначала маленькая загадка. Я сделал на другой странице список игр: открыл тег [English pronunciation] select [Русское произношение] и просто написал внутри Minecraft, Футбол, Шахматы. По-моему, теперь в списке будут три игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Давай сделаем список игр вместе. После подписи про игру ставим новый тег.": "ru005",
+    "Это тег [English pronunciation] select [Русское произношение]. [English pronunciation] select [Русское произношение], английское слово, то есть выбрать. Он делает выпадающий список: справа маленькая стрелка. Но сейчас список пустой, потому что внутри ещё нет ни одного варианта.": "ru006",
+    "Каждый вариант пишут в теге [English pronunciation] option [Русское произношение], то есть вариант. Три игры, три [English pronunciation] option [Русское произношение]. Смотри, первый вариант сам виден в поле.": "ru007",
+    "Нажмёшь на список, он раскроется, и видны все варианты. Выбрали Футбол, теперь в поле Футбол. Теперь у всех название игры одинаковое, без опечаток.": "ru008",
+    "Запомни: [English pronunciation] select [Русское произношение] делает список, а каждый [English pronunciation] option [Русское произношение] внутри, один вариант. Оба пишут с закрывающим тегом.": "ru009",
+    "Теперь твоя очередь. В списке только две игры, а Шахмат нет. Посмотри на код: в строке Шахмат у открывающего тега нет имени. Поэтому браузер не добавил её в список. Впиши имя тега и нажми Проверить.": "ru010",
+    "Впиши имя тега между уголками.": "ru011",
+    "Скобки уже на месте. Здесь нужно только имя тега.": "ru012",
+    "li, для обычных списков ul и ol. Внутри [English pronunciation] select [Русское произношение] нужен другой тег.": "ru013",
+    "Этот тег делает другое. Нужен тег для одного варианта списка.": "ru014",
+    "Такого тега нет, поэтому Шахматы не попали в список. Напиши имя буква в букву.": "ru015",
+    "Какой тег в двух других строках?": "ru016",
+    "Посмотри на закрывающий тег: имя написано там.": "ru017",
+    "Имя тега, [English pronunciation] option [Русское произношение]. Впиши его между уголками.": "ru018",
+    "Огонь! Шахматы попали в список. Теперь в нём три игры.": "ru019",
+    "Список раскрыт. В коде горит одна строка [English pronunciation] option [Русское произношение]. А ты нажми в списке вариант, который она выводит.": "ru020",
+    "Какой вариант выводит горящая строка?": "ru021",
+    "Теперь я поменял строки местами. Смотри, порядок в списке тоже поменялся. Какой вариант выводит горящая строка?": "ru022",
+    "Последняя. Я добавил новую строку. Где она появилась в списке?": "ru023",
+    "Верно! Эта строка [English pronunciation] option [Русское произношение] выводит вариант Футбол.": "ru024",
+    "Верно! Варианты стоят в порядке строк кода.": "ru025",
+    "Верно! Последний [English pronunciation] option [Русское произношение], в конце списка.": "ru026",
+    "Это другой вариант. В списке варианты идут в порядке строк кода: какая по счёту горящая строка?": "ru027",
+    "Сначала найди горящую строку в коде, потом посмотри на раскрытый список.": "ru028",
+    "Каждая строка [English pronunciation] option [Русское произношение], один вариант в списке. Какое слово написано внутри [English pronunciation] option [Русское произношение], такое и появится в списке.": "ru029",
+    "Молодец! Теперь ты знаешь, какой вариант выводит каждая строка [English pronunciation] option [Русское произношение].": "ru030",
+    "Теперь посмотрим на поле О себе. Сюда обычно пишут несколько предложений.": "ru031",
+    "Сейчас это обычный [English pronunciation] input [Русское произношение]. Он в одну строку, поэтому длинное предложение не влезло: конец спрятался. Неудобно ни читать, ни проверять.": "ru032",
+    "Теперь вместо [English pronunciation] input [Русское произношение] ставим [English pronunciation] textarea [Русское произношение], то есть текстовое поле. Смотри, поле стало большим, и предложение перешло на следующую строку. А за уголок в углу поле можно растянуть ещё.": "ru033",
+    "Обрати внимание: в отличие от [English pronunciation] input [Русское произношение], [English pronunciation] textarea [Русское произношение] пишут с закрывающим тегом. А текст между тегами сразу появляется внутри поля. Смотри, приветствие уже стоит внутри.": "ru034",
+    "Значит, [English pronunciation] textarea [Русское произношение] делает большое поле на несколько строк и всегда пишется с закрывающим тегом.": "ru035",
+    "Теперь собери большое поле сам. В коде четыре пустых места: начало тега, серая подсказка, уголок и закрывающий тег. А один кусок лишний.": "ru036",
+    "Атрибут [English pronunciation] type [Русское произношение], для [English pronunciation] input [Русское произношение]. [English pronunciation] textarea [Русское произношение] и так большое текстовое поле, [English pronunciation] type [Русское произношение] ему не нужен.": "ru037",
+    "Тег всегда начинается с уголка и имени. Сначала поставь начало [English pronunciation] textarea [Русское произношение].": "ru038",
+    "После имени тега идёт атрибут, серая подсказка.": "ru039",
+    "После атрибута открывающий тег закрывается уголком.": "ru040",
+    "В конце, закрывающий тег. [English pronunciation] textarea [Русское произношение] без него нельзя.": "ru041",
+    "С чего начинается тег?": "ru042",
+    "Сначала начало [English pronunciation] textarea [Русское произношение], потом [English pronunciation] placeholder [Русское произношение].": "ru043",
+    "Порядок такой: начало [English pronunciation] textarea [Русское произношение], [English pronunciation] placeholder [Русское произношение], уголок и закрывающий тег. [English pronunciation] type [Русское произношение] не нужен.": "ru044",
+    "Отлично! Большое поле готово, в нём серая подсказка. И лишний кусок ты правильно не взял.": "ru045",
+    "Сегодня у нас три новых тега: [English pronunciation] select [Русское произношение], [English pronunciation] option [Русское произношение] и [English pronunciation] textarea [Русское произношение]. Соедини каждый тег с тем, что он выводит на странице. Сначала нажми тег, потом вещь.": "ru046",
+    "Верно! [English pronunciation] select [Русское произношение] делает список.": "ru047",
+    "Верно! [English pronunciation] option [Русское произношение], один вариант в списке.": "ru048",
+    "Верно! [English pronunciation] textarea [Русское произношение] делает большое поле.": "ru049",
+    "[English pronunciation] select [Русское произношение] делает весь список: поле со стрелкой.": "ru050",
+    "[English pronunciation] option [Русское произношение], одна строка внутри списка.": "ru051",
+    "[English pronunciation] textarea [Русское произношение], поле на несколько строк.": "ru052",
+    "Посмотри на каждую вещь: это список или поле?": "ru053",
+    "Поле со стрелкой, весь список, то есть [English pronunciation] select [Русское произношение].": "ru054",
+    "Поле со стрелкой, [English pronunciation] select [Русское произношение], один вариант, [English pronunciation] option [Русское произношение], большое поле, [English pronunciation] textarea [Русское произношение].": "ru055",
+    "Класс! Ты различаешь все три тега с первого взгляда.": "ru056",
+    "Сначала нажми тег.": "ru057",
+    "Анкета почти готова, не хватает только кнопки, чтобы её отправить. Добавим кнопку внутрь [English pronunciation] form [Русское произношение].": "ru058",
+    "Это тег [English pronunciation] button [Русское произношение], то есть кнопка. Надпись кнопки пишут между открывающим и закрывающим тегом: Отправить. Смотри, под анкетой появилась серая кнопка.": "ru059",
+    "Я нажал кнопку. Кнопка стоит внутри [English pronunciation] form [Русское произношение], поэтому анкета отправилась. Но у нас пока нет места, которое принимает ответы, то есть сервера. Поэтому страница просто открылась заново, а поля очистились. На настоящих сайтах ответы уходят на сервер.": "ru060",
+    "Запомни: [English pronunciation] button [Русское произношение] делает кнопку, а кнопка внутри [English pronunciation] form [Русское произношение] отправляет анкету.": "ru061",
+    "Ой, я забыл закрыть [English pronunciation] textarea [Русское произношение]! Смотри, браузер решил, что код кнопки, тоже текст внутри поля. А сама кнопка пропала. Напиши закрывающий тег после [English pronunciation] textarea [Русское произношение] и нажми Проверить.": "ru062",
+    "Это открывающий тег. В закрывающем перед именем стоит косая черта.": "ru063",
+    "Тег начинается с уголка. Добавь его в начало.": "ru064",
+    "В конце тега нужен уголок. Добавь его в конец.": "ru065",
+    "Внутри тега другое имя. Здесь нужен [English pronunciation] textarea [Русское произношение].": "ru066",
+    "Косая черта стоит сразу после первого уголка.": "ru067",
+    "Где должно кончаться поле?": "ru068",
+    "Закрывающий тег, то же имя, но с косой чертой.": "ru069",
+    "Сначала уголок, потом косая черта, потом [English pronunciation] textarea [Русское произношение] и в конце снова уголок.": "ru070",
+    "Огонь! Поле закрыто, и кнопка вернулась на место.": "ru071",
+    "Теперь посмотри на два состояния: до и после. В код добавили одну вещь, и анкета изменилась. Ну и что добавили?": "ru072",
+    "Что добавили в код?": "ru073",
+    "Верно! Добавили [English pronunciation] option [Русское произношение], в списке стало на вариант больше.": "ru074",
+    "Верно! Добавили закрывающий [English pronunciation] textarea [Русское произношение], кнопка вышла из поля.": "ru075",
+    "Верно! Добавили [English pronunciation] button [Русское произношение], под анкетой появилась кнопка.": "ru076",
+    "Смотри: сначала вариантов было меньше, потом добавился ещё один. Вариант добавляет [English pronunciation] option [Русское произношение].": "ru077",
+    "Смотри: сначала код кнопки был текстом внутри поля, потом появилась кнопка. Это делает закрывающий [English pronunciation] textarea [Русское произношение].": "ru078",
+    "Смотри: сначала кнопки не было, потом она появилась. Кнопку делает [English pronunciation] button [Русское произношение].": "ru079",
+    "Сравни карточки До и После: что изменилось в анкете?": "ru080",
+    "Сколько вариантов было в списке и сколько стало? Вспомни, какой тег добавляет вариант в список.": "ru081",
+    "Сначала код кнопки был текстом в поле, потом появилась кнопка. Вспомни, какой тег заканчивает поле.": "ru082",
+    "Сначала под анкетой ничего не было, потом появилась кнопка. Вспомни, какой тег делает кнопку.": "ru083",
+    "Значит, выбери кнопку с тегом [English pronunciation] option [Русское произношение].": "ru084",
+    "Значит, выбери кнопку с закрывающим тегом [English pronunciation] textarea [Русское произношение].": "ru085",
+    "Значит, выбери кнопку с тегом [English pronunciation] button [Русское произношение].": "ru086",
+    "Теперь ты по коду понимаешь, почему анкета выглядит так. Дальше прочитаем всю анкету вместе.": "ru087",
+    "Вот вся анкета готова. Посмотрим, как браузер её читает: как всегда, сверху вниз.": "ru088",
+    "Сначала подпись про игру и выпадающий список. Здесь выбирают игру.": "ru089",
+    "Потом подпись О себе и большое поле. Сюда пишут несколько предложений.": "ru090",
+    "И в самом конце, кнопка. Всё внутри [English pronunciation] form [Русское произношение], поэтому кнопка отправляет всю анкету.": "ru091",
+    "Теперь сделай свою анкету. В коде уже есть [English pronunciation] form [Русское произношение], большое поле и кнопка, нет только надписи на кнопке. Что на ней написать? Впиши это между тегами [English pronunciation] button [Русское произношение]. Потом нажми Готово.": "ru092",
+    "Классная кнопка! Теперь добавим в список свой вариант.": "ru093",
+    "Что будет, когда нажмут кнопку? Это и напиши.": "ru094",
+    "Пиши только слова, теги на месте.": "ru095",
+    "Например: Записаться. Потом нажми Готово.": "ru096",
+    "Теперь добавь в список свой вариант. Какая игра нравится тебе? Впиши её в новый [English pronunciation] option [Русское произношение] и посмотри, как она появилась в списке. Потом нажми Готово.": "ru097",
+    "Отлично! Твой вариант в списке. Теперь его сможет выбрать любой, кто откроет анкету.": "ru098",
+    "Какая твоя любимая игра? Это и напиши.": "ru099",
+    "Пиши только слова, теги [English pronunciation] option [Русское произношение] на месте.": "ru100",
+    "Например: Волейбол. Потом нажми Готово.": "ru101",
+    "Я хотел добавить в твой список Баскетбол и просто написал его внутри [English pronunciation] select [Русское произношение]. Но смотри, в списке его нет! Перетащи правильную строку в пустое место.": "ru102",
+    "li, для обычных списков ul и ol. Внутри [English pronunciation] select [Русское произношение] он не работает.": "ru103",
+    "P делает абзац. В выпадающий список он вариант не добавит.": "ru104",
+    "Посмотри на браузер: Баскетбол попал в список? Чего ему не хватает в коде?": "ru105",
+    "Вариант в выпадающий список может добавить только один тег. Посмотри на строки выше: в каком теге стоят игры?": "ru106",
+    "Перетащи в пустое место кусок с тегом [English pronunciation] option [Русское произношение], как в строках выше.": "ru107",
+    "Вот теперь порядок! Баскетбол в списке.": "ru108",
+    "Теперь проверь себя. Вот анкета клуба, но в ней ошибка. Посмотри на браузер: что выглядит не так? Найди строку с ошибкой и нажми её.": "ru109",
+    "Класс, первая ошибка найдена! Теперь из списка пропала одна игра. Что сломано здесь?": "ru110",
+    "Эта строка в порядке. Посмотри на браузер: что не на месте?": "ru111",
+    "Есть! [English pronunciation] textarea [Русское произношение] не был закрыт. Поэтому код кнопки оказался текстом внутри поля.": "ru112",
+    "Есть! В слове [English pronunciation] option [Русское произношение] пропала буква. Браузер не знает такого тега, поэтому Футбол не попал в список.": "ru113",
+    "Посмотри на браузер: где кнопка?": "ru114",
+    "Код кнопки стоит внутри поля. Какой тег не закрыт?": "ru115",
+    "Посмотри на строку [English pronunciation] textarea [Русское произношение]: есть закрывающий тег?": "ru116",
+    "Посмотри на браузер: какой игры нет в списке?": "ru117",
+    "Посмотри на строку Футбол и прочитай имя тега по буквам.": "ru118",
+    "Посмотри на вторую строку: [English pronunciation] option [Русское произношение] написан полностью?": "ru119",
+    "Супер! Обе ошибки найдены. Ты проверяешь анкеты как настоящий программист.": "ru120",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru121",
+    "Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.": "ru122",
+    "Вспомни: в [English pronunciation] select [Русское произношение] каждый вариант стоит в теге [English pronunciation] option [Русское произношение]. А [English pronunciation] textarea [Русское произношение] и [English pronunciation] button [Русское произношение] пишут с закрывающим тегом. Фраза с этим совпадает?": "ru123",
+    "Точно!": "ru124",
+    "[English pronunciation] textarea [Русское произношение] пишут с закрывающим тегом.": "ru125",
+    "Без закрывающего тега и следующий код станет текстом внутри поля.": "ru126",
+    "[English pronunciation] button [Русское произношение], как и [English pronunciation] input [Русское произношение], пишут без закрывающего тега.": "ru127",
+    "[English pronunciation] button [Русское произношение] пишут с закрывающим тегом: надпись кнопки стоит между тегами.": "ru128",
+    "Слово внутри [English pronunciation] select [Русское произношение] без тега [English pronunciation] option [Русское произношение] тоже появится в списке.": "ru129",
+    "Без [English pronunciation] option [Русское произношение] браузер не добавит слово в список. Каждый вариант должен быть внутри [English pronunciation] option [Русское произношение].": "ru130",
+    "Всё верно! Ты отлично знаешь список, большое поле и кнопку.": "ru131",
+    "Вернёмся к загадке. Помнишь, я просто написал названия игр внутри [English pronunciation] select [Русское произношение]? Увы, я ошибся. Без тега [English pronunciation] option [Русское произношение] браузер не добавляет слова в список, поэтому список остался совсем пустым. Значит, каждый вариант нужно писать внутри [English pronunciation] option [Русское произношение].": "ru132",
+    "Смотри, это твоя анкета! В ней твой вариант и твоя кнопка.": "ru133",
+    "[English pronunciation] select [Русское произношение] делает выпадающий список.": "ru134",
+    "[English pronunciation] option [Русское произношение], один вариант в списке.": "ru135",
+    "[English pronunciation] textarea [Русское произношение] делает большое поле на несколько строк.": "ru136",
+    "А [English pronunciation] button [Русское произношение] делает кнопку, которая внутри [English pronunciation] form [Русское произношение] отправляет анкету.": "ru137",
+    "Ура! Теперь твоя страница умеет спрашивать, предлагать выбор и отправлять анкету. На следующем уроке посмотрим, из каких частей состоят настоящие сайты. До встречи!": "ru138",
+    "Вау, классно!": "ru139",
+    "Есть! Получилось!": "ru140",
+    "Супер!": "ru141",
+    "Огонь!": "ru142",
+    "Ура!": "ru143",
+    "Вот это да!": "ru144",
+    "Попробуй ещё раз.": "ru145",
+    "Посмотри внимательно.": "ru146",
+    "Уже близко. Не спеши.": "ru147",
+    "Мне 12 лет, я люблю играть в футбол и делать игры.": "ru148",
+    "Привет! Я люблю футбол.": "ru149",
+    "Верно или нет?": "ru150",
+    "Привет, мир!": "ru151",
+    "Здесь нужны только слова, без угловых скобок.": "ru152",
+    "Молодец!": "ru153",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru154",
+  },
+  en: {
+    "Hi! Last time we made the club form. But the answers came in all over the place. One person wrote Minecraft, another wrote mainkraft, a third wrote it in capitals. A long story about yourself didn’t fit on one line. And there’s no button to send the form at all. Let’s fix this. Tap Transform.": "en001",
+    "Whoa, look! Now you don’t type the game, you pick it from a list. And a big field appeared for writing about yourself.": "en002",
+    "And a button appeared at the bottom. Tap it to send the form.": "en003",
+    "Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form. But first, a little riddle. On another page I made a list of games: I opened the select tag and simply wrote Minecraft, Football, Chess inside it. I think the list will now have three games. So what do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Let’s make the list of games together. After the game caption we add a new tag.": "en005",
+    "This is the select tag. select is an English word for choosing. It makes a drop-down list with a small arrow on the right. But right now the list is empty, because there are no choices inside it yet.": "en006",
+    "Each choice goes in an option tag. option means a choice. Three games, three options. Look, the first choice shows up in the field by itself.": "en007",
+    "Tap the list and it opens, showing all the choices. We picked Football, so now the field shows Football. Now everyone writes the game name the same way, with no typos.": "en008",
+    "Remember: select makes the list, and each option inside it is one choice. Both have a closing tag.": "en009",
+    "Now it’s your turn. The list has only two games, and Chess is missing. Look at the code: in the Chess line the opening tag has no name. That’s why the browser didn’t add it to the list. Type the tag name and tap Check.": "en010",
+    "Type the tag name between the brackets.": "en011",
+    "The brackets are already there. Only the tag name goes here.": "en012",
+    "li is for ordinary ul and ol lists. Inside select you need a different tag.": "en013",
+    "That tag does something else. You need the tag for one choice in the list.": "en014",
+    "There’s no such tag, so Chess didn’t make it into the list. Type the name letter by letter.": "en015",
+    "What tag is in the other two lines?": "en016",
+    "Look at the closing tag: the name is written there.": "en017",
+    "The tag name is option. Type it between the brackets.": "en018",
+    "Awesome! Chess is in the list. Now there are three games.": "en019",
+    "The list is open. One option line lights up in the code. Tap the choice in the list that this line shows.": "en020",
+    "Which choice does the lit line show?": "en021",
+    "Now I swapped the lines. Look, the order in the list changed too. Which choice does the lit line show?": "en022",
+    "The last one. I added a new line. Where did it show up in the list?": "en023",
+    "Right! This option line shows the Football choice.": "en024",
+    "Right! The choices are in the same order as the code lines.": "en025",
+    "Right! The last option is at the end of the list.": "en026",
+    "That’s a different choice. The choices in the list follow the order of the code lines: which position is the lit line in?": "en027",
+    "First find the lit line in the code, then look at the open list.": "en028",
+    "Each option line is one choice in the list. Whatever word is inside option, that word shows up in the list.": "en029",
+    "Well done! Now you know which choice each option line shows.": "en030",
+    "Now let’s look at the About you field. People usually write several sentences here.": "en031",
+    "Right now it’s an ordinary input. It’s one line, so the long sentence didn’t fit: the end is hidden. It’s hard to read and to check.": "en032",
+    "Now we put textarea instead of input. textarea means a text area. Look, the field got bigger and the sentence moved onto the next line. You can drag the little corner to make the field even bigger.": "en033",
+    "Note: unlike input, textarea has a closing tag. And the text between the tags appears inside the field right away. Look, the greeting is already inside.": "en034",
+    "So textarea makes a big field for several lines, and it always has a closing tag.": "en035",
+    "Now build the big field yourself. The code has four empty spots: the start of the tag, the grey hint, the bracket and the closing tag. And one piece isn’t needed.": "en036",
+    "The type attribute is for input. textarea is always a big text field, so it doesn’t need type.": "en037",
+    "A tag always starts with a bracket and its name. Put the start of textarea first.": "en038",
+    "After the tag name comes the attribute: the grey hint.": "en039",
+    "After the attribute, the opening tag ends with a bracket.": "en040",
+    "At the end comes the closing tag. textarea must have it.": "en041",
+    "What does a tag start with?": "en042",
+    "First the start of textarea, then placeholder.": "en043",
+    "The order is: the start of textarea, placeholder, the bracket and the closing tag. No type.": "en044",
+    "Great! The big field is ready, with a grey hint inside. And you were right to leave the extra piece.": "en045",
+    "Today we met three new tags: select, option and textarea. Match each tag with the thing it shows on the page. Tap a tag first, then the thing.": "en046",
+    "Right! select makes the list.": "en047",
+    "Right! option is one choice in the list.": "en048",
+    "Right! textarea makes a big field.": "en049",
+    "select makes the whole list: a field with an arrow.": "en050",
+    "option is one line inside the list.": "en051",
+    "textarea is a field for several lines.": "en052",
+    "Look at each thing: is it a list or a field?": "en053",
+    "The field with an arrow is the whole list: select.": "en054",
+    "The field with an arrow is select, one choice is option, and the big field is textarea.": "en055",
+    "Brilliant! You can tell all three tags apart at a glance.": "en056",
+    "Tap a tag first.": "en057",
+    "The form is almost ready; it only needs a button to send it. Let’s add a button inside form.": "en058",
+    "This is the button tag. button means a button. The button’s label goes between the opening and closing tags: Send. Look, a grey button appeared under the form.": "en059",
+    "I tapped the button. The button is inside form, so the form was sent. But we don’t have a place that receives the answers yet, a server. So the page just opened again and the fields were cleared. On real sites the answers go to a server.": "en060",
+    "Remember: button makes a button, and a button inside form sends the form.": "en061",
+    "Oops, I forgot to close textarea! Look, the browser thought the button’s code was text inside the field too. And the button itself is gone. Type the closing tag after textarea and tap Check.": "en062",
+    "That’s the opening tag. The closing one has a slash before the name.": "en063",
+    "A tag starts with the bracket. Add it at the start.": "en064",
+    "A tag ends with the bracket. Add it at the end.": "en065",
+    "There’s a different name inside the tag. Here you need textarea.": "en066",
+    "The slash goes right after the first bracket.": "en067",
+    "Where should the field end?": "en068",
+    "The closing tag is the same name with a slash.": "en069",
+    "First a bracket, then the slash, then textarea, and another bracket at the end.": "en070",
+    "Awesome! The field is closed, and the button is back.": "en071",
+    "Now look at two states: before and after. One thing was added to the code, and the form changed. So what was added?": "en072",
+    "What was added to the code?": "en073",
+    "Right! A new option was added, so the list has one more choice.": "en074",
+    "Right! The closing textarea was added, so the button came out of the field.": "en075",
+    "Right! button was added, so a button appeared under the form.": "en076",
+    "Look: first there were fewer choices, then one more appeared. option adds a choice.": "en077",
+    "Look: first the button’s code was text inside the field, then the button appeared. The closing textarea does that.": "en078",
+    "Look: first there was no button, then it appeared. button makes a button.": "en079",
+    "Compare the Before and After cards: what changed in the form?": "en080",
+    "How many choices were in the list, and how many are there now? Remember which tag adds a choice to the list.": "en081",
+    "First the button’s code was text in the field, then the button appeared. Remember which tag ends the field.": "en082",
+    "First there was nothing under the form, then a button appeared. Remember which tag makes a button.": "en083",
+    "So choose the button with the option tag.": "en084",
+    "So choose the button with the closing textarea tag.": "en085",
+    "So choose the button with the button tag.": "en086",
+    "Now you can tell from the code why the form looks the way it does. Next, let’s read the whole form together.": "en087",
+    "Here’s the whole form, all done. Let’s see how the browser reads it: as always, from top to bottom.": "en088",
+    "First the game caption and the drop-down list. This is where you pick the game.": "en089",
+    "Then the About you caption and the big field. This is where you write a few sentences.": "en090",
+    "And at the very end, the button. Everything is inside form, so the button sends the whole form.": "en091",
+    "Now make your own form. The code already has form, a big field and a button; only the button’s label is missing. What should it say? Type it between the button tags. Then tap Done.": "en092",
+    "Great button! Now let’s add your own choice to the list.": "en093",
+    "What happens when someone taps the button? Write that.": "en094",
+    "Type only words: the tags are in place.": "en095",
+    "For example: Sign up. Then tap Done.": "en096",
+    "Now add your own choice to the list. What game do you like? Type it into the new option and see how it shows up in the list. Then tap Done.": "en097",
+    "Great! Your choice is in the list. Now anyone who opens your form can pick it.": "en098",
+    "What’s your favorite game? Write that.": "en099",
+    "Type only words: the option tags are in place.": "en100",
+    "For example: Volleyball. Then tap Done.": "en101",
+    "I wanted to add Basketball to your list and just wrote it inside select. But look, it’s not in the list! Drag the right line into the empty spot.": "en102",
+    "li is for ordinary ul and ol lists. It doesn’t work inside select.": "en103",
+    "P makes a paragraph. It won’t add a choice to a drop-down list.": "en104",
+    "Look at the browser: did Basketball make it into the list? What is it missing in the code?": "en105",
+    "Only one tag can add a choice to a drop-down list. Look at the lines above: which tag are the games in?": "en106",
+    "Drag the piece with the option tag into the empty spot, just like the lines above.": "en107",
+    "That’s it! Basketball is in the list.": "en108",
+    "Now check yourself. Here’s the club form, but it has a bug. Look at the browser: what looks wrong? Find the line with the bug and tap it.": "en109",
+    "Great, the first bug is found! Now one game is missing from the list. What’s broken here?": "en110",
+    "This line is fine. Look at the browser: what’s out of place?": "en111",
+    "Found it! textarea wasn’t closed. That’s why the button’s code ended up as text inside the field.": "en112",
+    "Found it! A letter was missing from the word option. The browser doesn’t know that tag, so Football didn’t make it into the list.": "en113",
+    "Look at the browser: where’s the button?": "en114",
+    "The button’s code is inside the field. Which tag isn’t closed?": "en115",
+    "Look at the textarea line: is there a closing tag?": "en116",
+    "Look at the browser: which game is missing from the list?": "en117",
+    "Look at the Football line and read the tag name letter by letter.": "en118",
+    "Look at the second line: is option spelled in full?": "en119",
+    "Super! Both bugs are found. You check forms like a real programmer.": "en120",
+    "The last test. I’ll say something, and you choose: true or false.": "en121",
+    "Read the sentence piece by piece: which tag is it about? Look at the code below too.": "en122",
+    "Remember: inside select, every choice sits in an option tag. And textarea and button are written with a closing tag. Does the sentence match that?": "en123",
+    "Exactly!": "en124",
+    "textarea is written with a closing tag.": "en125",
+    "Without the closing tag, the code after it turns into text inside the field.": "en126",
+    "Like input, button has no closing tag.": "en127",
+    "button has a closing tag: the button’s label goes between the tags.": "en128",
+    "A word inside select without an option tag still shows up in the list.": "en129",
+    "Without option the browser won’t add the word to the list. Each choice must be inside option.": "en130",
+    "All correct! You know the list, the big field and the button really well.": "en131",
+    "Back to our riddle. Remember, I just wrote the game names inside select? Sadly, I was wrong. Without the option tag the browser doesn’t add words to the list, so the list stayed completely empty. So every choice has to go inside option.": "en132",
+    "Look, this is your form! It has your choice and your button.": "en133",
+    "select makes a drop-down list.": "en134",
+    "option is one choice in the list.": "en135",
+    "textarea makes a big field for several lines.": "en136",
+    "And button makes a button that sends the form when it’s inside form.": "en137",
+    "Hooray! Now your page can ask questions, offer choices and send a form. Next time we’ll see what parts real websites are made of. See you!": "en138",
+    "Wow, awesome!": "en139",
+    "Yes! You did it!": "en140",
+    "Super!": "en141",
+    "Brilliant!": "en142",
+    "Hooray!": "en143",
+    "Amazing!": "en144",
+    "Try once more.": "en145",
+    "Take a closer look.": "en146",
+    "You are close. No rush.": "en147",
+    "I’m 12, and I love playing football and making games.": "en148",
+    "Hi! I love football.": "en149",
+    "True or false?": "en150",
+    "Hello, world!": "en151",
+    "Only words here, no angle brackets.": "en152",
+    "Well done!": "en153",
+    "Everything in the window lives inside body.": "en154",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

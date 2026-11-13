@@ -36,12 +36,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -53,6 +50,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -934,643 +932,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3768,6 +3317,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3805,8 +3355,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3875,7 +3425,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3889,6 +3439,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3903,7 +3454,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8042,15 +7593,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13857,3 +13401,531 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 85, ru 85, en 85; всего знаков 29305. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening kinoteatrimning sayti. Qarang: sarlavha ramkada turibdi, matn chetga yopishmagan, bloklar esa bir-biridan uzoqda. Bularning hammasini CSS qilgan. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Bo'shliqlar va ramkalar o'chib ketibdi. Ramka yo'qoldi, matn chetga yopishib qoldi, bloklar esa bir-biriga tegay deb turibdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ranglar joyida, faqat qutilar buzildi. O'tgan darsda har bir element quti ekanini bilib oldik: padding, border, margin va box-sizing. Endi beshta sahifani birma-bir tuzatamiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi sahifa: afisha. Qarang, filmlarning nomlari sariq qutining chetiga yopishib qolibdi. Qoidada ichki bo'shliq bor-yo'g'i ikki piksel. Uni o'n ikki piksel qiling: qoidadagi sonni almashtiring.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Matn endi chetga yopishmaydi, afishani o'qish oson.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidaga qarang: padding qutining ichida joy beradi. Uning qiymati qancha?", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkini o'chirib, o'n ikki yozing. px qolsin: usiz brauzer qiymatni tashlab yuboradi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u sarlavhaga o'n piksel ichki bo'shliq beradi. Xuddi shunday yozing, faqat o'n ikki bilan.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Afisha tayyor! Endi chiptalar. Qarang: tepada ko'k chizg'ich, u roppa-rosa ikki yuz piksel. Chiptaning width qiymati ham ikki yuz, lekin u chizg'ichdan kengroq chiqdi. Chunki padding va ramka kenglikka qo'shiladi. Chiptani chizg'ichdek qiling: qoidaga xususiyat va qiymatni yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Chipta chizg'ich bilan roppa-rosa bir xil. Ichkaridagi joy esa o'zi torroq bo'ldi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Darsda qaysi xususiyat qutini width qiymatidagi kenglikda ushlab turardi? Ramka va padding bilan birga.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu box-sizing, qiymati esa border-box. Ikki nuqta va nuqtali vergulni unutmang.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u boshqa qutining kengligini ushlab turadi. Chipta uchun ham xuddi shunday yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chipta chizg'ichdek bo'ldi, lekin boshqacha yo'l bilan. Ramka va padding qolsin, kenglikni esa box-sizing ushlab tursin.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiptalar tayyor! Uchinchi sahifa: tomoshabinlarning fikrlari. Har bir fikr chiziqchalardan iborat ramkada tursa, chiroyli bo'lardi-ya? Bu yerda kod umuman yo'q, qoidani boshidan oxirigacha o'zingiz yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Har bir fikr endi chiroyli ramkada.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida uch qismdan iborat: nimani bezaymiz, qaysi xususiyat va qanday qiymat. Ramka qiymati ham uch qismli: qalinlik, chiziq turi va rang.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor P, xususiyat border. Chiziqchalar dashed deyiladi: masalan, ikki piksel, dashed va gray.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u sarlavhani nuqtali ramkaga oladi. Xuddi shunday qoida yozing, faqat P uchun va dashed bilan.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: bufet menyusi. Men menyuni ramkaga olib, taomlarni bir-biridan uzoqlashtirmoqchi edim. Lekin ramka chiqmadi. Taomlar semirib ketdi, oralig'i esa o'zgarmadi. Kodda ikkita joy buzilgan, ikkalasini toping va tuzating.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu ish! Menyu ramkada, taomlar esa bir-biridan uzoqda.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ramka qiymatida uchala qism bormi? Taomlarni uzoqlashtirish uchun qaysi bo'shliq kerak: ichkimi yoki tashqi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] border qiymatida chiziq turi yo'q, masalan solid. Taomlarni esa padding emas, margin uzoqlashtiradi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: ishlaydigan ramka va tashqi bo'shliq. Xuddi shunday tuzating va Tekshirishni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z kinoteatringizning e'lonini bezang. Matnga ichki bo'shliq, atrofiga ramka va tashqi bo'shliq bering. Qiymatlarni o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Kinoteatringiz e'loni tayyor, u chiroyli qutida!", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bitta xususiyatdan boshlang, masalan ichki bo'shliqdan. Keyin ramka va tashqi bo'shliqni qo'shing.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] P uchun padding, border va margin kerak. Ramkada chiziq turini unutmang.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: boshqa qiymatlar bilan. O'zingizga yoqqan qiymatlarni tanlang.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kinoteatrning beshta sahifasi ham tayyor! Har bir element chiroyli qutiga aylandi, bularning hammasini sizning CSS kodingiz qildi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] padding ichki bo'shliq: matn chetdan uzoqlashadi, fon esa kattalashadi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] border uchun uchta qism kerak: qalinlik, chiziq turi va rang. Turi bo'lmasa, ramka chizilmaydi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] margin tashqi bo'shliq: u qo'shnilarni nari suradi, fon esa o'zgarmaydi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] box-sizing border-box esa qutini width qiymatidagi kenglikda ushlab turadi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyingi darsda kartochkalarni yanada chiroyli qilamiz: burchaklarni yumaloqlaymiz va soya beramiz. Ko'rishguncha!", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. CSS kodini shu yerga yozing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichki bo'shliq boshqa. Bizga o'n ikki piksel kerak.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Butun quti siljidi, matn esa hamon chetda. Ichkarida joyni margin emas, padding beradi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichki bo'shliq hali boshqa. Bizga yigirma piksel kerak.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chipta hali chizg'ichdan keng. padding va ramka kenglikka qo'shilyapti: buni box-sizing to'xtatadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] VIP chipta hali chizg'ichdan keng. Unga ham box-sizing border-box kerak.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fikrlar atrofida hali ramka yo'q. Ramkani border chizadi: qalinlik, chiziq turi va rang.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramka ko'rinmayapti: unda chiziq turi yo'q. Chiziqchalar dashed deyiladi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramka bor, lekin chiziqchalardan emas. Chiziqchalar dashed deyiladi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha atrofida hali yaxlit ramka yo'q. Yaxlit chiziq solid deyiladi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Menyu atrofida hali ramka yo'q: border qiymatida chiziq turi yetishmayapti. Masalan, solid.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyu atrofida ramka yo'q: border yozing, unda qalinlik, chiziq turi va rang bo'lsin.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramka chiqdi! Lekin taomlar hali semiz: padding ichkarida joy beradi. Qo'shnilarni margin uzoqlashtiradi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Taomlar ozg'inlashdi, lekin hali bir-biriga yaqin. Ularni margin bilan uzoqlashtiring, masalan yigirma piksel.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Taomlarda ichki bo'shliq hali yo'q. Son yonida px bo'lishi kerak.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichki bo'shliq yo'q: P uchun padding yozing.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramka yo'q: border yozing, unda qalinlik, chiziq turi va rang bo'lsin.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramka ko'rinmayapti: unda chiziq turi yo'q. Masalan, solid yoki dashed qo'shing.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tashqi bo'shliq yo'q: margin yozing.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda qiziq multfilm!", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Robot menga yoqdi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun sevimli multfilmim! Chiptalar bepul.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего кинотеатра. Смотри: заголовок в рамке, текст не прилипает к краям, а блоки стоят на расстоянии друг от друга. Всё это сделал CSS. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! Отступы и рамки стёрлись. Рамка пропала, текст прилип к краю, а блоки почти касаются друг друга.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвета на месте, сломались только коробки. На прошлом уроке мы узнали, что каждый элемент, коробка: padding, border, margin и box-sizing. Теперь починим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая страница: афиша. Смотри, названия фильмов прилипли к краю жёлтой коробки. В правиле внутренний отступ всего два пикселя. Сделай его двенадцать пикселей: замени в правиле число.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Текст больше не прилипает к краю, афишу легко читать.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на правило: padding даёт место внутри коробки. Какое у него значение?", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри два и напиши двенадцать. px оставь: без него браузер выбросит значение.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом даёт заголовку внутренний отступ десять пикселей. Напиши так же, только двенадцать.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Афиша готова! Теперь билеты. Смотри: сверху синяя линейка, она ровно двести пикселей. У билета width тоже двести, но он вышел шире линейки. Потому что padding и рамка прибавляются к ширине. Сделай билет как линейка: впиши в правило свойство и значение.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Билет ровно с линейку. А место внутри само стало уже.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство на уроке держало коробку той ширины, что написана в width, вместе с рамкой и padding?", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это box-sizing, а значение, border-box. Не забудь двоеточие и точку с запятой.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом держит ширину другой коробки. Напиши так же для билета.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Билет стал с линейку, но другим путём. Пусть рамка и padding остаются, а ширину держит box-sizing.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Билеты готовы! Третья страница: отзывы зрителей. Вот бы каждый отзыв был в рамке из чёрточек, правда, красиво? Здесь кода нет совсем, напиши правило целиком.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Каждый отзыв теперь в красивой рамке.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило, три части: что оформляем, какое свойство и какое значение. У значения рамки тоже три части: толщина, вид линии и цвет.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор P, свойство border. Чёрточки называются dashed: например, два пикселя, dashed и gray.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом обводит заголовок рамкой из точек. Напиши такое же правило, только для P и с dashed.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: меню буфета. Я хотел обвести меню рамкой и раздвинуть пункты. Но рамка не появилась. Пункты растолстели, а расстояние между ними не изменилось. В коде две поломки, найди и почини обе.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Меню в рамке, а пункты стоят на расстоянии.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В значении рамки есть все три части? А чтобы раздвинуть пункты, какой нужен отступ: внутренний или внешний?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В border нет вида линии, например solid. А раздвигает пункты margin, а не padding.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, рабочая рамка и внешний отступ. Почини так же и нажми Проверить.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре страницы горят! Последняя, твоя: оформи объявление своего кинотеатра. Дай тексту внутренний отступ, рамку и внешний отступ. Значения выбирай любые. Под окном видно, что уже готово.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Объявление твоего кинотеатра готово, и оно в красивой коробке!", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начни с одного свойства, например с внутреннего отступа. Потом добавь рамку и внешний отступ.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для P нужны padding, border и margin. В рамке не забудь вид линии.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, с другими значениями. Выбери свои.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять страниц кинотеатра готовы! Каждый элемент стал аккуратной коробкой, и всё это сделал твой CSS.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] padding, внутренний отступ: текст отходит от края, а фон растёт.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для border нужны три части: толщина, вид линии и цвет. Без вида линии рамки нет.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] margin, внешний отступ: он отодвигает соседей, а фон не меняется.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А box-sizing border-box держит коробку той ширины, что написана в width.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] На следующем уроке сделаем карточки ещё красивее: скруглим углы и добавим тень. До встречи!", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши CSS-код здесь.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужна открывающая фигурная скобка: она стоит после селектора.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило не закрыто: в конце поставь закрывающую фигурную скобку.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед скобкой нет селектора: напиши, что оформляем.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто: впиши нужное в рамку.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только значение: имя свойства уже стоит слева.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только селектор: скобки и остальной код уже на месте.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только свойство и значение: селектор и скобки уже на месте.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код работает, но страница пока не такая, как нужно. Перечитай задание.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутренний отступ другой. Нужно двенадцать пикселей.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сдвинулась вся коробка, а текст всё так же у края. Место внутри даёт padding, а не margin.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутренний отступ пока другой. Нужно двадцать пикселей.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Билет всё ещё шире линейки. padding и рамка прибавляются к ширине: это меняет box-sizing.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] VIP-билет пока шире линейки. Ему тоже нужен box-sizing border-box.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вокруг отзывов пока нет рамки. Рамку рисует border: толщина, вид линии и цвет.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рамки не видно: у неё нет вида линии. Чёрточки, это dashed.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рамка есть, но не из чёрточек. Чёрточки, это dashed.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вокруг заголовка пока нет сплошной рамки. Сплошная линия, это solid.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Рамки вокруг меню пока нет: в border не хватает вида линии. Например, solid.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вокруг меню нет рамки: напиши border с толщиной, видом линии и цветом.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рамка появилась! Но пункты всё ещё толстые: padding даёт место внутри. Раздвигает соседей margin.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пункты похудели, но всё ещё близко друг к другу. Раздвинь их margin, например двадцать пикселей.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутреннего отступа у пунктов пока нет. Рядом с числом нужен px.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет внутреннего отступа: напиши для P свойство padding.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет рамки: напиши border с толщиной, видом линии и цветом.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рамки не видно: у неё нет вида линии. Добавь, например, solid или dashed.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет внешнего отступа: напиши margin.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень интересный мультфильм!", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мне понравился робот.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня мой любимый мультфильм! Билеты бесплатно.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my cinema’s website. Look: the heading has a frame, the text doesn’t stick to the edges, and the blocks stand apart. CSS did all of that. The site has five pages. I’m about to update it, tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The spacing and borders got erased. The frame is gone, the text is stuck to the edge, and the blocks almost touch.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The colors are fine, only the boxes broke. Last lesson we learned that every element is a box: padding, border, margin and box-sizing. Now let’s fix the five pages one by one, and you’ll write the code. The fifth page will be yours.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first page is the showtimes. Look, the movie titles are stuck to the edge of the yellow box. The rule’s inner space is only two pixels. Make it twelve pixels: change the number in the rule.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The text doesn’t stick to the edge anymore, the showtimes are easy to read.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the rule: padding gives room inside the box. What’s its value?", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Erase two and write twelve. Keep px: without it the browser throws the value away.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code gives the heading ten pixels of inner space. Write the same, only with twelve.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The showtimes are done! Now the tickets. Look: there’s a blue ruler on top, exactly two hundred pixels. The ticket’s width is also two hundred, but it came out wider than the ruler. That’s because padding and the border are added to the width. Make the ticket as wide as the ruler: write a property and a value inside the rule.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The ticket is exactly as wide as the ruler. And the room inside got narrower by itself.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property in the lesson kept the box at the width written in width, frame and padding included?", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s box-sizing, and the value is border-box. Don’t forget the colon and the semicolon.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code keeps another box’s width. Write the same for the ticket.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The ticket matches the ruler, but in a different way. Keep the border and padding, and let box-sizing hold the width.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The tickets are done! The third page is the viewers’ reviews. Wouldn’t it look nice if each review had a frame made of dashes? There’s no code here at all, write the whole rule yourself.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! Every review now has a nice frame.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A rule has three parts: what we style, which property and which value. A border’s value has three parts too: thickness, line type and color.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is P, the property border. Dashes are called dashed: for example, two pixels, dashed and gray.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code puts a dotted frame around the heading. Write the same rule, only for P and with dashed.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is the snack bar menu. I wanted to put a frame around the menu and move the items apart. But the frame didn’t show up. The items got fat, and the gap between them didn’t change. The code has two broken spots, find and fix both.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! The menu has a frame, and the items stand apart.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does the border’s value have all three parts? And to move the items apart, which space do you need: inner or outer?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] border has no line type, like solid. And margin moves the items apart, not padding.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has a working border and outer space. Fix yours the same way and tap Check.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four pages are lit! The last one is yours: style your own cinema’s announcement. Give the text inner space, a frame and outer space. Pick the values yourself. Under the window you can see what’s done.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your cinema’s announcement is ready, in a nice box!", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Start with one property, for example the inner space. Then add the frame and the outer space.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For P you need padding, border and margin. Don’t forget the line type in the border.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code uses other values. Pick your own.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five cinema pages are ready! Every element became a neat box, and your own CSS did all of it.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] padding is the inner space: the text moves away from the edge, and the background grows.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] border needs three parts: thickness, line type and color. Without a line type there’s no frame.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] margin is the outer space: it pushes the neighbours away, and the background stays the same.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And box-sizing border-box keeps the box the width written in width.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Next lesson we’ll make cards even prettier: round the corners and add a shadow. See you!", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the CSS code here.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs an opening curly brace: it goes after the selector.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule isn’t closed: put a closing curly brace at the end.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an extra closing brace. Each opening brace gets one closing brace.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no selector before the brace: write what we’re styling.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no semicolon between two properties. Put one after every value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far: type what’s needed into the box.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the value goes in the box: the property name is already on the left.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the selector goes in the box: the braces and the rest are already there.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the property and value go in the box: the selector and braces are already there.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code works, but the page isn’t quite right yet. Read the task again.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The inner space is different. We need twelve pixels.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The whole box moved, but the text is still at the edge. padding gives room inside, not margin.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The inner space is still different. We need twenty pixels.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The ticket is still wider than the ruler. padding and the border are added to the width: box-sizing changes that.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The VIP ticket is still wider than the ruler. It needs box-sizing border-box too.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no frame around the reviews yet. border draws it: thickness, line type and color.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The frame doesn’t show: it has no line type. Dashes are dashed.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a frame, but it isn’t made of dashes. Dashes are dashed.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no solid frame around the heading yet. A solid line is solid.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] There’s no frame around the menu yet: border is missing a line type. For example, solid.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no frame around the menu: write border with a thickness, a line type and a color.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The frame is there! But the items are still fat: padding gives room inside. margin pushes the neighbours away.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The items slimmed down, but they’re still close together. Move them apart with margin, for example twenty pixels.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The items have no inner space yet. A number needs px next to it.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no inner space: write padding for P.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no frame: write border with a thickness, a line type and a color.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The frame doesn’t show: it has no line type. Add solid or dashed, for example.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no outer space: write margin.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A really fun cartoon!", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I liked the robot.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today it’s my favorite cartoon! Tickets are free.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening kinoteatrimning sayti. Qarang: sarlavha ramkada turibdi, matn chetga yopishmagan, bloklar esa bir-biridan uzoqda. Bularning hammasini CSS qilgan. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.": "uz001",
+    "Voy! Bo'shliqlar va ramkalar o'chib ketibdi. Ramka yo'qoldi, matn chetga yopishib qoldi, bloklar esa bir-biriga tegay deb turibdi.": "uz002",
+    "Ranglar joyida, faqat qutilar buzildi. O'tgan darsda har bir element quti ekanini bilib oldik: padding, border, margin va box-sizing. Endi beshta sahifani birma-bir tuzatamiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.": "uz003",
+    "Birinchi sahifa: afisha. Qarang, filmlarning nomlari sariq qutining chetiga yopishib qolibdi. Qoidada ichki bo'shliq bor-yo'g'i ikki piksel. Uni o'n ikki piksel qiling: qoidadagi sonni almashtiring.": "uz004",
+    "Ajoyib! Matn endi chetga yopishmaydi, afishani o'qish oson.": "uz005",
+    "Qoidaga qarang: padding qutining ichida joy beradi. Uning qiymati qancha?": "uz006",
+    "Ikkini o'chirib, o'n ikki yozing. px qolsin: usiz brauzer qiymatni tashlab yuboradi.": "uz007",
+    "Namuna kod ostida: u sarlavhaga o'n piksel ichki bo'shliq beradi. Xuddi shunday yozing, faqat o'n ikki bilan.": "uz008",
+    "Afisha tayyor! Endi chiptalar. Qarang: tepada ko'k chizg'ich, u roppa-rosa ikki yuz piksel. Chiptaning width qiymati ham ikki yuz, lekin u chizg'ichdan kengroq chiqdi. Chunki padding va ramka kenglikka qo'shiladi. Chiptani chizg'ichdek qiling: qoidaga xususiyat va qiymatni yozing.": "uz009",
+    "Zo'r! Chipta chizg'ich bilan roppa-rosa bir xil. Ichkaridagi joy esa o'zi torroq bo'ldi.": "uz010",
+    "Darsda qaysi xususiyat qutini width qiymatidagi kenglikda ushlab turardi? Ramka va padding bilan birga.": "uz011",
+    "Bu box-sizing, qiymati esa border-box. Ikki nuqta va nuqtali vergulni unutmang.": "uz012",
+    "Namuna kod ostida: u boshqa qutining kengligini ushlab turadi. Chipta uchun ham xuddi shunday yozing.": "uz013",
+    "Chipta chizg'ichdek bo'ldi, lekin boshqacha yo'l bilan. Ramka va padding qolsin, kenglikni esa box-sizing ushlab tursin.": "uz014",
+    "Chiptalar tayyor! Uchinchi sahifa: tomoshabinlarning fikrlari. Har bir fikr chiziqchalardan iborat ramkada tursa, chiroyli bo'lardi-ya? Bu yerda kod umuman yo'q, qoidani boshidan oxirigacha o'zingiz yozing.": "uz015",
+    "Qoyil! Har bir fikr endi chiroyli ramkada.": "uz016",
+    "Qoida uch qismdan iborat: nimani bezaymiz, qaysi xususiyat va qanday qiymat. Ramka qiymati ham uch qismli: qalinlik, chiziq turi va rang.": "uz017",
+    "Selektor P, xususiyat border. Chiziqchalar dashed deyiladi: masalan, ikki piksel, dashed va gray.": "uz018",
+    "Namuna kod ostida: u sarlavhani nuqtali ramkaga oladi. Xuddi shunday qoida yozing, faqat P uchun va dashed bilan.": "uz019",
+    "Uchta sahifa tayyor! To'rtinchisi: bufet menyusi. Men menyuni ramkaga olib, taomlarni bir-biridan uzoqlashtirmoqchi edim. Lekin ramka chiqmadi. Taomlar semirib ketdi, oralig'i esa o'zgarmadi. Kodda ikkita joy buzilgan, ikkalasini toping va tuzating.": "uz020",
+    "Mana bu ish! Menyu ramkada, taomlar esa bir-biridan uzoqda.": "uz021",
+    "Ramka qiymatida uchala qism bormi? Taomlarni uzoqlashtirish uchun qaysi bo'shliq kerak: ichkimi yoki tashqi?": "uz022",
+    "border qiymatida chiziq turi yo'q, masalan solid. Taomlarni esa padding emas, margin uzoqlashtiradi.": "uz023",
+    "Namuna kod ostida: ishlaydigan ramka va tashqi bo'shliq. Xuddi shunday tuzating va Tekshirishni bosing.": "uz024",
+    "To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z kinoteatringizning e'lonini bezang. Matnga ichki bo'shliq, atrofiga ramka va tashqi bo'shliq bering. Qiymatlarni o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.": "uz025",
+    "Ura! Kinoteatringiz e'loni tayyor, u chiroyli qutida!": "uz026",
+    "Bitta xususiyatdan boshlang, masalan ichki bo'shliqdan. Keyin ramka va tashqi bo'shliqni qo'shing.": "uz027",
+    "P uchun padding, border va margin kerak. Ramkada chiziq turini unutmang.": "uz028",
+    "Namuna kod ostida: boshqa qiymatlar bilan. O'zingizga yoqqan qiymatlarni tanlang.": "uz029",
+    "Kinoteatrning beshta sahifasi ham tayyor! Har bir element chiroyli qutiga aylandi, bularning hammasini sizning CSS kodingiz qildi.": "uz030",
+    "padding ichki bo'shliq: matn chetdan uzoqlashadi, fon esa kattalashadi.": "uz031",
+    "border uchun uchta qism kerak: qalinlik, chiziq turi va rang. Turi bo'lmasa, ramka chizilmaydi.": "uz032",
+    "margin tashqi bo'shliq: u qo'shnilarni nari suradi, fon esa o'zgarmaydi.": "uz033",
+    "box-sizing border-box esa qutini width qiymatidagi kenglikda ushlab turadi.": "uz034",
+    "Keyingi darsda kartochkalarni yanada chiroyli qilamiz: burchaklarni yumaloqlaymiz va soya beramiz. Ko'rishguncha!": "uz035",
+    "Hozircha bo'sh. CSS kodini shu yerga yozing.": "uz036",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz037",
+    "Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.": "uz038",
+    "Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.": "uz039",
+    "Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.": "uz040",
+    "Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.": "uz041",
+    "Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz042",
+    "Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.": "uz043",
+    "Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.": "uz044",
+    "Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.": "uz045",
+    "Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.": "uz046",
+    "Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.": "uz047",
+    "Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.": "uz048",
+    "Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.": "uz049",
+    "Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.": "uz050",
+    "Voy, zo‘r!": "uz051",
+    "Ana! Chiqdi!": "uz052",
+    "Super!": "uz053",
+    "Qoyil!": "uz054",
+    "Ura!": "uz055",
+    "Zo‘r-ku!": "uz056",
+    "Yana bir bor urinib ko‘ring.": "uz057",
+    "Diqqat bilan qarang.": "uz058",
+    "Yaqin qoldingiz. Shoshilmang.": "uz059",
+    "Ichki bo'shliq boshqa. Bizga o'n ikki piksel kerak.": "uz060",
+    "Butun quti siljidi, matn esa hamon chetda. Ichkarida joyni margin emas, padding beradi.": "uz061",
+    "Ichki bo'shliq hali boshqa. Bizga yigirma piksel kerak.": "uz062",
+    "Chipta hali chizg'ichdan keng. padding va ramka kenglikka qo'shilyapti: buni box-sizing to'xtatadi.": "uz063",
+    "VIP chipta hali chizg'ichdan keng. Unga ham box-sizing border-box kerak.": "uz064",
+    "Fikrlar atrofida hali ramka yo'q. Ramkani border chizadi: qalinlik, chiziq turi va rang.": "uz065",
+    "Ramka ko'rinmayapti: unda chiziq turi yo'q. Chiziqchalar dashed deyiladi.": "uz066",
+    "Ramka bor, lekin chiziqchalardan emas. Chiziqchalar dashed deyiladi.": "uz067",
+    "Sarlavha atrofida hali yaxlit ramka yo'q. Yaxlit chiziq solid deyiladi.": "uz068",
+    "Menyu atrofida hali ramka yo'q: border qiymatida chiziq turi yetishmayapti. Masalan, solid.": "uz069",
+    "Menyu atrofida ramka yo'q: border yozing, unda qalinlik, chiziq turi va rang bo'lsin.": "uz070",
+    "Ramka chiqdi! Lekin taomlar hali semiz: padding ichkarida joy beradi. Qo'shnilarni margin uzoqlashtiradi.": "uz071",
+    "Taomlar ozg'inlashdi, lekin hali bir-biriga yaqin. Ularni margin bilan uzoqlashtiring, masalan yigirma piksel.": "uz072",
+    "Taomlarda ichki bo'shliq hali yo'q. Son yonida px bo'lishi kerak.": "uz073",
+    "Ichki bo'shliq yo'q: P uchun padding yozing.": "uz074",
+    "Ramka yo'q: border yozing, unda qalinlik, chiziq turi va rang bo'lsin.": "uz075",
+    "Ramka ko'rinmayapti: unda chiziq turi yo'q. Masalan, solid yoki dashed qo'shing.": "uz076",
+    "Tashqi bo'shliq yo'q: margin yozing.": "uz077",
+    "Salom!": "uz078",
+    "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz079",
+    "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz080",
+    "Juda qiziq multfilm!": "uz081",
+    "Robot menga yoqdi.": "uz082",
+    "Bugun sevimli multfilmim! Chiptalar bepul.": "uz083",
+    "Barakalla!": "uz084",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz085",
+  },
+  ru: {
+    "Привет! Это сайт моего кинотеатра. Смотри: заголовок в рамке, текст не прилипает к краям, а блоки стоят на расстоянии друг от друга. Всё это сделал CSS. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
+    "Ой! Отступы и рамки стёрлись. Рамка пропала, текст прилип к краю, а блоки почти касаются друг друга.": "ru002",
+    "Цвета на месте, сломались только коробки. На прошлом уроке мы узнали, что каждый элемент, коробка: padding, border, margin и box-sizing. Теперь починим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.": "ru003",
+    "Первая страница: афиша. Смотри, названия фильмов прилипли к краю жёлтой коробки. В правиле внутренний отступ всего два пикселя. Сделай его двенадцать пикселей: замени в правиле число.": "ru004",
+    "Отлично! Текст больше не прилипает к краю, афишу легко читать.": "ru005",
+    "Посмотри на правило: padding даёт место внутри коробки. Какое у него значение?": "ru006",
+    "Сотри два и напиши двенадцать. px оставь: без него браузер выбросит значение.": "ru007",
+    "Образец под кодом даёт заголовку внутренний отступ десять пикселей. Напиши так же, только двенадцать.": "ru008",
+    "Афиша готова! Теперь билеты. Смотри: сверху синяя линейка, она ровно двести пикселей. У билета width тоже двести, но он вышел шире линейки. Потому что padding и рамка прибавляются к ширине. Сделай билет как линейка: впиши в правило свойство и значение.": "ru009",
+    "Огонь! Билет ровно с линейку. А место внутри само стало уже.": "ru010",
+    "Какое свойство на уроке держало коробку той ширины, что написана в width, вместе с рамкой и padding?": "ru011",
+    "Это box-sizing, а значение, border-box. Не забудь двоеточие и точку с запятой.": "ru012",
+    "Образец под кодом держит ширину другой коробки. Напиши так же для билета.": "ru013",
+    "Билет стал с линейку, но другим путём. Пусть рамка и padding остаются, а ширину держит box-sizing.": "ru014",
+    "Билеты готовы! Третья страница: отзывы зрителей. Вот бы каждый отзыв был в рамке из чёрточек, правда, красиво? Здесь кода нет совсем, напиши правило целиком.": "ru015",
+    "Вот это да! Каждый отзыв теперь в красивой рамке.": "ru016",
+    "Правило, три части: что оформляем, какое свойство и какое значение. У значения рамки тоже три части: толщина, вид линии и цвет.": "ru017",
+    "Селектор P, свойство border. Чёрточки называются dashed: например, два пикселя, dashed и gray.": "ru018",
+    "Образец под кодом обводит заголовок рамкой из точек. Напиши такое же правило, только для P и с dashed.": "ru019",
+    "Три страницы готовы! Четвёртая: меню буфета. Я хотел обвести меню рамкой и раздвинуть пункты. Но рамка не появилась. Пункты растолстели, а расстояние между ними не изменилось. В коде две поломки, найди и почини обе.": "ru020",
+    "Вот это да! Меню в рамке, а пункты стоят на расстоянии.": "ru021",
+    "В значении рамки есть все три части? А чтобы раздвинуть пункты, какой нужен отступ: внутренний или внешний?": "ru022",
+    "В border нет вида линии, например solid. А раздвигает пункты margin, а не padding.": "ru023",
+    "Образец под кодом, рабочая рамка и внешний отступ. Почини так же и нажми Проверить.": "ru024",
+    "Четыре страницы горят! Последняя, твоя: оформи объявление своего кинотеатра. Дай тексту внутренний отступ, рамку и внешний отступ. Значения выбирай любые. Под окном видно, что уже готово.": "ru025",
+    "Ура! Объявление твоего кинотеатра готово, и оно в красивой коробке!": "ru026",
+    "Начни с одного свойства, например с внутреннего отступа. Потом добавь рамку и внешний отступ.": "ru027",
+    "Для P нужны padding, border и margin. В рамке не забудь вид линии.": "ru028",
+    "Образец под кодом, с другими значениями. Выбери свои.": "ru029",
+    "Все пять страниц кинотеатра готовы! Каждый элемент стал аккуратной коробкой, и всё это сделал твой CSS.": "ru030",
+    "padding, внутренний отступ: текст отходит от края, а фон растёт.": "ru031",
+    "Для border нужны три части: толщина, вид линии и цвет. Без вида линии рамки нет.": "ru032",
+    "margin, внешний отступ: он отодвигает соседей, а фон не меняется.": "ru033",
+    "А box-sizing border-box держит коробку той ширины, что написана в width.": "ru034",
+    "На следующем уроке сделаем карточки ещё красивее: скруглим углы и добавим тень. До встречи!": "ru035",
+    "Пока пусто. Пиши CSS-код здесь.": "ru036",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru037",
+    "Правилу нужна открывающая фигурная скобка: она стоит после селектора.": "ru038",
+    "Правило не закрыто: в конце поставь закрывающую фигурную скобку.": "ru039",
+    "Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.": "ru040",
+    "Перед скобкой нет селектора: напиши, что оформляем.": "ru041",
+    "Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.": "ru042",
+    "Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.": "ru043",
+    "Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.": "ru044",
+    "Пока пусто: впиши нужное в рамку.": "ru045",
+    "В рамку, только значение: имя свойства уже стоит слева.": "ru046",
+    "В рамку, только селектор: скобки и остальной код уже на месте.": "ru047",
+    "В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.": "ru048",
+    "В рамку, только свойство и значение: селектор и скобки уже на месте.": "ru049",
+    "Код работает, но страница пока не такая, как нужно. Перечитай задание.": "ru050",
+    "Вау, классно!": "ru051",
+    "Есть! Получилось!": "ru052",
+    "Супер!": "ru053",
+    "Огонь!": "ru054",
+    "Ура!": "ru055",
+    "Вот это да!": "ru056",
+    "Попробуй ещё раз.": "ru057",
+    "Посмотри внимательно.": "ru058",
+    "Уже близко. Не спеши.": "ru059",
+    "Внутренний отступ другой. Нужно двенадцать пикселей.": "ru060",
+    "Сдвинулась вся коробка, а текст всё так же у края. Место внутри даёт padding, а не margin.": "ru061",
+    "Внутренний отступ пока другой. Нужно двадцать пикселей.": "ru062",
+    "Билет всё ещё шире линейки. padding и рамка прибавляются к ширине: это меняет box-sizing.": "ru063",
+    "VIP-билет пока шире линейки. Ему тоже нужен box-sizing border-box.": "ru064",
+    "Вокруг отзывов пока нет рамки. Рамку рисует border: толщина, вид линии и цвет.": "ru065",
+    "Рамки не видно: у неё нет вида линии. Чёрточки, это dashed.": "ru066",
+    "Рамка есть, но не из чёрточек. Чёрточки, это dashed.": "ru067",
+    "Вокруг заголовка пока нет сплошной рамки. Сплошная линия, это solid.": "ru068",
+    "Рамки вокруг меню пока нет: в border не хватает вида линии. Например, solid.": "ru069",
+    "Вокруг меню нет рамки: напиши border с толщиной, видом линии и цветом.": "ru070",
+    "Рамка появилась! Но пункты всё ещё толстые: padding даёт место внутри. Раздвигает соседей margin.": "ru071",
+    "Пункты похудели, но всё ещё близко друг к другу. Раздвинь их margin, например двадцать пикселей.": "ru072",
+    "Внутреннего отступа у пунктов пока нет. Рядом с числом нужен px.": "ru073",
+    "Нет внутреннего отступа: напиши для P свойство padding.": "ru074",
+    "Нет рамки: напиши border с толщиной, видом линии и цветом.": "ru075",
+    "Рамки не видно: у неё нет вида линии. Добавь, например, solid или dashed.": "ru076",
+    "Нет внешнего отступа: напиши margin.": "ru077",
+    "Привет!": "ru078",
+    "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru079",
+    "Отлично, теперь это точно твоё! Идём дальше.": "ru080",
+    "Очень интересный мультфильм!": "ru081",
+    "Мне понравился робот.": "ru082",
+    "Сегодня мой любимый мультфильм! Билеты бесплатно.": "ru083",
+    "Молодец!": "ru084",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru085",
+  },
+  en: {
+    "Hi! This is my cinema’s website. Look: the heading has a frame, the text doesn’t stick to the edges, and the blocks stand apart. CSS did all of that. The site has five pages. I’m about to update it, tap Refresh.": "en001",
+    "Oh no! The spacing and borders got erased. The frame is gone, the text is stuck to the edge, and the blocks almost touch.": "en002",
+    "The colors are fine, only the boxes broke. Last lesson we learned that every element is a box: padding, border, margin and box-sizing. Now let’s fix the five pages one by one, and you’ll write the code. The fifth page will be yours.": "en003",
+    "The first page is the showtimes. Look, the movie titles are stuck to the edge of the yellow box. The rule’s inner space is only two pixels. Make it twelve pixels: change the number in the rule.": "en004",
+    "Great! The text doesn’t stick to the edge anymore, the showtimes are easy to read.": "en005",
+    "Look at the rule: padding gives room inside the box. What’s its value?": "en006",
+    "Erase two and write twelve. Keep px: without it the browser throws the value away.": "en007",
+    "The example under the code gives the heading ten pixels of inner space. Write the same, only with twelve.": "en008",
+    "The showtimes are done! Now the tickets. Look: there’s a blue ruler on top, exactly two hundred pixels. The ticket’s width is also two hundred, but it came out wider than the ruler. That’s because padding and the border are added to the width. Make the ticket as wide as the ruler: write a property and a value inside the rule.": "en009",
+    "Awesome! The ticket is exactly as wide as the ruler. And the room inside got narrower by itself.": "en010",
+    "Which property in the lesson kept the box at the width written in width, frame and padding included?": "en011",
+    "It’s box-sizing, and the value is border-box. Don’t forget the colon and the semicolon.": "en012",
+    "The example under the code keeps another box’s width. Write the same for the ticket.": "en013",
+    "The ticket matches the ruler, but in a different way. Keep the border and padding, and let box-sizing hold the width.": "en014",
+    "The tickets are done! The third page is the viewers’ reviews. Wouldn’t it look nice if each review had a frame made of dashes? There’s no code here at all, write the whole rule yourself.": "en015",
+    "Wow! Every review now has a nice frame.": "en016",
+    "A rule has three parts: what we style, which property and which value. A border’s value has three parts too: thickness, line type and color.": "en017",
+    "The selector is P, the property border. Dashes are called dashed: for example, two pixels, dashed and gray.": "en018",
+    "The example under the code puts a dotted frame around the heading. Write the same rule, only for P and with dashed.": "en019",
+    "Three pages are done! The fourth is the snack bar menu. I wanted to put a frame around the menu and move the items apart. But the frame didn’t show up. The items got fat, and the gap between them didn’t change. The code has two broken spots, find and fix both.": "en020",
+    "That’s it! The menu has a frame, and the items stand apart.": "en021",
+    "Does the border’s value have all three parts? And to move the items apart, which space do you need: inner or outer?": "en022",
+    "border has no line type, like solid. And margin moves the items apart, not padding.": "en023",
+    "The example under the code has a working border and outer space. Fix yours the same way and tap Check.": "en024",
+    "Four pages are lit! The last one is yours: style your own cinema’s announcement. Give the text inner space, a frame and outer space. Pick the values yourself. Under the window you can see what’s done.": "en025",
+    "Hooray! Your cinema’s announcement is ready, in a nice box!": "en026",
+    "Start with one property, for example the inner space. Then add the frame and the outer space.": "en027",
+    "For P you need padding, border and margin. Don’t forget the line type in the border.": "en028",
+    "The example under the code uses other values. Pick your own.": "en029",
+    "All five cinema pages are ready! Every element became a neat box, and your own CSS did all of it.": "en030",
+    "padding is the inner space: the text moves away from the edge, and the background grows.": "en031",
+    "border needs three parts: thickness, line type and color. Without a line type there’s no frame.": "en032",
+    "margin is the outer space: it pushes the neighbours away, and the background stays the same.": "en033",
+    "And box-sizing border-box keeps the box the width written in width.": "en034",
+    "Next lesson we’ll make cards even prettier: round the corners and add a shadow. See you!": "en035",
+    "It’s empty so far. Write the CSS code here.": "en036",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en037",
+    "The rule needs an opening curly brace: it goes after the selector.": "en038",
+    "The rule isn’t closed: put a closing curly brace at the end.": "en039",
+    "There’s an extra closing brace. Each opening brace gets one closing brace.": "en040",
+    "There’s no selector before the brace: write what we’re styling.": "en041",
+    "There’s no semicolon between two properties. Put one after every value.": "en042",
+    "This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.": "en043",
+    "The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.": "en044",
+    "It’s empty so far: type what’s needed into the box.": "en045",
+    "Only the value goes in the box: the property name is already on the left.": "en046",
+    "Only the selector goes in the box: the braces and the rest are already there.": "en047",
+    "There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.": "en048",
+    "Only the property and value go in the box: the selector and braces are already there.": "en049",
+    "The code works, but the page isn’t quite right yet. Read the task again.": "en050",
+    "Wow, awesome!": "en051",
+    "Yes! You did it!": "en052",
+    "Super!": "en053",
+    "Brilliant!": "en054",
+    "Hooray!": "en055",
+    "Amazing!": "en056",
+    "Try once more.": "en057",
+    "Take a closer look.": "en058",
+    "You are close. No rush.": "en059",
+    "The inner space is different. We need twelve pixels.": "en060",
+    "The whole box moved, but the text is still at the edge. padding gives room inside, not margin.": "en061",
+    "The inner space is still different. We need twenty pixels.": "en062",
+    "The ticket is still wider than the ruler. padding and the border are added to the width: box-sizing changes that.": "en063",
+    "The VIP ticket is still wider than the ruler. It needs box-sizing border-box too.": "en064",
+    "There’s no frame around the reviews yet. border draws it: thickness, line type and color.": "en065",
+    "The frame doesn’t show: it has no line type. Dashes are dashed.": "en066",
+    "There’s a frame, but it isn’t made of dashes. Dashes are dashed.": "en067",
+    "There’s no solid frame around the heading yet. A solid line is solid.": "en068",
+    "There’s no frame around the menu yet: border is missing a line type. For example, solid.": "en069",
+    "There’s no frame around the menu: write border with a thickness, a line type and a color.": "en070",
+    "The frame is there! But the items are still fat: padding gives room inside. margin pushes the neighbours away.": "en071",
+    "The items slimmed down, but they’re still close together. Move them apart with margin, for example twenty pixels.": "en072",
+    "The items have no inner space yet. A number needs px next to it.": "en073",
+    "There’s no inner space: write padding for P.": "en074",
+    "There’s no frame: write border with a thickness, a line type and a color.": "en075",
+    "The frame doesn’t show: it has no line type. Add solid or dashed, for example.": "en076",
+    "There’s no outer space: write margin.": "en077",
+    "Hello!": "en078",
+    "Great! Now one more small task: the same thing for another case.": "en079",
+    "Great, now you’ve really got it! Let’s move on.": "en080",
+    "A really fun cartoon!": "en081",
+    "I liked the robot.": "en082",
+    "Today it’s my favorite cartoon! Tickets are free.": "en083",
+    "Well done!": "en084",
+    "Everything in the window lives inside body.": "en085",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

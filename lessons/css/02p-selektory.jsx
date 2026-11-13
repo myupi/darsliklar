@@ -36,12 +36,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -53,6 +50,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -934,643 +932,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3768,6 +3317,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3805,8 +3355,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3875,7 +3425,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3889,6 +3439,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3903,7 +3454,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8026,15 +7577,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13841,3 +13385,489 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 78, ru 78, en 78; всего знаков 29587. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening kinoteatrimning sayti. Qarang: kinoteatr nomi to'q sariq, yangi filmlar esa qizil rangda. Buni CSS qildi: bir qoida id orqali nomni tanlaydi, boshqasi class orqali yangi filmlarni. Saytda beshta sahifa bor. Hozir uni yangilayman, Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! CSS kodi o'chib ketdi. Hamma matn qora bo'lib qoldi, varaqlar esa o'chdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] joyida, class va id ham turibdi, faqat CSS yo'q. O'tgan darsda kerakli elementni tanlashni o'rgandik: class nuqta bilan, id esa panjara belgisi bilan tanlanadi. Endi beshta sahifani birma-bir bezaymiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi sahifa: afisha. Bu yerda bitta qoida qolgan, u hamma abzaslarni qizil qiladi. Lekin qizil faqat yangi filmlar bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: yangi filmlarda yangi degan class bor. Qoidadagi selektorni almashtiring.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi faqat yangi filmlar qizil. Afisha jonlandi!", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: yangi filmlarning abzaslarida qanday class bor?", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ularning classi yangi. CSS kodida class nomidan oldin nuqta turadi. P o'rniga nuqta va yangi so'zini yozing.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u sport classli elementlarni ko'k qiladi. Xuddi shunday yozing, faqat yangi classi uchun, va Tekshirishni bosing.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Afisha tayyor! Endi hafta xiti sahifasi. Bu yerda id bo'yicha qoida bor: panjara belgisi va hit. Lekin qavslar ichi bo'm-bo'sh. Hafta xiti to'q sariq bo'lsin: qavslar ichiga xususiyat va qiymatni yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Hafta xiti to'q sariq bo'ldi. id bitta elementni aniq topdi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: hit degan id qaysi abzasda turibdi? Endi unga rang kerak.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn rangini color beradi. Keyin ikki nuqta, rang nomi va nuqtali vergul keladi. To'q sariq inglizchada orange.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u id bo'yicha sarlavhani ko'k qiladi. Qavslar ichiga xuddi shunday yozing, faqat orange bilan.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa yondi! Uchinchisi: seanslar. Bu yerda kod umuman yo'q. Kechki seanslar ko'k bo'lsin: qoidani boshidan oxirigacha o'zingiz yozing. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: kechki seanslarda kech degan class bor.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Faqat kechki seanslar ko'k bo'ldi. Bitta class ikkita abzasni birdaniga tanladi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoida uch qismdan iborat: nimani tanlaymiz, qaysi xususiyat va qanday qiymat. Kechki seanslarning classi qanday?", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor nuqta va kech, xususiyat color, qiymat esa blue. Xususiyat va qiymat jingalak qavslar ichida turadi.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u boshqa classni yashil qiladi. Xuddi shunday qoida yozing, faqat kech classi va blue bilan.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: chiptalar. Bu kodni men shoshib yozgan edim, unda ikkita joy buzilgan. Selektorlar sahifadan hech narsani topmayapti, shuning uchun ranglar yo'q. [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtiring va ikkala joyni tuzating.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, tuzaldi! Ikkala selektor ham o'z elementini topdi: narxlar yashil, chegirma qizil.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir selektorni [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtiring: class nomidan oldin nima turishi kerak? Nom harfma-harf bir xilmi?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qoidada narx so'zidan oldin nuqta yo'q. Ikkinchisida Chegirma katta harf bilan yozilgan, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida esa kichik harf bilan.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: to'g'ri class va id selektorlari. Nuqtani qo'ying, harfni [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagidek qiling va Tekshirishni bosing.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z filmingiz sahifasi. Uchta narsani bezang: sarlavhani nom degan id orqali, rollarni rol degan class orqali, butun sahifa fonini esa [English pronunciation] body [O'zbekcha tallaffuz] orqali. Ranglarni o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Filmingiz sahifasi tayyor, u o'z ranglaringizda!", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oyna ostidagi shartlarga qarang: sarlavhaning id nomi nom, rollarning class nomi esa rol. id uchun qaysi belgi kerak, class uchun-chi?", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta qoida kerak: panjara belgisi va nom uchun color, nuqta va rol uchun color, [English pronunciation] body [O'zbekcha tallaffuz] uchun esa background-color.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: boshqa ranglardagi uchta qoida. O'zingizga yoqqan ranglarni tanlang.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kinoteatrning beshta sahifasi ham yana rangli! Har bir rang o'z elementini topdi, chunki selektorlarni siz yozdingiz.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] selektori shu tegdagi hamma elementlarni tanlaydi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] class selektori nuqta bilan yoziladi va shu classli hamma elementlarni tanlaydi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] id selektori panjara belgisi bilan yoziladi va bitta elementni tanlaydi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor ishlamasa, uni [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtirasiz: nuqta, panjara belgisi va nomning har bir harfi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyingi darsda ranglarni chuqurroq o'rganamiz: rangni yozishning yangi usullarini ko'rasiz. Ko'rishguncha!", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. CSS kodini shu yerga yozing.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizil faqat yangi filmlar emas, boshqa abzaslar ham qizil bo'lib qoldi. Faqat yangi classli abzaslarni tanlang.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi filmlar hali qizil emas. Rang qolsin, faqat selektorni almashtiring.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashil faqat multfilm bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: uning classi multik.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hafta xiti hali to'q sariq emas. Qavslar ichida color va orange bo'lishi kerak.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha hali binafsha emas. Binafsha inglizchada purple.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kechki seanslar hali ko'k emas. Ularning classi kech, ko'k esa blue.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'k faqat kechki seanslar bo'lishi kerak, boshqa abzaslar ham bo'yalib qoldi. Hamma abzaslarni emas, faqat kech classini tanlang.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashil faqat ertalabki seanslar bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: ularning classi ertalab.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektorlar elementlarni topdi, lekin ranglar boshqa. Narxlar green, chegirma esa red bo'lishi kerak.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha hali binafsha emas. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sarlavhada class emas, id turibdi. id nomidan oldin panjara belgisi bo'ladi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha uchun qoida yo'q. Uni id orqali tanlang: panjara belgisi va nom, ichida esa color.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rollar uchun qoida yo'q. Ularni class orqali tanlang: nuqta va rol, ichida esa color.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa foni uchun qoida yo'q: [English pronunciation] body tag [O'zbekcha tallaffuz]-iga background-color yozing.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha fon bilan bir xil rangda, u ko'rinmay qoldi. Boshqa-boshqa rang tanlang.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chorshanba kuni chegirma!", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего кинотеатра. Смотри: название оранжевое, а новинки красные. Это сделал CSS: одно правило выбирает название по id, другое выбирает новинки по классу. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS-код стёрся. Весь текст стал чёрным, а вкладки погасли.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] на месте, классы и id тоже, пропал только CSS. На прошлом уроке мы научились выбирать нужный элемент: класс выбирают с точкой, а id, с решёткой. Теперь оформим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая страница: афиша. Здесь осталось одно правило, и оно красит в красный все абзацы. А красными должны быть только новинки. Посмотри в [English pronunciation] HTML [Русское произношение]: у новинок есть класс yangi. Замени в правиле селектор.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Теперь красные только новинки. Афиша ожила!", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в [English pronunciation] HTML [Русское произношение]: какой класс у абзацев с новинками?", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Их класс, yangi. В CSS перед именем класса ставят точку. Вместо P напиши точку и yangi.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом красит в синий элементы с классом sport. Напиши так же, только для класса yangi, и нажми Проверить.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Афиша готова! Теперь страница хита недели. Здесь есть правило по id: решётка и hit. Но внутри скобок пусто. Пусть хит недели станет оранжевым: впиши в скобки свойство и значение.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Хит недели стал оранжевым. id точно нашёл один элемент.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри в [English pronunciation] HTML [Русское произношение]: у какого абзаца id hit? Теперь ему нужен цвет.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет текста задаёт color. Потом двоеточие, название цвета и точка с запятой. Оранжевый по-английски, orange.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом красит заголовок по id в синий. Впиши в скобки так же, только с orange.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы горят! Третья: сеансы. Здесь кода нет совсем. Пусть вечерние сеансы станут синими: напиши правило целиком, от начала до конца. Посмотри в [English pronunciation] HTML [Русское произношение]: у вечерних сеансов класс kech.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Синими стали только вечерние сеансы. Один класс выбрал сразу два абзаца.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Правило, это три части: что выбираем, какое свойство и какое значение. Какой класс у вечерних сеансов?", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор, точка и kech, свойство color, значение blue. Свойство и значение стоят в фигурных скобках.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом красит в зелёный другой класс. Напиши такое же правило, только для класса kech и с blue.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: билеты. Этот код я писал в спешке, и в нём две поломки. Селекторы ничего не находят на странице, поэтому цветов нет. Сверь с [English pronunciation] HTML [Русское произношение] и почини обе.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть, починено! Оба селектора нашли свои элементы: цены зелёные, скидка красная.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни каждый селектор с [English pronunciation] HTML [Русское произношение]: что должно стоять перед именем класса? Имя совпадает буква в букву?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первом правиле перед narx нет точки. Во втором Chegirma написано с большой буквы, а в [English pronunciation] HTML [Русское произношение], с маленькой.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, верные селекторы класса и id. Поставь точку, сделай букву как в [English pronunciation] HTML [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре страницы горят! Последняя, твоя: страница твоего фильма. Оформи три вещи: заголовок через id nom, роли через класс rol, а фон всей страницы через [English pronunciation] body [Русское произношение]. Цвета выбирай любые. Под окном видно, что уже готово.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Страница твоего фильма готова, и она в твоих цветах!", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на условия под окном: имя id у заголовка, nom, а имя класса у ролей, rol. Какой знак нужен для id, а какой для класса?", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны три правила: решётка и nom с color, точка и rol с color, а [English pronunciation] body [Русское произношение] с background-color.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, три правила с другими цветами. Выбери свои цвета.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять страниц кинотеатра снова в цвете! Каждый цвет нашёл свой элемент, потому что селекторы, твоя работа.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор тега выбирает все элементы с этим тегом.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор класса пишут с точкой, он выбирает все элементы с этим классом.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор id пишут с решёткой, он выбирает один элемент.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если селектор не работает, сверяешь его с [English pronunciation] HTML [Русское произношение]: точка, решётка и каждая буква имени.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] На следующем уроке разберёмся с цветами глубже: узнаешь новые способы записать цвет. До встречи!", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши CSS-код здесь.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужна открывающая фигурная скобка: она стоит после селектора.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило не закрыто: в конце поставь закрывающую фигурную скобку.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед скобкой нет селектора: напиши, что оформляем.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто: впиши нужное в рамку.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только значение: имя свойства уже стоит слева.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только селектор: скобки и остальной код уже на месте.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только свойство и значение: селектор и скобки уже на месте.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код работает, но страница пока не такая, как нужно. Перечитай задание.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Красные не только новинки, другие абзацы тоже. Выбери только абзацы с классом yangi.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новинки пока не красные. Цвет оставь, поменяй только селектор.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Зелёным должен быть только мультфильм. Посмотри в [English pronunciation] HTML [Русское произношение]: его класс, multik.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хит недели пока не оранжевый. Внутри скобок нужны color и orange.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок пока не фиолетовый. Фиолетовый по-английски, purple.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вечерние сеансы пока не синие. Их класс, kech, а синий, blue.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Синими должны быть только вечерние сеансы, а покрасились и другие абзацы. Выбери не все абзацы, а только класс kech.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Зелёными должны быть только утренние сеансы. Посмотри в [English pronunciation] HTML [Русское произношение]: их класс, ertalab.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селекторы нашли элементы, но цвета не те. Цены, green, скидка, red.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок пока не фиолетовый. Посмотри в [English pronunciation] HTML [Русское произношение]: у заголовка не класс, а id. Перед именем id ставят решётку.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет правила для заголовка. Выбери его по id: решётка и nom, а внутри, color.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет правила для ролей. Выбери их по классу: точка и rol, а внутри, color.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет правила для фона: напиши для [English pronunciation] body [Русское произношение] свойство background-color.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок того же цвета, что и фон,, его не видно. Выбери разные цвета.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] По средам скидка!", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my cinema’s website. Look: the name is orange, and the new films are red. CSS did that: one rule picks the name by its id, another picks the new films by their class. The site has five pages. I’m about to update it, tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The CSS code got erased. All the text went black, and the tabs went dark.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L is fine, and the classes and ids are still there; only the CSS is gone. Last lesson we learned to pick the element we need: a class is picked with a dot, and an id with a hash sign. Now let’s style the five pages one by one, and you’ll write the code. The fifth page will be yours.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first page is the listings. One rule is left here, and it makes every paragraph red. But only the new films should be red. Look at the H T M L: the new films have the class yangi. Change the selector in the rule.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now only the new films are red. The listings are back to life!", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the H T M L: what class do the new-film paragraphs have?", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Their class is yangi. In CSS a dot goes before a class name. Instead of P, write a dot and yangi.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code makes elements with the class sport blue. Write the same for the class yangi and tap Check.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The listings are done! Now the hit-of-the-week page. There’s a rule by id here: a hash sign and hit. But it’s empty inside the braces. Let’s make the hit of the week orange: write a property and a value inside the braces.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The hit of the week is orange. The id found exactly one element.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the H T M L: which paragraph has the id hit? Now it needs a color.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] color sets the text color. Then a colon, the color name and a semicolon. Use orange.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code makes a heading blue by its id. Write the same inside the braces, only with orange.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are lit! The third is showtimes. There’s no code here at all. Let’s make the evening shows blue: write the whole rule yourself. Look at the H T M L: the evening shows have the class kech.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! Only the evening shows turned blue. One class picked two paragraphs at once.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] A rule has three parts: what we pick, which property and which value. What class do the evening shows have?", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is a dot and kech, the property is color, the value is blue. The property and value go inside curly braces.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code makes another class green. Write the same rule, only for the class kech and with blue.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is tickets. I wrote this code in a hurry, and it has two broken spots. The selectors find nothing on the page, so there are no colors. Compare with the H T M L and fix both.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fixed it! Both selectors found their elements: the prices are green, the discount is red.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare each selector with the H T M L: what goes before a class name? Does the name match letter for letter?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the first rule there’s no dot before narx. In the second, Chegirma starts with a capital letter, but in the H T M L it’s lowercase.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has correct class and id selectors. Add the dot, make the letter match the H T M L and tap Check.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four pages are lit! The last one is yours: your own film’s page. Style three things: the heading by the id nom, the roles by the class rol, and the whole page background with body. Pick the colors yourself. Under the window you can see what’s done.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your film’s page is ready, in your own colors!", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the conditions under the window: the heading’s id name is nom, and the roles’ class name is rol. Which sign does an id need, and which a class?", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You need three rules: a hash sign and nom with color, a dot and rol with color, and body with background-color.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has three rules in other colors. Pick your own colors.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five cinema pages are colorful again! Every color found its element, because the selectors are your work.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag selector picks every element with that tag.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A class selector is written with a dot and picks every element with that class.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An id selector is written with a hash sign and picks one element.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And if a selector doesn’t work, you compare it with the H T M L: the dot, the hash sign and every letter of the name.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Next lesson we’ll dig deeper into colors: you’ll learn new ways to write a color. See you!", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the CSS code here.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs an opening curly brace: it goes after the selector.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule isn’t closed: put a closing curly brace at the end.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an extra closing brace. Each opening brace gets one closing brace.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no selector before the brace: write what we’re styling.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no semicolon between two properties. Put one after every value.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far: type what’s needed into the box.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the value goes in the box: the property name is already on the left.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the selector goes in the box: the braces and the rest are already there.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the property and value go in the box: the selector and braces are already there.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code works, but the page isn’t quite right yet. Read the task again.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not only the new films are red; other paragraphs are too. Pick only the paragraphs with the class yangi.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The new films aren’t red yet. Keep the color, change only the selector.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the cartoon should be green. Look at the H T M L: its class is multik.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The hit of the week isn’t orange yet. Inside the braces you need color and orange.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading isn’t purple yet. Use the word purple.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The evening shows aren’t blue yet. Their class is kech, and the color is blue.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the evening shows should be blue, but other paragraphs got colored too. Pick not all paragraphs, only the class kech.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the morning shows should be green. Look at the H T M L: their class is ertalab.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selectors found the elements, but the colors are different. Prices should be green, the discount red.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading isn’t purple yet. Look at the H T M L: the heading has an id, not a class. A hash sign goes before an id name.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no rule for the heading. Pick it by its id: a hash sign and nom, with color inside.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no rule for the roles. Pick them by their class: a dot and rol, with color inside.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no rule for the background: write background-color for body.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading is the same color as the background, so you can’t see it. Pick different colors.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Discount on Wednesdays!", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening kinoteatrimning sayti. Qarang: kinoteatr nomi to'q sariq, yangi filmlar esa qizil rangda. Buni CSS qildi: bir qoida id orqali nomni tanlaydi, boshqasi class orqali yangi filmlarni. Saytda beshta sahifa bor. Hozir uni yangilayman, Yangilash tugmasini bosing.": "uz001",
+    "Voy! CSS kodi o'chib ketdi. Hamma matn qora bo'lib qoldi, varaqlar esa o'chdi.": "uz002",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] joyida, class va id ham turibdi, faqat CSS yo'q. O'tgan darsda kerakli elementni tanlashni o'rgandik: class nuqta bilan, id esa panjara belgisi bilan tanlanadi. Endi beshta sahifani birma-bir bezaymiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.": "uz003",
+    "Birinchi sahifa: afisha. Bu yerda bitta qoida qolgan, u hamma abzaslarni qizil qiladi. Lekin qizil faqat yangi filmlar bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: yangi filmlarda yangi degan class bor. Qoidadagi selektorni almashtiring.": "uz004",
+    "Ajoyib! Endi faqat yangi filmlar qizil. Afisha jonlandi!": "uz005",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: yangi filmlarning abzaslarida qanday class bor?": "uz006",
+    "Ularning classi yangi. CSS kodida class nomidan oldin nuqta turadi. P o'rniga nuqta va yangi so'zini yozing.": "uz007",
+    "Namuna kod ostida: u sport classli elementlarni ko'k qiladi. Xuddi shunday yozing, faqat yangi classi uchun, va Tekshirishni bosing.": "uz008",
+    "Afisha tayyor! Endi hafta xiti sahifasi. Bu yerda id bo'yicha qoida bor: panjara belgisi va hit. Lekin qavslar ichi bo'm-bo'sh. Hafta xiti to'q sariq bo'lsin: qavslar ichiga xususiyat va qiymatni yozing.": "uz009",
+    "Zo'r! Hafta xiti to'q sariq bo'ldi. id bitta elementni aniq topdi.": "uz010",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: hit degan id qaysi abzasda turibdi? Endi unga rang kerak.": "uz011",
+    "Matn rangini color beradi. Keyin ikki nuqta, rang nomi va nuqtali vergul keladi. To'q sariq inglizchada orange.": "uz012",
+    "Namuna kod ostida: u id bo'yicha sarlavhani ko'k qiladi. Qavslar ichiga xuddi shunday yozing, faqat orange bilan.": "uz013",
+    "Ikkita sahifa yondi! Uchinchisi: seanslar. Bu yerda kod umuman yo'q. Kechki seanslar ko'k bo'lsin: qoidani boshidan oxirigacha o'zingiz yozing. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: kechki seanslarda kech degan class bor.": "uz014",
+    "Qoyil! Faqat kechki seanslar ko'k bo'ldi. Bitta class ikkita abzasni birdaniga tanladi.": "uz015",
+    "Qoida uch qismdan iborat: nimani tanlaymiz, qaysi xususiyat va qanday qiymat. Kechki seanslarning classi qanday?": "uz016",
+    "Selektor nuqta va kech, xususiyat color, qiymat esa blue. Xususiyat va qiymat jingalak qavslar ichida turadi.": "uz017",
+    "Namuna kod ostida: u boshqa classni yashil qiladi. Xuddi shunday qoida yozing, faqat kech classi va blue bilan.": "uz018",
+    "Uchta sahifa tayyor! To'rtinchisi: chiptalar. Bu kodni men shoshib yozgan edim, unda ikkita joy buzilgan. Selektorlar sahifadan hech narsani topmayapti, shuning uchun ranglar yo'q. [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtiring va ikkala joyni tuzating.": "uz019",
+    "Mana, tuzaldi! Ikkala selektor ham o'z elementini topdi: narxlar yashil, chegirma qizil.": "uz020",
+    "Har bir selektorni [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtiring: class nomidan oldin nima turishi kerak? Nom harfma-harf bir xilmi?": "uz021",
+    "Birinchi qoidada narx so'zidan oldin nuqta yo'q. Ikkinchisida Chegirma katta harf bilan yozilgan, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida esa kichik harf bilan.": "uz022",
+    "Namuna kod ostida: to'g'ri class va id selektorlari. Nuqtani qo'ying, harfni [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagidek qiling va Tekshirishni bosing.": "uz023",
+    "To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z filmingiz sahifasi. Uchta narsani bezang: sarlavhani nom degan id orqali, rollarni rol degan class orqali, butun sahifa fonini esa [English pronunciation] body [O'zbekcha tallaffuz] orqali. Ranglarni o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.": "uz024",
+    "Ura! Filmingiz sahifasi tayyor, u o'z ranglaringizda!": "uz025",
+    "Oyna ostidagi shartlarga qarang: sarlavhaning id nomi nom, rollarning class nomi esa rol. id uchun qaysi belgi kerak, class uchun-chi?": "uz026",
+    "Uchta qoida kerak: panjara belgisi va nom uchun color, nuqta va rol uchun color, [English pronunciation] body [O'zbekcha tallaffuz] uchun esa background-color.": "uz027",
+    "Namuna kod ostida: boshqa ranglardagi uchta qoida. O'zingizga yoqqan ranglarni tanlang.": "uz028",
+    "Kinoteatrning beshta sahifasi ham yana rangli! Har bir rang o'z elementini topdi, chunki selektorlarni siz yozdingiz.": "uz029",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] selektori shu tegdagi hamma elementlarni tanlaydi.": "uz030",
+    "class selektori nuqta bilan yoziladi va shu classli hamma elementlarni tanlaydi.": "uz031",
+    "id selektori panjara belgisi bilan yoziladi va bitta elementni tanlaydi.": "uz032",
+    "Selektor ishlamasa, uni [English pronunciation] HTML [O'zbekcha tallaffuz] kodi bilan solishtirasiz: nuqta, panjara belgisi va nomning har bir harfi.": "uz033",
+    "Keyingi darsda ranglarni chuqurroq o'rganamiz: rangni yozishning yangi usullarini ko'rasiz. Ko'rishguncha!": "uz034",
+    "Hozircha bo'sh. CSS kodini shu yerga yozing.": "uz035",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz036",
+    "Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.": "uz037",
+    "Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.": "uz038",
+    "Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.": "uz039",
+    "Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.": "uz040",
+    "Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz041",
+    "Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.": "uz042",
+    "Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.": "uz043",
+    "Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.": "uz044",
+    "Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.": "uz045",
+    "Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.": "uz046",
+    "Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.": "uz047",
+    "Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.": "uz048",
+    "Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.": "uz049",
+    "Voy, zo‘r!": "uz050",
+    "Ana! Chiqdi!": "uz051",
+    "Super!": "uz052",
+    "Qoyil!": "uz053",
+    "Ura!": "uz054",
+    "Zo‘r-ku!": "uz055",
+    "Yana bir bor urinib ko‘ring.": "uz056",
+    "Diqqat bilan qarang.": "uz057",
+    "Yaqin qoldingiz. Shoshilmang.": "uz058",
+    "Qizil faqat yangi filmlar emas, boshqa abzaslar ham qizil bo'lib qoldi. Faqat yangi classli abzaslarni tanlang.": "uz059",
+    "Yangi filmlar hali qizil emas. Rang qolsin, faqat selektorni almashtiring.": "uz060",
+    "Yashil faqat multfilm bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: uning classi multik.": "uz061",
+    "Hafta xiti hali to'q sariq emas. Qavslar ichida color va orange bo'lishi kerak.": "uz062",
+    "Sarlavha hali binafsha emas. Binafsha inglizchada purple.": "uz063",
+    "Kechki seanslar hali ko'k emas. Ularning classi kech, ko'k esa blue.": "uz064",
+    "Ko'k faqat kechki seanslar bo'lishi kerak, boshqa abzaslar ham bo'yalib qoldi. Hamma abzaslarni emas, faqat kech classini tanlang.": "uz065",
+    "Yashil faqat ertalabki seanslar bo'lishi kerak. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: ularning classi ertalab.": "uz066",
+    "Selektorlar elementlarni topdi, lekin ranglar boshqa. Narxlar green, chegirma esa red bo'lishi kerak.": "uz067",
+    "Sarlavha hali binafsha emas. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sarlavhada class emas, id turibdi. id nomidan oldin panjara belgisi bo'ladi.": "uz068",
+    "Sarlavha uchun qoida yo'q. Uni id orqali tanlang: panjara belgisi va nom, ichida esa color.": "uz069",
+    "Rollar uchun qoida yo'q. Ularni class orqali tanlang: nuqta va rol, ichida esa color.": "uz070",
+    "Sahifa foni uchun qoida yo'q: [English pronunciation] body tag [O'zbekcha tallaffuz]-iga background-color yozing.": "uz071",
+    "Sarlavha fon bilan bir xil rangda, u ko'rinmay qoldi. Boshqa-boshqa rang tanlang.": "uz072",
+    "Salom!": "uz073",
+    "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz074",
+    "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz075",
+    "Chorshanba kuni chegirma!": "uz076",
+    "Barakalla!": "uz077",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz078",
+  },
+  ru: {
+    "Привет! Это сайт моего кинотеатра. Смотри: название оранжевое, а новинки красные. Это сделал CSS: одно правило выбирает название по id, другое выбирает новинки по классу. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
+    "Ой! CSS-код стёрся. Весь текст стал чёрным, а вкладки погасли.": "ru002",
+    "[English pronunciation] HTML [Русское произношение] на месте, классы и id тоже, пропал только CSS. На прошлом уроке мы научились выбирать нужный элемент: класс выбирают с точкой, а id, с решёткой. Теперь оформим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.": "ru003",
+    "Первая страница: афиша. Здесь осталось одно правило, и оно красит в красный все абзацы. А красными должны быть только новинки. Посмотри в [English pronunciation] HTML [Русское произношение]: у новинок есть класс yangi. Замени в правиле селектор.": "ru004",
+    "Отлично! Теперь красные только новинки. Афиша ожила!": "ru005",
+    "Посмотри в [English pronunciation] HTML [Русское произношение]: какой класс у абзацев с новинками?": "ru006",
+    "Их класс, yangi. В CSS перед именем класса ставят точку. Вместо P напиши точку и yangi.": "ru007",
+    "Образец под кодом красит в синий элементы с классом sport. Напиши так же, только для класса yangi, и нажми Проверить.": "ru008",
+    "Афиша готова! Теперь страница хита недели. Здесь есть правило по id: решётка и hit. Но внутри скобок пусто. Пусть хит недели станет оранжевым: впиши в скобки свойство и значение.": "ru009",
+    "Огонь! Хит недели стал оранжевым. id точно нашёл один элемент.": "ru010",
+    "Посмотри в [English pronunciation] HTML [Русское произношение]: у какого абзаца id hit? Теперь ему нужен цвет.": "ru011",
+    "Цвет текста задаёт color. Потом двоеточие, название цвета и точка с запятой. Оранжевый по-английски, orange.": "ru012",
+    "Образец под кодом красит заголовок по id в синий. Впиши в скобки так же, только с orange.": "ru013",
+    "Две страницы горят! Третья: сеансы. Здесь кода нет совсем. Пусть вечерние сеансы станут синими: напиши правило целиком, от начала до конца. Посмотри в [English pronunciation] HTML [Русское произношение]: у вечерних сеансов класс kech.": "ru014",
+    "Вот это да! Синими стали только вечерние сеансы. Один класс выбрал сразу два абзаца.": "ru015",
+    "Правило, это три части: что выбираем, какое свойство и какое значение. Какой класс у вечерних сеансов?": "ru016",
+    "Селектор, точка и kech, свойство color, значение blue. Свойство и значение стоят в фигурных скобках.": "ru017",
+    "Образец под кодом красит в зелёный другой класс. Напиши такое же правило, только для класса kech и с blue.": "ru018",
+    "Три страницы готовы! Четвёртая: билеты. Этот код я писал в спешке, и в нём две поломки. Селекторы ничего не находят на странице, поэтому цветов нет. Сверь с [English pronunciation] HTML [Русское произношение] и почини обе.": "ru019",
+    "Есть, починено! Оба селектора нашли свои элементы: цены зелёные, скидка красная.": "ru020",
+    "Сравни каждый селектор с [English pronunciation] HTML [Русское произношение]: что должно стоять перед именем класса? Имя совпадает буква в букву?": "ru021",
+    "В первом правиле перед narx нет точки. Во втором Chegirma написано с большой буквы, а в [English pronunciation] HTML [Русское произношение], с маленькой.": "ru022",
+    "Образец под кодом, верные селекторы класса и id. Поставь точку, сделай букву как в [English pronunciation] HTML [Русское произношение] и нажми Проверить.": "ru023",
+    "Четыре страницы горят! Последняя, твоя: страница твоего фильма. Оформи три вещи: заголовок через id nom, роли через класс rol, а фон всей страницы через [English pronunciation] body [Русское произношение]. Цвета выбирай любые. Под окном видно, что уже готово.": "ru024",
+    "Ура! Страница твоего фильма готова, и она в твоих цветах!": "ru025",
+    "Посмотри на условия под окном: имя id у заголовка, nom, а имя класса у ролей, rol. Какой знак нужен для id, а какой для класса?": "ru026",
+    "Нужны три правила: решётка и nom с color, точка и rol с color, а [English pronunciation] body [Русское произношение] с background-color.": "ru027",
+    "Образец под кодом, три правила с другими цветами. Выбери свои цвета.": "ru028",
+    "Все пять страниц кинотеатра снова в цвете! Каждый цвет нашёл свой элемент, потому что селекторы, твоя работа.": "ru029",
+    "Селектор тега выбирает все элементы с этим тегом.": "ru030",
+    "Селектор класса пишут с точкой, он выбирает все элементы с этим классом.": "ru031",
+    "Селектор id пишут с решёткой, он выбирает один элемент.": "ru032",
+    "А если селектор не работает, сверяешь его с [English pronunciation] HTML [Русское произношение]: точка, решётка и каждая буква имени.": "ru033",
+    "На следующем уроке разберёмся с цветами глубже: узнаешь новые способы записать цвет. До встречи!": "ru034",
+    "Пока пусто. Пиши CSS-код здесь.": "ru035",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru036",
+    "Правилу нужна открывающая фигурная скобка: она стоит после селектора.": "ru037",
+    "Правило не закрыто: в конце поставь закрывающую фигурную скобку.": "ru038",
+    "Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.": "ru039",
+    "Перед скобкой нет селектора: напиши, что оформляем.": "ru040",
+    "Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.": "ru041",
+    "Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.": "ru042",
+    "Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.": "ru043",
+    "Пока пусто: впиши нужное в рамку.": "ru044",
+    "В рамку, только значение: имя свойства уже стоит слева.": "ru045",
+    "В рамку, только селектор: скобки и остальной код уже на месте.": "ru046",
+    "В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.": "ru047",
+    "В рамку, только свойство и значение: селектор и скобки уже на месте.": "ru048",
+    "Код работает, но страница пока не такая, как нужно. Перечитай задание.": "ru049",
+    "Вау, классно!": "ru050",
+    "Есть! Получилось!": "ru051",
+    "Супер!": "ru052",
+    "Огонь!": "ru053",
+    "Ура!": "ru054",
+    "Вот это да!": "ru055",
+    "Попробуй ещё раз.": "ru056",
+    "Посмотри внимательно.": "ru057",
+    "Уже близко. Не спеши.": "ru058",
+    "Красные не только новинки, другие абзацы тоже. Выбери только абзацы с классом yangi.": "ru059",
+    "Новинки пока не красные. Цвет оставь, поменяй только селектор.": "ru060",
+    "Зелёным должен быть только мультфильм. Посмотри в [English pronunciation] HTML [Русское произношение]: его класс, multik.": "ru061",
+    "Хит недели пока не оранжевый. Внутри скобок нужны color и orange.": "ru062",
+    "Заголовок пока не фиолетовый. Фиолетовый по-английски, purple.": "ru063",
+    "Вечерние сеансы пока не синие. Их класс, kech, а синий, blue.": "ru064",
+    "Синими должны быть только вечерние сеансы, а покрасились и другие абзацы. Выбери не все абзацы, а только класс kech.": "ru065",
+    "Зелёными должны быть только утренние сеансы. Посмотри в [English pronunciation] HTML [Русское произношение]: их класс, ertalab.": "ru066",
+    "Селекторы нашли элементы, но цвета не те. Цены, green, скидка, red.": "ru067",
+    "Заголовок пока не фиолетовый. Посмотри в [English pronunciation] HTML [Русское произношение]: у заголовка не класс, а id. Перед именем id ставят решётку.": "ru068",
+    "Нет правила для заголовка. Выбери его по id: решётка и nom, а внутри, color.": "ru069",
+    "Нет правила для ролей. Выбери их по классу: точка и rol, а внутри, color.": "ru070",
+    "Нет правила для фона: напиши для [English pronunciation] body [Русское произношение] свойство background-color.": "ru071",
+    "Заголовок того же цвета, что и фон,, его не видно. Выбери разные цвета.": "ru072",
+    "Привет!": "ru073",
+    "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru074",
+    "Отлично, теперь это точно твоё! Идём дальше.": "ru075",
+    "По средам скидка!": "ru076",
+    "Молодец!": "ru077",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru078",
+  },
+  en: {
+    "Hi! This is my cinema’s website. Look: the name is orange, and the new films are red. CSS did that: one rule picks the name by its id, another picks the new films by their class. The site has five pages. I’m about to update it, tap Refresh.": "en001",
+    "Oh no! The CSS code got erased. All the text went black, and the tabs went dark.": "en002",
+    "The H T M L is fine, and the classes and ids are still there; only the CSS is gone. Last lesson we learned to pick the element we need: a class is picked with a dot, and an id with a hash sign. Now let’s style the five pages one by one, and you’ll write the code. The fifth page will be yours.": "en003",
+    "The first page is the listings. One rule is left here, and it makes every paragraph red. But only the new films should be red. Look at the H T M L: the new films have the class yangi. Change the selector in the rule.": "en004",
+    "Great! Now only the new films are red. The listings are back to life!": "en005",
+    "Look at the H T M L: what class do the new-film paragraphs have?": "en006",
+    "Their class is yangi. In CSS a dot goes before a class name. Instead of P, write a dot and yangi.": "en007",
+    "The example under the code makes elements with the class sport blue. Write the same for the class yangi and tap Check.": "en008",
+    "The listings are done! Now the hit-of-the-week page. There’s a rule by id here: a hash sign and hit. But it’s empty inside the braces. Let’s make the hit of the week orange: write a property and a value inside the braces.": "en009",
+    "Awesome! The hit of the week is orange. The id found exactly one element.": "en010",
+    "Look at the H T M L: which paragraph has the id hit? Now it needs a color.": "en011",
+    "color sets the text color. Then a colon, the color name and a semicolon. Use orange.": "en012",
+    "The example under the code makes a heading blue by its id. Write the same inside the braces, only with orange.": "en013",
+    "Two pages are lit! The third is showtimes. There’s no code here at all. Let’s make the evening shows blue: write the whole rule yourself. Look at the H T M L: the evening shows have the class kech.": "en014",
+    "Wow! Only the evening shows turned blue. One class picked two paragraphs at once.": "en015",
+    "A rule has three parts: what we pick, which property and which value. What class do the evening shows have?": "en016",
+    "The selector is a dot and kech, the property is color, the value is blue. The property and value go inside curly braces.": "en017",
+    "The example under the code makes another class green. Write the same rule, only for the class kech and with blue.": "en018",
+    "Three pages are done! The fourth is tickets. I wrote this code in a hurry, and it has two broken spots. The selectors find nothing on the page, so there are no colors. Compare with the H T M L and fix both.": "en019",
+    "Fixed it! Both selectors found their elements: the prices are green, the discount is red.": "en020",
+    "Compare each selector with the H T M L: what goes before a class name? Does the name match letter for letter?": "en021",
+    "In the first rule there’s no dot before narx. In the second, Chegirma starts with a capital letter, but in the H T M L it’s lowercase.": "en022",
+    "The example under the code has correct class and id selectors. Add the dot, make the letter match the H T M L and tap Check.": "en023",
+    "Four pages are lit! The last one is yours: your own film’s page. Style three things: the heading by the id nom, the roles by the class rol, and the whole page background with body. Pick the colors yourself. Under the window you can see what’s done.": "en024",
+    "Hooray! Your film’s page is ready, in your own colors!": "en025",
+    "Look at the conditions under the window: the heading’s id name is nom, and the roles’ class name is rol. Which sign does an id need, and which a class?": "en026",
+    "You need three rules: a hash sign and nom with color, a dot and rol with color, and body with background-color.": "en027",
+    "The example under the code has three rules in other colors. Pick your own colors.": "en028",
+    "All five cinema pages are colorful again! Every color found its element, because the selectors are your work.": "en029",
+    "A tag selector picks every element with that tag.": "en030",
+    "A class selector is written with a dot and picks every element with that class.": "en031",
+    "An id selector is written with a hash sign and picks one element.": "en032",
+    "And if a selector doesn’t work, you compare it with the H T M L: the dot, the hash sign and every letter of the name.": "en033",
+    "Next lesson we’ll dig deeper into colors: you’ll learn new ways to write a color. See you!": "en034",
+    "It’s empty so far. Write the CSS code here.": "en035",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en036",
+    "The rule needs an opening curly brace: it goes after the selector.": "en037",
+    "The rule isn’t closed: put a closing curly brace at the end.": "en038",
+    "There’s an extra closing brace. Each opening brace gets one closing brace.": "en039",
+    "There’s no selector before the brace: write what we’re styling.": "en040",
+    "There’s no semicolon between two properties. Put one after every value.": "en041",
+    "This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.": "en042",
+    "The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.": "en043",
+    "It’s empty so far: type what’s needed into the box.": "en044",
+    "Only the value goes in the box: the property name is already on the left.": "en045",
+    "Only the selector goes in the box: the braces and the rest are already there.": "en046",
+    "There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.": "en047",
+    "Only the property and value go in the box: the selector and braces are already there.": "en048",
+    "The code works, but the page isn’t quite right yet. Read the task again.": "en049",
+    "Wow, awesome!": "en050",
+    "Yes! You did it!": "en051",
+    "Super!": "en052",
+    "Brilliant!": "en053",
+    "Hooray!": "en054",
+    "Amazing!": "en055",
+    "Try once more.": "en056",
+    "Take a closer look.": "en057",
+    "You are close. No rush.": "en058",
+    "Not only the new films are red; other paragraphs are too. Pick only the paragraphs with the class yangi.": "en059",
+    "The new films aren’t red yet. Keep the color, change only the selector.": "en060",
+    "Only the cartoon should be green. Look at the H T M L: its class is multik.": "en061",
+    "The hit of the week isn’t orange yet. Inside the braces you need color and orange.": "en062",
+    "The heading isn’t purple yet. Use the word purple.": "en063",
+    "The evening shows aren’t blue yet. Their class is kech, and the color is blue.": "en064",
+    "Only the evening shows should be blue, but other paragraphs got colored too. Pick not all paragraphs, only the class kech.": "en065",
+    "Only the morning shows should be green. Look at the H T M L: their class is ertalab.": "en066",
+    "The selectors found the elements, but the colors are different. Prices should be green, the discount red.": "en067",
+    "The heading isn’t purple yet. Look at the H T M L: the heading has an id, not a class. A hash sign goes before an id name.": "en068",
+    "There’s no rule for the heading. Pick it by its id: a hash sign and nom, with color inside.": "en069",
+    "There’s no rule for the roles. Pick them by their class: a dot and rol, with color inside.": "en070",
+    "There’s no rule for the background: write background-color for body.": "en071",
+    "The heading is the same color as the background, so you can’t see it. Pick different colors.": "en072",
+    "Hello!": "en073",
+    "Great! Now one more small task: the same thing for another case.": "en074",
+    "Great, now you’ve really got it! Let’s move on.": "en075",
+    "Discount on Wednesdays!": "en076",
+    "Well done!": "en077",
+    "Everything in the window lives inside body.": "en078",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

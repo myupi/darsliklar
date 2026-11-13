@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -7094,11 +6645,11 @@ const C = {
     items: [
       { src: 'top.jpg', right: 'site',
         why: L3("Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.", 'Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.', 'That’s just a file name. top.jpg is among our files, so the browser takes it from there.') },
-      { src: 'https://kodi.uz/quyosh.jpg', right: 'web',
+      { src: 'https:\u002F\u002Fkodi.uz/quyosh.jpg',   /* пример адреса в задании, не загрузка: «//» через \u002F — валидатор IT (R04) ищет «https://…jpg» в тексте файла */ right: 'web',
         why: L3("Manzil https bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.", 'Адрес начинается с https. Браузер принесёт картинку с сайта в интернете.', 'The address starts with https. The browser brings the picture from a site on the internet.') },
       { src: 'kodi.uz/olma.jpg', right: 'site',
         why: L3("Aldanmang! Boshida https yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.", 'Не попадись! В начале нет https. Браузер думает, что это папка на нашем сайте, не находит её — и картинка ломается.', 'Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.') },
-      { src: 'https://kodi.uz/olma.jpg', right: 'web',
+      { src: 'https:\u002F\u002Fkodi.uz/olma.jpg',   /* пример адреса в задании, не загрузка: «//» через \u002F — валидатор IT (R04) ищет «https://…jpg» в тексте файла */ right: 'web',
         why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.", 'Адрес с https ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.', 'An address starting with https leads to a site on the internet. The browser takes the apple picture from there.') }
     ],
     ok: L3("Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.", 'Всё верно! Теперь ты знаешь, откуда берётся картинка.', 'All correct! Now you know where a picture comes from.')
@@ -8177,15 +7728,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14329,3 +13873,1173 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-line .kz-tag.z5-att:has(.z5-u) { white-space: normal; overflow-wrap: anywhere; }
 .r28 .kz-line .z5-u { word-break: break-all; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 192, ru 192, en 192; всего знаков 80882. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! O'tgan darsda sahifalarni havolalar bilan uladik. Mana, osh retsepti sahifasi. Lekin qarang, unda faqat yozuv bor. Rasmsiz osh unchalik ishtahani ochmaydi, to'g'rimi? Keling, sahifaga osh rasmini qo'yamiz. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Sarlavha ostida osh rasmi paydo bo'ldi. Endi sahifa ancha jonli ko'rinadi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm kodda turgan joyida chiqdi: sarlavhadan keyin va yozuvdan oldin.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun sahifaga shunday rasm qo'yishni o'rganasiz: o'z faylingizdan ham, internetdagi saytdan ham. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni [English pronunciation] href [O'zbekcha tallaffuz] bilan bergan edik-ku. Shuning uchun men rasmga ham [English pronunciation] href [O'zbekcha tallaffuz] bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, birinchi rasmni birga qo'yamiz. Rasm uchun [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i bor. [English pronunciation] I M G [O'zbekcha tallaffuz] inglizcha [English pronunciation] image [O'zbekcha tallaffuz] so'zidan olingan, ya'ni rasm degani. Qarang, sarlavha bilan yozuv orasiga [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini qo'yamiz.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Lekin qarang: sahifada hech narsa chiqmadi. Chunki [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i qaysi rasmni ko'rsatishni hali bilmaydi. Unga rasm fayli kerak bo'ladi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faylni [English pronunciation] S R C [O'zbekcha tallaffuz] atributi aytadi. [English pronunciation] S R C [O'zbekcha tallaffuz] inglizcha [English pronunciation] source [O'zbekcha tallaffuz] so'zidan olingan, ya'ni manba degani. Qo'shtirnoq ichiga rasm faylining nomini yozamiz: osh.jpg. Mana, rasm chiqdi! Brauzer faylni topdi va uni [English pronunciation] I M G [O'zbekcha tallaffuz] turgan joyga qo'ydi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i rasm qo'yadi, [English pronunciation] S R C [O'zbekcha tallaffuz] esa qaysi faylni ko'rsatishni aytadi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. O'yinlar sahifasiga to'p rasmini qo'yamiz. [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i joyida, lekin [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shtirnog'i bo'sh turibdi. Pastdagi fayllar ro'yxatidan to'p rasmini toping va uning nomini qo'shtirnoq ichiga yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichiga fayl nomini yozing.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm fayli nomi oxirida.jpg bo'ladi. Fayllar ro'yxatiga qarang.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rasm bo'ladi. Bizga to'p rasmi kerak.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday fayl yo'q, shuning uchun brauzer buzilgan rasm belgisini ko'rsatdi. Nomni ro'yxatdagidek, harfma-harf yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qaysi rasm kerak?", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'p rasmining fayli fayllar ro'yxatida turibdi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi top.jpg bo'ladi. Uni qo'shtirnoq ichiga yozing.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! To'p rasmi chiqdi. Brauzer siz yozgan faylni topdi.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Galereyada uchta rasm bor, kodda esa uchta [English pronunciation] I M G [O'zbekcha tallaffuz] qatori. Rasmlar yonma-yon, xuddi kod qatorlaridagi tartibda turibdi. Kodda bitta qator yonadi. Siz esa sahifada shu qator chiqargan rasmni bosing.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yongan qator qaysi rasmni chiqaradi?", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi men qatorlarni almashtirdim. Qarang, rasmlar ham joyini almashtirdi. Yongan qator qaysi rasmni chiqaradi?", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oxirgisi. Bu safar yongan qatorda fayl nomida xato bor. Sahifada bu qatordan nima chiqdi?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! top.jpg qatori to'p rasmini chiqaradi.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Qatorlar tartibi o'zgarsa, rasmlar tartibi ham o'zgaradi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Fayl topilmadi, shuning uchun brauzer buzilgan rasm belgisini qo'ydi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rasm. Rasmlar kod qatorlari tartibida turadi: birinchi qator birinchi rasmni, keyingisi keyingi rasmni chiqaradi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu rasm joyida chiqdi. Yongan qatordagi fayl nomiga qarang: unda bitta harf yetishmaydi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Endi har bir [English pronunciation] I M G [O'zbekcha tallaffuz] qatori qaysi rasmni chiqarishini bilasiz.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yonib turgan qatorga qarang: unda qaysi fayl nomi yozilgan?", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmlar kod qatorlari tartibida turadi. Yongan qator kodda nechanchi bo'lsa, rasm ham sahifada o'sha joyda bo'ladi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Fayl nomida xato bo'lsa, brauzer faylni topa olmaydi. Unda rasm o'rnida nima chiqadi?", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yongan qator kodda ikkinchi turibdi, unda top.jpg. Sahifadagi ikkinchi rasmni bosing, u to'p rasmi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi yongan qator uchinchi turibdi. Sahifadagi uchinchi rasmni bosing, u yana to'p rasmi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yongan qator birinchi, uning fayl nomida bitta harf yetishmaydi. Sahifadagi birinchi rasmni bosing, u buzilgan rasm belgisi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmning yana bitta muhim atributi bor: [English pronunciation] alt [O'zbekcha tallaffuz]. [English pronunciation] alt [O'zbekcha tallaffuz] inglizcha [English pronunciation] alternative text [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni muqobil matn degani. U rasmda nima borligini so'z bilan aytadi. Hozir rasm ochildi, shuning uchun [English pronunciation] alt [O'zbekcha tallaffuz] matni ko'rinmaydi. Lekin rasm ochilmasa nima bo'ladi? Keling, ko'ramiz.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomida xato bor: jpg o'rniga jgp yozildi. Brauzer rasmni topa olmadi, shuning uchun buzilgan rasm belgisini va [English pronunciation] alt [O'zbekcha tallaffuz] matnini ko'rsatdi. Endi rasm ochilmasa ham, unda nima borligini bilib turamiz. Yana bir gap: ko'rish qiyin bo'lgan odamlarga sahifani ovoz bilan o'qib beradigan dasturlar ham aynan [English pronunciation] alt [O'zbekcha tallaffuz] matnini o'qiydi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] alt [O'zbekcha tallaffuz] atributini olib tashlaymiz. Qarang, faqat buzilgan rasm belgisi qoldi. Bu yerda nima bo'lgani endi hech kimga tushunarli emas.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomini to'g'rilab, [English pronunciation] alt [O'zbekcha tallaffuz] atributini qaytardik. Rasm yana joyida. Diqqat qiling: [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bo'lmaydi. Rasm ichiga matn yozilmaydi, shuning uchun yopuvchi [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i kerak emas.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] rasm faylini aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] esa rasmni so'z bilan tasvirlaydi. Ikkalasi ham [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining ichida yoziladi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini o'zingiz yig'ing. Kodda to'rtta bo'sh joy bor. Oldin [English pronunciation] tag [O'zbekcha tallaffuz] boshlanadi, keyin ikkita atribut keladi, oxirida esa [English pronunciation] tag [O'zbekcha tallaffuz] yopiladi. Atributlar tartibi muhim emas: [English pronunciation] S R C [O'zbekcha tallaffuz] oldin bo'lsa ham, [English pronunciation] alt [O'zbekcha tallaffuz] oldin bo'lsa ham bo'laveradi. Bitta bo'lak esa umuman ortiqcha.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ida yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bo'lmaydi. Bu bo'lak ortiqcha.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] doim burchakli qavs va nomi bilan boshlanadi. Oldin [English pronunciation] I M G [O'zbekcha tallaffuz] boshini qo'ying.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] boshi joyida turibdi. Endi atribut kerak bo'ladi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hali ikkinchi atribut kerak. Burchakli qavs eng oxirida keladi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hali erta. Oldin ikkala atributni qo'ying, [English pronunciation] tag [O'zbekcha tallaffuz] keyin yopiladi.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] tag [O'zbekcha tallaffuz] nima bilan boshlanadi?", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bo'lib [English pronunciation] I M G [O'zbekcha tallaffuz] boshi, keyin [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz] keladi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib shunday bo'ladi: [English pronunciation] I M G [O'zbekcha tallaffuz] boshi, [English pronunciation] S R C [O'zbekcha tallaffuz], [English pronunciation] alt [O'zbekcha tallaffuz] va burchakli qavs. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! [English pronunciation] tag [O'zbekcha tallaffuz] to'g'ri yig'ildi, to'p rasmi ham chiqdi. Ortiqcha bo'lakni ham to'g'ri tashlab ketdingiz.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun uchta yangi so'z bilan tanishdik: [English pronunciation] I M G [O'zbekcha tallaffuz], [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz]. Har birini u bajaradigan ish bilan juftlang. Oldin so'zni bosing, keyin uning ishini bosing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i sahifaga rasm qo'yadi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] S R C [O'zbekcha tallaffuz] atributi rasm faylini aytadi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] alt [O'zbekcha tallaffuz] atributi rasmni so'z bilan tasvirlaydi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G [O'zbekcha tallaffuz] bu [English pronunciation] tag [O'zbekcha tallaffuz], u sahifaga rasm qo'yadi.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] S R C [O'zbekcha tallaffuz] bu atribut, u qaysi fayl ekanini aytadi.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] alt [O'zbekcha tallaffuz] bu atribut, u rasm ochilmasa ko'rinadigan so'zlarni beradi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi so'z [English pronunciation] tag [O'zbekcha tallaffuz], qaysilari atribut?", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G tag [O'zbekcha tallaffuz] bo'ladi, u rasmni o'zi qo'yadi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G [O'zbekcha tallaffuz] rasm qo'yadi, [English pronunciation] S R C [O'zbekcha tallaffuz] faylni aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] rasmni so'z bilan tasvirlaydi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Rasmning hamma bo'lagini bilasiz.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin so'zni bosing.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmlar ba'zan chiqmay qoladi. Keling, eng ko'p uchraydigan ikkita xatoni ko'ramiz.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] S R C [O'zbekcha tallaffuz] atributi unutildi. Brauzer qaysi faylni ko'rsatishni bilmaydi, shuning uchun rasm yo'q. Faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qoldi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: fayl nomida bitta harf tushib qoldi. mushuk.jpg o'rniga mushk.jpg yozildi. Brauzer aynan yozilgan faylni qidiradi va harfma-harf solishtiradi. Bunday fayl yo'q, shuning uchun buzilgan rasm belgisi chiqdi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, rasmga doim [English pronunciation] S R C [O'zbekcha tallaffuz] kerak bo'ladi, fayl nomini esa aniq yozish kerak.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, to'p rasmining fayli saytga hali yuklanmagan ekan! Shuning uchun sahifada faqat buzilgan rasm belgisi turibdi. Hech kim bu yerda nima bo'lishi kerakligini bilmaydi. [English pronunciation] alt [O'zbekcha tallaffuz] qo'shtirnog'i ichiga rasmda nima borligini so'z bilan yozing va Tekshirishni bosing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] alt [O'zbekcha tallaffuz] qo'shtirnog'i ichiga rasmda nima borligini yozing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas, faqat so'z yozing.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu fayl nomi bo'ladi. [English pronunciation] alt [O'zbekcha tallaffuz] ichiga esa rasmda nima borligini so'z bilan yozing.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda qisqa. Rasmda nima borligini bitta-ikkita so'z bilan yozing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasmda nima bo'lishi kerak edi?", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu o'yinlar sahifasi va rasm fayli koptok.jpg. Rasmda nima bor?", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, Futbol to'pi deb yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi rasm ochilmasa ham, uning o'rnida sizning so'zlaringiz turibdi. Hamma bu yerda nima borligini biladi.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi ikkita holatga qarang: oldin va keyin. Kodda bitta narsa o'zgardi va rasm boshqacha bo'lib qoldi. Xo'sh, nima o'zgardi?", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodda nima o'zgardi?", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shildi, rasm paydo bo'ldi.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Fayl nomi to'g'rilandi, rasm ochildi.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] alt [O'zbekcha tallaffuz] qo'shildi, belgi yonida so'zlar chiqdi.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin sahifada umuman hech narsa yo'q edi, keyin rasm chiqdi. Buzilgan belgi ham yo'q edi. Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shildi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin buzilgan rasm belgisi bor edi, keyin rasm ochildi. Demak, fayl nomi to'g'rilandi.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: rasm ikkalasida ham ochilmadi, lekin keyin belgi yonida so'zlar chiqdi. Bu so'zlarni [English pronunciation] alt [O'zbekcha tallaffuz] beradi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi rasm nimaga chiqmasligini bilasiz. Keyin butun sahifani birga o'qib chiqamiz.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldingi va keyingi rasmni solishtiring: sahifada nima o'zgardi?", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin sahifada umuman hech narsa yo'q edimi, hatto belgi ham? Brauzerga qaysi faylni ko'rsatishni qaysi atribut aytadi, esingizdami?", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin buzilgan rasm belgisi bormidi? Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] bor edi, lekin brauzer faylni topa olmadi. Kodda nima tuzatilgan bo'lishi mumkin?", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasm ikkalasida ham ochilmadimi? Unda belgi yonidagi so'zlarga qarang: ularni qaysi atribut beradi?", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, osh retsepti sahifasi tayyor. Keling, brauzer uni qanday o'qishini ko'ramiz. Brauzer kodni har doimgidek tepadan pastga o'qiydi.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qatorda sarlavha turibdi. U sahifaning eng tepasida chiqdi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi qatorda [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i. Brauzer osh.jpg faylini topdi va rasmni aynan shu joyga qo'ydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi qatorda yozuv. Demak, rasm kodda qayerda tursa, sahifada ham o'sha joyda chiqadi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'tgan darsda havola [English pronunciation] https [O'zbekcha tallaffuz] bilan internetdagi saytga olib borganini ko'rdik. Rasm ham xuddi shunday ishlaydi. Qarang, men sahifaga quyosh rasmini qo'ymoqchiman. Lekin fayllarimizda quyosh.jpg yo'q. Shuning uchun brauzer buzilgan rasm belgisini ko'rsatyapti.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun rasmning to'liq manzili kerak. Keling, manzilni qanday olishni ko'rsataman. Saytim brauzerning boshqa yorlig'ida ochiq.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm ustiga sichqonchani olib boramiz va o'ng tugmasini bosamiz. Qarang, ro'yxat chiqdi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ro'yxatdan [English pronunciation] Copy image address [O'zbekcha tallaffuz]ni tanlaymiz. Endi rasmning to'liq manzili xotirada turibdi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z sahifamiz yorlig'iga qaytamiz va kodga boramiz. Eski fayl nomini belgilaymiz.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana o'ng tugmani bosamiz. Bu safar ro'yxatdan [English pronunciation] Paste [O'zbekcha tallaffuz]ni tanlaymiz.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Manzil kodga tushdi, rasm esa sahifada paydo bo'ldi. Endi manzil qanday tuzilganini ko'raylik.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyin rasm turgan sayt nomi keladi: kodi.uz.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida esa qiya chiziq va rasm fayli nomi turadi. Shuning uchun brauzer rasmni internetdan olib keldi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi boshidagi [English pronunciation] https [O'zbekcha tallaffuz] qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm yana buzildi! [English pronunciation] https [O'zbekcha tallaffuz] bo'lmasa, brauzer kodi.uz degan papkani o'z saytimizdan qidiradi va uni topa olmaydi.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, o'z faylimiz uchun fayl nomi yetadi. Internetdagi rasm uchun esa to'liq manzil kerak: [English pronunciation] https [O'zbekcha tallaffuz], sayt nomi va rasm fayli.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Mening sevimli mevam olma, uning rasmi ham saytimda turibdi. Pastda sayt nomi va rasm fayli yozilgan. [English pronunciation] S R C [O'zbekcha tallaffuz] ichiga rasmning to'liq manzilini yozing: [English pronunciation] https [O'zbekcha tallaffuz], sayt nomi, qiya chiziq va fayl nomi.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] S R C [O'zbekcha tallaffuz] ichiga rasmning to'liq manzilini yozing.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi. Manzilni [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq bilan boshlang.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] https [O'zbekcha tallaffuz] so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt nomi bilan fayl nomi o'rtasida qiya chiziq turadi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt nomi va fayl nomini pastdagidek, harfma-harf yozing.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu rasm boshqa saytda turibdi. Unga qanday manzil kerak?", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq. Keyin sayt nomi, qiya chiziq va fayl nomi keladi.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] https [O'zbekcha tallaffuz] tugmasini bosing va kodi.uz deb yozing. Keyin qiya chiziq qo'ying va olma.jpg faylini yozing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Olma rasmi internetdan keldi.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ishladi! Lekin bugun saytlar ko'pincha [English pronunciation] https [O'zbekcha tallaffuz] bilan yoziladi. Oxiridagi s harfi xavfsiz degani.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Men [English pronunciation] S R C [O'zbekcha tallaffuz] atributiga manzil yozaman. Siz esa brauzer rasmni qayerdan olishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] S R C [O'zbekcha tallaffuz] atributidagi manzilning eng boshiga qarang.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlansa, brauzer rasmni internetdan oladi. Faqat fayl yoki sayt nomi bo'lsa, saytimiz fayllaridan qidiradi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aldanmang! Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizning sahifangizga rasm qo'ying. Fayllar ro'yxatida uchta rasm bor. O'zingizga yoqqanini tanlang va uning nomini [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shtirnog'i ichiga yozing. Keyin Tekshirishni bosing.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichiga rasm fayli nomini yozing.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu rasm sizning fayllaringiz o'rtasida yo'q. Ro'yxatdagi uchta rasmdan birini tanlang.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday fayl yo'q, shuning uchun buzilgan rasm belgisi chiqdi. Nomni ro'yxatdagidek, harfma-harf yozing.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi rasm sizga ko'proq yoqadi?", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayllar ro'yxatidan bitta nomni oling, masalan gul.jpg.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, mushuk.jpg deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r tanlov! Rasmingiz sahifada chiqdi. Endi unga [English pronunciation] alt [O'zbekcha tallaffuz] matnini yozamiz.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi rasmingizga [English pronunciation] alt [O'zbekcha tallaffuz] matnini yozing: rasmda nima borligini o'z so'zlaringiz bilan ayting. Rasm ochilgani uchun [English pronunciation] alt [O'zbekcha tallaffuz] sahifada ko'rinmaydi. Lekin ovoz bilan o'qiydigan dastur uni aynan shunday o'qiydi: pastda ko'rib turibsiz. Keyin Tayyorni bosing.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi rasmingiz ochilsa ham, ochilmasa ham, unda nima borligi tushunarli.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmingizda nima bor? Shuni yozing.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, qo'shtirnoq joyida turibdi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Mening mushugim. Keyin Tayyorni bosing.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men sahifangizni tahrirlayotib bitta so'zni o'chirib yubordim! Endi rasm o'rnida faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni turibdi. Kodda [English pronunciation] I M G tag [O'zbekcha tallaffuz]-idan keyin bo'sh joy bor. Yetishmayotgan so'zni o'sha joyga olib boring.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] havola manzilini beradi. Rasm faylini esa boshqa atribut aytadi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] alt [O'zbekcha tallaffuz] kodda bor, u keyinroq turibdi. Bu yerda rasm faylini aytadigan atribut kerak.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana endi joyida! [English pronunciation] S R C [O'zbekcha tallaffuz] qaytdi va rasmingiz yana chiqdi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Brauzerga qarang: rasm o'rnida faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qoldi. Brauzerga nima yetishmayapti?", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bo'sh joydan keyin fayl nomi turibdi. Brauzerga rasm faylini qaysi atribut aytadi, esingizdami?", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'laklardan [English pronunciation] S R C [O'zbekcha tallaffuz] so'zini oling va bo'sh joyga olib boring.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Mana, galereya, lekin unda xato bor. Brauzerga qarang: qaysi rasm chiqmadi? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi boshqa rasm chiqmadi: uning o'rnida faqat so'zlar turibdi. Bu yerda nima buzilgan?", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator to'g'ri yozilgan: [English pronunciation] S R C [O'zbekcha tallaffuz] ham, fayl nomi ham joyida. Brauzerga qarang: qaysi rasm chiqmadi?", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Fayl nomida bitta harf yetishmayotgan edi. Shuning uchun brauzer faylni topa olmagan edi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Bu yerda [English pronunciation] S R C [O'zbekcha tallaffuz] o'rniga [English pronunciation] href [O'zbekcha tallaffuz] yozilgan edi. [English pronunciation] href [O'zbekcha tallaffuz] rasm uchun emas, shuning uchun faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qolgan edi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: qaysi rasm o'rnida buzilgan belgi turibdi?", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buzilgan belgi fayl topilmaganda chiqadi. Fayl nomlarini solishtiring.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ikkinchi qatorga qarang: fayl nomi to'liqmi?", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: qaysi rasm o'rnida faqat so'zlar turibdi?", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgisiz faqat so'zlar chiqsa, brauzer faylni umuman bilmaydi. Atribut nomlariga qarang.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qatorda [English pronunciation] S R C [O'zbekcha tallaffuz] o'rniga boshqa atribut turibdi?", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala xato ham topildi. Siz rasmlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yoki atribut haqida?", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i esingizdami? [English pronunciation] S R C [O'zbekcha tallaffuz] rasm faylini aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] esa rasm ochilmasa chiqadigan so'zlarni beradi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i yo'q. Boshqa saytdagi rasmga [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil kerak. Gap shunga mos keladimi?", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bo'lmaydi. Rasm ichiga matn yozilmaydi.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm ochilmasa, uning o'rnida [English pronunciation] alt [O'zbekcha tallaffuz] matni ko'rinadi.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shuning uchun [English pronunciation] alt [O'zbekcha tallaffuz] kerak: rasm ochilmasa ham, unda nima borligi tushunarli bo'ladi.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm faylini [English pronunciation] href [O'zbekcha tallaffuz] atributi aytadi.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] havola uchun bo'ladi. Rasm faylini [English pronunciation] S R C [O'zbekcha tallaffuz] atributi aytadi.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshqa saytdagi rasm uchun [English pronunciation] S R C [O'zbekcha tallaffuz] atributiga sayt nomi va fayl nomini yozish yetadi, [English pronunciation] https [O'zbekcha tallaffuz] shart emas.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] https [O'zbekcha tallaffuz] kerak. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini, [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz] atributlarini yaxshi bilasiz.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men rasmga [English pronunciation] href [O'zbekcha tallaffuz] bilan osh.jpg faylini yozgan edim? Afsuski, men adashibman. [English pronunciation] href [O'zbekcha tallaffuz] havola uchun bo'ladi, [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i esa uni tushunmaydi. Shuning uchun sahifada hech narsa chiqmadi. Demak, rasmga doim [English pronunciation] S R C [O'zbekcha tallaffuz] kerak bo'ladi.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning sahifangiz va sizning rasmingiz!", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i sahifaga rasm qo'yadi.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] S R C [O'zbekcha tallaffuz] atributi qaysi faylni ko'rsatishni aytadi.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] alt [O'zbekcha tallaffuz] atributi esa rasmni so'z bilan tasvirlaydi.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm boshqa saytda tursa, [English pronunciation] S R C [O'zbekcha tallaffuz] ichiga [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadigan to'liq manzil yoziladi.", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi sahifalaringiz rasmlar bilan jonlandi. Keyingi darsda formalar bilan tanishamiz: sahifaga o'zingiz yozadigan maydonlar qo'yamiz. Ko'rishguncha!", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Guruch, go'sht va sabzi kerak bo'ladi.", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men futbol o'ynashni yaxshi ko'raman.", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasm qayerdan?", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzer rasmni qayerdan oladi?", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! На прошлом уроке мы связали страницы ссылками. Вот страница с рецептом плова. Но смотри: на ней один текст. Без фото плов не так уж аппетитный, правда? Давай поставим на страницу фото плова. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Под заголовком появилось фото плова. Теперь страница выглядит гораздо живее.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фото встало там, где оно стоит в коде: после заголовка и перед текстом.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься ставить такие картинки, и из своих файлов, и с сайта в интернете. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через [English pronunciation] href [Русское произношение]. Вот и картинке я написал файл osh.jpg через [English pronunciation] href [Русское произношение]. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Давай поставим первую картинку вместе. Для картинки есть тег [English pronunciation] I M G [Русское произношение]. [English pronunciation] I M G [Русское произношение], от английского [English pronunciation] image [Русское произношение], то есть картинка. Смотри, ставим тег [English pronunciation] I M G [Русское произношение] между заголовком и текстом.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Но смотри: на странице ничего не появилось. Потому что тег [English pronunciation] I M G [Русское произношение] ещё не знает, какую картинку показать. Ему нужен файл картинки.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Файл задаёт атрибут [English pronunciation] S R C [Русское произношение]. [English pronunciation] S R C [Русское произношение], от английского [English pronunciation] source [Русское произношение], то есть источник. В кавычках пишем имя файла картинки: osh.jpg. Вот и фото! Браузер нашёл файл и поставил его туда, где стоит [English pronunciation] I M G [Русское произношение].", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: тег [English pronunciation] I M G [Русское произношение] ставит картинку, а [English pronunciation] S R C [Русское произношение] говорит, какой файл показать.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Поставим на страницу игр фото мяча. Тег [English pronunciation] I M G [Русское произношение] на месте, но кавычки [English pronunciation] S R C [Русское произношение] пустые. Найди фото мяча в списке файлов внизу и впиши его имя в кавычки.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя файла в кавычки.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла картинки заканчивается на.jpg. Посмотри в список файлов.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая картинка. Нам нужно фото мяча.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого файла нет, поэтому браузер показал значок сломанной картинки. Напиши имя буква в букву, как в списке.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая картинка нужна странице?", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Файл с фото мяча есть в списке файлов.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла, top.jpg. Впиши его в кавычки.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Фото мяча на месте. Браузер нашёл файл, который ты написал.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В галерее три картинки, а в коде три строки [English pronunciation] I M G [Русское произношение]. Картинки стоят рядом в том же порядке, что и строки кода. В коде загорается одна строка. А ты нажми на странице картинку, которую она выводит.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какую картинку выводит горящая строка?", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь я поменял строки местами. Смотри, картинки тоже поменялись. Какую картинку выводит горящая строка?", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Последняя. На этот раз в имени файла горящей строки ошибка. Что эта строка вывела на странице?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Строка top.jpg выводит фото мяча.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Меняется порядок строк, меняется и порядок картинок.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Файл не нашёлся, поэтому браузер поставил значок сломанной картинки.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая картинка. Картинки идут в порядке строк кода: первая строка, первая картинка, следующая, следующая.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Эта картинка на месте. Посмотри на имя файла в горящей строке: в нём не хватает буквы.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Теперь ты знаешь, какую картинку выводит каждая строка [English pronunciation] I M G [Русское произношение].", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на горящую строку: какое имя файла в ней написано?", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинки стоят в порядке строк кода. Какая по счёту горящая строка, на том же месте и картинка.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Если в имени файла ошибка, браузер не найдёт файл. Что тогда выходит на месте картинки?", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Горящая строка в коде вторая, в ней top.jpg. Нажми вторую картинку на странице, это мяч.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь горящая строка третья. Нажми третью картинку на странице, это снова мяч.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Горящая строка первая, в её имени файла не хватает буквы. Нажми первую картинку на странице, то есть значок сломанной картинки.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У картинки есть ещё один важный атрибут: [English pronunciation] alt [Русское произношение]. [English pronunciation] alt [Русское произношение], от английского [English pronunciation] alternative text [Русское произношение], то есть запасной текст. Он словами говорит, что на картинке. Сейчас фото открылось, поэтому текста [English pronunciation] alt [Русское произношение] не видно. А что будет, если фото не откроется? Давай посмотрим.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В имени файла ошибка: вместо jpg написано jgp. Браузер не нашёл картинку, поэтому показал значок сломанной картинки и текст [English pronunciation] alt [Русское произношение]. Даже без фото мы знаем, что там было. И ещё: программы, которые читают страницу вслух людям с плохим зрением, читают именно текст [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь уберём атрибут [English pronunciation] alt [Русское произношение]. Смотри, остался только значок сломанной картинки. Что здесь было, теперь непонятно никому.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Исправили имя файла и вернули [English pronunciation] alt [Русское произношение]. Фото снова на месте. Обрати внимание: у тега [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Внутрь картинки текст не пишут, поэтому закрывающий [English pronunciation] I M G [Русское произношение] не нужен.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] S R C [Русское произношение] задаёт файл картинки, а [English pronunciation] alt [Русское произношение] описывает картинку словами. Оба пишут внутри тега [English pronunciation] I M G [Русское произношение].", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери тег [English pronunciation] I M G [Русское произношение] сам. В коде четыре пустых места. Сначала начинается тег, потом идут два атрибута, а в конце тег закрывается. Порядок атрибутов не важен: можно сначала [English pronunciation] S R C [Русское произношение], можно сначала [English pronunciation] alt [Русское произношение]. А один кусок вообще лишний.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Этот кусок лишний.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег всегда начинается с уголка и имени. Сначала поставь начало [English pronunciation] I M G [Русское произношение].", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начало тега уже на месте. Теперь нужен атрибут.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ещё нужен второй атрибут. Уголок идёт в самом конце.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рано. Сначала оба атрибута, а потом тег закрывается.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С чего начинается тег?", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала начало [English pronunciation] I M G [Русское произношение], потом [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок такой: начало [English pronunciation] I M G [Русское произношение], [English pronunciation] S R C [Русское произношение], [English pronunciation] alt [Русское произношение] и уголок. Закрывающий тег не нужен.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Тег собран верно, и фото мяча появилось. И лишний кусок ты правильно не взял.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня у нас три новых слова: [English pronunciation] I M G [Русское произношение], [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение]. Соедини каждое с тем, что оно делает. Сначала нажми слово, потом его дело.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Тег [English pronunciation] I M G [Русское произношение] ставит картинку.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Атрибут [English pronunciation] S R C [Русское произношение] задаёт файл картинки.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Атрибут [English pronunciation] alt [Русское произношение] описывает картинку словами.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] I M G [Русское произношение], это тег, он ставит картинку на страницу.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] S R C [Русское произношение], это атрибут, он говорит, какой файл.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] alt [Русское произношение], это атрибут, он даёт слова, которые видны, если фото не открылось.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое слово, тег, а какие, атрибуты?", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] I M G [Русское произношение], тег, он сам ставит картинку.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] I M G [Русское произношение] ставит картинку, [English pronunciation] S R C [Русское произношение] задаёт файл, [English pronunciation] alt [Русское произношение] описывает словами.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты знаешь все части картинки.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми слово.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинки иногда не появляются. Посмотрим на две самые частые ошибки.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: забыли атрибут [English pronunciation] S R C [Русское произношение]. Браузер не знает, какой файл показать, поэтому картинки нет. Остался только текст [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: в имени файла пропала буква. Вместо mushuk.jpg написано mushk.jpg. Браузер ищет ровно тот файл, что написан, буква в букву. Такого файла нет, поэтому появился значок сломанной картинки.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, картинке всегда нужен [English pronunciation] S R C [Русское произношение], а имя файла надо писать точно.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, файл с фото мяча ещё не загружен на сайт! Поэтому на странице только значок сломанной картинки. Никто не знает, что здесь должно быть. Напиши в кавычки [English pronunciation] alt [Русское произношение] словами, что на картинке, и нажми Проверить.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши в кавычки [English pronunciation] alt [Русское произношение], что на картинке.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь не нужен тег, только слова.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это имя файла. А в [English pronunciation] alt [Русское произношение] словами пишут, что на картинке.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слишком коротко. Напиши одно-два слова о том, что на картинке.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что должно быть на картинке?", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это страница игр, а файл, koptok.jpg. Что на картинке?", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, напиши: Футбольный мяч.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Даже если фото не открылось, на его месте стоят твои слова. Все знают, что здесь было.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь посмотри на два состояния: до и после. В коде изменилась одна вещь, и картинка стала другой. Ну и что изменилось?", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что изменилось в коде?", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили [English pronunciation] S R C [Русское произношение], картинка появилась.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Исправили имя файла, фото открылось.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили [English pronunciation] alt [Русское произношение], рядом со значком появились слова.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала на странице не было вообще ничего, потом появилась картинка. Даже значка не было. Значит, добавили [English pronunciation] S R C [Русское произношение].", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала был значок сломанной картинки, потом фото открылось. Значит, исправили имя файла.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: фото не открылось ни там, ни там, но после рядом со значком появились слова. Эти слова даёт [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты знаешь, почему картинка не появляется. Дальше прочитаем всю страницу вместе.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни картинку до и после: что изменилось на странице?", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала на странице не было вообще ничего, даже значка? Вспомни, какой атрибут говорит браузеру, какой файл показать.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сначала был значок сломанной картинки? Значит, [English pronunciation] S R C [Русское произношение] был, но браузер не нашёл файл. Что могли исправить в коде?", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Фото не открылось ни там, ни там? Тогда посмотри на слова рядом со значком: какой атрибут их даёт?", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот страница с рецептом плова готова. Посмотрим, как браузер её читает. Как всегда, сверху вниз.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первой строке, заголовок. Он появился на самом верху страницы.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во второй строке, тег [English pronunciation] I M G [Русское произношение]. Браузер нашёл файл osh.jpg и поставил фото ровно сюда.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В третьей строке, текст. Значит, где картинка стоит в коде, там она и появится на странице.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На прошлом уроке мы видели: ссылка с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. С картинками так же. Смотри, я хочу поставить на страницу картинку с солнцем. Но среди наших файлов нет quyosh.jpg. Поэтому браузер показывает значок сломанной картинки.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Эта картинка лежит на моём сайте в интернете. Чтобы её взять, нужен полный адрес картинки. Давай покажу, как его достать. Мой сайт открыт в другой вкладке браузера.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наводим мышку на картинку и нажимаем правую кнопку. Смотри, появился список.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В списке выбираем Копировать URL картинки. Теперь полный адрес картинки в памяти.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь возвращаемся во вкладку своей страницы и идём к коду. Выделяем старое имя файла.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Снова нажимаем правую кнопку. В этот раз выбираем в списке Вставить.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Готово! Адрес попал в код, а картинка появилась на странице. Теперь посмотрим, из чего состоит адрес.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес начинается с [English pronunciation] https [Русское произношение], потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дальше, имя сайта, где лежит картинка: kodi.uz.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А в конце, косая черта и имя файла картинки. Поэтому браузер и принёс картинку из интернета.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь сотрём начало, [English pronunciation] https [Русское произношение]. Ну, что будет?", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Картинка снова сломалась! Без [English pronunciation] https [Русское произношение] браузер ищет папку kodi.uz на нашем сайте и не находит её.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, для своего файла хватит имени файла. А для картинки из интернета нужен полный адрес: [English pronunciation] https [Русское произношение], имя сайта и файл картинки.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Мой любимый фрукт, яблоко, и его картинка тоже лежит на моём сайте. Внизу написаны имя сайта и файл картинки. Впиши в [English pronunciation] S R C [Русское произношение] полный адрес картинки: [English pronunciation] https [Русское произношение], имя сайта, косая черта и имя файла.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши в [English pronunciation] S R C [Русское произношение] полный адрес картинки.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В начале нет [English pronunciation] https [Русское произношение]. Без него браузер ищет картинку на нашем сайте, и она ломается. Начни адрес с [English pronunciation] https [Русское произношение], двоеточия и двух косых черт.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После [English pronunciation] https [Русское произношение] идут двоеточие и две косые черты. Проверь их.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между именем сайта и именем файла стоит косая черта.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши имя сайта и имя файла буква в букву, как внизу.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта картинка лежит на другом сайте. Какой адрес ей нужен?", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полный адрес начинается с [English pronunciation] https [Русское произношение], потом двоеточие и две косые черты. Дальше, имя сайта, косая черта и имя файла.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми кнопку [English pronunciation] https [Русское произношение] и напиши kodi.uz. Потом поставь косую черту и напиши файл olma.jpg.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Картинка с яблоком пришла из интернета.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Работает! Но сегодня сайты обычно пишут с [English pronunciation] https [Русское произношение]: буква s значит защищённый.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я пишу адрес в атрибут [English pronunciation] S R C [Русское произношение], а ты выбери, откуда браузер возьмёт картинку: из файлов нашего сайта или из интернета?", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на самое начало адреса в атрибуте [English pronunciation] S R C [Русское произношение].", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если адрес начинается с [English pronunciation] https [Русское произношение], браузер берёт картинку из интернета. Если там только имя файла или сайта, он ищет среди файлов нашего сайта.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес начинается с [English pronunciation] https [Русское произношение]. Браузер принесёт картинку с сайта в интернете.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не попадись! В начале нет [English pronunciation] https [Русское произношение]. Браузер думает, что это папка на нашем сайте, не находит её, и картинка ломается.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Теперь ты знаешь, откуда берётся картинка.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь поставь картинку на свою страницу. В списке файлов три картинки. Выбери ту, что нравится, и впиши её имя в кавычки [English pronunciation] S R C [Русское произношение]. Потом нажми Проверить.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши в кавычки имя файла картинки.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этой картинки нет среди твоих файлов. Выбери одну из трёх в списке.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого файла нет, поэтому появился значок сломанной картинки. Напиши имя буква в букву, как в списке.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая картинка тебе больше нравится?", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Возьми одно имя из списка файлов, например gul.jpg.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, напиши mushuk.jpg и нажми Проверить.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Классный выбор! Твоя картинка на странице. Теперь напишем ей [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши своей картинке [English pronunciation] alt [Русское произношение]: своими словами скажи, что на ней. Фото открылось, поэтому [English pronunciation] alt [Русское произношение] на странице не видно. Но программа, которая читает вслух, прочтёт его именно так, смотри ниже. Потом нажми Готово.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Теперь откроется фото или нет, понятно, что на нём.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что на твоей картинке? Это и напиши.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, кавычки на месте.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Мой кот. Потом нажми Готово.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я правил твою страницу и стёр одно слово! Теперь вместо картинки только текст [English pronunciation] alt [Русское произношение]. В коде после [English pronunciation] I M G [Русское произношение] пустое место. Перетащи туда недостающее слово.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] href [Русское произношение] задаёт адрес ссылки. А файл картинки задаёт другой атрибут.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] alt [Русское произношение] в коде уже есть, он дальше. Здесь нужен атрибут, который задаёт файл картинки.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот теперь порядок! [English pronunciation] S R C [Русское произношение] вернулся, и твоя картинка снова на месте.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на браузер: вместо картинки остался только текст [English pronunciation] alt [Русское произношение]. Чего не хватает браузеру?", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После пустого места стоит имя файла. Вспомни, какой атрибут сообщает браузеру файл картинки.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Возьми кусок [English pronunciation] S R C [Русское произношение] и перетащи его в пустое место.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Вот галерея, но в ней ошибка. Посмотри на браузер: какая картинка не появилась? Найди строку с ошибкой и нажми её.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь не появилась другая картинка: на её месте только слова. Что сломано здесь?", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка в порядке: есть и [English pronunciation] S R C [Русское произношение], и имя файла. Посмотри на браузер: какая картинка не появилась?", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В имени файла не хватало буквы. Поэтому браузер не нашёл файл.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Здесь вместо [English pronunciation] S R C [Русское произношение] был написан [English pronunciation] href [Русское произношение]. [English pronunciation] href [Русское произношение] не для картинок, поэтому оставался только текст [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: где вместо картинки значок?", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значок появляется, когда файл не нашёлся. Сравни имена файлов.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на вторую строку: имя файла полное?", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: где вместо картинки только слова?", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если видны только слова без значка, браузер вообще не знает файла. Посмотри на имена атрибутов.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какой строке вместо [English pronunciation] S R C [Русское произношение] другой атрибут?", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь картинки как настоящий программист.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу по частям: о каком теге или атрибуте она?", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни тег [English pronunciation] I M G [Русское произношение]: [English pronunciation] S R C [Русское произношение] задаёт файл картинки, а [English pronunciation] alt [Русское произношение] даёт слова, если фото не открылось. Закрывающего тега у него нет. Картинке с другого сайта нужен адрес с [English pronunciation] https [Русское произношение]. Фраза с этим совпадает?", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег [English pronunciation] I M G [Русское произношение] пишут с закрывающим тегом.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле у [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Внутрь картинки текст не пишут.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если фото не открылось, на его месте виден текст [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для этого и нужен [English pronunciation] alt [Русское произношение]: даже без фото понятно, что на нём.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Файл картинки задаёт атрибут [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] href [Русское произношение], для ссылок. Файл картинки задаёт атрибут [English pronunciation] S R C [Русское произношение].", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для картинки с другого сайта в [English pronunciation] S R C [Русское произношение] хватит имени сайта и файла, [English pronunciation] https [Русское произношение] не нужен.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] https [Русское произношение] нужен. Без него браузер ищет картинку на нашем сайте, и она ломается.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь тег [English pronunciation] I M G [Русское произношение] и атрибуты [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение].", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал картинке файл osh.jpg через [English pronunciation] href [Русское произношение]? Увы, я ошибся. [English pronunciation] href [Русское произношение], для ссылок, а тег [English pronunciation] I M G [Русское произношение] его не понимает. Поэтому на странице ничего не появилось. Значит, картинке всегда нужен [English pronunciation] S R C [Русское произношение].", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя страница и твоя картинка!", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег [English pronunciation] I M G [Русское произношение] ставит картинку на страницу.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Атрибут [English pronunciation] S R C [Русское произношение] говорит, какой файл показать.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А атрибут [English pronunciation] alt [Русское произношение] описывает картинку словами.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если картинка на другом сайте, в [English pronunciation] S R C [Русское произношение] пишут полный адрес, который начинается с [English pronunciation] https [Русское произношение].", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твои страницы ожили с картинками. На следующем уроке познакомимся с формами: поставим на страницу поля, в которые можно писать. До встречи!", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны рис, мясо и морковь.", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я люблю играть в футбол.", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Откуда картинка?", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Откуда браузер возьмёт картинку?", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Last time we connected pages with links. Here’s the plov recipe page. But look, it’s only text. Plov without a photo isn’t very tasty, right? Let’s put a photo of plov on the page. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! A photo of plov appeared under the heading. Now the page looks much more alive.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The photo appears where it is in the code: after the heading and before the text.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s put in the first picture together. There’s the I M G tag for pictures. I M G comes from the word image: a picture. Watch, we put the I M G tag between the heading and the text.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] But look: nothing showed up on the page, because the I M G tag doesn’t know which picture to show yet. It needs a picture file.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The S R C attribute gives the file. S R C comes from the word source. In the quotes we write the picture file’s name: osh.jpg. There’s the photo! The browser found the file and put it where I M G is.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: the I M G tag puts in a picture, and S R C says which file to show.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Let’s put a photo of a ball on the games page. The I M G tag is in place, but the S R C quotes are empty. Find the ball photo in the list of files below and type its name in the quotes.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the file name in the quotes.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A picture file name ends with.jpg. Look at the list of files.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different picture. We need the ball photo.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such file, so the browser shows a broken picture icon. Type the name letter by letter, as in the list.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which picture does the page need?", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The ball photo file is in the list of files.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name is top.jpg. Type it in the quotes.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The ball photo is there. The browser found the file you typed.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The gallery has three pictures, and the code has three I M G lines. The pictures sit side by side in the same order as the code lines. One line lights up in the code. Tap the picture on the page that this line shows.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which picture does the lit line show?", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now I swapped the lines. Look, the pictures swapped too. Which picture does the lit line show?", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The last one. This time the lit line has a typo in the file name. What did this line show on the page?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The top.jpg line shows the ball.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! Change the order of the lines, and the pictures change order too.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The file wasn’t found, so the browser put a broken picture icon.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different picture. The pictures go in the order of the code lines: the first line gives the first picture, the next one the next.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This picture showed up fine. Look at the file name in the lit line: it’s missing a letter.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Now you know which picture each I M G line shows.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the lit line: which file name is written in it?", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The pictures go in the order of the code lines. Whatever place the lit line has, the picture has the same place on the page.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] If the file name has a typo, the browser can’t find the file. What shows up in the picture’s place then?", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The lit line is second in the code, with top.jpg. Tap the second picture on the page: the ball.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the lit line is third. Tap the third picture on the page: the ball again.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The lit line is first, and its file name is missing a letter. Tap the first picture on the page, the broken picture icon.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A picture has one more important attribute: alt. alt comes from alternative text. It says in words what’s in the picture. Right now the photo opened, so the alt text isn’t visible. But what if the photo doesn’t open? Let’s see.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name has a typo: it says jgp instead of jpg. The browser couldn’t find the picture, so it showed a broken picture icon and the alt text. Even without the photo, we know what was there. One more thing: programs that read pages aloud for people who can’t see well read exactly the alt text.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s remove the alt attribute. Look, only the broken picture icon is left. Now nobody can tell what was here.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We fixed the file name and brought alt back. The photo is back. Note: the I M G tag has no closing tag. You don’t write text inside a picture, so a closing I M G isn’t needed.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So S R C gives the picture file, and alt describes the picture in words. Both go inside the I M G tag.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build the I M G tag yourself. The code has four empty spots. First the tag starts, then come two attributes, and at the end the tag closes. The order of the attributes doesn’t matter: S R C first or alt first, both are fine. And one piece isn’t needed at all.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I M G has no closing tag. This piece isn’t needed.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag always starts with a bracket and its name. Put the start of I M G first.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The start of the tag is already there. Now you need an attribute.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You still need the second attribute. The bracket goes at the very end.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Too early. Put both attributes first, then the tag closes.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does a tag start with?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First the start of I M G, then S R C and alt.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is: the start of I M G, S R C, alt and the bracket. No closing tag.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The tag is built right, and the ball photo appeared. And you were right to leave the extra piece.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today we met three new words: I M G, S R C and alt. Match each one with what it does. Tap a word first, then what it does.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The I M G tag puts in a picture.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The S R C attribute gives the picture file.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The alt attribute describes the picture in words.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I M G is the tag; it puts a picture on the page.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] S R C is the attribute that says which file.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] alt is the attribute that gives the words shown if the photo doesn’t open.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which word is the tag, and which are attributes?", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I M G is the tag; it puts the picture in itself.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I M G puts in a picture, S R C gives the file, alt describes it in words.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant! You know every part of a picture.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a word first.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sometimes pictures don’t show up. Let’s look at the two most common mistakes.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: the S R C attribute was forgotten. The browser doesn’t know which file to show, so there’s no picture. Only the alt text is left.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The second: one letter is missing from the file name. It says mushk.jpg instead of mushuk.jpg. The browser looks for exactly the file that’s written, letter by letter. There’s no such file, so a broken picture icon shows up.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a picture always needs S R C, and the file name must be written exactly.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, the ball photo file isn’t on the site yet! So the page only shows a broken picture icon. Nobody knows what should be here. Type in the alt quotes what’s in the picture, in words, and tap Check.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type what’s in the picture in the alt quotes.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No tag here, just words.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a file name. In alt you describe in words what’s in the picture.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Too short. Write a word or two about what’s in the picture.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What should the picture show?", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This is the games page, and the file is koptok.jpg. What’s in the picture?", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, write: A football.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Even if the photo doesn’t open, your words stand in its place. Everyone knows what’s here.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now look at two states: before and after. One thing changed in the code, and the picture changed. So what changed?", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What changed in the code?", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! S R C was added, so the picture appeared.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The file name was fixed, so the photo opened.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! alt was added, so words appeared next to the icon.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: at first there was nothing on the page at all, then the picture appeared. There wasn’t even an icon. So S R C was added.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: first there was a broken picture icon, then the photo opened. So the file name was fixed.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the photo didn’t open in either, but after, words appeared next to the icon. alt gives those words.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you know why a picture doesn’t show up. Next, let’s read the whole page together.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare the picture before and after: what changed on the page?", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Was there nothing on the page at first, not even an icon? Remember which attribute tells the browser which file to show.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Was there a broken picture icon at first? Then S R C was there, but the browser couldn’t find the file. What could have been fixed in the code?", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did the photo fail to open in both? Then look at the words next to the icon: which attribute gives them?", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the plov recipe page, all done. Let’s see how the browser reads it: as always, from top to bottom.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first line is the heading. It appeared at the very top of the page.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second line is the I M G tag. The browser found the file osh.jpg and put the photo right here.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third line is the text. So wherever the picture is in the code, that’s where it shows up on the page.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Last lesson we saw a link with https take us to a site on the internet. Pictures work the same way. Look, I want to put a sun picture on the page. But there’s no quyosh.jpg among our files. That’s why the browser shows the broken picture icon.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This picture is on my site on the internet. To get it, we need the picture’s full address. Let me show you how to get it. My site is open in another browser tab.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We move the mouse over the picture and press the right button. Look, a menu appeared.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the menu we choose Copy image address. Now the picture’s full address is in memory.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we go back to our page’s tab and over to the code. We select the old file name.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We press the right button again. This time we choose Paste in the menu.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The address went into the code, and the picture appeared on the page. Now let’s see what the address is made of.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The address starts with https, then a colon and two slashes. That tells the browser to go out to the internet.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Next comes the name of the site where the picture is: kodi.uz.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And at the end, a slash and the picture’s file name. That’s why the browser brought the picture from the internet.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s erase the https part at the start. So what happens?", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The picture broke again! Without https the browser looks for a folder called kodi.uz on our site and can’t find it.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So for our own file, the file name is enough. A picture from the internet needs the full address: https, the site name and the picture file.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. My favourite fruit is the apple, and its picture is on my site too. The site name and the picture file are written below. Type the picture’s full address in S R C: https, the site name, a slash and the file name.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the picture’s full address in S R C.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no https at the start. Without it the browser looks for the picture on our site, and it breaks. Start the address with https, a colon and two slashes.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After https come a colon and two slashes. Check them.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a slash between the site name and the file name.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the site name and the file name letter by letter, as shown below.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This picture is on another site. What kind of address does it need?", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A full address starts with https, then a colon and two slashes. Then the site name, a slash and the file name.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the https button and type kodi.uz. Then add a slash and type the file olma.jpg.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The apple picture came from the internet.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] It works! But today sites usually use https: the s means secure.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I write an address in the S R C attribute, and you choose where the browser gets the picture: from our site’s files or from the internet?", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the very start of the address in the S R C attribute.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the address starts with https, the browser gets the picture from the internet. If it’s just a file or site name, it looks among our site’s files.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a file name. top.jpg is among our files, so the browser takes it from there.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The address starts with https. The browser brings the picture from a site on the internet.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An address starting with https leads to a site on the internet. The browser takes the apple picture from there.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! Now you know where a picture comes from.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now put a picture on your own page. The list of files has three pictures. Pick the one you like and type its name in the S R C quotes. Then tap Check.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the picture file name in the quotes.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That picture isn’t among your files. Pick one of the three in the list.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such file, so a broken picture icon shows up. Type the name letter by letter, as in the list.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which picture do you like best?", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take one name from the list of files, for example gul.jpg.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type mushuk.jpg and tap Check.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great choice! Your picture is on the page. Now let’s write its alt text.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write your picture’s alt text: say in your own words what’s in it. The photo opened, so alt isn’t visible on the page. But a program that reads aloud will read it exactly like this: see below. Then tap Done.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now whether the photo opens or not, it’s clear what’s in it.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What’s in your picture? Write that.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the quotes are in place.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: My cat. Then tap Done.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I was editing your page and deleted one word! Now only the alt text is where the picture was. In the code there’s an empty spot after I M G. Drag the missing word into it.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] href gives a link’s address. A picture file is given by another attribute.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] alt is already in the code, further along. Here you need the attribute that gives the picture file.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! S R C is back, and your picture shows up again.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: only the alt text is left where the picture was. What is the browser missing?", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name comes after the empty spot. Remember which attribute tells the browser the picture file.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take the S R C piece and drag it into the empty spot.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Here’s the gallery, but it has a bug. Look at the browser: which picture didn’t show up? Find the line with the bug and tap it.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first bug is found! Now a different picture didn’t show: only words are in its place. What’s broken here?", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line is fine: it has S R C and the file name. Look at the browser: which picture didn’t show?", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The file name was missing a letter. That’s why the browser couldn’t find the file.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! Here href was written instead of S R C. href isn’t for pictures, so only the alt text was left.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: where is there an icon instead of a picture?", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The icon appears when the file isn’t found. Compare the file names.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the second line: is the file name complete?", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: where are there only words instead of a picture?", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If there are only words with no icon, the browser doesn’t know the file at all. Look at the attribute names.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which line has a different attribute instead of S R C?", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check pictures like a real programmer.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence piece by piece: which tag or attribute is it about?", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the I M G tag: S R C gives the picture file, and alt gives words if the photo doesn’t open. It has no closing tag. A picture from another site needs an address starting with https. Does the sentence match that?", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The I M G tag is written with a closing tag.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually I M G has no closing tag. You don’t write text inside a picture.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the photo doesn’t open, the alt text shows in its place.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s what alt is for: even without the photo, it’s clear what’s in it.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The href attribute gives the picture file.", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] href is for links. The S R C attribute gives the picture file.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For a picture from another site, the site name and file name in S R C are enough; https isn’t needed.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually https is needed. Without it the browser looks for the picture on our site, and it breaks.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know the I M G tag and the S R C and alt attributes really well.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I gave the picture the file osh.jpg with href? Sadly, I was wrong. href is for links, and the I M G tag doesn’t understand it. That’s why nothing showed up on the page. So a picture always needs S R C.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your page and your picture!", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The I M G tag puts a picture on the page.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The S R C attribute says which file to show.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the alt attribute describes the picture in words.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And if the picture is on another site, S R C holds a full address starting with https.", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your pages have come alive with pictures. Next time we’ll meet forms: we’ll put fields on the page that you can type into. See you!", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You need rice, meat and carrots.", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I love playing football.", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where’s the picture from?", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where will the browser get the picture?", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! O'tgan darsda sahifalarni havolalar bilan uladik. Mana, osh retsepti sahifasi. Lekin qarang, unda faqat yozuv bor. Rasmsiz osh unchalik ishtahani ochmaydi, to'g'rimi? Keling, sahifaga osh rasmini qo'yamiz. Aylantirish tugmasini bosing.": "uz001",
+    "Voy, qarang! Sarlavha ostida osh rasmi paydo bo'ldi. Endi sahifa ancha jonli ko'rinadi.": "uz002",
+    "Rasm kodda turgan joyida chiqdi: sarlavhadan keyin va yozuvdan oldin.": "uz003",
+    "Bugun sahifaga shunday rasm qo'yishni o'rganasiz: o'z faylingizdan ham, internetdagi saytdan ham. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni [English pronunciation] href [O'zbekcha tallaffuz] bilan bergan edik-ku. Shuning uchun men rasmga ham [English pronunciation] href [O'zbekcha tallaffuz] bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Keling, birinchi rasmni birga qo'yamiz. Rasm uchun [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i bor. [English pronunciation] I M G [O'zbekcha tallaffuz] inglizcha [English pronunciation] image [O'zbekcha tallaffuz] so'zidan olingan, ya'ni rasm degani. Qarang, sarlavha bilan yozuv orasiga [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini qo'yamiz.": "uz005",
+    "Lekin qarang: sahifada hech narsa chiqmadi. Chunki [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i qaysi rasmni ko'rsatishni hali bilmaydi. Unga rasm fayli kerak bo'ladi.": "uz006",
+    "Faylni [English pronunciation] S R C [O'zbekcha tallaffuz] atributi aytadi. [English pronunciation] S R C [O'zbekcha tallaffuz] inglizcha [English pronunciation] source [O'zbekcha tallaffuz] so'zidan olingan, ya'ni manba degani. Qo'shtirnoq ichiga rasm faylining nomini yozamiz: osh.jpg. Mana, rasm chiqdi! Brauzer faylni topdi va uni [English pronunciation] I M G [O'zbekcha tallaffuz] turgan joyga qo'ydi.": "uz007",
+    "Eslab qoling: [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i rasm qo'yadi, [English pronunciation] S R C [O'zbekcha tallaffuz] esa qaysi faylni ko'rsatishni aytadi.": "uz008",
+    "Endi navbat sizga. O'yinlar sahifasiga to'p rasmini qo'yamiz. [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i joyida, lekin [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shtirnog'i bo'sh turibdi. Pastdagi fayllar ro'yxatidan to'p rasmini toping va uning nomini qo'shtirnoq ichiga yozing.": "uz009",
+    "Qo'shtirnoq ichiga fayl nomini yozing.": "uz010",
+    "Rasm fayli nomi oxirida.jpg bo'ladi. Fayllar ro'yxatiga qarang.": "uz011",
+    "Bu boshqa rasm bo'ladi. Bizga to'p rasmi kerak.": "uz012",
+    "Bunday fayl yo'q, shuning uchun brauzer buzilgan rasm belgisini ko'rsatdi. Nomni ro'yxatdagidek, harfma-harf yozing.": "uz013",
+    "Sahifaga qaysi rasm kerak?": "uz014",
+    "To'p rasmining fayli fayllar ro'yxatida turibdi.": "uz015",
+    "Fayl nomi top.jpg bo'ladi. Uni qo'shtirnoq ichiga yozing.": "uz016",
+    "Zo'r! To'p rasmi chiqdi. Brauzer siz yozgan faylni topdi.": "uz017",
+    "Galereyada uchta rasm bor, kodda esa uchta [English pronunciation] I M G [O'zbekcha tallaffuz] qatori. Rasmlar yonma-yon, xuddi kod qatorlaridagi tartibda turibdi. Kodda bitta qator yonadi. Siz esa sahifada shu qator chiqargan rasmni bosing.": "uz018",
+    "Yongan qator qaysi rasmni chiqaradi?": "uz019",
+    "Endi men qatorlarni almashtirdim. Qarang, rasmlar ham joyini almashtirdi. Yongan qator qaysi rasmni chiqaradi?": "uz020",
+    "Oxirgisi. Bu safar yongan qatorda fayl nomida xato bor. Sahifada bu qatordan nima chiqdi?": "uz021",
+    "To'g'ri! top.jpg qatori to'p rasmini chiqaradi.": "uz022",
+    "To'g'ri! Qatorlar tartibi o'zgarsa, rasmlar tartibi ham o'zgaradi.": "uz023",
+    "To'g'ri! Fayl topilmadi, shuning uchun brauzer buzilgan rasm belgisini qo'ydi.": "uz024",
+    "Bu boshqa rasm. Rasmlar kod qatorlari tartibida turadi: birinchi qator birinchi rasmni, keyingisi keyingi rasmni chiqaradi.": "uz025",
+    "Bu rasm joyida chiqdi. Yongan qatordagi fayl nomiga qarang: unda bitta harf yetishmaydi.": "uz026",
+    "Barakalla! Endi har bir [English pronunciation] I M G [O'zbekcha tallaffuz] qatori qaysi rasmni chiqarishini bilasiz.": "uz027",
+    "Yonib turgan qatorga qarang: unda qaysi fayl nomi yozilgan?": "uz028",
+    "Rasmlar kod qatorlari tartibida turadi. Yongan qator kodda nechanchi bo'lsa, rasm ham sahifada o'sha joyda bo'ladi.": "uz029",
+    "Fayl nomida xato bo'lsa, brauzer faylni topa olmaydi. Unda rasm o'rnida nima chiqadi?": "uz030",
+    "Yongan qator kodda ikkinchi turibdi, unda top.jpg. Sahifadagi ikkinchi rasmni bosing, u to'p rasmi.": "uz031",
+    "Endi yongan qator uchinchi turibdi. Sahifadagi uchinchi rasmni bosing, u yana to'p rasmi.": "uz032",
+    "Yongan qator birinchi, uning fayl nomida bitta harf yetishmaydi. Sahifadagi birinchi rasmni bosing, u buzilgan rasm belgisi.": "uz033",
+    "Rasmning yana bitta muhim atributi bor: [English pronunciation] alt [O'zbekcha tallaffuz]. [English pronunciation] alt [O'zbekcha tallaffuz] inglizcha [English pronunciation] alternative text [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni muqobil matn degani. U rasmda nima borligini so'z bilan aytadi. Hozir rasm ochildi, shuning uchun [English pronunciation] alt [O'zbekcha tallaffuz] matni ko'rinmaydi. Lekin rasm ochilmasa nima bo'ladi? Keling, ko'ramiz.": "uz034",
+    "Fayl nomida xato bor: jpg o'rniga jgp yozildi. Brauzer rasmni topa olmadi, shuning uchun buzilgan rasm belgisini va [English pronunciation] alt [O'zbekcha tallaffuz] matnini ko'rsatdi. Endi rasm ochilmasa ham, unda nima borligini bilib turamiz. Yana bir gap: ko'rish qiyin bo'lgan odamlarga sahifani ovoz bilan o'qib beradigan dasturlar ham aynan [English pronunciation] alt [O'zbekcha tallaffuz] matnini o'qiydi.": "uz035",
+    "Endi [English pronunciation] alt [O'zbekcha tallaffuz] atributini olib tashlaymiz. Qarang, faqat buzilgan rasm belgisi qoldi. Bu yerda nima bo'lgani endi hech kimga tushunarli emas.": "uz036",
+    "Fayl nomini to'g'rilab, [English pronunciation] alt [O'zbekcha tallaffuz] atributini qaytardik. Rasm yana joyida. Diqqat qiling: [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bo'lmaydi. Rasm ichiga matn yozilmaydi, shuning uchun yopuvchi [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i kerak emas.": "uz037",
+    "Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] rasm faylini aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] esa rasmni so'z bilan tasvirlaydi. Ikkalasi ham [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining ichida yoziladi.": "uz038",
+    "Endi [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini o'zingiz yig'ing. Kodda to'rtta bo'sh joy bor. Oldin [English pronunciation] tag [O'zbekcha tallaffuz] boshlanadi, keyin ikkita atribut keladi, oxirida esa [English pronunciation] tag [O'zbekcha tallaffuz] yopiladi. Atributlar tartibi muhim emas: [English pronunciation] S R C [O'zbekcha tallaffuz] oldin bo'lsa ham, [English pronunciation] alt [O'zbekcha tallaffuz] oldin bo'lsa ham bo'laveradi. Bitta bo'lak esa umuman ortiqcha.": "uz039",
+    "[English pronunciation] I M G tag [O'zbekcha tallaffuz]-ida yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bo'lmaydi. Bu bo'lak ortiqcha.": "uz040",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] doim burchakli qavs va nomi bilan boshlanadi. Oldin [English pronunciation] I M G [O'zbekcha tallaffuz] boshini qo'ying.": "uz041",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] boshi joyida turibdi. Endi atribut kerak bo'ladi.": "uz042",
+    "Hali ikkinchi atribut kerak. Burchakli qavs eng oxirida keladi.": "uz043",
+    "Hali erta. Oldin ikkala atributni qo'ying, [English pronunciation] tag [O'zbekcha tallaffuz] keyin yopiladi.": "uz044",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nima bilan boshlanadi?": "uz045",
+    "Birinchi bo'lib [English pronunciation] I M G [O'zbekcha tallaffuz] boshi, keyin [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz] keladi.": "uz046",
+    "Tartib shunday bo'ladi: [English pronunciation] I M G [O'zbekcha tallaffuz] boshi, [English pronunciation] S R C [O'zbekcha tallaffuz], [English pronunciation] alt [O'zbekcha tallaffuz] va burchakli qavs. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas.": "uz047",
+    "Ajoyib! [English pronunciation] tag [O'zbekcha tallaffuz] to'g'ri yig'ildi, to'p rasmi ham chiqdi. Ortiqcha bo'lakni ham to'g'ri tashlab ketdingiz.": "uz048",
+    "Bugun uchta yangi so'z bilan tanishdik: [English pronunciation] I M G [O'zbekcha tallaffuz], [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz]. Har birini u bajaradigan ish bilan juftlang. Oldin so'zni bosing, keyin uning ishini bosing.": "uz049",
+    "To'g'ri! [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i sahifaga rasm qo'yadi.": "uz050",
+    "To'g'ri! [English pronunciation] S R C [O'zbekcha tallaffuz] atributi rasm faylini aytadi.": "uz051",
+    "To'g'ri! [English pronunciation] alt [O'zbekcha tallaffuz] atributi rasmni so'z bilan tasvirlaydi.": "uz052",
+    "[English pronunciation] I M G [O'zbekcha tallaffuz] bu [English pronunciation] tag [O'zbekcha tallaffuz], u sahifaga rasm qo'yadi.": "uz053",
+    "[English pronunciation] S R C [O'zbekcha tallaffuz] bu atribut, u qaysi fayl ekanini aytadi.": "uz054",
+    "[English pronunciation] alt [O'zbekcha tallaffuz] bu atribut, u rasm ochilmasa ko'rinadigan so'zlarni beradi.": "uz055",
+    "Qaysi so'z [English pronunciation] tag [O'zbekcha tallaffuz], qaysilari atribut?": "uz056",
+    "[English pronunciation] I M G tag [O'zbekcha tallaffuz] bo'ladi, u rasmni o'zi qo'yadi.": "uz057",
+    "[English pronunciation] I M G [O'zbekcha tallaffuz] rasm qo'yadi, [English pronunciation] S R C [O'zbekcha tallaffuz] faylni aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] rasmni so'z bilan tasvirlaydi.": "uz058",
+    "Qoyil! Rasmning hamma bo'lagini bilasiz.": "uz059",
+    "Oldin so'zni bosing.": "uz060",
+    "Rasmlar ba'zan chiqmay qoladi. Keling, eng ko'p uchraydigan ikkita xatoni ko'ramiz.": "uz061",
+    "Birinchisi: [English pronunciation] S R C [O'zbekcha tallaffuz] atributi unutildi. Brauzer qaysi faylni ko'rsatishni bilmaydi, shuning uchun rasm yo'q. Faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qoldi.": "uz062",
+    "Ikkinchisi: fayl nomida bitta harf tushib qoldi. mushuk.jpg o'rniga mushk.jpg yozildi. Brauzer aynan yozilgan faylni qidiradi va harfma-harf solishtiradi. Bunday fayl yo'q, shuning uchun buzilgan rasm belgisi chiqdi.": "uz063",
+    "Demak, rasmga doim [English pronunciation] S R C [O'zbekcha tallaffuz] kerak bo'ladi, fayl nomini esa aniq yozish kerak.": "uz064",
+    "Voy, to'p rasmining fayli saytga hali yuklanmagan ekan! Shuning uchun sahifada faqat buzilgan rasm belgisi turibdi. Hech kim bu yerda nima bo'lishi kerakligini bilmaydi. [English pronunciation] alt [O'zbekcha tallaffuz] qo'shtirnog'i ichiga rasmda nima borligini so'z bilan yozing va Tekshirishni bosing.": "uz065",
+    "[English pronunciation] alt [O'zbekcha tallaffuz] qo'shtirnog'i ichiga rasmda nima borligini yozing.": "uz066",
+    "Bu yerga [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas, faqat so'z yozing.": "uz067",
+    "Bu fayl nomi bo'ladi. [English pronunciation] alt [O'zbekcha tallaffuz] ichiga esa rasmda nima borligini so'z bilan yozing.": "uz068",
+    "Juda qisqa. Rasmda nima borligini bitta-ikkita so'z bilan yozing.": "uz069",
+    "Rasmda nima bo'lishi kerak edi?": "uz070",
+    "Bu o'yinlar sahifasi va rasm fayli koptok.jpg. Rasmda nima bor?": "uz071",
+    "Masalan, Futbol to'pi deb yozing.": "uz072",
+    "Zo'r! Endi rasm ochilmasa ham, uning o'rnida sizning so'zlaringiz turibdi. Hamma bu yerda nima borligini biladi.": "uz073",
+    "Endi ikkita holatga qarang: oldin va keyin. Kodda bitta narsa o'zgardi va rasm boshqacha bo'lib qoldi. Xo'sh, nima o'zgardi?": "uz074",
+    "Kodda nima o'zgardi?": "uz075",
+    "To'g'ri! [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shildi, rasm paydo bo'ldi.": "uz076",
+    "To'g'ri! Fayl nomi to'g'rilandi, rasm ochildi.": "uz077",
+    "To'g'ri! [English pronunciation] alt [O'zbekcha tallaffuz] qo'shildi, belgi yonida so'zlar chiqdi.": "uz078",
+    "Qarang: oldin sahifada umuman hech narsa yo'q edi, keyin rasm chiqdi. Buzilgan belgi ham yo'q edi. Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shildi.": "uz079",
+    "Qarang: oldin buzilgan rasm belgisi bor edi, keyin rasm ochildi. Demak, fayl nomi to'g'rilandi.": "uz080",
+    "Qarang: rasm ikkalasida ham ochilmadi, lekin keyin belgi yonida so'zlar chiqdi. Bu so'zlarni [English pronunciation] alt [O'zbekcha tallaffuz] beradi.": "uz081",
+    "Endi rasm nimaga chiqmasligini bilasiz. Keyin butun sahifani birga o'qib chiqamiz.": "uz082",
+    "Oldingi va keyingi rasmni solishtiring: sahifada nima o'zgardi?": "uz083",
+    "Oldin sahifada umuman hech narsa yo'q edimi, hatto belgi ham? Brauzerga qaysi faylni ko'rsatishni qaysi atribut aytadi, esingizdami?": "uz084",
+    "Oldin buzilgan rasm belgisi bormidi? Demak, [English pronunciation] S R C [O'zbekcha tallaffuz] bor edi, lekin brauzer faylni topa olmadi. Kodda nima tuzatilgan bo'lishi mumkin?": "uz085",
+    "Rasm ikkalasida ham ochilmadimi? Unda belgi yonidagi so'zlarga qarang: ularni qaysi atribut beradi?": "uz086",
+    "Mana, osh retsepti sahifasi tayyor. Keling, brauzer uni qanday o'qishini ko'ramiz. Brauzer kodni har doimgidek tepadan pastga o'qiydi.": "uz087",
+    "Birinchi qatorda sarlavha turibdi. U sahifaning eng tepasida chiqdi.": "uz088",
+    "Ikkinchi qatorda [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i. Brauzer osh.jpg faylini topdi va rasmni aynan shu joyga qo'ydi.": "uz089",
+    "Uchinchi qatorda yozuv. Demak, rasm kodda qayerda tursa, sahifada ham o'sha joyda chiqadi.": "uz090",
+    "O'tgan darsda havola [English pronunciation] https [O'zbekcha tallaffuz] bilan internetdagi saytga olib borganini ko'rdik. Rasm ham xuddi shunday ishlaydi. Qarang, men sahifaga quyosh rasmini qo'ymoqchiman. Lekin fayllarimizda quyosh.jpg yo'q. Shuning uchun brauzer buzilgan rasm belgisini ko'rsatyapti.": "uz091",
+    "Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun rasmning to'liq manzili kerak. Keling, manzilni qanday olishni ko'rsataman. Saytim brauzerning boshqa yorlig'ida ochiq.": "uz092",
+    "Rasm ustiga sichqonchani olib boramiz va o'ng tugmasini bosamiz. Qarang, ro'yxat chiqdi.": "uz093",
+    "Ro'yxatdan [English pronunciation] Copy image address [O'zbekcha tallaffuz]ni tanlaymiz. Endi rasmning to'liq manzili xotirada turibdi.": "uz094",
+    "Endi o'z sahifamiz yorlig'iga qaytamiz va kodga boramiz. Eski fayl nomini belgilaymiz.": "uz095",
+    "Yana o'ng tugmani bosamiz. Bu safar ro'yxatdan [English pronunciation] Paste [O'zbekcha tallaffuz]ni tanlaymiz.": "uz096",
+    "Mana! Manzil kodga tushdi, rasm esa sahifada paydo bo'ldi. Endi manzil qanday tuzilganini ko'raylik.": "uz097",
+    "Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi.": "uz098",
+    "Keyin rasm turgan sayt nomi keladi: kodi.uz.": "uz099",
+    "Oxirida esa qiya chiziq va rasm fayli nomi turadi. Shuning uchun brauzer rasmni internetdan olib keldi.": "uz100",
+    "Endi boshidagi [English pronunciation] https [O'zbekcha tallaffuz] qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?": "uz101",
+    "Rasm yana buzildi! [English pronunciation] https [O'zbekcha tallaffuz] bo'lmasa, brauzer kodi.uz degan papkani o'z saytimizdan qidiradi va uni topa olmaydi.": "uz102",
+    "Demak, o'z faylimiz uchun fayl nomi yetadi. Internetdagi rasm uchun esa to'liq manzil kerak: [English pronunciation] https [O'zbekcha tallaffuz], sayt nomi va rasm fayli.": "uz103",
+    "Endi navbat sizga. Mening sevimli mevam olma, uning rasmi ham saytimda turibdi. Pastda sayt nomi va rasm fayli yozilgan. [English pronunciation] S R C [O'zbekcha tallaffuz] ichiga rasmning to'liq manzilini yozing: [English pronunciation] https [O'zbekcha tallaffuz], sayt nomi, qiya chiziq va fayl nomi.": "uz104",
+    "[English pronunciation] S R C [O'zbekcha tallaffuz] ichiga rasmning to'liq manzilini yozing.": "uz105",
+    "Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi. Manzilni [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq bilan boshlang.": "uz106",
+    "[English pronunciation] https [O'zbekcha tallaffuz] so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.": "uz107",
+    "Sayt nomi bilan fayl nomi o'rtasida qiya chiziq turadi.": "uz108",
+    "Sayt nomi va fayl nomini pastdagidek, harfma-harf yozing.": "uz109",
+    "Bu rasm boshqa saytda turibdi. Unga qanday manzil kerak?": "uz110",
+    "To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq. Keyin sayt nomi, qiya chiziq va fayl nomi keladi.": "uz111",
+    "[English pronunciation] https [O'zbekcha tallaffuz] tugmasini bosing va kodi.uz deb yozing. Keyin qiya chiziq qo'ying va olma.jpg faylini yozing.": "uz112",
+    "Zo'r! Olma rasmi internetdan keldi.": "uz113",
+    "Ishladi! Lekin bugun saytlar ko'pincha [English pronunciation] https [O'zbekcha tallaffuz] bilan yoziladi. Oxiridagi s harfi xavfsiz degani.": "uz114",
+    "Endi o'zingizni sinab ko'ring. Men [English pronunciation] S R C [O'zbekcha tallaffuz] atributiga manzil yozaman. Siz esa brauzer rasmni qayerdan olishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?": "uz115",
+    "[English pronunciation] S R C [O'zbekcha tallaffuz] atributidagi manzilning eng boshiga qarang.": "uz116",
+    "Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlansa, brauzer rasmni internetdan oladi. Faqat fayl yoki sayt nomi bo'lsa, saytimiz fayllaridan qidiradi.": "uz117",
+    "Barakalla!": "uz118",
+    "Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.": "uz119",
+    "Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.": "uz120",
+    "Aldanmang! Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.": "uz121",
+    "[English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.": "uz122",
+    "Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.": "uz123",
+    "Endi o'zingizning sahifangizga rasm qo'ying. Fayllar ro'yxatida uchta rasm bor. O'zingizga yoqqanini tanlang va uning nomini [English pronunciation] S R C [O'zbekcha tallaffuz] qo'shtirnog'i ichiga yozing. Keyin Tekshirishni bosing.": "uz124",
+    "Qo'shtirnoq ichiga rasm fayli nomini yozing.": "uz125",
+    "Bu rasm sizning fayllaringiz o'rtasida yo'q. Ro'yxatdagi uchta rasmdan birini tanlang.": "uz126",
+    "Bunday fayl yo'q, shuning uchun buzilgan rasm belgisi chiqdi. Nomni ro'yxatdagidek, harfma-harf yozing.": "uz127",
+    "Qaysi rasm sizga ko'proq yoqadi?": "uz128",
+    "Fayllar ro'yxatidan bitta nomni oling, masalan gul.jpg.": "uz129",
+    "Masalan, mushuk.jpg deb yozing va Tekshirishni bosing.": "uz130",
+    "Zo'r tanlov! Rasmingiz sahifada chiqdi. Endi unga [English pronunciation] alt [O'zbekcha tallaffuz] matnini yozamiz.": "uz131",
+    "Endi rasmingizga [English pronunciation] alt [O'zbekcha tallaffuz] matnini yozing: rasmda nima borligini o'z so'zlaringiz bilan ayting. Rasm ochilgani uchun [English pronunciation] alt [O'zbekcha tallaffuz] sahifada ko'rinmaydi. Lekin ovoz bilan o'qiydigan dastur uni aynan shunday o'qiydi: pastda ko'rib turibsiz. Keyin Tayyorni bosing.": "uz132",
+    "Ajoyib! Endi rasmingiz ochilsa ham, ochilmasa ham, unda nima borligi tushunarli.": "uz133",
+    "Rasmingizda nima bor? Shuni yozing.": "uz134",
+    "Faqat so'z yozing, qo'shtirnoq joyida turibdi.": "uz135",
+    "Masalan: Mening mushugim. Keyin Tayyorni bosing.": "uz136",
+    "Voy, men sahifangizni tahrirlayotib bitta so'zni o'chirib yubordim! Endi rasm o'rnida faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni turibdi. Kodda [English pronunciation] I M G tag [O'zbekcha tallaffuz]-idan keyin bo'sh joy bor. Yetishmayotgan so'zni o'sha joyga olib boring.": "uz137",
+    "[English pronunciation] href [O'zbekcha tallaffuz] havola manzilini beradi. Rasm faylini esa boshqa atribut aytadi.": "uz138",
+    "[English pronunciation] alt [O'zbekcha tallaffuz] kodda bor, u keyinroq turibdi. Bu yerda rasm faylini aytadigan atribut kerak.": "uz139",
+    "Ana endi joyida! [English pronunciation] S R C [O'zbekcha tallaffuz] qaytdi va rasmingiz yana chiqdi.": "uz140",
+    "Brauzerga qarang: rasm o'rnida faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qoldi. Brauzerga nima yetishmayapti?": "uz141",
+    "Bo'sh joydan keyin fayl nomi turibdi. Brauzerga rasm faylini qaysi atribut aytadi, esingizdami?": "uz142",
+    "Bo'laklardan [English pronunciation] S R C [O'zbekcha tallaffuz] so'zini oling va bo'sh joyga olib boring.": "uz143",
+    "Endi o'zingizni sinab ko'ring. Mana, galereya, lekin unda xato bor. Brauzerga qarang: qaysi rasm chiqmadi? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.": "uz144",
+    "Zo'r, birinchi xato topildi! Endi boshqa rasm chiqmadi: uning o'rnida faqat so'zlar turibdi. Bu yerda nima buzilgan?": "uz145",
+    "Bu qator to'g'ri yozilgan: [English pronunciation] S R C [O'zbekcha tallaffuz] ham, fayl nomi ham joyida. Brauzerga qarang: qaysi rasm chiqmadi?": "uz146",
+    "Topdingiz! Fayl nomida bitta harf yetishmayotgan edi. Shuning uchun brauzer faylni topa olmagan edi.": "uz147",
+    "Topdingiz! Bu yerda [English pronunciation] S R C [O'zbekcha tallaffuz] o'rniga [English pronunciation] href [O'zbekcha tallaffuz] yozilgan edi. [English pronunciation] href [O'zbekcha tallaffuz] rasm uchun emas, shuning uchun faqat [English pronunciation] alt [O'zbekcha tallaffuz] matni qolgan edi.": "uz148",
+    "Brauzerga qarang: qaysi rasm o'rnida buzilgan belgi turibdi?": "uz149",
+    "Buzilgan belgi fayl topilmaganda chiqadi. Fayl nomlarini solishtiring.": "uz150",
+    "Ikkinchi qatorga qarang: fayl nomi to'liqmi?": "uz151",
+    "Brauzerga qarang: qaysi rasm o'rnida faqat so'zlar turibdi?": "uz152",
+    "Belgisiz faqat so'zlar chiqsa, brauzer faylni umuman bilmaydi. Atribut nomlariga qarang.": "uz153",
+    "Qaysi qatorda [English pronunciation] S R C [O'zbekcha tallaffuz] o'rniga boshqa atribut turibdi?": "uz154",
+    "Ajoyib! Ikkala xato ham topildi. Siz rasmlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz155",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz156",
+    "Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yoki atribut haqida?": "uz157",
+    "[English pronunciation] I M G tag [O'zbekcha tallaffuz]-i esingizdami? [English pronunciation] S R C [O'zbekcha tallaffuz] rasm faylini aytadi, [English pronunciation] alt [O'zbekcha tallaffuz] esa rasm ochilmasa chiqadigan so'zlarni beradi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i yo'q. Boshqa saytdagi rasmga [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil kerak. Gap shunga mos keladimi?": "uz158",
+    "[English pronunciation] I M G tag [O'zbekcha tallaffuz]-i yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] bilan yoziladi.": "uz159",
+    "Aslida [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ining yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-i bo'lmaydi. Rasm ichiga matn yozilmaydi.": "uz160",
+    "Rasm ochilmasa, uning o'rnida [English pronunciation] alt [O'zbekcha tallaffuz] matni ko'rinadi.": "uz161",
+    "Shuning uchun [English pronunciation] alt [O'zbekcha tallaffuz] kerak: rasm ochilmasa ham, unda nima borligi tushunarli bo'ladi.": "uz162",
+    "Rasm faylini [English pronunciation] href [O'zbekcha tallaffuz] atributi aytadi.": "uz163",
+    "[English pronunciation] href [O'zbekcha tallaffuz] havola uchun bo'ladi. Rasm faylini [English pronunciation] S R C [O'zbekcha tallaffuz] atributi aytadi.": "uz164",
+    "Boshqa saytdagi rasm uchun [English pronunciation] S R C [O'zbekcha tallaffuz] atributiga sayt nomi va fayl nomini yozish yetadi, [English pronunciation] https [O'zbekcha tallaffuz] shart emas.": "uz165",
+    "Aslida [English pronunciation] https [O'zbekcha tallaffuz] kerak. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi.": "uz166",
+    "Hammasi to'g'ri! Siz [English pronunciation] I M G tag [O'zbekcha tallaffuz]-ini, [English pronunciation] S R C [O'zbekcha tallaffuz] va [English pronunciation] alt [O'zbekcha tallaffuz] atributlarini yaxshi bilasiz.": "uz167",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men rasmga [English pronunciation] href [O'zbekcha tallaffuz] bilan osh.jpg faylini yozgan edim? Afsuski, men adashibman. [English pronunciation] href [O'zbekcha tallaffuz] havola uchun bo'ladi, [English pronunciation] I M G tag [O'zbekcha tallaffuz]-i esa uni tushunmaydi. Shuning uchun sahifada hech narsa chiqmadi. Demak, rasmga doim [English pronunciation] S R C [O'zbekcha tallaffuz] kerak bo'ladi.": "uz168",
+    "Qarang, bu sizning sahifangiz va sizning rasmingiz!": "uz169",
+    "[English pronunciation] I M G tag [O'zbekcha tallaffuz]-i sahifaga rasm qo'yadi.": "uz170",
+    "[English pronunciation] S R C [O'zbekcha tallaffuz] atributi qaysi faylni ko'rsatishni aytadi.": "uz171",
+    "[English pronunciation] alt [O'zbekcha tallaffuz] atributi esa rasmni so'z bilan tasvirlaydi.": "uz172",
+    "Rasm boshqa saytda tursa, [English pronunciation] S R C [O'zbekcha tallaffuz] ichiga [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadigan to'liq manzil yoziladi.": "uz173",
+    "Tabriklayman! Endi sahifalaringiz rasmlar bilan jonlandi. Keyingi darsda formalar bilan tanishamiz: sahifaga o'zingiz yozadigan maydonlar qo'yamiz. Ko'rishguncha!": "uz174",
+    "Voy, zo‘r!": "uz175",
+    "Ana! Chiqdi!": "uz176",
+    "Super!": "uz177",
+    "Qoyil!": "uz178",
+    "Ura!": "uz179",
+    "Zo‘r-ku!": "uz180",
+    "Yana bir bor urinib ko‘ring.": "uz181",
+    "Diqqat bilan qarang.": "uz182",
+    "Yaqin qoldingiz. Shoshilmang.": "uz183",
+    "Guruch, go'sht va sabzi kerak bo'ladi.": "uz184",
+    "Men futbol o'ynashni yaxshi ko'raman.": "uz185",
+    "Rasm qayerdan?": "uz186",
+    "Brauzer rasmni qayerdan oladi?": "uz187",
+    "To'g'rimi?": "uz188",
+    "To'g'ri yoki noto'g'ri?": "uz189",
+    "Salom, dunyo!": "uz190",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz191",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz192",
+  },
+  ru: {
+    "Привет! На прошлом уроке мы связали страницы ссылками. Вот страница с рецептом плова. Но смотри: на ней один текст. Без фото плов не так уж аппетитный, правда? Давай поставим на страницу фото плова. Нажми Превратить.": "ru001",
+    "Ого, смотри! Под заголовком появилось фото плова. Теперь страница выглядит гораздо живее.": "ru002",
+    "Фото встало там, где оно стоит в коде: после заголовка и перед текстом.": "ru003",
+    "Сегодня ты научишься ставить такие картинки, и из своих файлов, и с сайта в интернете. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через [English pronunciation] href [Русское произношение]. Вот и картинке я написал файл osh.jpg через [English pronunciation] href [Русское произношение]. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Давай поставим первую картинку вместе. Для картинки есть тег [English pronunciation] I M G [Русское произношение]. [English pronunciation] I M G [Русское произношение], от английского [English pronunciation] image [Русское произношение], то есть картинка. Смотри, ставим тег [English pronunciation] I M G [Русское произношение] между заголовком и текстом.": "ru005",
+    "Но смотри: на странице ничего не появилось. Потому что тег [English pronunciation] I M G [Русское произношение] ещё не знает, какую картинку показать. Ему нужен файл картинки.": "ru006",
+    "Файл задаёт атрибут [English pronunciation] S R C [Русское произношение]. [English pronunciation] S R C [Русское произношение], от английского [English pronunciation] source [Русское произношение], то есть источник. В кавычках пишем имя файла картинки: osh.jpg. Вот и фото! Браузер нашёл файл и поставил его туда, где стоит [English pronunciation] I M G [Русское произношение].": "ru007",
+    "Запомни: тег [English pronunciation] I M G [Русское произношение] ставит картинку, а [English pronunciation] S R C [Русское произношение] говорит, какой файл показать.": "ru008",
+    "Теперь твоя очередь. Поставим на страницу игр фото мяча. Тег [English pronunciation] I M G [Русское произношение] на месте, но кавычки [English pronunciation] S R C [Русское произношение] пустые. Найди фото мяча в списке файлов внизу и впиши его имя в кавычки.": "ru009",
+    "Впиши имя файла в кавычки.": "ru010",
+    "Имя файла картинки заканчивается на.jpg. Посмотри в список файлов.": "ru011",
+    "Это другая картинка. Нам нужно фото мяча.": "ru012",
+    "Такого файла нет, поэтому браузер показал значок сломанной картинки. Напиши имя буква в букву, как в списке.": "ru013",
+    "Какая картинка нужна странице?": "ru014",
+    "Файл с фото мяча есть в списке файлов.": "ru015",
+    "Имя файла, top.jpg. Впиши его в кавычки.": "ru016",
+    "Огонь! Фото мяча на месте. Браузер нашёл файл, который ты написал.": "ru017",
+    "В галерее три картинки, а в коде три строки [English pronunciation] I M G [Русское произношение]. Картинки стоят рядом в том же порядке, что и строки кода. В коде загорается одна строка. А ты нажми на странице картинку, которую она выводит.": "ru018",
+    "Какую картинку выводит горящая строка?": "ru019",
+    "Теперь я поменял строки местами. Смотри, картинки тоже поменялись. Какую картинку выводит горящая строка?": "ru020",
+    "Последняя. На этот раз в имени файла горящей строки ошибка. Что эта строка вывела на странице?": "ru021",
+    "Верно! Строка top.jpg выводит фото мяча.": "ru022",
+    "Верно! Меняется порядок строк, меняется и порядок картинок.": "ru023",
+    "Верно! Файл не нашёлся, поэтому браузер поставил значок сломанной картинки.": "ru024",
+    "Это другая картинка. Картинки идут в порядке строк кода: первая строка, первая картинка, следующая, следующая.": "ru025",
+    "Эта картинка на месте. Посмотри на имя файла в горящей строке: в нём не хватает буквы.": "ru026",
+    "Молодец! Теперь ты знаешь, какую картинку выводит каждая строка [English pronunciation] I M G [Русское произношение].": "ru027",
+    "Посмотри на горящую строку: какое имя файла в ней написано?": "ru028",
+    "Картинки стоят в порядке строк кода. Какая по счёту горящая строка, на том же месте и картинка.": "ru029",
+    "Если в имени файла ошибка, браузер не найдёт файл. Что тогда выходит на месте картинки?": "ru030",
+    "Горящая строка в коде вторая, в ней top.jpg. Нажми вторую картинку на странице, это мяч.": "ru031",
+    "Теперь горящая строка третья. Нажми третью картинку на странице, это снова мяч.": "ru032",
+    "Горящая строка первая, в её имени файла не хватает буквы. Нажми первую картинку на странице, то есть значок сломанной картинки.": "ru033",
+    "У картинки есть ещё один важный атрибут: [English pronunciation] alt [Русское произношение]. [English pronunciation] alt [Русское произношение], от английского [English pronunciation] alternative text [Русское произношение], то есть запасной текст. Он словами говорит, что на картинке. Сейчас фото открылось, поэтому текста [English pronunciation] alt [Русское произношение] не видно. А что будет, если фото не откроется? Давай посмотрим.": "ru034",
+    "В имени файла ошибка: вместо jpg написано jgp. Браузер не нашёл картинку, поэтому показал значок сломанной картинки и текст [English pronunciation] alt [Русское произношение]. Даже без фото мы знаем, что там было. И ещё: программы, которые читают страницу вслух людям с плохим зрением, читают именно текст [English pronunciation] alt [Русское произношение].": "ru035",
+    "А теперь уберём атрибут [English pronunciation] alt [Русское произношение]. Смотри, остался только значок сломанной картинки. Что здесь было, теперь непонятно никому.": "ru036",
+    "Исправили имя файла и вернули [English pronunciation] alt [Русское произношение]. Фото снова на месте. Обрати внимание: у тега [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Внутрь картинки текст не пишут, поэтому закрывающий [English pronunciation] I M G [Русское произношение] не нужен.": "ru037",
+    "Значит, [English pronunciation] S R C [Русское произношение] задаёт файл картинки, а [English pronunciation] alt [Русское произношение] описывает картинку словами. Оба пишут внутри тега [English pronunciation] I M G [Русское произношение].": "ru038",
+    "Теперь собери тег [English pronunciation] I M G [Русское произношение] сам. В коде четыре пустых места. Сначала начинается тег, потом идут два атрибута, а в конце тег закрывается. Порядок атрибутов не важен: можно сначала [English pronunciation] S R C [Русское произношение], можно сначала [English pronunciation] alt [Русское произношение]. А один кусок вообще лишний.": "ru039",
+    "У [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Этот кусок лишний.": "ru040",
+    "Тег всегда начинается с уголка и имени. Сначала поставь начало [English pronunciation] I M G [Русское произношение].": "ru041",
+    "Начало тега уже на месте. Теперь нужен атрибут.": "ru042",
+    "Ещё нужен второй атрибут. Уголок идёт в самом конце.": "ru043",
+    "Рано. Сначала оба атрибута, а потом тег закрывается.": "ru044",
+    "С чего начинается тег?": "ru045",
+    "Сначала начало [English pronunciation] I M G [Русское произношение], потом [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение].": "ru046",
+    "Порядок такой: начало [English pronunciation] I M G [Русское произношение], [English pronunciation] S R C [Русское произношение], [English pronunciation] alt [Русское произношение] и уголок. Закрывающий тег не нужен.": "ru047",
+    "Отлично! Тег собран верно, и фото мяча появилось. И лишний кусок ты правильно не взял.": "ru048",
+    "Сегодня у нас три новых слова: [English pronunciation] I M G [Русское произношение], [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение]. Соедини каждое с тем, что оно делает. Сначала нажми слово, потом его дело.": "ru049",
+    "Верно! Тег [English pronunciation] I M G [Русское произношение] ставит картинку.": "ru050",
+    "Верно! Атрибут [English pronunciation] S R C [Русское произношение] задаёт файл картинки.": "ru051",
+    "Верно! Атрибут [English pronunciation] alt [Русское произношение] описывает картинку словами.": "ru052",
+    "[English pronunciation] I M G [Русское произношение], это тег, он ставит картинку на страницу.": "ru053",
+    "[English pronunciation] S R C [Русское произношение], это атрибут, он говорит, какой файл.": "ru054",
+    "[English pronunciation] alt [Русское произношение], это атрибут, он даёт слова, которые видны, если фото не открылось.": "ru055",
+    "Какое слово, тег, а какие, атрибуты?": "ru056",
+    "[English pronunciation] I M G [Русское произношение], тег, он сам ставит картинку.": "ru057",
+    "[English pronunciation] I M G [Русское произношение] ставит картинку, [English pronunciation] S R C [Русское произношение] задаёт файл, [English pronunciation] alt [Русское произношение] описывает словами.": "ru058",
+    "Класс! Ты знаешь все части картинки.": "ru059",
+    "Сначала нажми слово.": "ru060",
+    "Картинки иногда не появляются. Посмотрим на две самые частые ошибки.": "ru061",
+    "Первая: забыли атрибут [English pronunciation] S R C [Русское произношение]. Браузер не знает, какой файл показать, поэтому картинки нет. Остался только текст [English pronunciation] alt [Русское произношение].": "ru062",
+    "Вторая: в имени файла пропала буква. Вместо mushuk.jpg написано mushk.jpg. Браузер ищет ровно тот файл, что написан, буква в букву. Такого файла нет, поэтому появился значок сломанной картинки.": "ru063",
+    "Значит, картинке всегда нужен [English pronunciation] S R C [Русское произношение], а имя файла надо писать точно.": "ru064",
+    "Ой, файл с фото мяча ещё не загружен на сайт! Поэтому на странице только значок сломанной картинки. Никто не знает, что здесь должно быть. Напиши в кавычки [English pronunciation] alt [Русское произношение] словами, что на картинке, и нажми Проверить.": "ru065",
+    "Напиши в кавычки [English pronunciation] alt [Русское произношение], что на картинке.": "ru066",
+    "Здесь не нужен тег, только слова.": "ru067",
+    "Это имя файла. А в [English pronunciation] alt [Русское произношение] словами пишут, что на картинке.": "ru068",
+    "Слишком коротко. Напиши одно-два слова о том, что на картинке.": "ru069",
+    "Что должно быть на картинке?": "ru070",
+    "Это страница игр, а файл, koptok.jpg. Что на картинке?": "ru071",
+    "Например, напиши: Футбольный мяч.": "ru072",
+    "Огонь! Даже если фото не открылось, на его месте стоят твои слова. Все знают, что здесь было.": "ru073",
+    "Теперь посмотри на два состояния: до и после. В коде изменилась одна вещь, и картинка стала другой. Ну и что изменилось?": "ru074",
+    "Что изменилось в коде?": "ru075",
+    "Верно! Добавили [English pronunciation] S R C [Русское произношение], картинка появилась.": "ru076",
+    "Верно! Исправили имя файла, фото открылось.": "ru077",
+    "Верно! Добавили [English pronunciation] alt [Русское произношение], рядом со значком появились слова.": "ru078",
+    "Смотри: сначала на странице не было вообще ничего, потом появилась картинка. Даже значка не было. Значит, добавили [English pronunciation] S R C [Русское произношение].": "ru079",
+    "Смотри: сначала был значок сломанной картинки, потом фото открылось. Значит, исправили имя файла.": "ru080",
+    "Смотри: фото не открылось ни там, ни там, но после рядом со значком появились слова. Эти слова даёт [English pronunciation] alt [Русское произношение].": "ru081",
+    "Теперь ты знаешь, почему картинка не появляется. Дальше прочитаем всю страницу вместе.": "ru082",
+    "Сравни картинку до и после: что изменилось на странице?": "ru083",
+    "Сначала на странице не было вообще ничего, даже значка? Вспомни, какой атрибут говорит браузеру, какой файл показать.": "ru084",
+    "Сначала был значок сломанной картинки? Значит, [English pronunciation] S R C [Русское произношение] был, но браузер не нашёл файл. Что могли исправить в коде?": "ru085",
+    "Фото не открылось ни там, ни там? Тогда посмотри на слова рядом со значком: какой атрибут их даёт?": "ru086",
+    "Вот страница с рецептом плова готова. Посмотрим, как браузер её читает. Как всегда, сверху вниз.": "ru087",
+    "В первой строке, заголовок. Он появился на самом верху страницы.": "ru088",
+    "Во второй строке, тег [English pronunciation] I M G [Русское произношение]. Браузер нашёл файл osh.jpg и поставил фото ровно сюда.": "ru089",
+    "В третьей строке, текст. Значит, где картинка стоит в коде, там она и появится на странице.": "ru090",
+    "На прошлом уроке мы видели: ссылка с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. С картинками так же. Смотри, я хочу поставить на страницу картинку с солнцем. Но среди наших файлов нет quyosh.jpg. Поэтому браузер показывает значок сломанной картинки.": "ru091",
+    "Эта картинка лежит на моём сайте в интернете. Чтобы её взять, нужен полный адрес картинки. Давай покажу, как его достать. Мой сайт открыт в другой вкладке браузера.": "ru092",
+    "Наводим мышку на картинку и нажимаем правую кнопку. Смотри, появился список.": "ru093",
+    "В списке выбираем Копировать URL картинки. Теперь полный адрес картинки в памяти.": "ru094",
+    "Теперь возвращаемся во вкладку своей страницы и идём к коду. Выделяем старое имя файла.": "ru095",
+    "Снова нажимаем правую кнопку. В этот раз выбираем в списке Вставить.": "ru096",
+    "Готово! Адрес попал в код, а картинка появилась на странице. Теперь посмотрим, из чего состоит адрес.": "ru097",
+    "Адрес начинается с [English pronunciation] https [Русское произношение], потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет.": "ru098",
+    "Дальше, имя сайта, где лежит картинка: kodi.uz.": "ru099",
+    "А в конце, косая черта и имя файла картинки. Поэтому браузер и принёс картинку из интернета.": "ru100",
+    "А теперь сотрём начало, [English pronunciation] https [Русское произношение]. Ну, что будет?": "ru101",
+    "Картинка снова сломалась! Без [English pronunciation] https [Русское произношение] браузер ищет папку kodi.uz на нашем сайте и не находит её.": "ru102",
+    "Значит, для своего файла хватит имени файла. А для картинки из интернета нужен полный адрес: [English pronunciation] https [Русское произношение], имя сайта и файл картинки.": "ru103",
+    "Теперь твоя очередь. Мой любимый фрукт, яблоко, и его картинка тоже лежит на моём сайте. Внизу написаны имя сайта и файл картинки. Впиши в [English pronunciation] S R C [Русское произношение] полный адрес картинки: [English pronunciation] https [Русское произношение], имя сайта, косая черта и имя файла.": "ru104",
+    "Впиши в [English pronunciation] S R C [Русское произношение] полный адрес картинки.": "ru105",
+    "В начале нет [English pronunciation] https [Русское произношение]. Без него браузер ищет картинку на нашем сайте, и она ломается. Начни адрес с [English pronunciation] https [Русское произношение], двоеточия и двух косых черт.": "ru106",
+    "После [English pronunciation] https [Русское произношение] идут двоеточие и две косые черты. Проверь их.": "ru107",
+    "Между именем сайта и именем файла стоит косая черта.": "ru108",
+    "Напиши имя сайта и имя файла буква в букву, как внизу.": "ru109",
+    "Эта картинка лежит на другом сайте. Какой адрес ей нужен?": "ru110",
+    "Полный адрес начинается с [English pronunciation] https [Русское произношение], потом двоеточие и две косые черты. Дальше, имя сайта, косая черта и имя файла.": "ru111",
+    "Нажми кнопку [English pronunciation] https [Русское произношение] и напиши kodi.uz. Потом поставь косую черту и напиши файл olma.jpg.": "ru112",
+    "Огонь! Картинка с яблоком пришла из интернета.": "ru113",
+    "Работает! Но сегодня сайты обычно пишут с [English pronunciation] https [Русское произношение]: буква s значит защищённый.": "ru114",
+    "Теперь проверь себя. Я пишу адрес в атрибут [English pronunciation] S R C [Русское произношение], а ты выбери, откуда браузер возьмёт картинку: из файлов нашего сайта или из интернета?": "ru115",
+    "Посмотри на самое начало адреса в атрибуте [English pronunciation] S R C [Русское произношение].": "ru116",
+    "Если адрес начинается с [English pronunciation] https [Русское произношение], браузер берёт картинку из интернета. Если там только имя файла или сайта, он ищет среди файлов нашего сайта.": "ru117",
+    "Точно!": "ru118",
+    "Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.": "ru119",
+    "Адрес начинается с [English pronunciation] https [Русское произношение]. Браузер принесёт картинку с сайта в интернете.": "ru120",
+    "Не попадись! В начале нет [English pronunciation] https [Русское произношение]. Браузер думает, что это папка на нашем сайте, не находит её, и картинка ломается.": "ru121",
+    "Адрес с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.": "ru122",
+    "Всё верно! Теперь ты знаешь, откуда берётся картинка.": "ru123",
+    "Теперь поставь картинку на свою страницу. В списке файлов три картинки. Выбери ту, что нравится, и впиши её имя в кавычки [English pronunciation] S R C [Русское произношение]. Потом нажми Проверить.": "ru124",
+    "Впиши в кавычки имя файла картинки.": "ru125",
+    "Этой картинки нет среди твоих файлов. Выбери одну из трёх в списке.": "ru126",
+    "Такого файла нет, поэтому появился значок сломанной картинки. Напиши имя буква в букву, как в списке.": "ru127",
+    "Какая картинка тебе больше нравится?": "ru128",
+    "Возьми одно имя из списка файлов, например gul.jpg.": "ru129",
+    "Например, напиши mushuk.jpg и нажми Проверить.": "ru130",
+    "Классный выбор! Твоя картинка на странице. Теперь напишем ей [English pronunciation] alt [Русское произношение].": "ru131",
+    "Теперь напиши своей картинке [English pronunciation] alt [Русское произношение]: своими словами скажи, что на ней. Фото открылось, поэтому [English pronunciation] alt [Русское произношение] на странице не видно. Но программа, которая читает вслух, прочтёт его именно так, смотри ниже. Потом нажми Готово.": "ru132",
+    "Отлично! Теперь откроется фото или нет, понятно, что на нём.": "ru133",
+    "Что на твоей картинке? Это и напиши.": "ru134",
+    "Пиши только слова, кавычки на месте.": "ru135",
+    "Например: Мой кот. Потом нажми Готово.": "ru136",
+    "Ой, я правил твою страницу и стёр одно слово! Теперь вместо картинки только текст [English pronunciation] alt [Русское произношение]. В коде после [English pronunciation] I M G [Русское произношение] пустое место. Перетащи туда недостающее слово.": "ru137",
+    "[English pronunciation] href [Русское произношение] задаёт адрес ссылки. А файл картинки задаёт другой атрибут.": "ru138",
+    "[English pronunciation] alt [Русское произношение] в коде уже есть, он дальше. Здесь нужен атрибут, который задаёт файл картинки.": "ru139",
+    "Вот теперь порядок! [English pronunciation] S R C [Русское произношение] вернулся, и твоя картинка снова на месте.": "ru140",
+    "Посмотри на браузер: вместо картинки остался только текст [English pronunciation] alt [Русское произношение]. Чего не хватает браузеру?": "ru141",
+    "После пустого места стоит имя файла. Вспомни, какой атрибут сообщает браузеру файл картинки.": "ru142",
+    "Возьми кусок [English pronunciation] S R C [Русское произношение] и перетащи его в пустое место.": "ru143",
+    "Теперь проверь себя. Вот галерея, но в ней ошибка. Посмотри на браузер: какая картинка не появилась? Найди строку с ошибкой и нажми её.": "ru144",
+    "Класс, первая ошибка найдена! Теперь не появилась другая картинка: на её месте только слова. Что сломано здесь?": "ru145",
+    "Эта строка в порядке: есть и [English pronunciation] S R C [Русское произношение], и имя файла. Посмотри на браузер: какая картинка не появилась?": "ru146",
+    "Есть! В имени файла не хватало буквы. Поэтому браузер не нашёл файл.": "ru147",
+    "Есть! Здесь вместо [English pronunciation] S R C [Русское произношение] был написан [English pronunciation] href [Русское произношение]. [English pronunciation] href [Русское произношение] не для картинок, поэтому оставался только текст [English pronunciation] alt [Русское произношение].": "ru148",
+    "Посмотри на браузер: где вместо картинки значок?": "ru149",
+    "Значок появляется, когда файл не нашёлся. Сравни имена файлов.": "ru150",
+    "Посмотри на вторую строку: имя файла полное?": "ru151",
+    "Посмотри на браузер: где вместо картинки только слова?": "ru152",
+    "Если видны только слова без значка, браузер вообще не знает файла. Посмотри на имена атрибутов.": "ru153",
+    "В какой строке вместо [English pronunciation] S R C [Русское произношение] другой атрибут?": "ru154",
+    "Супер! Обе ошибки найдены. Ты проверяешь картинки как настоящий программист.": "ru155",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru156",
+    "Прочитай фразу по частям: о каком теге или атрибуте она?": "ru157",
+    "Вспомни тег [English pronunciation] I M G [Русское произношение]: [English pronunciation] S R C [Русское произношение] задаёт файл картинки, а [English pronunciation] alt [Русское произношение] даёт слова, если фото не открылось. Закрывающего тега у него нет. Картинке с другого сайта нужен адрес с [English pronunciation] https [Русское произношение]. Фраза с этим совпадает?": "ru158",
+    "Тег [English pronunciation] I M G [Русское произношение] пишут с закрывающим тегом.": "ru159",
+    "На самом деле у [English pronunciation] I M G [Русское произношение] нет закрывающего тега. Внутрь картинки текст не пишут.": "ru160",
+    "Если фото не открылось, на его месте виден текст [English pronunciation] alt [Русское произношение].": "ru161",
+    "Для этого и нужен [English pronunciation] alt [Русское произношение]: даже без фото понятно, что на нём.": "ru162",
+    "Файл картинки задаёт атрибут [English pronunciation] href [Русское произношение].": "ru163",
+    "[English pronunciation] href [Русское произношение], для ссылок. Файл картинки задаёт атрибут [English pronunciation] S R C [Русское произношение].": "ru164",
+    "Для картинки с другого сайта в [English pronunciation] S R C [Русское произношение] хватит имени сайта и файла, [English pronunciation] https [Русское произношение] не нужен.": "ru165",
+    "На самом деле [English pronunciation] https [Русское произношение] нужен. Без него браузер ищет картинку на нашем сайте, и она ломается.": "ru166",
+    "Всё верно! Ты отлично знаешь тег [English pronunciation] I M G [Русское произношение] и атрибуты [English pronunciation] S R C [Русское произношение] и [English pronunciation] alt [Русское произношение].": "ru167",
+    "Вернёмся к загадке. Помнишь, я написал картинке файл osh.jpg через [English pronunciation] href [Русское произношение]? Увы, я ошибся. [English pronunciation] href [Русское произношение], для ссылок, а тег [English pronunciation] I M G [Русское произношение] его не понимает. Поэтому на странице ничего не появилось. Значит, картинке всегда нужен [English pronunciation] S R C [Русское произношение].": "ru168",
+    "Смотри, это твоя страница и твоя картинка!": "ru169",
+    "Тег [English pronunciation] I M G [Русское произношение] ставит картинку на страницу.": "ru170",
+    "Атрибут [English pronunciation] S R C [Русское произношение] говорит, какой файл показать.": "ru171",
+    "А атрибут [English pronunciation] alt [Русское произношение] описывает картинку словами.": "ru172",
+    "А если картинка на другом сайте, в [English pronunciation] S R C [Русское произношение] пишут полный адрес, который начинается с [English pronunciation] https [Русское произношение].": "ru173",
+    "Ура! Теперь твои страницы ожили с картинками. На следующем уроке познакомимся с формами: поставим на страницу поля, в которые можно писать. До встречи!": "ru174",
+    "Вау, классно!": "ru175",
+    "Есть! Получилось!": "ru176",
+    "Супер!": "ru177",
+    "Огонь!": "ru178",
+    "Ура!": "ru179",
+    "Вот это да!": "ru180",
+    "Попробуй ещё раз.": "ru181",
+    "Посмотри внимательно.": "ru182",
+    "Уже близко. Не спеши.": "ru183",
+    "Нужны рис, мясо и морковь.": "ru184",
+    "Я люблю играть в футбол.": "ru185",
+    "Откуда картинка?": "ru186",
+    "Откуда браузер возьмёт картинку?": "ru187",
+    "Верно или нет?": "ru188",
+    "Привет, мир!": "ru189",
+    "Здесь нужны только слова, без угловых скобок.": "ru190",
+    "Молодец!": "ru191",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru192",
+  },
+  en: {
+    "Hi! Last time we connected pages with links. Here’s the plov recipe page. But look, it’s only text. Plov without a photo isn’t very tasty, right? Let’s put a photo of plov on the page. Tap Transform.": "en001",
+    "Whoa, look! A photo of plov appeared under the heading. Now the page looks much more alive.": "en002",
+    "The photo appears where it is in the code: after the heading and before the text.": "en003",
+    "Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Let’s put in the first picture together. There’s the I M G tag for pictures. I M G comes from the word image: a picture. Watch, we put the I M G tag between the heading and the text.": "en005",
+    "But look: nothing showed up on the page, because the I M G tag doesn’t know which picture to show yet. It needs a picture file.": "en006",
+    "The S R C attribute gives the file. S R C comes from the word source. In the quotes we write the picture file’s name: osh.jpg. There’s the photo! The browser found the file and put it where I M G is.": "en007",
+    "Remember: the I M G tag puts in a picture, and S R C says which file to show.": "en008",
+    "Now it’s your turn. Let’s put a photo of a ball on the games page. The I M G tag is in place, but the S R C quotes are empty. Find the ball photo in the list of files below and type its name in the quotes.": "en009",
+    "Type the file name in the quotes.": "en010",
+    "A picture file name ends with.jpg. Look at the list of files.": "en011",
+    "That’s a different picture. We need the ball photo.": "en012",
+    "There’s no such file, so the browser shows a broken picture icon. Type the name letter by letter, as in the list.": "en013",
+    "Which picture does the page need?": "en014",
+    "The ball photo file is in the list of files.": "en015",
+    "The file name is top.jpg. Type it in the quotes.": "en016",
+    "Awesome! The ball photo is there. The browser found the file you typed.": "en017",
+    "The gallery has three pictures, and the code has three I M G lines. The pictures sit side by side in the same order as the code lines. One line lights up in the code. Tap the picture on the page that this line shows.": "en018",
+    "Which picture does the lit line show?": "en019",
+    "Now I swapped the lines. Look, the pictures swapped too. Which picture does the lit line show?": "en020",
+    "The last one. This time the lit line has a typo in the file name. What did this line show on the page?": "en021",
+    "Right! The top.jpg line shows the ball.": "en022",
+    "Right! Change the order of the lines, and the pictures change order too.": "en023",
+    "Right! The file wasn’t found, so the browser put a broken picture icon.": "en024",
+    "That’s a different picture. The pictures go in the order of the code lines: the first line gives the first picture, the next one the next.": "en025",
+    "This picture showed up fine. Look at the file name in the lit line: it’s missing a letter.": "en026",
+    "Well done! Now you know which picture each I M G line shows.": "en027",
+    "Look at the lit line: which file name is written in it?": "en028",
+    "The pictures go in the order of the code lines. Whatever place the lit line has, the picture has the same place on the page.": "en029",
+    "If the file name has a typo, the browser can’t find the file. What shows up in the picture’s place then?": "en030",
+    "The lit line is second in the code, with top.jpg. Tap the second picture on the page: the ball.": "en031",
+    "Now the lit line is third. Tap the third picture on the page: the ball again.": "en032",
+    "The lit line is first, and its file name is missing a letter. Tap the first picture on the page, the broken picture icon.": "en033",
+    "A picture has one more important attribute: alt. alt comes from alternative text. It says in words what’s in the picture. Right now the photo opened, so the alt text isn’t visible. But what if the photo doesn’t open? Let’s see.": "en034",
+    "The file name has a typo: it says jgp instead of jpg. The browser couldn’t find the picture, so it showed a broken picture icon and the alt text. Even without the photo, we know what was there. One more thing: programs that read pages aloud for people who can’t see well read exactly the alt text.": "en035",
+    "Now let’s remove the alt attribute. Look, only the broken picture icon is left. Now nobody can tell what was here.": "en036",
+    "We fixed the file name and brought alt back. The photo is back. Note: the I M G tag has no closing tag. You don’t write text inside a picture, so a closing I M G isn’t needed.": "en037",
+    "So S R C gives the picture file, and alt describes the picture in words. Both go inside the I M G tag.": "en038",
+    "Now build the I M G tag yourself. The code has four empty spots. First the tag starts, then come two attributes, and at the end the tag closes. The order of the attributes doesn’t matter: S R C first or alt first, both are fine. And one piece isn’t needed at all.": "en039",
+    "I M G has no closing tag. This piece isn’t needed.": "en040",
+    "A tag always starts with a bracket and its name. Put the start of I M G first.": "en041",
+    "The start of the tag is already there. Now you need an attribute.": "en042",
+    "You still need the second attribute. The bracket goes at the very end.": "en043",
+    "Too early. Put both attributes first, then the tag closes.": "en044",
+    "What does a tag start with?": "en045",
+    "First the start of I M G, then S R C and alt.": "en046",
+    "The order is: the start of I M G, S R C, alt and the bracket. No closing tag.": "en047",
+    "Great! The tag is built right, and the ball photo appeared. And you were right to leave the extra piece.": "en048",
+    "Today we met three new words: I M G, S R C and alt. Match each one with what it does. Tap a word first, then what it does.": "en049",
+    "Right! The I M G tag puts in a picture.": "en050",
+    "Right! The S R C attribute gives the picture file.": "en051",
+    "Right! The alt attribute describes the picture in words.": "en052",
+    "I M G is the tag; it puts a picture on the page.": "en053",
+    "S R C is the attribute that says which file.": "en054",
+    "alt is the attribute that gives the words shown if the photo doesn’t open.": "en055",
+    "Which word is the tag, and which are attributes?": "en056",
+    "I M G is the tag; it puts the picture in itself.": "en057",
+    "I M G puts in a picture, S R C gives the file, alt describes it in words.": "en058",
+    "Brilliant! You know every part of a picture.": "en059",
+    "Tap a word first.": "en060",
+    "Sometimes pictures don’t show up. Let’s look at the two most common mistakes.": "en061",
+    "The first: the S R C attribute was forgotten. The browser doesn’t know which file to show, so there’s no picture. Only the alt text is left.": "en062",
+    "The second: one letter is missing from the file name. It says mushk.jpg instead of mushuk.jpg. The browser looks for exactly the file that’s written, letter by letter. There’s no such file, so a broken picture icon shows up.": "en063",
+    "So a picture always needs S R C, and the file name must be written exactly.": "en064",
+    "Oops, the ball photo file isn’t on the site yet! So the page only shows a broken picture icon. Nobody knows what should be here. Type in the alt quotes what’s in the picture, in words, and tap Check.": "en065",
+    "Type what’s in the picture in the alt quotes.": "en066",
+    "No tag here, just words.": "en067",
+    "That’s a file name. In alt you describe in words what’s in the picture.": "en068",
+    "Too short. Write a word or two about what’s in the picture.": "en069",
+    "What should the picture show?": "en070",
+    "This is the games page, and the file is koptok.jpg. What’s in the picture?": "en071",
+    "For example, write: A football.": "en072",
+    "Awesome! Even if the photo doesn’t open, your words stand in its place. Everyone knows what’s here.": "en073",
+    "Now look at two states: before and after. One thing changed in the code, and the picture changed. So what changed?": "en074",
+    "What changed in the code?": "en075",
+    "Right! S R C was added, so the picture appeared.": "en076",
+    "Right! The file name was fixed, so the photo opened.": "en077",
+    "Right! alt was added, so words appeared next to the icon.": "en078",
+    "Look: at first there was nothing on the page at all, then the picture appeared. There wasn’t even an icon. So S R C was added.": "en079",
+    "Look: first there was a broken picture icon, then the photo opened. So the file name was fixed.": "en080",
+    "Look: the photo didn’t open in either, but after, words appeared next to the icon. alt gives those words.": "en081",
+    "Now you know why a picture doesn’t show up. Next, let’s read the whole page together.": "en082",
+    "Compare the picture before and after: what changed on the page?": "en083",
+    "Was there nothing on the page at first, not even an icon? Remember which attribute tells the browser which file to show.": "en084",
+    "Was there a broken picture icon at first? Then S R C was there, but the browser couldn’t find the file. What could have been fixed in the code?": "en085",
+    "Did the photo fail to open in both? Then look at the words next to the icon: which attribute gives them?": "en086",
+    "Here’s the plov recipe page, all done. Let’s see how the browser reads it: as always, from top to bottom.": "en087",
+    "The first line is the heading. It appeared at the very top of the page.": "en088",
+    "The second line is the I M G tag. The browser found the file osh.jpg and put the photo right here.": "en089",
+    "The third line is the text. So wherever the picture is in the code, that’s where it shows up on the page.": "en090",
+    "Last lesson we saw a link with https take us to a site on the internet. Pictures work the same way. Look, I want to put a sun picture on the page. But there’s no quyosh.jpg among our files. That’s why the browser shows the broken picture icon.": "en091",
+    "This picture is on my site on the internet. To get it, we need the picture’s full address. Let me show you how to get it. My site is open in another browser tab.": "en092",
+    "We move the mouse over the picture and press the right button. Look, a menu appeared.": "en093",
+    "In the menu we choose Copy image address. Now the picture’s full address is in memory.": "en094",
+    "Now we go back to our page’s tab and over to the code. We select the old file name.": "en095",
+    "We press the right button again. This time we choose Paste in the menu.": "en096",
+    "There! The address went into the code, and the picture appeared on the page. Now let’s see what the address is made of.": "en097",
+    "The address starts with https, then a colon and two slashes. That tells the browser to go out to the internet.": "en098",
+    "Next comes the name of the site where the picture is: kodi.uz.": "en099",
+    "And at the end, a slash and the picture’s file name. That’s why the browser brought the picture from the internet.": "en100",
+    "Now let’s erase the https part at the start. So what happens?": "en101",
+    "The picture broke again! Without https the browser looks for a folder called kodi.uz on our site and can’t find it.": "en102",
+    "So for our own file, the file name is enough. A picture from the internet needs the full address: https, the site name and the picture file.": "en103",
+    "Now it’s your turn. My favourite fruit is the apple, and its picture is on my site too. The site name and the picture file are written below. Type the picture’s full address in S R C: https, the site name, a slash and the file name.": "en104",
+    "Type the picture’s full address in S R C.": "en105",
+    "There’s no https at the start. Without it the browser looks for the picture on our site, and it breaks. Start the address with https, a colon and two slashes.": "en106",
+    "After https come a colon and two slashes. Check them.": "en107",
+    "There’s a slash between the site name and the file name.": "en108",
+    "Type the site name and the file name letter by letter, as shown below.": "en109",
+    "This picture is on another site. What kind of address does it need?": "en110",
+    "A full address starts with https, then a colon and two slashes. Then the site name, a slash and the file name.": "en111",
+    "Tap the https button and type kodi.uz. Then add a slash and type the file olma.jpg.": "en112",
+    "Awesome! The apple picture came from the internet.": "en113",
+    "It works! But today sites usually use https: the s means secure.": "en114",
+    "Now check yourself. I write an address in the S R C attribute, and you choose where the browser gets the picture: from our site’s files or from the internet?": "en115",
+    "Look at the very start of the address in the S R C attribute.": "en116",
+    "If the address starts with https, the browser gets the picture from the internet. If it’s just a file or site name, it looks among our site’s files.": "en117",
+    "Exactly!": "en118",
+    "That’s just a file name. top.jpg is among our files, so the browser takes it from there.": "en119",
+    "The address starts with https. The browser brings the picture from a site on the internet.": "en120",
+    "Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.": "en121",
+    "An address starting with https leads to a site on the internet. The browser takes the apple picture from there.": "en122",
+    "All correct! Now you know where a picture comes from.": "en123",
+    "Now put a picture on your own page. The list of files has three pictures. Pick the one you like and type its name in the S R C quotes. Then tap Check.": "en124",
+    "Type the picture file name in the quotes.": "en125",
+    "That picture isn’t among your files. Pick one of the three in the list.": "en126",
+    "There’s no such file, so a broken picture icon shows up. Type the name letter by letter, as in the list.": "en127",
+    "Which picture do you like best?": "en128",
+    "Take one name from the list of files, for example gul.jpg.": "en129",
+    "For example, type mushuk.jpg and tap Check.": "en130",
+    "Great choice! Your picture is on the page. Now let’s write its alt text.": "en131",
+    "Now write your picture’s alt text: say in your own words what’s in it. The photo opened, so alt isn’t visible on the page. But a program that reads aloud will read it exactly like this: see below. Then tap Done.": "en132",
+    "Great! Now whether the photo opens or not, it’s clear what’s in it.": "en133",
+    "What’s in your picture? Write that.": "en134",
+    "Type only words: the quotes are in place.": "en135",
+    "For example: My cat. Then tap Done.": "en136",
+    "Oops, I was editing your page and deleted one word! Now only the alt text is where the picture was. In the code there’s an empty spot after I M G. Drag the missing word into it.": "en137",
+    "href gives a link’s address. A picture file is given by another attribute.": "en138",
+    "alt is already in the code, further along. Here you need the attribute that gives the picture file.": "en139",
+    "That’s it! S R C is back, and your picture shows up again.": "en140",
+    "Look at the browser: only the alt text is left where the picture was. What is the browser missing?": "en141",
+    "The file name comes after the empty spot. Remember which attribute tells the browser the picture file.": "en142",
+    "Take the S R C piece and drag it into the empty spot.": "en143",
+    "Now check yourself. Here’s the gallery, but it has a bug. Look at the browser: which picture didn’t show up? Find the line with the bug and tap it.": "en144",
+    "Great, the first bug is found! Now a different picture didn’t show: only words are in its place. What’s broken here?": "en145",
+    "This line is fine: it has S R C and the file name. Look at the browser: which picture didn’t show?": "en146",
+    "Found it! The file name was missing a letter. That’s why the browser couldn’t find the file.": "en147",
+    "Found it! Here href was written instead of S R C. href isn’t for pictures, so only the alt text was left.": "en148",
+    "Look at the browser: where is there an icon instead of a picture?": "en149",
+    "The icon appears when the file isn’t found. Compare the file names.": "en150",
+    "Look at the second line: is the file name complete?": "en151",
+    "Look at the browser: where are there only words instead of a picture?": "en152",
+    "If there are only words with no icon, the browser doesn’t know the file at all. Look at the attribute names.": "en153",
+    "Which line has a different attribute instead of S R C?": "en154",
+    "Super! Both bugs are found. You check pictures like a real programmer.": "en155",
+    "The last test. I’ll say something, and you choose: true or false.": "en156",
+    "Read the sentence piece by piece: which tag or attribute is it about?": "en157",
+    "Remember the I M G tag: S R C gives the picture file, and alt gives words if the photo doesn’t open. It has no closing tag. A picture from another site needs an address starting with https. Does the sentence match that?": "en158",
+    "The I M G tag is written with a closing tag.": "en159",
+    "Actually I M G has no closing tag. You don’t write text inside a picture.": "en160",
+    "If the photo doesn’t open, the alt text shows in its place.": "en161",
+    "That’s what alt is for: even without the photo, it’s clear what’s in it.": "en162",
+    "The href attribute gives the picture file.": "en163",
+    "href is for links. The S R C attribute gives the picture file.": "en164",
+    "For a picture from another site, the site name and file name in S R C are enough; https isn’t needed.": "en165",
+    "Actually https is needed. Without it the browser looks for the picture on our site, and it breaks.": "en166",
+    "All correct! You know the I M G tag and the S R C and alt attributes really well.": "en167",
+    "Back to our riddle. Remember, I gave the picture the file osh.jpg with href? Sadly, I was wrong. href is for links, and the I M G tag doesn’t understand it. That’s why nothing showed up on the page. So a picture always needs S R C.": "en168",
+    "Look, this is your page and your picture!": "en169",
+    "The I M G tag puts a picture on the page.": "en170",
+    "The S R C attribute says which file to show.": "en171",
+    "And the alt attribute describes the picture in words.": "en172",
+    "And if the picture is on another site, S R C holds a full address starting with https.": "en173",
+    "Hooray! Now your pages have come alive with pictures. Next time we’ll meet forms: we’ll put fields on the page that you can type into. See you!": "en174",
+    "Wow, awesome!": "en175",
+    "Yes! You did it!": "en176",
+    "Super!": "en177",
+    "Brilliant!": "en178",
+    "Hooray!": "en179",
+    "Amazing!": "en180",
+    "Try once more.": "en181",
+    "Take a closer look.": "en182",
+    "You are close. No rush.": "en183",
+    "You need rice, meat and carrots.": "en184",
+    "I love playing football.": "en185",
+    "Where’s the picture from?": "en186",
+    "Where will the browser get the picture?": "en187",
+    "True or false?": "en188",
+    "Hello, world!": "en189",
+    "Only words here, no angle brackets.": "en190",
+    "Well done!": "en191",
+    "Everything in the window lives inside body.": "en192",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8167,15 +7718,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14526,3 +14070,1095 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-line .kz-tag:has(.z4-u) { white-space: normal; overflow-wrap: anywhere; }
 .r28 .kz-line .z4-u { word-break: break-all; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 179, ru 179, en 179; всего знаков 64500. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! O'tgan darsda ro'yxatlar tuzdik. Endi menda butun sayt bor: bosh sahifa, osh retsepti va o'yinlarim sahifasi. Lekin qarang: bosh sahifadagi nomlarni bossangiz, hech narsa bo'lmaydi. Ular oddiy matn bo'lib turibdi. Keling, ularni jonlantiramiz. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Nomlar ko'k rangga kirdi, tagiga chiziq tushdi. Endi ular havola bo'ldi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolani bosib ko'ring: boshqa sahifa ochiladi. Tepadagi strelka bilan esa orqaga qaytasiz.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun shunday havolalar yasashni o'rganasiz: o'z sahifangizga ham, internetdagi saytga ham. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, birinchi havolani birga yasaymiz. Havola, ya'ni bosilganda boshqa sahifaga olib boradigan so'z degani. Uni yasash uchun [English pronunciation] A tag [O'zbekcha tallaffuz]-i bor. Qarang, Osh retsepti so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'raymiz.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Lekin qarang: brauzerda hech narsa o'zgarmadi. Chunki [English pronunciation] A tag [O'zbekcha tallaffuz]-i qayerga borishni hali bilmaydi. Unga manzil kerak bo'ladi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzilni [English pronunciation] href [O'zbekcha tallaffuz] atributi aytadi. [English pronunciation] href [O'zbekcha tallaffuz] inglizcha [English pronunciation] hypertext reference [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni havola manzili degani. Qo'shtirnoq ichiga sahifaning fayl nomini yozamiz: osh.[English pronunciation] HTML [O'zbekcha tallaffuz]. Endi so'z ko'k bo'ldi, tagiga chiziq tushdi. Qarang, brauzer o'zi bosib ko'radi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retsept ochildi, keyin strelka bilan orqaga qaytdik. Eslab qoling: [English pronunciation] A tag [O'zbekcha tallaffuz]-i havola yasaydi, [English pronunciation] href [O'zbekcha tallaffuz] esa qayerga borishni aytadi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Mening o'yinlarim havolasida manzil yo'q: [English pronunciation] href [O'zbekcha tallaffuz] qo'shtirnog'i bo'sh turibdi. Pastdagi fayllar ro'yxatidan kerakli faylni toping va uning nomini qo'shtirnoq ichiga yozing.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichiga fayl nomini yozing.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi oxirida.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Fayllar ro'yxatiga qarang.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu fayl boshqa sahifani ochadi. Bizga o'yinlar sahifasi kerak bo'ladi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday fayl yo'q. Nomni ro'yxatdagidek, harfma-harf yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi sahifa ochilishi kerak?", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinlar sahifasining fayli fayllar ro'yxatida turibdi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Uni qo'shtirnoq ichiga yozing.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Havola ishladi. Bosib ko'ring: o'yinlar sahifasi ochiladi.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt menyusida uchta havola bor, lekin ularning manzili yo'q. Har bir faylni o'z havolasiga olib boring: bosh sahifaga, retseptga va o'yinlarga.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir havola qaysi sahifani ochishi kerak?", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi sahifa nomiga o'xshaydi: osh, oyinlar, index.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] index.[English pronunciation] HTML [O'zbekcha tallaffuz] bosh sahifa bo'ladi, osh.[English pronunciation] HTML [O'zbekcha tallaffuz] retsept, oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] esa o'yinlar.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Menyu ishladi. Har bir havolani bosib, tekshirib ko'ring.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin faylni bosing.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi havolani yaqinroqdan ko'raylik. [English pronunciation] href [O'zbekcha tallaffuz] bu atribut, ya'ni [English pronunciation] tag [O'zbekcha tallaffuz]-ga qo'shimcha ma'lumot degani. [English pronunciation] tag [O'zbekcha tallaffuz] nima qilishni aytadi, atribut esa qanday qilishni aytadi. Keling, havolaning bo'laklarini birma-bir ko'ramiz.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] tag [O'zbekcha tallaffuz] nomi keladi: a. U brauzerga bu havola ekanini aytadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyin bo'sh joy va atribut nomi keladi: [English pronunciation] href [O'zbekcha tallaffuz].", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Undan keyin teng belgisi va qo'shtirnoq ichidagi qiymat keladi. Qiymat bu fayl nomi bo'ladi.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat qiling: atribut faqat ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichida bo'ladi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da atribut bo'lmaydi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, havola shunday tuziladi: [English pronunciation] tag [O'zbekcha tallaffuz] nomi, bo'sh joy, atribut nomi, teng belgisi va qo'shtirnoq ichida qiymat.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi atributni o'zingiz yig'ing. [English pronunciation] A tag [O'zbekcha tallaffuz]-idan keyin uchta bo'sh joy bor. Bo'laklarni to'g'ri tartibda qo'ying: atribut nomi, teng belgisi va qiymat.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat oxirida keladi. Oldin atribut nomi bo'lishi kerak.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Teng belgisi o'rtada turadi. Undan oldin atribut nomi keladi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hali erta. Atribut nomidan keyin teng belgisi keladi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Atribut nima bilan boshlanadi?", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bo'lib [English pronunciation] href [O'zbekcha tallaffuz], keyin teng belgisi keladi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib shunday bo'ladi: [English pronunciation] href [O'zbekcha tallaffuz], teng belgisi, keyin qo'shtirnoq ichida fayl nomi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Atribut to'g'ri yig'ildi, havola ham ishladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolaning uchta bo'lagi bor: a, [English pronunciation] href [O'zbekcha tallaffuz] va qo'shtirnoq ichidagi qiymat. Har bir bo'lakni uning nomi bilan juftlang. Oldin bo'lakni bosing, keyin nomini bosing.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] A tag [O'zbekcha tallaffuz] nomi bo'ladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] href [O'zbekcha tallaffuz] atribut nomi bo'ladi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Qo'shtirnoq ichidagi fayl nomi qiymat bo'ladi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] a bu [English pronunciation] tag [O'zbekcha tallaffuz] nomi, u havola yasaydi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] bu atribut nomi, u manzilni aytadi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichidagi yozuv qiymat bo'ladi, ya'ni fayl nomi degani.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi bo'lak birinchi keladi?", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] A tag [O'zbekcha tallaffuz] nomi, [English pronunciation] href [O'zbekcha tallaffuz] esa atribut nomi bo'ladi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] A tag [O'zbekcha tallaffuz] nomi, [English pronunciation] href [O'zbekcha tallaffuz] atribut nomi, qo'shtirnoq ichidagisi qiymat bo'ladi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Havolaning hamma bo'lagini bilasiz.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin bo'lakni bosing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalar ba'zan buziladi. Keling, eng ko'p uchraydigan ikkita xatoni ko'ramiz.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: fayl nomida bitta harf tushib qoldi. osh.[English pronunciation] HTML [O'zbekcha tallaffuz] o'rniga osh.htm yozildi. Qarang, brauzer bosib ko'radi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl topilmadi! Brauzer aynan yozilgan faylni qidiradi va harfma-harf solishtiradi. Bitta harf yetishmasa ham, sahifa ochilmaydi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i unutildi. Qarang, endi gapning qolgani ham havolaga aylandi. Chunki brauzer havola qayerda tugashini bilmaydi.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, fayl nomini aniq yozing va havolani doim yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i bilan yoping.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men yana yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni unutibman! Endi butun gap havolaga aylandi. Havola nomidan keyin yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-ini yozing.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da a harfidan oldin qiya chiziq turadi.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi. Uni boshiga qo'shing.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi. Uni oxiriga qo'shing.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] ichida boshqa harf yozilgan. Bu yerda a kerak bo'ladi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiya chiziq birinchi burchakli qavsdan keyin darrov turadi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Havola qayerda tugashi kerak?", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] o'sha harf bo'ladi, faqat qiya chiziq bilan.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin burchakli qavs, keyin qiya chiziq, keyin a va oxirida yana burchakli qavs qo'ying.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi faqat havola nomi ko'k, gapning qolgani esa oddiy matn bo'lib qoldi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi ikkita holatga qarang: oldin va keyin. Kodda nimadir o'zgardi. Xo'sh, nima o'zgardi?", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodda nima o'zgardi?", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] href [O'zbekcha tallaffuz] qo'shildi, matn havolaga aylandi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i havolani to'xtatdi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Fayl nomi to'g'rilandi, sahifa ochildi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin oddiy matn edi, keyin havola bo'ldi. Havolani [English pronunciation] href [O'zbekcha tallaffuz] atributi yasaydi.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: keyin gapning qolgani oddiy matnga qaytdi. Buni yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i qiladi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: oldin fayl topilmagan edi, keyin sahifa ochildi. Demak, fayl nomi to'g'rilandi.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi havola nimaga buzilishini bilasiz. Keyin butun saytni birga aylanib chiqamiz.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin va keyin brauzerdagi farqqa qarang: sahifada nima o'zgardi?", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oddiy matn havolaga aylandimi? Havolani qaysi atribut yasashini eslang.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havola qayerda tugashi o'zgardimi? Havolani qaysi [English pronunciation] tag [O'zbekcha tallaffuz] to'xtatishini eslang.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl topilmadi yo'qoldimi? Unda kodda nima tuzatilganini o'ylang.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, butun saytim tayyor. Keling, brauzer havolalar bo'ylab qanday yurishini ko'ramiz.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi havola osh.[English pronunciation] HTML [O'zbekcha tallaffuz] faylini ochdi. Manzil satrida ham fayl nomi o'zgardi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Orqaga qaytdik, ikkinchi havola esa oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] faylini ochdi.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, har bir havola o'z faylini ochadi, tepadagi strelka esa orqaga qaytaradi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozirgacha havolalarimiz faqat o'z saytimizdagi fayllarni ochdi. Lekin havola internetdagi istalgan saytga ham olib bora oladi. Masalan, Vikipediyaga. Buning uchun [English pronunciation] href [O'zbekcha tallaffuz] ichiga fayl nomi emas, saytning to'liq manzili yoziladi. Qarang.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] so'zi bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi. Oxiridagi s harfi inglizcha [English pronunciation] secure [O'zbekcha tallaffuz] so'zidan olingan, ya'ni xavfsiz degani.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu manzilni qayerdan olamiz? Vikipediya brauzerning boshqa yorlig'ida ochiq. Keling, ko'rsataman.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadagi manzil satrini bosamiz. Qarang, saytning to'liq manzili belgilandi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'ng tugmani bosamiz va ro'yxatdan [English pronunciation] Copy [O'zbekcha tallaffuz]ni tanlaymiz. Manzil xotiraga olindi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'z sahifamiz yorlig'iga qaytamiz va kodda [English pronunciation] href [O'zbekcha tallaffuz] qo'shtirnog'i ichini bosamiz.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana o'ng tugmani bosamiz va [English pronunciation] Paste [O'zbekcha tallaffuz]ni tanlaymiz. Mana, manzil kodga tushdi!", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Endi havolani bosib ko'ramiz.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer internetga chiqdi va boshqa saytni ochdi. Manzil satriga qarang: u yerda endi to'liq manzil turibdi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi boshidagi [English pronunciation] https [O'zbekcha tallaffuz] qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl topilmadi! [English pronunciation] https [O'zbekcha tallaffuz] bo'lmasa, brauzer buni o'z saytimizdagi fayl deb o'ylaydi va uni index.[English pronunciation] HTML [O'zbekcha tallaffuz] yonidan qidiradi. Bunday fayl esa yo'q.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, o'z saytimizdagi sahifa uchun fayl nomi yetadi. Boshqa saytga esa to'liq manzil kerak: [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta, ikkita qiya chiziq va sayt nomi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Vikipediya havolasida manzil yo'q. Sayt nomi pastda yozilgan. Qo'shtirnoq ichiga saytning to'liq manzilini yozing. Boshini unutmang: [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichiga saytning to'liq manzilini yozing.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Usiz brauzer o'z saytimizdan fayl qidiradi. Manzilni [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq bilan boshlang.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] https [O'zbekcha tallaffuz] so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt nomini pastdagidek, harfma-harf yozing.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu havola boshqa saytga olib boradi. Unga qanday manzil kerak?", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq, keyin sayt nomi keladi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Havola internetga chiqdi. Bosib ko'ring: Vikipediya ochiladi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ishladi! Lekin bugun saytlar ko'pincha [English pronunciation] https [O'zbekcha tallaffuz] bilan yoziladi. Oxiridagi s harfi xavfsiz degani. Bosib ko'ring.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Men havolaga manzil yozaman. Siz esa brauzer uni qayerdan qidirishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzilning eng boshiga qarang.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlansa, brauzer internetga chiqadi. Faqat fayl yoki sayt nomi bo'lsa, saytimizdan qidiradi.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu oddiy fayl nomi. Brauzer uni saytimizdan topadi va retseptni ochadi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi. Demak, brauzer internetga chiqadi va Vikipediyani ochadi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aldanmang! Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q, shuning uchun brauzer buni oddiy fayl deb o'ylaydi va saytimizdan qidiradi. Fayl esa topilmaydi.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil internetdagi saytga olib boradi. Bu Vikipediyaning bosh sahifasi.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Endi qaysi manzil qayerga olib borishini bilasiz.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizning havolangizni yasang. Sizning sahifangiz mening.[English pronunciation] HTML [O'zbekcha tallaffuz] faylida turibdi. Oldin havola matnini yozing. Bu sahifada ko'rinadigan so'zlar bo'ladi. Keyin Tayyorni bosing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r matn! Endi havolaga manzil beramiz.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifangiz nima haqida? Shuni yozing.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Mening sahifam. Keyin Tayyorni bosing.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi havolangizga manzil bering. Sahifangiz fayli fayllar ro'yxatida turibdi. Uning nomini qo'shtirnoq ichiga yozing va Tekshirishni bosing.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu fayl boshqa sahifani ochadi. Bizga sizning sahifangiz kerak bo'ladi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sizning sahifangiz qaysi faylda turibdi?", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayllar ro'yxatida eng oxirgi fayl sizniki bo'ladi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi mening.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Uni qo'shtirnoq ichiga yozing.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Havolangiz ishladi. Bosib ko'ring: sizning sahifangiz ochiladi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men havolangizni tahrirlayotib atributni o'chirib yubordim! Endi u oddiy matn bo'lib qoldi. Yetishmayotgan bo'lakni [English pronunciation] A tag [O'zbekcha tallaffuz]-idan keyingi bo'sh joyga olib boring.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat atribut nomi. Unga qiymat ham kerak bo'ladi, ya'ni fayl nomi degani.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat qiymat. Oldida atribut nomi va teng belgisi bo'lishi kerak.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana endi joyida! Havolangiz yana ishlaydi, bosib ko'ring.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Brauzerga qarang: havola oddiy matn bo'lib qoldi. Unga nima yetishmayapti?", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolaga atributning hammasi kerak: nomi, teng belgisi va qo'shtirnoqdagi fayl nomi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'laklardan [English pronunciation] href [O'zbekcha tallaffuz], teng belgisi va mening.[English pronunciation] HTML [O'zbekcha tallaffuz] birga turganini tanlang.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Mana, sayt menyusi, lekin unda xato bor. Brauzerga qarang: qaysi havola noto'g'ri? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi men menyudagi havolani bosdim, lekin fayl topilmadi. Bu yerda nima buzilgan?", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator to'g'ri yozilgan: [English pronunciation] href [O'zbekcha tallaffuz] ham, fayl nomi ham joyida. Brauzerga qarang: buzilish qayerda?", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Bu havolada [English pronunciation] href [O'zbekcha tallaffuz] yo'q edi. Shuning uchun u oddiy matn bo'lib qolgan edi.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Fayl nomida bitta harf yetishmayotgan edi. Shuning uchun brauzer faylni topa olmagan edi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzerga qarang: qaysi nom havolaga o'xshamaydi?", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'k bo'lmagan nomda [English pronunciation] href [O'zbekcha tallaffuz] yo'q bo'ladi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qatorda [English pronunciation] A tag [O'zbekcha tallaffuz]-ida [English pronunciation] href [O'zbekcha tallaffuz] yo'q?", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Manzil satriga qarang: qaysi fayl qidirildi?", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Fayl nomlari.[English pronunciation] HTML [O'zbekcha tallaffuz] bilan tugaydi. Qaysi qatorda u boshqacha?", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Uchinchi qatorga qarang: fayl nomi to'liqmi?", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala xato ham topildi. Siz havolalarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yoki atribut haqida?", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri havolani eslang: ochuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i, uning ichida [English pronunciation] href [O'zbekcha tallaffuz] va qo'shtirnoqdagi manzil. Gap shunga mos keladimi?", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] atributi yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichiga yoziladi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] href [O'zbekcha tallaffuz] ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichida bo'ladi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da atribut bo'lmaydi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] qiymati qo'shtirnoq ichida yoziladi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fayl nomi qo'shtirnoq ichida yoziladi, shunda brauzer uni aniq o'qiydi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] A tag [O'zbekcha tallaffuz]-i [English pronunciation] href [O'zbekcha tallaffuz] atributisiz ham havola bo'ladi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshqa saytga havola uchun sayt nomining o'zi yetadi, [English pronunciation] https [O'zbekcha tallaffuz] shart emas.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] https [O'zbekcha tallaffuz] kerak. Usiz brauzer sayt nomini o'z saytimizdagi fayl deb o'ylaydi va fayl topilmaydi.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] A tag [O'zbekcha tallaffuz]-i va [English pronunciation] href [O'zbekcha tallaffuz] atributini yaxshi bilasiz.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men Mening o'yinlarim so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'rab qo'ygan edim, xolos? Afsuski, men adashibman. [English pronunciation] href [O'zbekcha tallaffuz] bo'lmasa, brauzer qayerga borishni bilmaydi, shuning uchun so'z oddiy matn bo'lib qoldi. Demak, havolaga doim [English pronunciation] href [O'zbekcha tallaffuz] kerak bo'ladi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning havolangiz! Bosib ko'ring.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] A tag [O'zbekcha tallaffuz]-i havola yasaydi.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] href [O'zbekcha tallaffuz] atributi qayerga borishni aytadi.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shtirnoq ichidagi qiymat esa fayl nomi bo'ladi.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshqa saytga havola qilsangiz, qiymat [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadigan to'liq manzil bo'ladi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi sahifalaringiz bir-biriga va internetga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening saytim.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening sahifam.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] sahifasini oching.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qayerdan qidiradi?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzer qayerdan qidiradi?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! На прошлом уроке мы делали списки. А теперь у меня целый сайт: главная, рецепт плова и страница с моими играми. Но смотри: нажимаешь названия на главной, ничего не происходит. Это просто текст. Давай их оживим. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Названия стали синими и подчёркнутыми. Теперь это ссылки.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми ссылку, откроется другая страница. А стрелкой вверху вернёшься назад.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься делать такие ссылки, и на свою страницу, и на сайт в интернете. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова Мои игры в тег a. По-моему, теперь нажмёшь, и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Давай сделаем первую ссылку вместе. Ссылка, это слово, которое по нажатию ведёт на другую страницу. Для неё есть тег a. Смотри, оборачиваем слова Рецепт плова в тег a.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Но смотри: в браузере ничего не изменилось. Потому что тег a ещё не знает, куда вести. Ему нужен адрес.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес задаёт атрибут [English pronunciation] href [Русское произношение]. [English pronunciation] href [Русское произношение], от английского [English pronunciation] hypertext reference [Русское произношение], то есть адрес ссылки. В кавычках пишем имя файла страницы: osh.[English pronunciation] HTML [Русское произношение]. Теперь слово синее и подчёркнутое. Смотри, браузер сам нажмёт.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рецепт открылся, потом стрелкой вернулись назад. Запомни: тег a делает ссылку, а [English pronunciation] href [Русское произношение] говорит, куда вести.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. У ссылки Мои игры нет адреса: кавычки [English pronunciation] href [Русское произношение] пустые. Найди нужный файл в списке файлов внизу и впиши его имя в кавычки.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя файла в кавычки.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла заканчивается на.[English pronunciation] HTML [Русское произношение]. Посмотри в список файлов.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот файл открывает другую страницу. Нам нужна страница с играми.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого файла нет. Напиши имя буква в букву, как в списке.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая страница должна открыться?", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Файл страницы с играми есть в списке файлов.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла, oyinlar.[English pronunciation] HTML [Русское произношение]. Впиши его в кавычки.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Ссылка работает. Нажми, откроется страница с играми.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В меню сайта три ссылки, но у них нет адресов. Перетащи каждый файл к своей ссылке: к главной, к рецепту и к играм.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какую страницу должна открыть каждая ссылка?", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла похоже на страницу: osh, oyinlar, index.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] index.[English pronunciation] HTML [Русское произношение], главная, osh.[English pronunciation] HTML [Русское произношение], рецепт, oyinlar.[English pronunciation] HTML [Русское произношение], игры.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Меню работает. Понажимай ссылки и проверь.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми файл.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь рассмотрим ссылку поближе. [English pronunciation] href [Русское произношение], это атрибут, то есть дополнительные сведения для тега. Тег говорит, что делать, а атрибут, как. Разберём ссылку по кусочкам.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала идёт имя тега: a. Оно говорит браузеру, что это ссылка.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Потом пробел и имя атрибута: [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дальше знак равно и значение в кавычках. Значение, это имя файла.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внимание: атрибут бывает только в открывающем теге. В закрывающем атрибутов нет.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, ссылка устроена так: имя тега, пробел, имя атрибута, знак равно и значение в кавычках.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери атрибут сам. После тега a три пустых места. Поставь куски по порядку: имя атрибута, знак равно и значение.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение идёт в конце. Сначала нужно имя атрибута.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Знак равно стоит посередине. Перед ним, имя атрибута.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рано. После имени атрибута идёт знак равно.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С чего начинается атрибут?", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала [English pronunciation] href [Русское произношение], потом знак равно.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок такой: [English pronunciation] href [Русское произношение], знак равно, потом имя файла в кавычках.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Атрибут собран верно, и ссылка заработала.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У ссылки три части: a, [English pronunciation] href [Русское произношение] и значение в кавычках. Соедини каждую часть с её названием. Сначала нажми часть, потом название.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! a, имя тега.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] href [Русское произношение], имя атрибута.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Имя файла в кавычках, значение.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] a, это имя тега, он делает ссылку.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] href [Русское произношение], это имя атрибута, он задаёт адрес.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] То, что в кавычках,, значение, то есть имя файла.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая часть идёт первой?", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] a, имя тега, а [English pronunciation] href [Русское произношение], имя атрибута.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] a, имя тега, [English pronunciation] href [Русское произношение], имя атрибута, в кавычках, значение.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты знаешь все части ссылки.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми часть.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылки иногда ломаются. Посмотрим на две самые частые ошибки.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: в имени файла пропала одна буква. Вместо osh.[English pronunciation] HTML [Русское произношение] написано osh.htm. Смотри, браузер нажмёт.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Файл не найден! Браузер ищет ровно тот файл, что написан, буква в букву. Не хватает одной буквы, и страница не откроется.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: забыли закрывающий тег a. Смотри, теперь и остаток фразы стал ссылкой. Ведь браузер не знает, где ссылка кончается.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, пиши имя файла точно и всегда закрывай ссылку закрывающим тегом a.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я опять забыл закрывающий тег! Теперь вся фраза стала ссылкой. Напиши закрывающий тег a после названия ссылки.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это открывающий тег. В закрывающем перед a стоит косая черта.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег начинается с уголка. Добавь его в начало.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце тега нужен уголок. Добавь его в конец.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри тега другая буква. Здесь нужна a.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Косая черта стоит сразу после первого уголка.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где должна кончаться ссылка?", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег, та же буква, но с косой чертой.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала уголок, потом косая черта, потом a и в конце снова уголок.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь синее только название ссылки, а остальное, обычный текст.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь посмотри на два состояния: до и после. В коде что-то изменилось. Ну и что именно?", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что изменилось в коде?", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Добавили [English pronunciation] href [Русское произношение], текст стал ссылкой.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Закрывающий a остановил ссылку.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Имя файла исправили, страница открылась.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: был обычный текст, стала ссылка. Ссылку делает атрибут [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: после остаток фразы снова стал обычным текстом. Это делает закрывающий a.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: сначала файл не нашёлся, потом страница открылась. Значит, исправили имя файла.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты знаешь, почему ссылки ломаются. Дальше пройдёмся по всему сайту.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни до и после в браузере: что изменилось на странице?", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обычный текст стал ссылкой? Вспомни, какой атрибут делает ссылку.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Изменилось, где кончается ссылка? Вспомни, какой тег её останавливает.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пропало Файл не найден? Подумай, что тогда исправили в коде.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот весь мой сайт. Посмотрим, как браузер ходит по ссылкам.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая ссылка открыла файл osh.[English pronunciation] HTML [Русское произношение]. В адресной строке тоже сменилось имя файла.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернулись назад, а вторая ссылка открыла файл oyinlar.[English pronunciation] HTML [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, каждая ссылка открывает свой файл, а стрелка вверху возвращает назад.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] До сих пор наши ссылки открывали только файлы нашего сайта. Но ссылка может вести на любой сайт в интернете. Например, на Википедию. Для этого в [English pronunciation] href [Русское произношение] пишут не имя файла, а полный адрес сайта. Смотри.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полный адрес начинается со слова [English pronunciation] https [Русское произношение], потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет. Буква s на конце, от английского [English pronunciation] secure [Русское произношение], то есть защищённый.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Где взять этот адрес? Википедия открыта в другой вкладке браузера. Давай покажу.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажимаем на адресную строку вверху. Смотри, полный адрес сайта выделился.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь нажимаем правую кнопку и выбираем в списке Копировать. Адрес в памяти.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Возвращаемся во вкладку своей страницы и щёлкаем в коде внутри кавычек [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Снова нажимаем правую кнопку и выбираем Вставить. Готово, адрес попал в код!", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дальше идёт имя сайта. Здесь это сайт Википедии. А теперь нажмём ссылку.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер вышел в интернет и открыл другой сайт. Посмотри в адресную строку: там теперь полный адрес.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь сотрём начало, [English pronunciation] https [Русское произношение]. Ну, что будет?", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Файл не найден! Без [English pronunciation] https [Русское произношение] браузер думает, что это файл нашего сайта, и ищет его рядом с index.[English pronunciation] HTML [Русское произношение]. А такого файла нет.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, для страницы нашего сайта хватит имени файла. А для другого сайта нужен полный адрес: [English pronunciation] https [Русское произношение], двоеточие, две косые черты и имя сайта.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. У ссылки Википедия нет адреса. Имя сайта написано внизу. Впиши в кавычки полный адрес сайта. Не забудь начало: [English pronunciation] https [Русское произношение], двоеточие и две косые черты.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши в кавычки полный адрес сайта.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В начале нет [English pronunciation] https [Русское произношение]. Без него браузер ищет файл на нашем сайте. Начни адрес с [English pronunciation] https [Русское произношение], двоеточия и двух косых черт.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После [English pronunciation] https [Русское произношение] идут двоеточие и две косые черты. Проверь их.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши имя сайта буква в букву, как внизу.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта ссылка ведёт на другой сайт. Какой адрес ей нужен?", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полный адрес начинается с [English pronunciation] https [Русское произношение], потом двоеточие и две косые черты, потом имя сайта.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Ссылка ведёт в интернет. Нажми, откроется Википедия.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Работает! Но сегодня сайты обычно пишут с [English pronunciation] https [Русское произношение]: буква s значит защищённый. Нажми ссылку.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я пишу адрес ссылки, а ты выбери, где браузер будет его искать: среди файлов нашего сайта или в интернете?", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на самое начало адреса.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если адрес начинается с [English pronunciation] https [Русское произношение], браузер идёт в интернет. Если там только имя файла или сайта, он ищет на нашем сайте.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это просто имя файла. Браузер найдёт его на нашем сайте и откроет рецепт.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес начинается с [English pronunciation] https [Русское произношение]. Значит, браузер выйдет в интернет и откроет Википедию.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не попадись! В начале нет [English pronunciation] https [Русское произношение], поэтому браузер считает это обычным файлом и ищет на нашем сайте. А файла нет.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адрес с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. Это главная страница Википедии.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Теперь ты знаешь, куда ведёт какой адрес.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свою ссылку. Твоя страница лежит в файле mening.[English pronunciation] HTML [Русское произношение]. Сначала напиши текст ссылки, это слова, которые видны на странице. Потом нажми Готово.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Классный текст! Теперь дадим ссылке адрес.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] О чём твоя страница? Это и напиши.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги на месте.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Моя страница. Потом нажми Готово.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь дай своей ссылке адрес. Файл твоей страницы есть в списке файлов. Впиши его имя в кавычки и нажми Проверить.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот файл открывает другую страницу. Нам нужна твоя страница.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В каком файле твоя страница?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последний файл в списке, твой.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла, mening.[English pronunciation] HTML [Русское произношение]. Впиши его в кавычки.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Твоя ссылка работает. Нажми, откроется твоя страница.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я правил твою ссылку и стёр атрибут! Теперь это обычный текст. Перетащи недостающий кусок в пустое место после тега a.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только имя атрибута. Ему нужно ещё значение, то есть имя файла.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только значение. Перед ним нужны имя атрибута и знак равно.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот теперь порядок! Ссылка снова работает, нажми.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на браузер: ссылка стала обычным текстом. Чего ей не хватает?", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылке нужен атрибут целиком: имя, знак равно и имя файла в кавычках.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбери кусок, где вместе стоят [English pronunciation] href [Русское произношение], знак равно и mening.[English pronunciation] HTML [Русское произношение].", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Вот меню сайта, но в нём ошибка. Посмотри на браузер: какая ссылка не такая? Найди строку с ошибкой и нажми её.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь я нажал ссылку в меню, а файл не нашёлся. Что сломано здесь?", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка в порядке: есть и [English pronunciation] href [Русское произношение], и имя файла. Посмотри на браузер: где поломка?", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! У этой ссылки не было [English pronunciation] href [Русское произношение]. Поэтому она была обычным текстом.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! В имени файла не хватало буквы. Поэтому браузер не нашёл файл.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на браузер: какое название не похоже на ссылку?", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У несинего названия нет [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какой строке у тега a нет [English pronunciation] href [Русское произношение]?", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в адресную строку: какой файл искали?", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Имена файлов кончаются на.[English pronunciation] HTML [Русское произношение]. В какой строке иначе?", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на третью строку: имя файла полное?", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь ссылки как настоящий программист.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу по частям: о каком теге или атрибуте она?", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни правильную ссылку: открывающий тег a, в нём [English pronunciation] href [Русское произношение] и адрес в кавычках. Фраза с этим совпадает?", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Атрибут [English pronunciation] href [Русское произношение] пишут в закрывающем теге.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] href [Русское произношение] стоит в открывающем теге. В закрывающем атрибутов нет.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение [English pronunciation] href [Русское произношение] пишут в кавычках.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя файла пишут в кавычках, так браузер читает его точно.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег a и без [English pronunciation] href [Русское произношение], ссылка.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без [English pronunciation] href [Русское произношение] браузер не знает, куда вести, и слово остаётся обычным текстом.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для ссылки на другой сайт хватит одного имени сайта, [English pronunciation] https [Русское произношение] не нужен.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] https [Русское произношение] нужен. Без него браузер считает имя сайта файлом нашего сайта, и файла нет.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь тег a и атрибут [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я просто обернул Мои игры в тег a? Увы, я ошибся. Без [English pronunciation] href [Русское произношение] браузер не знает, куда вести, поэтому слова остались обычным текстом. Значит, ссылке всегда нужен [English pronunciation] href [Русское произношение].", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя ссылка! Нажми её.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег a делает ссылку.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Атрибут [English pronunciation] href [Русское произношение] говорит, куда вести.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А значение в кавычках, это имя файла.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если ссылка ведёт на другой сайт, значение, полный адрес, который начинается с [English pronunciation] https [Русское произношение].", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твои страницы связаны друг с другом и с интернетом. На следующем уроке добавим на страницу картинку. До встречи!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это мой сайт.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это моя страница.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] , загляни туда.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где искать?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где браузер будет искать?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Last time we made lists. Now I have a whole site: a home page, a plov recipe and a page with my games. But look: tap the names on the home page and nothing happens. They’re just text. Let’s bring them to life. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! The names turned blue and underlined. Now they’re links.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a link and another page opens. The arrow at the top takes you back.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to make links like these: to your own page and to a site on the internet. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words My games in the A tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s make the first link together. A link is a word that takes you to another page when you tap it. There’s the A tag for that. Watch, we wrap the words Plov recipe in the A tag.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] But look: nothing changed in the browser, because the A tag doesn’t know where to go yet. It needs an address.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The href attribute gives the address. href comes from hypertext reference: the link’s address. In the quotes we write the page’s file name: osh.H T M L. Now the word is blue and underlined. Watch, the browser taps it.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The recipe opened, then the arrow took us back. Remember: the A tag makes a link, and href says where it goes.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. The My games link has no address: the href quotes are empty. Find the right file in the list of files below and type its name in the quotes.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the file name in the quotes.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A file name ends with.H T M L. Look at the list of files.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That file opens another page. We need the games page.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such file. Type the name letter by letter, as in the list.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which page should open?", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The games page file is in the list of files.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name is oyinlar.H T M L. Type it in the quotes.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The link works. Tap it and the games page opens.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site menu has three links, but they have no addresses. Drag each file to its link: home, recipe and games.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which page should each link open?", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A file name looks like its page: osh, oyinlar, index.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] index.H T M L is home, osh.H T M L is the recipe, and oyinlar.H T M L is games.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The menu works. Tap the links to check them.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a file first.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s look closer at a link. href is an attribute: extra information for A tag. The tag says what to do, and the attribute says how. Let’s take the link apart piece by piece.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First comes the tag name: a. It tells the browser this is a link.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Then a space and the attribute name: href.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Then the equals sign and the value in quotes. The value is the file name.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Note: an attribute only goes in the opening tag. The closing tag has no attributes.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a link is built like this: the tag name, a space, the attribute name, the equals sign and the value in quotes.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build the attribute yourself. After the A tag there are three empty spots. Put the pieces in order: the attribute name, the equals sign and the value.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value goes last. The attribute name comes first.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The equals sign goes in the middle. The attribute name comes before it.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Too early. The equals sign comes after the attribute name.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does an attribute start with?", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First href, then the equals sign.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is: href, the equals sign, then the file name in quotes.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The attribute is built right, and the link works.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A link has three parts: a, href and the value in quotes. Match each part with its name. Tap a part first, then its name.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! a is the tag name.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! href is the attribute name.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The file name in quotes is the value.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] a is the tag name; it makes a link.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] href is the attribute name; it gives the address.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What’s in the quotes is the value: the file name.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which part comes first?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] a is the tag name, and href is the attribute name.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] a is the tag name, href is the attribute name, and what’s in quotes is the value.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant! You know every part of a link.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a part first.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Links sometimes break. Let’s look at the two most common mistakes.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The first: one letter is missing from the file name. It says osh.htm instead of osh.H T M L. Watch, the browser taps it.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] File not found! The browser looks for exactly the file that’s written, letter by letter. Even one missing letter and the page won’t open.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: the closing A tag was forgotten. Look, now the rest of the sentence became a link too, because the browser doesn’t know where the link ends.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So write the file name exactly and always close the link with the closing A tag.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I forgot the closing tag again! Now the whole sentence is a link. Type the closing A tag after the link name.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the opening tag. The closing one has a slash before a.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag starts with the bracket. Add it at the start.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag ends with the bracket. Add it at the end.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a different letter inside the tag. Here you need a.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The slash goes right after the first bracket.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where should the link end?", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The closing tag is the same letter with a slash.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First a bracket, then the slash, then a, and another bracket at the end.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now only the link name is blue, and the rest is plain text.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now look at two states: before and after. Something changed in the code. So what changed?", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What changed in the code?", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! href was added, so the text became a link.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The closing A tag ended the link.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The file name was fixed, so the page opened.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: it was plain text, then it became a link. The href attribute makes a link.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: after, the rest of the sentence became plain text again. The closing A tag does that.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: first the file wasn’t found, then the page opened. So the file name was fixed.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you know why links break. Next, let’s walk around the whole site.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare before and after in the browser: what changed on the page?", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did plain text become a link? Remember which attribute makes a link.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did the place where the link ends change? Remember which tag stops it.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did File not found go away? Think what was fixed in the code then.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s my whole site. Let’s see how the browser walks through the links.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first link opened the file osh.H T M L. The file name changed in the address bar too.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We went back, and the second link opened the file oyinlar.H T M L.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So each link opens its own file, and the arrow at the top takes you back.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So far our links only opened files on our own site. But a link can take you to any site on the internet. Wikipedia, for example. For that, href holds not a file name but the site’s full address. Watch.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A full address starts with the word https, then a colon and two slashes. That tells the browser to go out to the internet. The s at the end stands for secure.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where do we get this address? Wikipedia is open in another browser tab. Let me show you.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We click the address bar at the top. Look, the site’s full address is selected.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we press the right button and choose Copy in the menu. The address is in memory.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We go back to our page’s tab and click inside the href quotes in the code.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We press the right button again and choose Paste. There, the address went into the code!", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Then comes the site name. Here it’s the Wikipedia site. Now let’s click the link.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser went out to the internet and opened another site. Look at the address bar: the full address is there now.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s erase the https part at the start. So what happens?", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] File not found! Without https the browser thinks it’s a file on our site and looks for it next to index.H T M L. And there’s no such file.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So for a page on our site, the file name is enough. Another site needs the full address: https, a colon, two slashes and the site name.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. The Wikipedia link has no address. The site name is written below. Type the site’s full address in the quotes. Don’t forget the start: https, a colon and two slashes.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the site’s full address in the quotes.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no https at the start. Without it the browser looks for a file on our site. Start the address with https, a colon and two slashes.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After https come a colon and two slashes. Check them.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the site name letter by letter, as shown below.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This link goes to another site. What kind of address does it need?", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A full address starts with https, then a colon and two slashes, then the site name.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The link goes to the internet. Tap it and Wikipedia opens.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] It works! But today sites usually use https: the s means secure. Tap the link.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I write a link address, and you choose where the browser will look for it: among our site’s files or on the internet?", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the very start of the address.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the address starts with https, the browser goes to the internet. If it’s just a file or site name, it looks on our site.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a file name. The browser finds it on our site and opens the recipe.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The address starts with https. So the browser goes out to the internet and opens Wikipedia.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t be fooled! There’s no https at the start, so the browser treats it as a plain file and looks on our site. And there’s no such file.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An address starting with https leads to a site on the internet. This is Wikipedia’s main page.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! Now you know where each address leads.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own link. Your page is in the file mening.H T M L. First type the link text: the words people see on the page. Then tap Done.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great text! Now let’s give the link an address.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What is your page about? Write that.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the tags are in place.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: My page. Then tap Done.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now give your link an address. Your page’s file is in the list of files. Type its name in the quotes and tap Check.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That file opens another page. We need your page.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which file holds your page?", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last file in the list is yours.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name is mening.H T M L. Type it in the quotes.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Your link works. Tap it and your page opens.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I was editing your link and deleted the attribute! Now it’s plain text. Drag the missing piece into the empty spot after the A tag.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s only the attribute name. It also needs a value: the file name.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s only the value. It needs the attribute name and the equals sign before it.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! Your link works again; tap it.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: the link became plain text. What is it missing?", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The link needs the whole attribute: the name, the equals sign and the file name in quotes.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick the piece that has href, the equals sign and mening.H T M L together.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Here’s the site menu, but it has a bug. Look at the browser: which link is wrong? Find the line with the bug and tap it.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first bug is found! Now I tapped a link in the menu, but the file wasn’t found. What’s broken here?", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line is fine: it has href and the file name. Look at the browser: where’s the problem?", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! This link had no href. That’s why it was plain text.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The file name was missing a letter. That’s why the browser couldn’t find the file.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the browser: which name doesn’t look like a link?", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name that isn’t blue has no href.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which line has an A tag without href?", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the address bar: which file was it looking for?", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] File names end with.H T M L. Which line is different?", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the third line: is the file name complete?", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check links like a real programmer.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence piece by piece: which tag or attribute is it about?", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember a correct link: the opening A tag, href inside it and the address in quotes. Does the sentence match that?", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The href attribute goes in the closing tag.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually href goes in the opening tag. The closing tag has no attributes.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The href value goes in quotes.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The file name goes in quotes so the browser reads it exactly.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The A tag is a link even without href.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Without href the browser doesn’t know where to go, and the word stays plain text.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] To link to another site, the site name alone is enough; https isn’t needed.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually https is needed. Without it the browser treats the site name as a file on our site, and there’s no such file.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know the A tag and the href attribute really well.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I just wrapped My games in the A tag? Sadly, I was wrong. Without href the browser doesn’t know where to go, so the words stayed plain text. So a link always needs href.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your link! Tap it.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The A tag makes a link.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The href attribute says where to go.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the value in quotes is the file name.", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And if the link goes to another site, the value is a full address starting with https.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your pages are connected to each other and to the internet. Next time we’ll add a picture to the page. See you!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my site.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my page.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] , take a look.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where to look?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where will the browser look?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! O'tgan darsda ro'yxatlar tuzdik. Endi menda butun sayt bor: bosh sahifa, osh retsepti va o'yinlarim sahifasi. Lekin qarang: bosh sahifadagi nomlarni bossangiz, hech narsa bo'lmaydi. Ular oddiy matn bo'lib turibdi. Keling, ularni jonlantiramiz. Aylantirish tugmasini bosing.": "uz001",
+    "Voy, qarang! Nomlar ko'k rangga kirdi, tagiga chiziq tushdi. Endi ular havola bo'ldi.": "uz002",
+    "Havolani bosib ko'ring: boshqa sahifa ochiladi. Tepadagi strelka bilan esa orqaga qaytasiz.": "uz003",
+    "Bugun shunday havolalar yasashni o'rganasiz: o'z sahifangizga ham, internetdagi saytga ham. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Keling, birinchi havolani birga yasaymiz. Havola, ya'ni bosilganda boshqa sahifaga olib boradigan so'z degani. Uni yasash uchun [English pronunciation] A tag [O'zbekcha tallaffuz]-i bor. Qarang, Osh retsepti so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'raymiz.": "uz005",
+    "Lekin qarang: brauzerda hech narsa o'zgarmadi. Chunki [English pronunciation] A tag [O'zbekcha tallaffuz]-i qayerga borishni hali bilmaydi. Unga manzil kerak bo'ladi.": "uz006",
+    "Manzilni [English pronunciation] href [O'zbekcha tallaffuz] atributi aytadi. [English pronunciation] href [O'zbekcha tallaffuz] inglizcha [English pronunciation] hypertext reference [O'zbekcha tallaffuz] so'zlaridan olingan, ya'ni havola manzili degani. Qo'shtirnoq ichiga sahifaning fayl nomini yozamiz: osh.[English pronunciation] HTML [O'zbekcha tallaffuz]. Endi so'z ko'k bo'ldi, tagiga chiziq tushdi. Qarang, brauzer o'zi bosib ko'radi.": "uz007",
+    "Retsept ochildi, keyin strelka bilan orqaga qaytdik. Eslab qoling: [English pronunciation] A tag [O'zbekcha tallaffuz]-i havola yasaydi, [English pronunciation] href [O'zbekcha tallaffuz] esa qayerga borishni aytadi.": "uz008",
+    "Endi navbat sizga. Mening o'yinlarim havolasida manzil yo'q: [English pronunciation] href [O'zbekcha tallaffuz] qo'shtirnog'i bo'sh turibdi. Pastdagi fayllar ro'yxatidan kerakli faylni toping va uning nomini qo'shtirnoq ichiga yozing.": "uz009",
+    "Qo'shtirnoq ichiga fayl nomini yozing.": "uz010",
+    "Fayl nomi oxirida.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Fayllar ro'yxatiga qarang.": "uz011",
+    "Bu fayl boshqa sahifani ochadi. Bizga o'yinlar sahifasi kerak bo'ladi.": "uz012",
+    "Bunday fayl yo'q. Nomni ro'yxatdagidek, harfma-harf yozing.": "uz013",
+    "Qaysi sahifa ochilishi kerak?": "uz014",
+    "O'yinlar sahifasining fayli fayllar ro'yxatida turibdi.": "uz015",
+    "Fayl nomi oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Uni qo'shtirnoq ichiga yozing.": "uz016",
+    "Zo'r! Havola ishladi. Bosib ko'ring: o'yinlar sahifasi ochiladi.": "uz017",
+    "Sayt menyusida uchta havola bor, lekin ularning manzili yo'q. Har bir faylni o'z havolasiga olib boring: bosh sahifaga, retseptga va o'yinlarga.": "uz018",
+    "Har bir havola qaysi sahifani ochishi kerak?": "uz019",
+    "Fayl nomi sahifa nomiga o'xshaydi: osh, oyinlar, index.": "uz020",
+    "index.[English pronunciation] HTML [O'zbekcha tallaffuz] bosh sahifa bo'ladi, osh.[English pronunciation] HTML [O'zbekcha tallaffuz] retsept, oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] esa o'yinlar.": "uz021",
+    "Barakalla! Menyu ishladi. Har bir havolani bosib, tekshirib ko'ring.": "uz022",
+    "Oldin faylni bosing.": "uz023",
+    "Endi havolani yaqinroqdan ko'raylik. [English pronunciation] href [O'zbekcha tallaffuz] bu atribut, ya'ni [English pronunciation] tag [O'zbekcha tallaffuz]-ga qo'shimcha ma'lumot degani. [English pronunciation] tag [O'zbekcha tallaffuz] nima qilishni aytadi, atribut esa qanday qilishni aytadi. Keling, havolaning bo'laklarini birma-bir ko'ramiz.": "uz024",
+    "Oldin [English pronunciation] tag [O'zbekcha tallaffuz] nomi keladi: a. U brauzerga bu havola ekanini aytadi.": "uz025",
+    "Keyin bo'sh joy va atribut nomi keladi: [English pronunciation] href [O'zbekcha tallaffuz].": "uz026",
+    "Undan keyin teng belgisi va qo'shtirnoq ichidagi qiymat keladi. Qiymat bu fayl nomi bo'ladi.": "uz027",
+    "Diqqat qiling: atribut faqat ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichida bo'ladi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da atribut bo'lmaydi.": "uz028",
+    "Demak, havola shunday tuziladi: [English pronunciation] tag [O'zbekcha tallaffuz] nomi, bo'sh joy, atribut nomi, teng belgisi va qo'shtirnoq ichida qiymat.": "uz029",
+    "Endi atributni o'zingiz yig'ing. [English pronunciation] A tag [O'zbekcha tallaffuz]-idan keyin uchta bo'sh joy bor. Bo'laklarni to'g'ri tartibda qo'ying: atribut nomi, teng belgisi va qiymat.": "uz030",
+    "Qiymat oxirida keladi. Oldin atribut nomi bo'lishi kerak.": "uz031",
+    "Teng belgisi o'rtada turadi. Undan oldin atribut nomi keladi.": "uz032",
+    "Hali erta. Atribut nomidan keyin teng belgisi keladi.": "uz033",
+    "Atribut nima bilan boshlanadi?": "uz034",
+    "Birinchi bo'lib [English pronunciation] href [O'zbekcha tallaffuz], keyin teng belgisi keladi.": "uz035",
+    "Tartib shunday bo'ladi: [English pronunciation] href [O'zbekcha tallaffuz], teng belgisi, keyin qo'shtirnoq ichida fayl nomi.": "uz036",
+    "Ajoyib! Atribut to'g'ri yig'ildi, havola ham ishladi.": "uz037",
+    "Havolaning uchta bo'lagi bor: a, [English pronunciation] href [O'zbekcha tallaffuz] va qo'shtirnoq ichidagi qiymat. Har bir bo'lakni uning nomi bilan juftlang. Oldin bo'lakni bosing, keyin nomini bosing.": "uz038",
+    "To'g'ri! [English pronunciation] A tag [O'zbekcha tallaffuz] nomi bo'ladi.": "uz039",
+    "To'g'ri! [English pronunciation] href [O'zbekcha tallaffuz] atribut nomi bo'ladi.": "uz040",
+    "To'g'ri! Qo'shtirnoq ichidagi fayl nomi qiymat bo'ladi.": "uz041",
+    "a bu [English pronunciation] tag [O'zbekcha tallaffuz] nomi, u havola yasaydi.": "uz042",
+    "[English pronunciation] href [O'zbekcha tallaffuz] bu atribut nomi, u manzilni aytadi.": "uz043",
+    "Qo'shtirnoq ichidagi yozuv qiymat bo'ladi, ya'ni fayl nomi degani.": "uz044",
+    "Qaysi bo'lak birinchi keladi?": "uz045",
+    "[English pronunciation] A tag [O'zbekcha tallaffuz] nomi, [English pronunciation] href [O'zbekcha tallaffuz] esa atribut nomi bo'ladi.": "uz046",
+    "[English pronunciation] A tag [O'zbekcha tallaffuz] nomi, [English pronunciation] href [O'zbekcha tallaffuz] atribut nomi, qo'shtirnoq ichidagisi qiymat bo'ladi.": "uz047",
+    "Qoyil! Havolaning hamma bo'lagini bilasiz.": "uz048",
+    "Oldin bo'lakni bosing.": "uz049",
+    "Havolalar ba'zan buziladi. Keling, eng ko'p uchraydigan ikkita xatoni ko'ramiz.": "uz050",
+    "Birinchisi: fayl nomida bitta harf tushib qoldi. osh.[English pronunciation] HTML [O'zbekcha tallaffuz] o'rniga osh.htm yozildi. Qarang, brauzer bosib ko'radi.": "uz051",
+    "Fayl topilmadi! Brauzer aynan yozilgan faylni qidiradi va harfma-harf solishtiradi. Bitta harf yetishmasa ham, sahifa ochilmaydi.": "uz052",
+    "Ikkinchisi: yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i unutildi. Qarang, endi gapning qolgani ham havolaga aylandi. Chunki brauzer havola qayerda tugashini bilmaydi.": "uz053",
+    "Demak, fayl nomini aniq yozing va havolani doim yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i bilan yoping.": "uz054",
+    "Voy, men yana yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni unutibman! Endi butun gap havolaga aylandi. Havola nomidan keyin yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-ini yozing.": "uz055",
+    "Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da a harfidan oldin qiya chiziq turadi.": "uz056",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] chap qavs bilan boshlanadi. Uni boshiga qo'shing.": "uz057",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng qavs turadi. Uni oxiriga qo'shing.": "uz058",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] ichida boshqa harf yozilgan. Bu yerda a kerak bo'ladi.": "uz059",
+    "Qiya chiziq birinchi burchakli qavsdan keyin darrov turadi.": "uz060",
+    "Havola qayerda tugashi kerak?": "uz061",
+    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] o'sha harf bo'ladi, faqat qiya chiziq bilan.": "uz062",
+    "Oldin burchakli qavs, keyin qiya chiziq, keyin a va oxirida yana burchakli qavs qo'ying.": "uz063",
+    "Zo'r! Endi faqat havola nomi ko'k, gapning qolgani esa oddiy matn bo'lib qoldi.": "uz064",
+    "Endi ikkita holatga qarang: oldin va keyin. Kodda nimadir o'zgardi. Xo'sh, nima o'zgardi?": "uz065",
+    "Kodda nima o'zgardi?": "uz066",
+    "To'g'ri! [English pronunciation] href [O'zbekcha tallaffuz] qo'shildi, matn havolaga aylandi.": "uz067",
+    "To'g'ri! Yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i havolani to'xtatdi.": "uz068",
+    "To'g'ri! Fayl nomi to'g'rilandi, sahifa ochildi.": "uz069",
+    "Qarang: oldin oddiy matn edi, keyin havola bo'ldi. Havolani [English pronunciation] href [O'zbekcha tallaffuz] atributi yasaydi.": "uz070",
+    "Qarang: keyin gapning qolgani oddiy matnga qaytdi. Buni yopuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i qiladi.": "uz071",
+    "Qarang: oldin fayl topilmagan edi, keyin sahifa ochildi. Demak, fayl nomi to'g'rilandi.": "uz072",
+    "Endi havola nimaga buzilishini bilasiz. Keyin butun saytni birga aylanib chiqamiz.": "uz073",
+    "Oldin va keyin brauzerdagi farqqa qarang: sahifada nima o'zgardi?": "uz074",
+    "Oddiy matn havolaga aylandimi? Havolani qaysi atribut yasashini eslang.": "uz075",
+    "Havola qayerda tugashi o'zgardimi? Havolani qaysi [English pronunciation] tag [O'zbekcha tallaffuz] to'xtatishini eslang.": "uz076",
+    "Fayl topilmadi yo'qoldimi? Unda kodda nima tuzatilganini o'ylang.": "uz077",
+    "Mana, butun saytim tayyor. Keling, brauzer havolalar bo'ylab qanday yurishini ko'ramiz.": "uz078",
+    "Birinchi havola osh.[English pronunciation] HTML [O'zbekcha tallaffuz] faylini ochdi. Manzil satrida ham fayl nomi o'zgardi.": "uz079",
+    "Orqaga qaytdik, ikkinchi havola esa oyinlar.[English pronunciation] HTML [O'zbekcha tallaffuz] faylini ochdi.": "uz080",
+    "Demak, har bir havola o'z faylini ochadi, tepadagi strelka esa orqaga qaytaradi.": "uz081",
+    "Hozirgacha havolalarimiz faqat o'z saytimizdagi fayllarni ochdi. Lekin havola internetdagi istalgan saytga ham olib bora oladi. Masalan, Vikipediyaga. Buning uchun [English pronunciation] href [O'zbekcha tallaffuz] ichiga fayl nomi emas, saytning to'liq manzili yoziladi. Qarang.": "uz082",
+    "To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] so'zi bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi. Oxiridagi s harfi inglizcha [English pronunciation] secure [O'zbekcha tallaffuz] so'zidan olingan, ya'ni xavfsiz degani.": "uz083",
+    "Bu manzilni qayerdan olamiz? Vikipediya brauzerning boshqa yorlig'ida ochiq. Keling, ko'rsataman.": "uz084",
+    "Tepadagi manzil satrini bosamiz. Qarang, saytning to'liq manzili belgilandi.": "uz085",
+    "Endi o'ng tugmani bosamiz va ro'yxatdan [English pronunciation] Copy [O'zbekcha tallaffuz]ni tanlaymiz. Manzil xotiraga olindi.": "uz086",
+    "O'z sahifamiz yorlig'iga qaytamiz va kodda [English pronunciation] href [O'zbekcha tallaffuz] qo'shtirnog'i ichini bosamiz.": "uz087",
+    "Yana o'ng tugmani bosamiz va [English pronunciation] Paste [O'zbekcha tallaffuz]ni tanlaymiz. Mana, manzil kodga tushdi!": "uz088",
+    "Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Endi havolani bosib ko'ramiz.": "uz089",
+    "Brauzer internetga chiqdi va boshqa saytni ochdi. Manzil satriga qarang: u yerda endi to'liq manzil turibdi.": "uz090",
+    "Endi boshidagi [English pronunciation] https [O'zbekcha tallaffuz] qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?": "uz091",
+    "Fayl topilmadi! [English pronunciation] https [O'zbekcha tallaffuz] bo'lmasa, brauzer buni o'z saytimizdagi fayl deb o'ylaydi va uni index.[English pronunciation] HTML [O'zbekcha tallaffuz] yonidan qidiradi. Bunday fayl esa yo'q.": "uz092",
+    "Demak, o'z saytimizdagi sahifa uchun fayl nomi yetadi. Boshqa saytga esa to'liq manzil kerak: [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta, ikkita qiya chiziq va sayt nomi.": "uz093",
+    "Endi navbat sizga. Vikipediya havolasida manzil yo'q. Sayt nomi pastda yozilgan. Qo'shtirnoq ichiga saytning to'liq manzilini yozing. Boshini unutmang: [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq.": "uz094",
+    "Qo'shtirnoq ichiga saytning to'liq manzilini yozing.": "uz095",
+    "Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q. Usiz brauzer o'z saytimizdan fayl qidiradi. Manzilni [English pronunciation] https [O'zbekcha tallaffuz], ikki nuqta va ikkita qiya chiziq bilan boshlang.": "uz096",
+    "[English pronunciation] https [O'zbekcha tallaffuz] so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.": "uz097",
+    "Sayt nomini pastdagidek, harfma-harf yozing.": "uz098",
+    "Bu havola boshqa saytga olib boradi. Unga qanday manzil kerak?": "uz099",
+    "To'liq manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq, keyin sayt nomi keladi.": "uz100",
+    "Zo'r! Havola internetga chiqdi. Bosib ko'ring: Vikipediya ochiladi.": "uz101",
+    "Ishladi! Lekin bugun saytlar ko'pincha [English pronunciation] https [O'zbekcha tallaffuz] bilan yoziladi. Oxiridagi s harfi xavfsiz degani. Bosib ko'ring.": "uz102",
+    "Endi o'zingizni sinab ko'ring. Men havolaga manzil yozaman. Siz esa brauzer uni qayerdan qidirishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?": "uz103",
+    "Manzilning eng boshiga qarang.": "uz104",
+    "Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlansa, brauzer internetga chiqadi. Faqat fayl yoki sayt nomi bo'lsa, saytimizdan qidiradi.": "uz105",
+    "Barakalla!": "uz106",
+    "Bu oddiy fayl nomi. Brauzer uni saytimizdan topadi va retseptni ochadi.": "uz107",
+    "Manzil [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadi. Demak, brauzer internetga chiqadi va Vikipediyani ochadi.": "uz108",
+    "Aldanmang! Boshida [English pronunciation] https [O'zbekcha tallaffuz] yo'q, shuning uchun brauzer buni oddiy fayl deb o'ylaydi va saytimizdan qidiradi. Fayl esa topilmaydi.": "uz109",
+    "[English pronunciation] https [O'zbekcha tallaffuz] bilan boshlangan manzil internetdagi saytga olib boradi. Bu Vikipediyaning bosh sahifasi.": "uz110",
+    "Hammasi to'g'ri! Endi qaysi manzil qayerga olib borishini bilasiz.": "uz111",
+    "Endi o'zingizning havolangizni yasang. Sizning sahifangiz mening.[English pronunciation] HTML [O'zbekcha tallaffuz] faylida turibdi. Oldin havola matnini yozing. Bu sahifada ko'rinadigan so'zlar bo'ladi. Keyin Tayyorni bosing.": "uz112",
+    "Zo'r matn! Endi havolaga manzil beramiz.": "uz113",
+    "Sahifangiz nima haqida? Shuni yozing.": "uz114",
+    "Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.": "uz115",
+    "Masalan: Mening sahifam. Keyin Tayyorni bosing.": "uz116",
+    "Endi havolangizga manzil bering. Sahifangiz fayli fayllar ro'yxatida turibdi. Uning nomini qo'shtirnoq ichiga yozing va Tekshirishni bosing.": "uz117",
+    "Bu fayl boshqa sahifani ochadi. Bizga sizning sahifangiz kerak bo'ladi.": "uz118",
+    "Sizning sahifangiz qaysi faylda turibdi?": "uz119",
+    "Fayllar ro'yxatida eng oxirgi fayl sizniki bo'ladi.": "uz120",
+    "Fayl nomi mening.[English pronunciation] HTML [O'zbekcha tallaffuz] bo'ladi. Uni qo'shtirnoq ichiga yozing.": "uz121",
+    "Ajoyib! Havolangiz ishladi. Bosib ko'ring: sizning sahifangiz ochiladi.": "uz122",
+    "Voy, men havolangizni tahrirlayotib atributni o'chirib yubordim! Endi u oddiy matn bo'lib qoldi. Yetishmayotgan bo'lakni [English pronunciation] A tag [O'zbekcha tallaffuz]-idan keyingi bo'sh joyga olib boring.": "uz123",
+    "Bu faqat atribut nomi. Unga qiymat ham kerak bo'ladi, ya'ni fayl nomi degani.": "uz124",
+    "Bu faqat qiymat. Oldida atribut nomi va teng belgisi bo'lishi kerak.": "uz125",
+    "Ana endi joyida! Havolangiz yana ishlaydi, bosib ko'ring.": "uz126",
+    "Brauzerga qarang: havola oddiy matn bo'lib qoldi. Unga nima yetishmayapti?": "uz127",
+    "Havolaga atributning hammasi kerak: nomi, teng belgisi va qo'shtirnoqdagi fayl nomi.": "uz128",
+    "Bo'laklardan [English pronunciation] href [O'zbekcha tallaffuz], teng belgisi va mening.[English pronunciation] HTML [O'zbekcha tallaffuz] birga turganini tanlang.": "uz129",
+    "Endi o'zingizni sinab ko'ring. Mana, sayt menyusi, lekin unda xato bor. Brauzerga qarang: qaysi havola noto'g'ri? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.": "uz130",
+    "Zo'r, birinchi xato topildi! Endi men menyudagi havolani bosdim, lekin fayl topilmadi. Bu yerda nima buzilgan?": "uz131",
+    "Bu qator to'g'ri yozilgan: [English pronunciation] href [O'zbekcha tallaffuz] ham, fayl nomi ham joyida. Brauzerga qarang: buzilish qayerda?": "uz132",
+    "Topdingiz! Bu havolada [English pronunciation] href [O'zbekcha tallaffuz] yo'q edi. Shuning uchun u oddiy matn bo'lib qolgan edi.": "uz133",
+    "Topdingiz! Fayl nomida bitta harf yetishmayotgan edi. Shuning uchun brauzer faylni topa olmagan edi.": "uz134",
+    "Brauzerga qarang: qaysi nom havolaga o'xshamaydi?": "uz135",
+    "Ko'k bo'lmagan nomda [English pronunciation] href [O'zbekcha tallaffuz] yo'q bo'ladi.": "uz136",
+    "Qaysi qatorda [English pronunciation] A tag [O'zbekcha tallaffuz]-ida [English pronunciation] href [O'zbekcha tallaffuz] yo'q?": "uz137",
+    "Manzil satriga qarang: qaysi fayl qidirildi?": "uz138",
+    "Fayl nomlari.[English pronunciation] HTML [O'zbekcha tallaffuz] bilan tugaydi. Qaysi qatorda u boshqacha?": "uz139",
+    "Uchinchi qatorga qarang: fayl nomi to'liqmi?": "uz140",
+    "Ajoyib! Ikkala xato ham topildi. Siz havolalarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz141",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz142",
+    "Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yoki atribut haqida?": "uz143",
+    "To'g'ri havolani eslang: ochuvchi [English pronunciation] A tag [O'zbekcha tallaffuz]-i, uning ichida [English pronunciation] href [O'zbekcha tallaffuz] va qo'shtirnoqdagi manzil. Gap shunga mos keladimi?": "uz144",
+    "[English pronunciation] href [O'zbekcha tallaffuz] atributi yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichiga yoziladi.": "uz145",
+    "Aslida [English pronunciation] href [O'zbekcha tallaffuz] ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ichida bo'ladi. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da atribut bo'lmaydi.": "uz146",
+    "[English pronunciation] href [O'zbekcha tallaffuz] qiymati qo'shtirnoq ichida yoziladi.": "uz147",
+    "Fayl nomi qo'shtirnoq ichida yoziladi, shunda brauzer uni aniq o'qiydi.": "uz148",
+    "[English pronunciation] A tag [O'zbekcha tallaffuz]-i [English pronunciation] href [O'zbekcha tallaffuz] atributisiz ham havola bo'ladi.": "uz149",
+    "[English pronunciation] href [O'zbekcha tallaffuz] bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.": "uz150",
+    "Boshqa saytga havola uchun sayt nomining o'zi yetadi, [English pronunciation] https [O'zbekcha tallaffuz] shart emas.": "uz151",
+    "Aslida [English pronunciation] https [O'zbekcha tallaffuz] kerak. Usiz brauzer sayt nomini o'z saytimizdagi fayl deb o'ylaydi va fayl topilmaydi.": "uz152",
+    "Hammasi to'g'ri! Siz [English pronunciation] A tag [O'zbekcha tallaffuz]-i va [English pronunciation] href [O'zbekcha tallaffuz] atributini yaxshi bilasiz.": "uz153",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men Mening o'yinlarim so'zlarini [English pronunciation] A tag [O'zbekcha tallaffuz]-iga o'rab qo'ygan edim, xolos? Afsuski, men adashibman. [English pronunciation] href [O'zbekcha tallaffuz] bo'lmasa, brauzer qayerga borishni bilmaydi, shuning uchun so'z oddiy matn bo'lib qoldi. Demak, havolaga doim [English pronunciation] href [O'zbekcha tallaffuz] kerak bo'ladi.": "uz154",
+    "Qarang, bu sizning havolangiz! Bosib ko'ring.": "uz155",
+    "[English pronunciation] A tag [O'zbekcha tallaffuz]-i havola yasaydi.": "uz156",
+    "[English pronunciation] href [O'zbekcha tallaffuz] atributi qayerga borishni aytadi.": "uz157",
+    "Qo'shtirnoq ichidagi qiymat esa fayl nomi bo'ladi.": "uz158",
+    "Boshqa saytga havola qilsangiz, qiymat [English pronunciation] https [O'zbekcha tallaffuz] bilan boshlanadigan to'liq manzil bo'ladi.": "uz159",
+    "Tabriklayman! Endi sahifalaringiz bir-biriga va internetga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!": "uz160",
+    "Voy, zo‘r!": "uz161",
+    "Ana! Chiqdi!": "uz162",
+    "Super!": "uz163",
+    "Qoyil!": "uz164",
+    "Ura!": "uz165",
+    "Zo‘r-ku!": "uz166",
+    "Yana bir bor urinib ko‘ring.": "uz167",
+    "Diqqat bilan qarang.": "uz168",
+    "Yaqin qoldingiz. Shoshilmang.": "uz169",
+    "Salom! Bu mening saytim.": "uz170",
+    "Salom! Bu mening sahifam.": "uz171",
+    "sahifasini oching.": "uz172",
+    "Qayerdan qidiradi?": "uz173",
+    "Brauzer qayerdan qidiradi?": "uz174",
+    "To'g'rimi?": "uz175",
+    "To'g'ri yoki noto'g'ri?": "uz176",
+    "Salom, dunyo!": "uz177",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz178",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz179",
+  },
+  ru: {
+    "Привет! На прошлом уроке мы делали списки. А теперь у меня целый сайт: главная, рецепт плова и страница с моими играми. Но смотри: нажимаешь названия на главной, ничего не происходит. Это просто текст. Давай их оживим. Нажми Превратить.": "ru001",
+    "Ого, смотри! Названия стали синими и подчёркнутыми. Теперь это ссылки.": "ru002",
+    "Нажми ссылку, откроется другая страница. А стрелкой вверху вернёшься назад.": "ru003",
+    "Сегодня ты научишься делать такие ссылки, и на свою страницу, и на сайт в интернете. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова Мои игры в тег a. По-моему, теперь нажмёшь, и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Давай сделаем первую ссылку вместе. Ссылка, это слово, которое по нажатию ведёт на другую страницу. Для неё есть тег a. Смотри, оборачиваем слова Рецепт плова в тег a.": "ru005",
+    "Но смотри: в браузере ничего не изменилось. Потому что тег a ещё не знает, куда вести. Ему нужен адрес.": "ru006",
+    "Адрес задаёт атрибут [English pronunciation] href [Русское произношение]. [English pronunciation] href [Русское произношение], от английского [English pronunciation] hypertext reference [Русское произношение], то есть адрес ссылки. В кавычках пишем имя файла страницы: osh.[English pronunciation] HTML [Русское произношение]. Теперь слово синее и подчёркнутое. Смотри, браузер сам нажмёт.": "ru007",
+    "Рецепт открылся, потом стрелкой вернулись назад. Запомни: тег a делает ссылку, а [English pronunciation] href [Русское произношение] говорит, куда вести.": "ru008",
+    "Теперь твоя очередь. У ссылки Мои игры нет адреса: кавычки [English pronunciation] href [Русское произношение] пустые. Найди нужный файл в списке файлов внизу и впиши его имя в кавычки.": "ru009",
+    "Впиши имя файла в кавычки.": "ru010",
+    "Имя файла заканчивается на.[English pronunciation] HTML [Русское произношение]. Посмотри в список файлов.": "ru011",
+    "Этот файл открывает другую страницу. Нам нужна страница с играми.": "ru012",
+    "Такого файла нет. Напиши имя буква в букву, как в списке.": "ru013",
+    "Какая страница должна открыться?": "ru014",
+    "Файл страницы с играми есть в списке файлов.": "ru015",
+    "Имя файла, oyinlar.[English pronunciation] HTML [Русское произношение]. Впиши его в кавычки.": "ru016",
+    "Огонь! Ссылка работает. Нажми, откроется страница с играми.": "ru017",
+    "В меню сайта три ссылки, но у них нет адресов. Перетащи каждый файл к своей ссылке: к главной, к рецепту и к играм.": "ru018",
+    "Какую страницу должна открыть каждая ссылка?": "ru019",
+    "Имя файла похоже на страницу: osh, oyinlar, index.": "ru020",
+    "index.[English pronunciation] HTML [Русское произношение], главная, osh.[English pronunciation] HTML [Русское произношение], рецепт, oyinlar.[English pronunciation] HTML [Русское произношение], игры.": "ru021",
+    "Молодец! Меню работает. Понажимай ссылки и проверь.": "ru022",
+    "Сначала нажми файл.": "ru023",
+    "Теперь рассмотрим ссылку поближе. [English pronunciation] href [Русское произношение], это атрибут, то есть дополнительные сведения для тега. Тег говорит, что делать, а атрибут, как. Разберём ссылку по кусочкам.": "ru024",
+    "Сначала идёт имя тега: a. Оно говорит браузеру, что это ссылка.": "ru025",
+    "Потом пробел и имя атрибута: [English pronunciation] href [Русское произношение].": "ru026",
+    "Дальше знак равно и значение в кавычках. Значение, это имя файла.": "ru027",
+    "Внимание: атрибут бывает только в открывающем теге. В закрывающем атрибутов нет.": "ru028",
+    "Значит, ссылка устроена так: имя тега, пробел, имя атрибута, знак равно и значение в кавычках.": "ru029",
+    "Теперь собери атрибут сам. После тега a три пустых места. Поставь куски по порядку: имя атрибута, знак равно и значение.": "ru030",
+    "Значение идёт в конце. Сначала нужно имя атрибута.": "ru031",
+    "Знак равно стоит посередине. Перед ним, имя атрибута.": "ru032",
+    "Рано. После имени атрибута идёт знак равно.": "ru033",
+    "С чего начинается атрибут?": "ru034",
+    "Сначала [English pronunciation] href [Русское произношение], потом знак равно.": "ru035",
+    "Порядок такой: [English pronunciation] href [Русское произношение], знак равно, потом имя файла в кавычках.": "ru036",
+    "Отлично! Атрибут собран верно, и ссылка заработала.": "ru037",
+    "У ссылки три части: a, [English pronunciation] href [Русское произношение] и значение в кавычках. Соедини каждую часть с её названием. Сначала нажми часть, потом название.": "ru038",
+    "Верно! a, имя тега.": "ru039",
+    "Верно! [English pronunciation] href [Русское произношение], имя атрибута.": "ru040",
+    "Верно! Имя файла в кавычках, значение.": "ru041",
+    "a, это имя тега, он делает ссылку.": "ru042",
+    "[English pronunciation] href [Русское произношение], это имя атрибута, он задаёт адрес.": "ru043",
+    "То, что в кавычках,, значение, то есть имя файла.": "ru044",
+    "Какая часть идёт первой?": "ru045",
+    "a, имя тега, а [English pronunciation] href [Русское произношение], имя атрибута.": "ru046",
+    "a, имя тега, [English pronunciation] href [Русское произношение], имя атрибута, в кавычках, значение.": "ru047",
+    "Класс! Ты знаешь все части ссылки.": "ru048",
+    "Сначала нажми часть.": "ru049",
+    "Ссылки иногда ломаются. Посмотрим на две самые частые ошибки.": "ru050",
+    "Первая: в имени файла пропала одна буква. Вместо osh.[English pronunciation] HTML [Русское произношение] написано osh.htm. Смотри, браузер нажмёт.": "ru051",
+    "Файл не найден! Браузер ищет ровно тот файл, что написан, буква в букву. Не хватает одной буквы, и страница не откроется.": "ru052",
+    "Вторая: забыли закрывающий тег a. Смотри, теперь и остаток фразы стал ссылкой. Ведь браузер не знает, где ссылка кончается.": "ru053",
+    "Значит, пиши имя файла точно и всегда закрывай ссылку закрывающим тегом a.": "ru054",
+    "Ой, я опять забыл закрывающий тег! Теперь вся фраза стала ссылкой. Напиши закрывающий тег a после названия ссылки.": "ru055",
+    "Это открывающий тег. В закрывающем перед a стоит косая черта.": "ru056",
+    "Тег начинается с уголка. Добавь его в начало.": "ru057",
+    "В конце тега нужен уголок. Добавь его в конец.": "ru058",
+    "Внутри тега другая буква. Здесь нужна a.": "ru059",
+    "Косая черта стоит сразу после первого уголка.": "ru060",
+    "Где должна кончаться ссылка?": "ru061",
+    "Закрывающий тег, та же буква, но с косой чертой.": "ru062",
+    "Сначала уголок, потом косая черта, потом a и в конце снова уголок.": "ru063",
+    "Огонь! Теперь синее только название ссылки, а остальное, обычный текст.": "ru064",
+    "Теперь посмотри на два состояния: до и после. В коде что-то изменилось. Ну и что именно?": "ru065",
+    "Что изменилось в коде?": "ru066",
+    "Верно! Добавили [English pronunciation] href [Русское произношение], текст стал ссылкой.": "ru067",
+    "Верно! Закрывающий a остановил ссылку.": "ru068",
+    "Верно! Имя файла исправили, страница открылась.": "ru069",
+    "Смотри: был обычный текст, стала ссылка. Ссылку делает атрибут [English pronunciation] href [Русское произношение].": "ru070",
+    "Смотри: после остаток фразы снова стал обычным текстом. Это делает закрывающий a.": "ru071",
+    "Смотри: сначала файл не нашёлся, потом страница открылась. Значит, исправили имя файла.": "ru072",
+    "Теперь ты знаешь, почему ссылки ломаются. Дальше пройдёмся по всему сайту.": "ru073",
+    "Сравни до и после в браузере: что изменилось на странице?": "ru074",
+    "Обычный текст стал ссылкой? Вспомни, какой атрибут делает ссылку.": "ru075",
+    "Изменилось, где кончается ссылка? Вспомни, какой тег её останавливает.": "ru076",
+    "Пропало Файл не найден? Подумай, что тогда исправили в коде.": "ru077",
+    "Вот весь мой сайт. Посмотрим, как браузер ходит по ссылкам.": "ru078",
+    "Первая ссылка открыла файл osh.[English pronunciation] HTML [Русское произношение]. В адресной строке тоже сменилось имя файла.": "ru079",
+    "Вернулись назад, а вторая ссылка открыла файл oyinlar.[English pronunciation] HTML [Русское произношение].": "ru080",
+    "Значит, каждая ссылка открывает свой файл, а стрелка вверху возвращает назад.": "ru081",
+    "До сих пор наши ссылки открывали только файлы нашего сайта. Но ссылка может вести на любой сайт в интернете. Например, на Википедию. Для этого в [English pronunciation] href [Русское произношение] пишут не имя файла, а полный адрес сайта. Смотри.": "ru082",
+    "Полный адрес начинается со слова [English pronunciation] https [Русское произношение], потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет. Буква s на конце, от английского [English pronunciation] secure [Русское произношение], то есть защищённый.": "ru083",
+    "Где взять этот адрес? Википедия открыта в другой вкладке браузера. Давай покажу.": "ru084",
+    "Нажимаем на адресную строку вверху. Смотри, полный адрес сайта выделился.": "ru085",
+    "Теперь нажимаем правую кнопку и выбираем в списке Копировать. Адрес в памяти.": "ru086",
+    "Возвращаемся во вкладку своей страницы и щёлкаем в коде внутри кавычек [English pronunciation] href [Русское произношение].": "ru087",
+    "Снова нажимаем правую кнопку и выбираем Вставить. Готово, адрес попал в код!": "ru088",
+    "Дальше идёт имя сайта. Здесь это сайт Википедии. А теперь нажмём ссылку.": "ru089",
+    "Браузер вышел в интернет и открыл другой сайт. Посмотри в адресную строку: там теперь полный адрес.": "ru090",
+    "А теперь сотрём начало, [English pronunciation] https [Русское произношение]. Ну, что будет?": "ru091",
+    "Файл не найден! Без [English pronunciation] https [Русское произношение] браузер думает, что это файл нашего сайта, и ищет его рядом с index.[English pronunciation] HTML [Русское произношение]. А такого файла нет.": "ru092",
+    "Значит, для страницы нашего сайта хватит имени файла. А для другого сайта нужен полный адрес: [English pronunciation] https [Русское произношение], двоеточие, две косые черты и имя сайта.": "ru093",
+    "Теперь твоя очередь. У ссылки Википедия нет адреса. Имя сайта написано внизу. Впиши в кавычки полный адрес сайта. Не забудь начало: [English pronunciation] https [Русское произношение], двоеточие и две косые черты.": "ru094",
+    "Впиши в кавычки полный адрес сайта.": "ru095",
+    "В начале нет [English pronunciation] https [Русское произношение]. Без него браузер ищет файл на нашем сайте. Начни адрес с [English pronunciation] https [Русское произношение], двоеточия и двух косых черт.": "ru096",
+    "После [English pronunciation] https [Русское произношение] идут двоеточие и две косые черты. Проверь их.": "ru097",
+    "Напиши имя сайта буква в букву, как внизу.": "ru098",
+    "Эта ссылка ведёт на другой сайт. Какой адрес ей нужен?": "ru099",
+    "Полный адрес начинается с [English pronunciation] https [Русское произношение], потом двоеточие и две косые черты, потом имя сайта.": "ru100",
+    "Огонь! Ссылка ведёт в интернет. Нажми, откроется Википедия.": "ru101",
+    "Работает! Но сегодня сайты обычно пишут с [English pronunciation] https [Русское произношение]: буква s значит защищённый. Нажми ссылку.": "ru102",
+    "Теперь проверь себя. Я пишу адрес ссылки, а ты выбери, где браузер будет его искать: среди файлов нашего сайта или в интернете?": "ru103",
+    "Посмотри на самое начало адреса.": "ru104",
+    "Если адрес начинается с [English pronunciation] https [Русское произношение], браузер идёт в интернет. Если там только имя файла или сайта, он ищет на нашем сайте.": "ru105",
+    "Точно!": "ru106",
+    "Это просто имя файла. Браузер найдёт его на нашем сайте и откроет рецепт.": "ru107",
+    "Адрес начинается с [English pronunciation] https [Русское произношение]. Значит, браузер выйдет в интернет и откроет Википедию.": "ru108",
+    "Не попадись! В начале нет [English pronunciation] https [Русское произношение], поэтому браузер считает это обычным файлом и ищет на нашем сайте. А файла нет.": "ru109",
+    "Адрес с [English pronunciation] https [Русское произношение] ведёт на сайт в интернете. Это главная страница Википедии.": "ru110",
+    "Всё верно! Теперь ты знаешь, куда ведёт какой адрес.": "ru111",
+    "Теперь сделай свою ссылку. Твоя страница лежит в файле mening.[English pronunciation] HTML [Русское произношение]. Сначала напиши текст ссылки, это слова, которые видны на странице. Потом нажми Готово.": "ru112",
+    "Классный текст! Теперь дадим ссылке адрес.": "ru113",
+    "О чём твоя страница? Это и напиши.": "ru114",
+    "Пиши только слова, теги на месте.": "ru115",
+    "Например: Моя страница. Потом нажми Готово.": "ru116",
+    "Теперь дай своей ссылке адрес. Файл твоей страницы есть в списке файлов. Впиши его имя в кавычки и нажми Проверить.": "ru117",
+    "Этот файл открывает другую страницу. Нам нужна твоя страница.": "ru118",
+    "В каком файле твоя страница?": "ru119",
+    "Последний файл в списке, твой.": "ru120",
+    "Имя файла, mening.[English pronunciation] HTML [Русское произношение]. Впиши его в кавычки.": "ru121",
+    "Отлично! Твоя ссылка работает. Нажми, откроется твоя страница.": "ru122",
+    "Ой, я правил твою ссылку и стёр атрибут! Теперь это обычный текст. Перетащи недостающий кусок в пустое место после тега a.": "ru123",
+    "Это только имя атрибута. Ему нужно ещё значение, то есть имя файла.": "ru124",
+    "Это только значение. Перед ним нужны имя атрибута и знак равно.": "ru125",
+    "Вот теперь порядок! Ссылка снова работает, нажми.": "ru126",
+    "Посмотри на браузер: ссылка стала обычным текстом. Чего ей не хватает?": "ru127",
+    "Ссылке нужен атрибут целиком: имя, знак равно и имя файла в кавычках.": "ru128",
+    "Выбери кусок, где вместе стоят [English pronunciation] href [Русское произношение], знак равно и mening.[English pronunciation] HTML [Русское произношение].": "ru129",
+    "Теперь проверь себя. Вот меню сайта, но в нём ошибка. Посмотри на браузер: какая ссылка не такая? Найди строку с ошибкой и нажми её.": "ru130",
+    "Класс, первая ошибка найдена! Теперь я нажал ссылку в меню, а файл не нашёлся. Что сломано здесь?": "ru131",
+    "Эта строка в порядке: есть и [English pronunciation] href [Русское произношение], и имя файла. Посмотри на браузер: где поломка?": "ru132",
+    "Нашёл! У этой ссылки не было [English pronunciation] href [Русское произношение]. Поэтому она была обычным текстом.": "ru133",
+    "Нашёл! В имени файла не хватало буквы. Поэтому браузер не нашёл файл.": "ru134",
+    "Посмотри на браузер: какое название не похоже на ссылку?": "ru135",
+    "У несинего названия нет [English pronunciation] href [Русское произношение].": "ru136",
+    "В какой строке у тега a нет [English pronunciation] href [Русское произношение]?": "ru137",
+    "Посмотри в адресную строку: какой файл искали?": "ru138",
+    "Имена файлов кончаются на.[English pronunciation] HTML [Русское произношение]. В какой строке иначе?": "ru139",
+    "Посмотри на третью строку: имя файла полное?": "ru140",
+    "Супер! Обе ошибки найдены. Ты проверяешь ссылки как настоящий программист.": "ru141",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru142",
+    "Прочитай фразу по частям: о каком теге или атрибуте она?": "ru143",
+    "Вспомни правильную ссылку: открывающий тег a, в нём [English pronunciation] href [Русское произношение] и адрес в кавычках. Фраза с этим совпадает?": "ru144",
+    "Атрибут [English pronunciation] href [Русское произношение] пишут в закрывающем теге.": "ru145",
+    "На самом деле [English pronunciation] href [Русское произношение] стоит в открывающем теге. В закрывающем атрибутов нет.": "ru146",
+    "Значение [English pronunciation] href [Русское произношение] пишут в кавычках.": "ru147",
+    "Имя файла пишут в кавычках, так браузер читает его точно.": "ru148",
+    "Тег a и без [English pronunciation] href [Русское произношение], ссылка.": "ru149",
+    "Без [English pronunciation] href [Русское произношение] браузер не знает, куда вести, и слово остаётся обычным текстом.": "ru150",
+    "Для ссылки на другой сайт хватит одного имени сайта, [English pronunciation] https [Русское произношение] не нужен.": "ru151",
+    "На самом деле [English pronunciation] https [Русское произношение] нужен. Без него браузер считает имя сайта файлом нашего сайта, и файла нет.": "ru152",
+    "Всё верно! Ты отлично знаешь тег a и атрибут [English pronunciation] href [Русское произношение].": "ru153",
+    "Вернёмся к загадке. Помнишь, я просто обернул Мои игры в тег a? Увы, я ошибся. Без [English pronunciation] href [Русское произношение] браузер не знает, куда вести, поэтому слова остались обычным текстом. Значит, ссылке всегда нужен [English pronunciation] href [Русское произношение].": "ru154",
+    "Смотри, это твоя ссылка! Нажми её.": "ru155",
+    "Тег a делает ссылку.": "ru156",
+    "Атрибут [English pronunciation] href [Русское произношение] говорит, куда вести.": "ru157",
+    "А значение в кавычках, это имя файла.": "ru158",
+    "А если ссылка ведёт на другой сайт, значение, полный адрес, который начинается с [English pronunciation] https [Русское произношение].": "ru159",
+    "Ура! Теперь твои страницы связаны друг с другом и с интернетом. На следующем уроке добавим на страницу картинку. До встречи!": "ru160",
+    "Вау, классно!": "ru161",
+    "Есть! Получилось!": "ru162",
+    "Супер!": "ru163",
+    "Огонь!": "ru164",
+    "Ура!": "ru165",
+    "Вот это да!": "ru166",
+    "Попробуй ещё раз.": "ru167",
+    "Посмотри внимательно.": "ru168",
+    "Уже близко. Не спеши.": "ru169",
+    "Привет! Это мой сайт.": "ru170",
+    "Привет! Это моя страница.": "ru171",
+    ", загляни туда.": "ru172",
+    "Где искать?": "ru173",
+    "Где браузер будет искать?": "ru174",
+    "Верно или нет?": "ru175",
+    "Привет, мир!": "ru176",
+    "Здесь нужны только слова, без угловых скобок.": "ru177",
+    "Молодец!": "ru178",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru179",
+  },
+  en: {
+    "Hi! Last time we made lists. Now I have a whole site: a home page, a plov recipe and a page with my games. But look: tap the names on the home page and nothing happens. They’re just text. Let’s bring them to life. Tap Transform.": "en001",
+    "Whoa, look! The names turned blue and underlined. Now they’re links.": "en002",
+    "Tap a link and another page opens. The arrow at the top takes you back.": "en003",
+    "Today you’ll learn to make links like these: to your own page and to a site on the internet. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words My games in the A tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Let’s make the first link together. A link is a word that takes you to another page when you tap it. There’s the A tag for that. Watch, we wrap the words Plov recipe in the A tag.": "en005",
+    "But look: nothing changed in the browser, because the A tag doesn’t know where to go yet. It needs an address.": "en006",
+    "The href attribute gives the address. href comes from hypertext reference: the link’s address. In the quotes we write the page’s file name: osh.H T M L. Now the word is blue and underlined. Watch, the browser taps it.": "en007",
+    "The recipe opened, then the arrow took us back. Remember: the A tag makes a link, and href says where it goes.": "en008",
+    "Now it’s your turn. The My games link has no address: the href quotes are empty. Find the right file in the list of files below and type its name in the quotes.": "en009",
+    "Type the file name in the quotes.": "en010",
+    "A file name ends with.H T M L. Look at the list of files.": "en011",
+    "That file opens another page. We need the games page.": "en012",
+    "There’s no such file. Type the name letter by letter, as in the list.": "en013",
+    "Which page should open?": "en014",
+    "The games page file is in the list of files.": "en015",
+    "The file name is oyinlar.H T M L. Type it in the quotes.": "en016",
+    "Awesome! The link works. Tap it and the games page opens.": "en017",
+    "The site menu has three links, but they have no addresses. Drag each file to its link: home, recipe and games.": "en018",
+    "Which page should each link open?": "en019",
+    "A file name looks like its page: osh, oyinlar, index.": "en020",
+    "index.H T M L is home, osh.H T M L is the recipe, and oyinlar.H T M L is games.": "en021",
+    "Well done! The menu works. Tap the links to check them.": "en022",
+    "Tap a file first.": "en023",
+    "Now let’s look closer at a link. href is an attribute: extra information for A tag. The tag says what to do, and the attribute says how. Let’s take the link apart piece by piece.": "en024",
+    "First comes the tag name: a. It tells the browser this is a link.": "en025",
+    "Then a space and the attribute name: href.": "en026",
+    "Then the equals sign and the value in quotes. The value is the file name.": "en027",
+    "Note: an attribute only goes in the opening tag. The closing tag has no attributes.": "en028",
+    "So a link is built like this: the tag name, a space, the attribute name, the equals sign and the value in quotes.": "en029",
+    "Now build the attribute yourself. After the A tag there are three empty spots. Put the pieces in order: the attribute name, the equals sign and the value.": "en030",
+    "The value goes last. The attribute name comes first.": "en031",
+    "The equals sign goes in the middle. The attribute name comes before it.": "en032",
+    "Too early. The equals sign comes after the attribute name.": "en033",
+    "What does an attribute start with?": "en034",
+    "First href, then the equals sign.": "en035",
+    "The order is: href, the equals sign, then the file name in quotes.": "en036",
+    "Great! The attribute is built right, and the link works.": "en037",
+    "A link has three parts: a, href and the value in quotes. Match each part with its name. Tap a part first, then its name.": "en038",
+    "Right! a is the tag name.": "en039",
+    "Right! href is the attribute name.": "en040",
+    "Right! The file name in quotes is the value.": "en041",
+    "a is the tag name; it makes a link.": "en042",
+    "href is the attribute name; it gives the address.": "en043",
+    "What’s in the quotes is the value: the file name.": "en044",
+    "Which part comes first?": "en045",
+    "a is the tag name, and href is the attribute name.": "en046",
+    "a is the tag name, href is the attribute name, and what’s in quotes is the value.": "en047",
+    "Brilliant! You know every part of a link.": "en048",
+    "Tap a part first.": "en049",
+    "Links sometimes break. Let’s look at the two most common mistakes.": "en050",
+    "The first: one letter is missing from the file name. It says osh.htm instead of osh.H T M L. Watch, the browser taps it.": "en051",
+    "File not found! The browser looks for exactly the file that’s written, letter by letter. Even one missing letter and the page won’t open.": "en052",
+    "The second: the closing A tag was forgotten. Look, now the rest of the sentence became a link too, because the browser doesn’t know where the link ends.": "en053",
+    "So write the file name exactly and always close the link with the closing A tag.": "en054",
+    "Oops, I forgot the closing tag again! Now the whole sentence is a link. Type the closing A tag after the link name.": "en055",
+    "That’s the opening tag. The closing one has a slash before a.": "en056",
+    "A tag starts with the bracket. Add it at the start.": "en057",
+    "A tag ends with the bracket. Add it at the end.": "en058",
+    "There’s a different letter inside the tag. Here you need a.": "en059",
+    "The slash goes right after the first bracket.": "en060",
+    "Where should the link end?": "en061",
+    "The closing tag is the same letter with a slash.": "en062",
+    "First a bracket, then the slash, then a, and another bracket at the end.": "en063",
+    "Awesome! Now only the link name is blue, and the rest is plain text.": "en064",
+    "Now look at two states: before and after. Something changed in the code. So what changed?": "en065",
+    "What changed in the code?": "en066",
+    "Right! href was added, so the text became a link.": "en067",
+    "Right! The closing A tag ended the link.": "en068",
+    "Right! The file name was fixed, so the page opened.": "en069",
+    "Look: it was plain text, then it became a link. The href attribute makes a link.": "en070",
+    "Look: after, the rest of the sentence became plain text again. The closing A tag does that.": "en071",
+    "Look: first the file wasn’t found, then the page opened. So the file name was fixed.": "en072",
+    "Now you know why links break. Next, let’s walk around the whole site.": "en073",
+    "Compare before and after in the browser: what changed on the page?": "en074",
+    "Did plain text become a link? Remember which attribute makes a link.": "en075",
+    "Did the place where the link ends change? Remember which tag stops it.": "en076",
+    "Did File not found go away? Think what was fixed in the code then.": "en077",
+    "Here’s my whole site. Let’s see how the browser walks through the links.": "en078",
+    "The first link opened the file osh.H T M L. The file name changed in the address bar too.": "en079",
+    "We went back, and the second link opened the file oyinlar.H T M L.": "en080",
+    "So each link opens its own file, and the arrow at the top takes you back.": "en081",
+    "So far our links only opened files on our own site. But a link can take you to any site on the internet. Wikipedia, for example. For that, href holds not a file name but the site’s full address. Watch.": "en082",
+    "A full address starts with the word https, then a colon and two slashes. That tells the browser to go out to the internet. The s at the end stands for secure.": "en083",
+    "Where do we get this address? Wikipedia is open in another browser tab. Let me show you.": "en084",
+    "We click the address bar at the top. Look, the site’s full address is selected.": "en085",
+    "Now we press the right button and choose Copy in the menu. The address is in memory.": "en086",
+    "We go back to our page’s tab and click inside the href quotes in the code.": "en087",
+    "We press the right button again and choose Paste. There, the address went into the code!": "en088",
+    "Then comes the site name. Here it’s the Wikipedia site. Now let’s click the link.": "en089",
+    "The browser went out to the internet and opened another site. Look at the address bar: the full address is there now.": "en090",
+    "Now let’s erase the https part at the start. So what happens?": "en091",
+    "File not found! Without https the browser thinks it’s a file on our site and looks for it next to index.H T M L. And there’s no such file.": "en092",
+    "So for a page on our site, the file name is enough. Another site needs the full address: https, a colon, two slashes and the site name.": "en093",
+    "Now it’s your turn. The Wikipedia link has no address. The site name is written below. Type the site’s full address in the quotes. Don’t forget the start: https, a colon and two slashes.": "en094",
+    "Type the site’s full address in the quotes.": "en095",
+    "There’s no https at the start. Without it the browser looks for a file on our site. Start the address with https, a colon and two slashes.": "en096",
+    "After https come a colon and two slashes. Check them.": "en097",
+    "Type the site name letter by letter, as shown below.": "en098",
+    "This link goes to another site. What kind of address does it need?": "en099",
+    "A full address starts with https, then a colon and two slashes, then the site name.": "en100",
+    "Awesome! The link goes to the internet. Tap it and Wikipedia opens.": "en101",
+    "It works! But today sites usually use https: the s means secure. Tap the link.": "en102",
+    "Now check yourself. I write a link address, and you choose where the browser will look for it: among our site’s files or on the internet?": "en103",
+    "Look at the very start of the address.": "en104",
+    "If the address starts with https, the browser goes to the internet. If it’s just a file or site name, it looks on our site.": "en105",
+    "Exactly!": "en106",
+    "That’s just a file name. The browser finds it on our site and opens the recipe.": "en107",
+    "The address starts with https. So the browser goes out to the internet and opens Wikipedia.": "en108",
+    "Don’t be fooled! There’s no https at the start, so the browser treats it as a plain file and looks on our site. And there’s no such file.": "en109",
+    "An address starting with https leads to a site on the internet. This is Wikipedia’s main page.": "en110",
+    "All correct! Now you know where each address leads.": "en111",
+    "Now make your own link. Your page is in the file mening.H T M L. First type the link text: the words people see on the page. Then tap Done.": "en112",
+    "Great text! Now let’s give the link an address.": "en113",
+    "What is your page about? Write that.": "en114",
+    "Type only words: the tags are in place.": "en115",
+    "For example: My page. Then tap Done.": "en116",
+    "Now give your link an address. Your page’s file is in the list of files. Type its name in the quotes and tap Check.": "en117",
+    "That file opens another page. We need your page.": "en118",
+    "Which file holds your page?": "en119",
+    "The last file in the list is yours.": "en120",
+    "The file name is mening.H T M L. Type it in the quotes.": "en121",
+    "Great! Your link works. Tap it and your page opens.": "en122",
+    "Oops, I was editing your link and deleted the attribute! Now it’s plain text. Drag the missing piece into the empty spot after the A tag.": "en123",
+    "That’s only the attribute name. It also needs a value: the file name.": "en124",
+    "That’s only the value. It needs the attribute name and the equals sign before it.": "en125",
+    "That’s it! Your link works again; tap it.": "en126",
+    "Look at the browser: the link became plain text. What is it missing?": "en127",
+    "The link needs the whole attribute: the name, the equals sign and the file name in quotes.": "en128",
+    "Pick the piece that has href, the equals sign and mening.H T M L together.": "en129",
+    "Now check yourself. Here’s the site menu, but it has a bug. Look at the browser: which link is wrong? Find the line with the bug and tap it.": "en130",
+    "Great, the first bug is found! Now I tapped a link in the menu, but the file wasn’t found. What’s broken here?": "en131",
+    "This line is fine: it has href and the file name. Look at the browser: where’s the problem?": "en132",
+    "Found it! This link had no href. That’s why it was plain text.": "en133",
+    "Found it! The file name was missing a letter. That’s why the browser couldn’t find the file.": "en134",
+    "Look at the browser: which name doesn’t look like a link?": "en135",
+    "The name that isn’t blue has no href.": "en136",
+    "Which line has an A tag without href?": "en137",
+    "Look at the address bar: which file was it looking for?": "en138",
+    "File names end with.H T M L. Which line is different?": "en139",
+    "Look at the third line: is the file name complete?": "en140",
+    "Super! Both bugs are found. You check links like a real programmer.": "en141",
+    "The last test. I’ll say something, and you choose: true or false.": "en142",
+    "Read the sentence piece by piece: which tag or attribute is it about?": "en143",
+    "Remember a correct link: the opening A tag, href inside it and the address in quotes. Does the sentence match that?": "en144",
+    "The href attribute goes in the closing tag.": "en145",
+    "Actually href goes in the opening tag. The closing tag has no attributes.": "en146",
+    "The href value goes in quotes.": "en147",
+    "The file name goes in quotes so the browser reads it exactly.": "en148",
+    "The A tag is a link even without href.": "en149",
+    "Without href the browser doesn’t know where to go, and the word stays plain text.": "en150",
+    "To link to another site, the site name alone is enough; https isn’t needed.": "en151",
+    "Actually https is needed. Without it the browser treats the site name as a file on our site, and there’s no such file.": "en152",
+    "All correct! You know the A tag and the href attribute really well.": "en153",
+    "Back to our riddle. Remember, I just wrapped My games in the A tag? Sadly, I was wrong. Without href the browser doesn’t know where to go, so the words stayed plain text. So a link always needs href.": "en154",
+    "Look, this is your link! Tap it.": "en155",
+    "The A tag makes a link.": "en156",
+    "The href attribute says where to go.": "en157",
+    "And the value in quotes is the file name.": "en158",
+    "And if the link goes to another site, the value is a full address starting with https.": "en159",
+    "Hooray! Now your pages are connected to each other and to the internet. Next time we’ll add a picture to the page. See you!": "en160",
+    "Wow, awesome!": "en161",
+    "Yes! You did it!": "en162",
+    "Super!": "en163",
+    "Brilliant!": "en164",
+    "Hooray!": "en165",
+    "Amazing!": "en166",
+    "Try once more.": "en167",
+    "Take a closer look.": "en168",
+    "You are close. No rush.": "en169",
+    "Hi! This is my site.": "en170",
+    "Hi! This is my page.": "en171",
+    ", take a look.": "en172",
+    "Where to look?": "en173",
+    "Where will the browser look?": "en174",
+    "True or false?": "en175",
+    "Hello, world!": "en176",
+    "Only words here, no angle brackets.": "en177",
+    "Well done!": "en178",
+    "Everything in the window lives inside body.": "en179",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

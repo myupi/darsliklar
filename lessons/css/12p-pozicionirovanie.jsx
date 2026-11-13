@@ -36,12 +36,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -53,6 +50,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -934,643 +932,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3768,6 +3317,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3805,8 +3355,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3875,7 +3425,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3889,6 +3439,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3903,7 +3454,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8068,15 +7619,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13883,3 +13427,579 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 93, ru 93, en 93; всего знаков 31819. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening kosmik saytim. Qarang: yangi sayohat kartochkasining burchagida YANGI belgisi turibdi, xuddi haqiqiy do'konlardagidek. Uni o'sha yerga position qo'ygan. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! CSS kodi o'chib ketdi. Belgi matn qatoriga tushib qoldi, varaqlar esa o'chdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] joyida, faqat elementlarning joyi yo'qoldi. O'tgan darsda position xususiyatini o'rgandik: relative, absolute va fixed, hamda top, right, bottom va left siljishlarini. Endi beshta sahifada hamma narsani joy-joyiga qo'yamiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi sahifa: sayohatlar. Belgiga absolute va burchak yozilgan, lekin qarang: u kartochka burchagiga emas, butun sahifa burchagiga uchib ketgan. Chunki kartochkada position static turibdi, u langar emas. Qiymatni almashtiring: kartochka langar bo'lsin.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Kartochka langar bo'ldi va belgi uning burchagiga qaytdi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi position qiymati kartochkani langar qiladi va uni o'z joyida qoldiradi?", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Langar relative bo'ladi. static so'zini o'chirib, relative deb yozing.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u rasmni langar qiladi. Xuddi shunday, kartochka uchun relative yozing va Tekshirishni bosing.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bitta sahifa yondi! Ikkinchisi: raketa. Raketada relative bor, lekin u hali startda turibdi. Qoidaga siljishni yozing: raketa qirq piksel tepaga ko'tarilsin. Esingizdami, qaysi siljish tepaga suradi?", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchdi! Raketa startdan qirq piksel tepaga ko'tarildi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Siljish bu o'sha tomondan masofa. Tepaga chiqish uchun qaysi tomondan uzoqlashamiz: tepadanmi yoki pastdanmi?", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastdan bottom uzoqlashtiradi. Qirq piksel: son va px.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u Oyni o'ngga suradi. Xuddi shunday yozing, faqat bottom va qirq piksel bilan.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa yondi! Uchinchisi: kosmik kundalik. Bu uzun sahifa, Yuqoriga tugmasi esa eng pastda yashiringan. Sahifani aylantirib ko'ring. Tugma doim oynaning o'ng pastki burchagida tursin, sahifa qanchalik aylanmasin. Qoidani o'zingiz yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Tugma oyna burchagiga yopishdi. Sahifani aylantirib ko'ring: u joyidan qimirlamaydi!", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi position qiymati elementni sahifaga emas, oynaga yopishtiradi?", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu fixed bo'ladi. Keyin burchak: bottom va right, masalan o'n piksel.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u chatni chap tepa burchakka mahkamlaydi. Xuddi shunday yozing, faqat tugma uchun, bottom va right bilan.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: sayyoralar. Bu kodni men shoshib yozgan edim. Oy Yerdan o'ngga va pastga siljishi kerak edi, yulduz esa koinot qutisining burchagida turishi kerak edi. Kodda ikkita joy buzilgan: ularni toping va tuzating.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu ish! Oy siljidi, yulduz esa burchakda porlayapti.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir qoidaga qarang: siljishlar position bo'lmasa ishlaydimi? So'zlar harfma-harf to'g'ri yozilganmi?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyda position yo'q, unga relative kerak. Yulduzda esa absolute so'zining oxirgi harfi tushib qolgan.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: ikkita to'g'ri qoida. So'zlarni xuddi shunday yozing va Tekshirishni bosing.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z sayohatingiz kartochkasi. Kartochka allaqachon langar. Belgini o'zingiz joylang: istalgan burchakka qo'ying va rangini tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Sizning kartochkangiz tayyor, belgi o'z burchagida!", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] belgi klassiga bitta qoida yozing: oldin position, keyin ikkita siljish va rang.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] position absolute, top yoki bottom, left yoki right, va background-color.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: chap pastki burchakdagi belgi. O'zingizga yoqqan burchak va rangni tanlang.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kosmik saytning beshta sahifasi ham joy-joyida! Hammasini siz o'zingiz yozgan CSS joylashtirdi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] relative elementni o'z joyidan siljitadi: bottom tepaga, top esa pastga suradi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] absolute burchakka qo'yadi, uning langari esa relative yozilgan ota bo'ladi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] fixed oynaga yopishadi va sahifa bilan birga aylanmaydi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buzilgan joylarni ham topasiz: position yozilmagan siljishni va harfi tushib qolgan absolut so'zini.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keyingi darsda sichqoncha bilan jonlanadigan tugmalar yasaymiz: hover va transform. Ko'rishguncha!", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh. CSS kodini shu yerga yozing.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi hali kartochka burchagida emas. Kartochkaga langar qiymati kerak: relative.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochka langar bo'ldi, lekin o'zi joyidan chiqib ketdi. Langarga relative kerak: u o'z joyida qoladi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduz hali quti burchagida emas. Qutiga langar kerak: relative.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, raketa pastga tushib ketdi! top tepadan masofa beradi, shuning uchun pastga suradi. Tepaga bottom suradi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa ko'tarildi, lekin qirq piksel emas. Qirq piksel yozing.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketada position relative qolishi kerak, usiz siljish ishlamaydi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa hali startda turibdi. Tepaga ko'tarish uchun bottom yozing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa hali o'ngga ellik piksel surilmadi. O'ngga chapdan masofa suradi, ya'ni left degani.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma burchakka chiqdi, lekin absolute sahifaga yopishadi: aylantirsangiz, u ham ketadi. Oynaga fixed yopishadi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] relative tugmani faqat o'z joyidan siljitadi, u hali sahifaning eng pastida. Oynaga fixed yopishtiradi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Siljishlar yozilgan, lekin position yo'q, shuning uchun ular ishlamaydi. Tugmaga position fixed kerak.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma oynaga yopishdi, endi burchakni ayting: bottom va right.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma hali sahifaning eng pastida yashiringan. Uni oynaga mahkamlang: position fixed.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma hali chap pastki burchakda emas. fixed, bottom va left kerak.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduz joyida, lekin Oy qimirlamadi. top va left siljishlari faqat position bilan ishlaydi: Oyga relative yozing.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oy o'z joyidan siljishi kerak, buni relative qila oladi.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yulduz hali burchakda emas. U oqimdan chiqib, burchakka o'tishi kerak: absolute.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raketa hali startda. Siljish faqat position bilan ishlaydi: relative qo'shing.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi hali matn qatorida turibdi. Uni oqimdan chiqaring: position absolute.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi qaysi balandlikda tursin? top yoki bottom yozing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi qaysi tomonda tursin? left yoki right yozing.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgining foni yo'q. background-color uchun rang yozing.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi kartochkadan chiqib ketdi. Siljishlarni kichikroq qiling, masalan o'n piksel.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizil sayyorani o'z ko'zingiz bilan ko'ring!", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 1-kun. Raketa koinotga uchdi. Derazadan Yer juda kichkina ko'rinyapti.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 2-kun. Oyga qo'ndik. Bu yerda hamma narsa juda yengil, men baland sakrayman!", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 3-kun. Marsga yo'l oldik. Qizil sayyora borgan sari kattalashyapti.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 4-kun. Yulduzlarni sanadim, lekin adashib ketdim. Ular juda ko'p!", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 5-kun. Uyga qaytish vaqti keldi. Ertaga yana yozaman!", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Halqalar ustidan uchib o'tamiz!", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это мой космический сайт. Смотри: в углу карточки нового путешествия стоит метка НОВОЕ, как в настоящих магазинах. Её поставил туда position. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS-код стёрся. Метка упала в строку текста, а вкладки погасли.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] на месте, пропали только места элементов. На прошлом уроке мы разобрали position: relative, absolute и fixed, и сдвиги top, right, bottom и left. Теперь расставим всё по местам на пяти страницах, а код будешь писать ты. Пятая страница будет твоей.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая страница: путешествия. У метки есть absolute и угол, но смотри: она улетела не в угол карточки, а в угол всей страницы. Потому что у карточки position static, она не якорь. Замени значение: пусть карточка станет якорем.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Карточка стала якорем, и метка вернулась в её угол.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение position делает карточку якорем и оставляет её на своём месте?", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Якорь, relative. Сотри static и напиши relative.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом делает якорем картинку. Так же напиши relative для карточки и нажми Проверить.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Одна страница горит! Вторая: ракета. У ракеты есть relative, но она пока стоит на старте. Впиши в правило сдвиг: пусть ракета поднимется на сорок пикселей вверх. Помнишь, какой сдвиг толкает вверх?", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Взлетела! Ракета поднялась над стартом на сорок пикселей.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сдвиг, это отступ от той стороны. Чтобы поехать вверх, от какой стороны отодвигаемся: от верха или от низа?", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] От низа отодвигает bottom. Сорок пикселей: число и px.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом сдвигает Луну вправо. Напиши так же, только bottom и сорок пикселей.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы горят! Третья: космический дневник. Это длинная страница, а кнопка Наверх спряталась в самом низу. Прокрути страницу и посмотри. Пусть кнопка всегда стоит в правом нижнем углу окна, как ни прокручивай. Напиши правило.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кнопка прилипла к углу окна. Прокрути страницу: она не сдвинется с места!", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение position приклеивает элемент не к странице, а к окну?", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это fixed. Потом угол: bottom и right, например десять пикселей.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом закрепляет чат в левом верхнем углу. Напиши так же, только для кнопки, с bottom и right.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: планеты. Этот код я писал в спешке. Луна должна была сдвинуться вправо и вниз от Земли, а звезда, стоять в углу космической коробки. В коде две поломки: найди и почини их.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Луна сдвинулась, а звезда сияет в углу.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на каждое правило: работают ли сдвиги без position? Все ли слова написаны верно, буква в букву?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У Луны нет position, ей нужен relative. А у звезды в слове absolute пропала последняя буква.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, два верных правила. Напиши так же и нажми Проверить.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четыре страницы горят! Последняя, твоя: карточка твоего путешествия. Карточка уже якорь. Размести метку: поставь её в любой угол и выбери цвет. Под окном видно, что уже готово.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Твоя карточка готова, метка в своём углу!", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши одно правило для класса belgi: сначала position, потом два сдвига и цвет.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] position absolute, top или bottom, left или right и background-color.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом, метка в левом нижнем углу. Выбери свой угол и цвет.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять страниц космического сайта на местах! И всё расставил CSS, написанный твоими руками.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] relative сдвигает элемент от его места: bottom толкает вверх, а top, вниз.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] absolute ставит в угол, а его якорь, родитель с relative.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] fixed прилипает к окну и не прокручивается вместе со страницей.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И находишь поломки: сдвиг без position и absolut без последней буквы.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] На следующем уроке сделаем кнопки, которые оживают под мышкой: hover и transform. До встречи!", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто. Пиши CSS-код здесь.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужна открывающая фигурная скобка: она стоит после селектора.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило не закрыто: в конце поставь закрывающую фигурную скобку.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед скобкой нет селектора: напиши, что оформляем.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пока пусто: впиши нужное в рамку.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только значение: имя свойства уже стоит слева.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только селектор: скобки и остальной код уже на месте.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В рамку, только свойство и значение: селектор и скобки уже на месте.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код работает, но страница пока не такая, как нужно. Перечитай задание.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка пока не в углу карточки. Карточке нужно значение-якорь: relative.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточка стала якорем, но сама ушла со своего места. Якорю нужен relative: он остаётся на месте.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Звезда пока не в углу коробки. Коробке нужен якорь: relative.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, ракета ушла вниз! top, отступ сверху, поэтому он толкает вниз. Вверх толкает bottom.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета поднялась, но не на сорок пикселей. Напиши сорок пикселей.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У ракеты должен остаться position relative, без него сдвиг не работает.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета пока стоит на старте. Чтобы поднять её, напиши bottom.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета пока не сдвинулась вправо на пятьдесят пикселей. Вправо толкает отступ слева, то есть left.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка вышла в угол, но absolute держится за страницу: прокрутишь, уедет. К окну приклеивает fixed.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] relative только сдвигает кнопку от её места, она всё ещё внизу страницы. К окну приклеивает fixed.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сдвиги есть, а position нет, поэтому они не работают. Кнопке нужен position fixed.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка прилипла к окну, теперь задай угол: bottom и right.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка всё ещё прячется внизу страницы. Закрепи её в окне: position fixed.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка пока не в левом нижнем углу. Нужны fixed, bottom и left.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Звезда на месте, а Луна не сдвинулась. Сдвиги top и left работают только с position: допиши Луне relative.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Луна должна сдвинуться от своего места, это умеет relative.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Звезда пока не в углу. Ей нужно выйти из потока и встать в угол: absolute.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ракета пока на старте. Сдвиг работает только с position: добавь relative.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка пока стоит в строке текста. Вынь её из потока: position absolute.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На какой высоте стоять метке? Напиши top или bottom.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С какой стороны стоять метке? Напиши left или right.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У метки нет фона. Напиши цвет для background-color.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Метка вылетела за карточку. Возьми сдвиги поменьше, например десять пикселей.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Увидь красную планету своими глазами!", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] День 1. Ракета улетела в космос. Из окна Земля кажется совсем маленькой.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] День 2. Сели на Луну. Здесь всё очень лёгкое, я прыгаю высоко!", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] День 3. Летим к Марсу. Красная планета всё больше и больше.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] День 4. Считал звёзды, но сбился. Их очень много!", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] День 5. Пора домой. Завтра напишу ещё!", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пролетим над кольцами!", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my space website. Look: the NEW badge sits in the corner of the new trip card, just like in real stores. position put it there. The site has five pages. I’m about to update it, tap Refresh.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The CSS code got erased. The badge fell into the line of text, and the tabs went dark.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L is fine, only the elements’ places are gone. Last lesson we learned position: relative, absolute and fixed, and the offsets top, right, bottom and left. Now let’s put everything in its place on five pages, and you’ll write the code. The fifth page will be yours.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first page is trips. The badge has absolute and a corner, but look: it flew not to the card’s corner but to the whole page’s corner. That’s because the card has position static, so it isn’t an anchor. Change the value: make the card the anchor.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The card became the anchor, and the badge came back to its corner.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which position value makes the card an anchor and keeps it in its place?", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The anchor is relative. Erase static and write relative.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code makes a picture the anchor. Write relative for the card the same way and tap Check.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] One page is lit! The second is the rocket. The rocket has relative, but it’s still on the launch pad. Write an offset in the rule: let the rocket rise forty pixels up. Remember which offset pushes up?", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Liftoff! The rocket rose forty pixels above the pad.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] An offset is a distance from that side. To move up, which side do we move away from: the top or the bottom?", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] bottom moves it away from the bottom. Forty pixels: a number and px.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code moves the Moon right. Write the same, only with bottom and forty pixels.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are lit! The third is the space diary. It’s a long page, and the To top button is hiding at the very bottom. Scroll the page and see. Let the button always stay in the bottom right corner of the window, however you scroll. Write the rule yourself.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The button stuck to the window’s corner. Scroll the page: it won’t budge!", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which position value sticks an element to the window rather than the page?", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s fixed. Then the corner: bottom and right, for example ten pixels.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code pins a chat to the top left corner. Write the same, only for the button, with bottom and right.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is the planets. I wrote this code in a hurry. The Moon was supposed to move right and down from the Earth, and the star was supposed to sit in the corner of the space box. There are two broken spots in the code: find and fix them.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! The Moon moved, and the star is shining in the corner.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at each rule: do offsets work without position? Is every word spelled right, letter by letter?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The Moon has no position, it needs relative. And the star’s absolute is missing its last letter.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code has two correct rules. Write yours the same way and tap Check.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Four pages are lit! The last one is yours: a card for your own trip. The card is already an anchor. Place the badge yourself: put it in any corner and pick its color. Under the window you can see what’s done.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your card is ready, and the badge is in its corner!", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write one rule for the belgi class: first position, then two offsets and a color.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] position absolute, top or bottom, left or right, and background-color.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code is a badge in the bottom left corner. Pick your own corner and color.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five pages of the space site are in place! And the CSS you wrote yourself put everything there.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative moves an element from its own place: bottom pushes up, and top pushes down.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] absolute puts it in a corner, and its anchor is a parent with relative.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] fixed sticks to the window and doesn’t scroll with the page.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And you find broken spots: an offset without position, and absolut missing its last letter.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Next lesson we’ll make buttons that come alive under the mouse: hover and transform. See you!", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far. Write the CSS code here.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs an opening curly brace: it goes after the selector.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule isn’t closed: put a closing curly brace at the end.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an extra closing brace. Each opening brace gets one closing brace.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no selector before the brace: write what we’re styling.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no semicolon between two properties. Put one after every value.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s empty so far: type what’s needed into the box.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the value goes in the box: the property name is already on the left.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the selector goes in the box: the braces and the rest are already there.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the property and value go in the box: the selector and braces are already there.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code works, but the page isn’t quite right yet. Read the task again.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge isn’t in the card’s corner yet. The card needs the anchor value: relative.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The card became an anchor, but it left its own place. An anchor needs relative: it stays in place.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The star isn’t in the box’s corner yet. The box needs to be an anchor: relative.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, the rocket went down! top is the distance from the top, so it pushes down. bottom pushes up.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket rose, but not by forty pixels. Write forty pixels.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket needs to keep position relative, without it the offset doesn’t work.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket is still on the pad. To lift it, write bottom.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket hasn’t moved fifty pixels right yet. The distance from the left, that is left, pushes right.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button went to a corner, but absolute holds on to the page: scroll and it leaves. fixed sticks to the window.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative only moves the button from its own place; it’s still at the bottom of the page. fixed sticks it to the window.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The offsets are there, but there’s no position, so they don’t work. The button needs position fixed.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button stuck to the window; now set the corner: bottom and right.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button is still hiding at the bottom of the page. Pin it to the window: position fixed.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button isn’t in the bottom left corner yet. You need fixed, bottom and left.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The star is in place, but the Moon didn’t move. The top and left offsets only work with position: give the Moon relative.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The Moon should move from its own place, and relative does that.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The star isn’t in the corner yet. It needs to leave the flow and go to the corner: absolute.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rocket is still on the pad. An offset only works with position: add relative.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge is still in the line of text. Take it out of the flow: position absolute.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At what height should the badge stand? Write top or bottom.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Which side should the badge be on? Write left or right.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge has no background. Write a color for background-color.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge flew out of the card. Use smaller offsets, for example ten pixels.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] See the red planet with your own eyes!", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Day 1. The rocket flew into space. From the window, Earth looks tiny.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Day 2. We landed on the Moon. Everything is so light here, I jump really high!", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Day 3. We’re heading to Mars. The red planet keeps getting bigger.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Day 4. I counted the stars, but lost count. There are so many!", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Day 5. Time to go home. I’ll write more tomorrow!", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’ll fly over the rings!", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening kosmik saytim. Qarang: yangi sayohat kartochkasining burchagida YANGI belgisi turibdi, xuddi haqiqiy do'konlardagidek. Uni o'sha yerga position qo'ygan. Saytda beshta sahifa bor. Hozir saytni yangilayman, Yangilash tugmasini bosing.": "uz001",
+    "Voy! CSS kodi o'chib ketdi. Belgi matn qatoriga tushib qoldi, varaqlar esa o'chdi.": "uz002",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] joyida, faqat elementlarning joyi yo'qoldi. O'tgan darsda position xususiyatini o'rgandik: relative, absolute va fixed, hamda top, right, bottom va left siljishlarini. Endi beshta sahifada hamma narsani joy-joyiga qo'yamiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.": "uz003",
+    "Birinchi sahifa: sayohatlar. Belgiga absolute va burchak yozilgan, lekin qarang: u kartochka burchagiga emas, butun sahifa burchagiga uchib ketgan. Chunki kartochkada position static turibdi, u langar emas. Qiymatni almashtiring: kartochka langar bo'lsin.": "uz004",
+    "Zo'r! Kartochka langar bo'ldi va belgi uning burchagiga qaytdi.": "uz005",
+    "Qaysi position qiymati kartochkani langar qiladi va uni o'z joyida qoldiradi?": "uz006",
+    "Langar relative bo'ladi. static so'zini o'chirib, relative deb yozing.": "uz007",
+    "Namuna kod ostida: u rasmni langar qiladi. Xuddi shunday, kartochka uchun relative yozing va Tekshirishni bosing.": "uz008",
+    "Bitta sahifa yondi! Ikkinchisi: raketa. Raketada relative bor, lekin u hali startda turibdi. Qoidaga siljishni yozing: raketa qirq piksel tepaga ko'tarilsin. Esingizdami, qaysi siljish tepaga suradi?": "uz009",
+    "Uchdi! Raketa startdan qirq piksel tepaga ko'tarildi.": "uz010",
+    "Siljish bu o'sha tomondan masofa. Tepaga chiqish uchun qaysi tomondan uzoqlashamiz: tepadanmi yoki pastdanmi?": "uz011",
+    "Pastdan bottom uzoqlashtiradi. Qirq piksel: son va px.": "uz012",
+    "Namuna kod ostida: u Oyni o'ngga suradi. Xuddi shunday yozing, faqat bottom va qirq piksel bilan.": "uz013",
+    "Ikkita sahifa yondi! Uchinchisi: kosmik kundalik. Bu uzun sahifa, Yuqoriga tugmasi esa eng pastda yashiringan. Sahifani aylantirib ko'ring. Tugma doim oynaning o'ng pastki burchagida tursin, sahifa qanchalik aylanmasin. Qoidani o'zingiz yozing.": "uz014",
+    "Ajoyib! Tugma oyna burchagiga yopishdi. Sahifani aylantirib ko'ring: u joyidan qimirlamaydi!": "uz015",
+    "Qaysi position qiymati elementni sahifaga emas, oynaga yopishtiradi?": "uz016",
+    "Bu fixed bo'ladi. Keyin burchak: bottom va right, masalan o'n piksel.": "uz017",
+    "Namuna kod ostida: u chatni chap tepa burchakka mahkamlaydi. Xuddi shunday yozing, faqat tugma uchun, bottom va right bilan.": "uz018",
+    "Uchta sahifa tayyor! To'rtinchisi: sayyoralar. Bu kodni men shoshib yozgan edim. Oy Yerdan o'ngga va pastga siljishi kerak edi, yulduz esa koinot qutisining burchagida turishi kerak edi. Kodda ikkita joy buzilgan: ularni toping va tuzating.": "uz019",
+    "Mana bu ish! Oy siljidi, yulduz esa burchakda porlayapti.": "uz020",
+    "Har bir qoidaga qarang: siljishlar position bo'lmasa ishlaydimi? So'zlar harfma-harf to'g'ri yozilganmi?": "uz021",
+    "Oyda position yo'q, unga relative kerak. Yulduzda esa absolute so'zining oxirgi harfi tushib qolgan.": "uz022",
+    "Namuna kod ostida: ikkita to'g'ri qoida. So'zlarni xuddi shunday yozing va Tekshirishni bosing.": "uz023",
+    "To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z sayohatingiz kartochkasi. Kartochka allaqachon langar. Belgini o'zingiz joylang: istalgan burchakka qo'ying va rangini tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.": "uz024",
+    "Ura! Sizning kartochkangiz tayyor, belgi o'z burchagida!": "uz025",
+    "belgi klassiga bitta qoida yozing: oldin position, keyin ikkita siljish va rang.": "uz026",
+    "position absolute, top yoki bottom, left yoki right, va background-color.": "uz027",
+    "Namuna kod ostida: chap pastki burchakdagi belgi. O'zingizga yoqqan burchak va rangni tanlang.": "uz028",
+    "Kosmik saytning beshta sahifasi ham joy-joyida! Hammasini siz o'zingiz yozgan CSS joylashtirdi.": "uz029",
+    "relative elementni o'z joyidan siljitadi: bottom tepaga, top esa pastga suradi.": "uz030",
+    "absolute burchakka qo'yadi, uning langari esa relative yozilgan ota bo'ladi.": "uz031",
+    "fixed oynaga yopishadi va sahifa bilan birga aylanmaydi.": "uz032",
+    "Buzilgan joylarni ham topasiz: position yozilmagan siljishni va harfi tushib qolgan absolut so'zini.": "uz033",
+    "Keyingi darsda sichqoncha bilan jonlanadigan tugmalar yasaymiz: hover va transform. Ko'rishguncha!": "uz034",
+    "Hozircha bo'sh. CSS kodini shu yerga yozing.": "uz035",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz036",
+    "Qoidaga ochuvchi jingalak qavs kerak: u selektordan keyin turadi.": "uz037",
+    "Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.": "uz038",
+    "Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.": "uz039",
+    "Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.": "uz040",
+    "Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.": "uz041",
+    "Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.": "uz042",
+    "Selektor sahifadagi hech narsani tanlamadi. Uni [English pronunciation] HTML [O'zbekcha tallaffuz] koddagi nom bilan solishtiring.": "uz043",
+    "Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.": "uz044",
+    "Ramkaga faqat qiymatni yozing: xususiyat nomi chap tomonda allaqachon turibdi.": "uz045",
+    "Ramkaga faqat selektorni yozing: qavslar va qolgan kod o'z joyida turibdi.": "uz046",
+    "Ramkada faqat qiymat turibdi. Bu yerga xususiyat ham kerak: oldin xususiyat, keyin ikki nuqta, keyin qiymat.": "uz047",
+    "Ramkaga faqat xususiyat va qiymatni yozing: selektor va qavslar o'z joyida turibdi.": "uz048",
+    "Kod ishlayapti, lekin sahifa hali kerakli ko'rinishda emas. Vazifani yana bir o'qing.": "uz049",
+    "Voy, zo‘r!": "uz050",
+    "Ana! Chiqdi!": "uz051",
+    "Super!": "uz052",
+    "Qoyil!": "uz053",
+    "Ura!": "uz054",
+    "Zo‘r-ku!": "uz055",
+    "Yana bir bor urinib ko‘ring.": "uz056",
+    "Diqqat bilan qarang.": "uz057",
+    "Yaqin qoldingiz. Shoshilmang.": "uz058",
+    "Belgi hali kartochka burchagida emas. Kartochkaga langar qiymati kerak: relative.": "uz059",
+    "Kartochka langar bo'ldi, lekin o'zi joyidan chiqib ketdi. Langarga relative kerak: u o'z joyida qoladi.": "uz060",
+    "Yulduz hali quti burchagida emas. Qutiga langar kerak: relative.": "uz061",
+    "Voy, raketa pastga tushib ketdi! top tepadan masofa beradi, shuning uchun pastga suradi. Tepaga bottom suradi.": "uz062",
+    "Raketa ko'tarildi, lekin qirq piksel emas. Qirq piksel yozing.": "uz063",
+    "Raketada position relative qolishi kerak, usiz siljish ishlamaydi.": "uz064",
+    "Raketa hali startda turibdi. Tepaga ko'tarish uchun bottom yozing.": "uz065",
+    "Raketa hali o'ngga ellik piksel surilmadi. O'ngga chapdan masofa suradi, ya'ni left degani.": "uz066",
+    "Tugma burchakka chiqdi, lekin absolute sahifaga yopishadi: aylantirsangiz, u ham ketadi. Oynaga fixed yopishadi.": "uz067",
+    "relative tugmani faqat o'z joyidan siljitadi, u hali sahifaning eng pastida. Oynaga fixed yopishtiradi.": "uz068",
+    "Siljishlar yozilgan, lekin position yo'q, shuning uchun ular ishlamaydi. Tugmaga position fixed kerak.": "uz069",
+    "Tugma oynaga yopishdi, endi burchakni ayting: bottom va right.": "uz070",
+    "Tugma hali sahifaning eng pastida yashiringan. Uni oynaga mahkamlang: position fixed.": "uz071",
+    "Tugma hali chap pastki burchakda emas. fixed, bottom va left kerak.": "uz072",
+    "Yulduz joyida, lekin Oy qimirlamadi. top va left siljishlari faqat position bilan ishlaydi: Oyga relative yozing.": "uz073",
+    "Oy o'z joyidan siljishi kerak, buni relative qila oladi.": "uz074",
+    "Yulduz hali burchakda emas. U oqimdan chiqib, burchakka o'tishi kerak: absolute.": "uz075",
+    "Raketa hali startda. Siljish faqat position bilan ishlaydi: relative qo'shing.": "uz076",
+    "Belgi hali matn qatorida turibdi. Uni oqimdan chiqaring: position absolute.": "uz077",
+    "Belgi qaysi balandlikda tursin? top yoki bottom yozing.": "uz078",
+    "Belgi qaysi tomonda tursin? left yoki right yozing.": "uz079",
+    "Belgining foni yo'q. background-color uchun rang yozing.": "uz080",
+    "Belgi kartochkadan chiqib ketdi. Siljishlarni kichikroq qiling, masalan o'n piksel.": "uz081",
+    "Salom!": "uz082",
+    "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz083",
+    "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz084",
+    "Qizil sayyorani o'z ko'zingiz bilan ko'ring!": "uz085",
+    "1-kun. Raketa koinotga uchdi. Derazadan Yer juda kichkina ko'rinyapti.": "uz086",
+    "2-kun. Oyga qo'ndik. Bu yerda hamma narsa juda yengil, men baland sakrayman!": "uz087",
+    "3-kun. Marsga yo'l oldik. Qizil sayyora borgan sari kattalashyapti.": "uz088",
+    "4-kun. Yulduzlarni sanadim, lekin adashib ketdim. Ular juda ko'p!": "uz089",
+    "5-kun. Uyga qaytish vaqti keldi. Ertaga yana yozaman!": "uz090",
+    "Halqalar ustidan uchib o'tamiz!": "uz091",
+    "Barakalla!": "uz092",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz093",
+  },
+  ru: {
+    "Привет! Это мой космический сайт. Смотри: в углу карточки нового путешествия стоит метка НОВОЕ, как в настоящих магазинах. Её поставил туда position. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
+    "Ой! CSS-код стёрся. Метка упала в строку текста, а вкладки погасли.": "ru002",
+    "[English pronunciation] HTML [Русское произношение] на месте, пропали только места элементов. На прошлом уроке мы разобрали position: relative, absolute и fixed, и сдвиги top, right, bottom и left. Теперь расставим всё по местам на пяти страницах, а код будешь писать ты. Пятая страница будет твоей.": "ru003",
+    "Первая страница: путешествия. У метки есть absolute и угол, но смотри: она улетела не в угол карточки, а в угол всей страницы. Потому что у карточки position static, она не якорь. Замени значение: пусть карточка станет якорем.": "ru004",
+    "Огонь! Карточка стала якорем, и метка вернулась в её угол.": "ru005",
+    "Какое значение position делает карточку якорем и оставляет её на своём месте?": "ru006",
+    "Якорь, relative. Сотри static и напиши relative.": "ru007",
+    "Образец под кодом делает якорем картинку. Так же напиши relative для карточки и нажми Проверить.": "ru008",
+    "Одна страница горит! Вторая: ракета. У ракеты есть relative, но она пока стоит на старте. Впиши в правило сдвиг: пусть ракета поднимется на сорок пикселей вверх. Помнишь, какой сдвиг толкает вверх?": "ru009",
+    "Взлетела! Ракета поднялась над стартом на сорок пикселей.": "ru010",
+    "Сдвиг, это отступ от той стороны. Чтобы поехать вверх, от какой стороны отодвигаемся: от верха или от низа?": "ru011",
+    "От низа отодвигает bottom. Сорок пикселей: число и px.": "ru012",
+    "Образец под кодом сдвигает Луну вправо. Напиши так же, только bottom и сорок пикселей.": "ru013",
+    "Две страницы горят! Третья: космический дневник. Это длинная страница, а кнопка Наверх спряталась в самом низу. Прокрути страницу и посмотри. Пусть кнопка всегда стоит в правом нижнем углу окна, как ни прокручивай. Напиши правило.": "ru014",
+    "Отлично! Кнопка прилипла к углу окна. Прокрути страницу: она не сдвинется с места!": "ru015",
+    "Какое значение position приклеивает элемент не к странице, а к окну?": "ru016",
+    "Это fixed. Потом угол: bottom и right, например десять пикселей.": "ru017",
+    "Образец под кодом закрепляет чат в левом верхнем углу. Напиши так же, только для кнопки, с bottom и right.": "ru018",
+    "Три страницы готовы! Четвёртая: планеты. Этот код я писал в спешке. Луна должна была сдвинуться вправо и вниз от Земли, а звезда, стоять в углу космической коробки. В коде две поломки: найди и почини их.": "ru019",
+    "Вот это да! Луна сдвинулась, а звезда сияет в углу.": "ru020",
+    "Посмотри на каждое правило: работают ли сдвиги без position? Все ли слова написаны верно, буква в букву?": "ru021",
+    "У Луны нет position, ей нужен relative. А у звезды в слове absolute пропала последняя буква.": "ru022",
+    "Образец под кодом, два верных правила. Напиши так же и нажми Проверить.": "ru023",
+    "Четыре страницы горят! Последняя, твоя: карточка твоего путешествия. Карточка уже якорь. Размести метку: поставь её в любой угол и выбери цвет. Под окном видно, что уже готово.": "ru024",
+    "Ура! Твоя карточка готова, метка в своём углу!": "ru025",
+    "Напиши одно правило для класса belgi: сначала position, потом два сдвига и цвет.": "ru026",
+    "position absolute, top или bottom, left или right и background-color.": "ru027",
+    "Образец под кодом, метка в левом нижнем углу. Выбери свой угол и цвет.": "ru028",
+    "Все пять страниц космического сайта на местах! И всё расставил CSS, написанный твоими руками.": "ru029",
+    "relative сдвигает элемент от его места: bottom толкает вверх, а top, вниз.": "ru030",
+    "absolute ставит в угол, а его якорь, родитель с relative.": "ru031",
+    "fixed прилипает к окну и не прокручивается вместе со страницей.": "ru032",
+    "И находишь поломки: сдвиг без position и absolut без последней буквы.": "ru033",
+    "На следующем уроке сделаем кнопки, которые оживают под мышкой: hover и transform. До встречи!": "ru034",
+    "Пока пусто. Пиши CSS-код здесь.": "ru035",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru036",
+    "Правилу нужна открывающая фигурная скобка: она стоит после селектора.": "ru037",
+    "Правило не закрыто: в конце поставь закрывающую фигурную скобку.": "ru038",
+    "Есть лишняя закрывающая скобка. На каждую открывающую, одна закрывающая.": "ru039",
+    "Перед скобкой нет селектора: напиши, что оформляем.": "ru040",
+    "Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.": "ru041",
+    "Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.": "ru042",
+    "Селектор ничего не выбрал на странице. Сверь его с именем в [English pronunciation] HTML [Русское произношение]-коде.": "ru043",
+    "Пока пусто: впиши нужное в рамку.": "ru044",
+    "В рамку, только значение: имя свойства уже стоит слева.": "ru045",
+    "В рамку, только селектор: скобки и остальной код уже на месте.": "ru046",
+    "В рамке только значение. Здесь нужно и свойство: сначала свойство, потом двоеточие, потом значение.": "ru047",
+    "В рамку, только свойство и значение: селектор и скобки уже на месте.": "ru048",
+    "Код работает, но страница пока не такая, как нужно. Перечитай задание.": "ru049",
+    "Вау, классно!": "ru050",
+    "Есть! Получилось!": "ru051",
+    "Супер!": "ru052",
+    "Огонь!": "ru053",
+    "Ура!": "ru054",
+    "Вот это да!": "ru055",
+    "Попробуй ещё раз.": "ru056",
+    "Посмотри внимательно.": "ru057",
+    "Уже близко. Не спеши.": "ru058",
+    "Метка пока не в углу карточки. Карточке нужно значение-якорь: relative.": "ru059",
+    "Карточка стала якорем, но сама ушла со своего места. Якорю нужен relative: он остаётся на месте.": "ru060",
+    "Звезда пока не в углу коробки. Коробке нужен якорь: relative.": "ru061",
+    "Ой, ракета ушла вниз! top, отступ сверху, поэтому он толкает вниз. Вверх толкает bottom.": "ru062",
+    "Ракета поднялась, но не на сорок пикселей. Напиши сорок пикселей.": "ru063",
+    "У ракеты должен остаться position relative, без него сдвиг не работает.": "ru064",
+    "Ракета пока стоит на старте. Чтобы поднять её, напиши bottom.": "ru065",
+    "Ракета пока не сдвинулась вправо на пятьдесят пикселей. Вправо толкает отступ слева, то есть left.": "ru066",
+    "Кнопка вышла в угол, но absolute держится за страницу: прокрутишь, уедет. К окну приклеивает fixed.": "ru067",
+    "relative только сдвигает кнопку от её места, она всё ещё внизу страницы. К окну приклеивает fixed.": "ru068",
+    "Сдвиги есть, а position нет, поэтому они не работают. Кнопке нужен position fixed.": "ru069",
+    "Кнопка прилипла к окну, теперь задай угол: bottom и right.": "ru070",
+    "Кнопка всё ещё прячется внизу страницы. Закрепи её в окне: position fixed.": "ru071",
+    "Кнопка пока не в левом нижнем углу. Нужны fixed, bottom и left.": "ru072",
+    "Звезда на месте, а Луна не сдвинулась. Сдвиги top и left работают только с position: допиши Луне relative.": "ru073",
+    "Луна должна сдвинуться от своего места, это умеет relative.": "ru074",
+    "Звезда пока не в углу. Ей нужно выйти из потока и встать в угол: absolute.": "ru075",
+    "Ракета пока на старте. Сдвиг работает только с position: добавь relative.": "ru076",
+    "Метка пока стоит в строке текста. Вынь её из потока: position absolute.": "ru077",
+    "На какой высоте стоять метке? Напиши top или bottom.": "ru078",
+    "С какой стороны стоять метке? Напиши left или right.": "ru079",
+    "У метки нет фона. Напиши цвет для background-color.": "ru080",
+    "Метка вылетела за карточку. Возьми сдвиги поменьше, например десять пикселей.": "ru081",
+    "Привет!": "ru082",
+    "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru083",
+    "Отлично, теперь это точно твоё! Идём дальше.": "ru084",
+    "Увидь красную планету своими глазами!": "ru085",
+    "День 1. Ракета улетела в космос. Из окна Земля кажется совсем маленькой.": "ru086",
+    "День 2. Сели на Луну. Здесь всё очень лёгкое, я прыгаю высоко!": "ru087",
+    "День 3. Летим к Марсу. Красная планета всё больше и больше.": "ru088",
+    "День 4. Считал звёзды, но сбился. Их очень много!": "ru089",
+    "День 5. Пора домой. Завтра напишу ещё!": "ru090",
+    "Пролетим над кольцами!": "ru091",
+    "Молодец!": "ru092",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru093",
+  },
+  en: {
+    "Hi! This is my space website. Look: the NEW badge sits in the corner of the new trip card, just like in real stores. position put it there. The site has five pages. I’m about to update it, tap Refresh.": "en001",
+    "Oh no! The CSS code got erased. The badge fell into the line of text, and the tabs went dark.": "en002",
+    "The H T M L is fine, only the elements’ places are gone. Last lesson we learned position: relative, absolute and fixed, and the offsets top, right, bottom and left. Now let’s put everything in its place on five pages, and you’ll write the code. The fifth page will be yours.": "en003",
+    "The first page is trips. The badge has absolute and a corner, but look: it flew not to the card’s corner but to the whole page’s corner. That’s because the card has position static, so it isn’t an anchor. Change the value: make the card the anchor.": "en004",
+    "Awesome! The card became the anchor, and the badge came back to its corner.": "en005",
+    "Which position value makes the card an anchor and keeps it in its place?": "en006",
+    "The anchor is relative. Erase static and write relative.": "en007",
+    "The example under the code makes a picture the anchor. Write relative for the card the same way and tap Check.": "en008",
+    "One page is lit! The second is the rocket. The rocket has relative, but it’s still on the launch pad. Write an offset in the rule: let the rocket rise forty pixels up. Remember which offset pushes up?": "en009",
+    "Liftoff! The rocket rose forty pixels above the pad.": "en010",
+    "An offset is a distance from that side. To move up, which side do we move away from: the top or the bottom?": "en011",
+    "bottom moves it away from the bottom. Forty pixels: a number and px.": "en012",
+    "The example under the code moves the Moon right. Write the same, only with bottom and forty pixels.": "en013",
+    "Two pages are lit! The third is the space diary. It’s a long page, and the To top button is hiding at the very bottom. Scroll the page and see. Let the button always stay in the bottom right corner of the window, however you scroll. Write the rule yourself.": "en014",
+    "Great! The button stuck to the window’s corner. Scroll the page: it won’t budge!": "en015",
+    "Which position value sticks an element to the window rather than the page?": "en016",
+    "That’s fixed. Then the corner: bottom and right, for example ten pixels.": "en017",
+    "The example under the code pins a chat to the top left corner. Write the same, only for the button, with bottom and right.": "en018",
+    "Three pages are done! The fourth is the planets. I wrote this code in a hurry. The Moon was supposed to move right and down from the Earth, and the star was supposed to sit in the corner of the space box. There are two broken spots in the code: find and fix them.": "en019",
+    "That’s it! The Moon moved, and the star is shining in the corner.": "en020",
+    "Look at each rule: do offsets work without position? Is every word spelled right, letter by letter?": "en021",
+    "The Moon has no position, it needs relative. And the star’s absolute is missing its last letter.": "en022",
+    "The example under the code has two correct rules. Write yours the same way and tap Check.": "en023",
+    "Four pages are lit! The last one is yours: a card for your own trip. The card is already an anchor. Place the badge yourself: put it in any corner and pick its color. Under the window you can see what’s done.": "en024",
+    "Hooray! Your card is ready, and the badge is in its corner!": "en025",
+    "Write one rule for the belgi class: first position, then two offsets and a color.": "en026",
+    "position absolute, top or bottom, left or right, and background-color.": "en027",
+    "The example under the code is a badge in the bottom left corner. Pick your own corner and color.": "en028",
+    "All five pages of the space site are in place! And the CSS you wrote yourself put everything there.": "en029",
+    "relative moves an element from its own place: bottom pushes up, and top pushes down.": "en030",
+    "absolute puts it in a corner, and its anchor is a parent with relative.": "en031",
+    "fixed sticks to the window and doesn’t scroll with the page.": "en032",
+    "And you find broken spots: an offset without position, and absolut missing its last letter.": "en033",
+    "Next lesson we’ll make buttons that come alive under the mouse: hover and transform. See you!": "en034",
+    "It’s empty so far. Write the CSS code here.": "en035",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en036",
+    "The rule needs an opening curly brace: it goes after the selector.": "en037",
+    "The rule isn’t closed: put a closing curly brace at the end.": "en038",
+    "There’s an extra closing brace. Each opening brace gets one closing brace.": "en039",
+    "There’s no selector before the brace: write what we’re styling.": "en040",
+    "There’s no semicolon between two properties. Put one after every value.": "en041",
+    "This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.": "en042",
+    "The selector didn’t pick anything on the page. Compare it with the name in the H T M L code.": "en043",
+    "It’s empty so far: type what’s needed into the box.": "en044",
+    "Only the value goes in the box: the property name is already on the left.": "en045",
+    "Only the selector goes in the box: the braces and the rest are already there.": "en046",
+    "There’s only a value in the box. It needs the property too: first the property, then a colon, then the value.": "en047",
+    "Only the property and value go in the box: the selector and braces are already there.": "en048",
+    "The code works, but the page isn’t quite right yet. Read the task again.": "en049",
+    "Wow, awesome!": "en050",
+    "Yes! You did it!": "en051",
+    "Super!": "en052",
+    "Brilliant!": "en053",
+    "Hooray!": "en054",
+    "Amazing!": "en055",
+    "Try once more.": "en056",
+    "Take a closer look.": "en057",
+    "You are close. No rush.": "en058",
+    "The badge isn’t in the card’s corner yet. The card needs the anchor value: relative.": "en059",
+    "The card became an anchor, but it left its own place. An anchor needs relative: it stays in place.": "en060",
+    "The star isn’t in the box’s corner yet. The box needs to be an anchor: relative.": "en061",
+    "Whoa, the rocket went down! top is the distance from the top, so it pushes down. bottom pushes up.": "en062",
+    "The rocket rose, but not by forty pixels. Write forty pixels.": "en063",
+    "The rocket needs to keep position relative, without it the offset doesn’t work.": "en064",
+    "The rocket is still on the pad. To lift it, write bottom.": "en065",
+    "The rocket hasn’t moved fifty pixels right yet. The distance from the left, that is left, pushes right.": "en066",
+    "The button went to a corner, but absolute holds on to the page: scroll and it leaves. fixed sticks to the window.": "en067",
+    "relative only moves the button from its own place; it’s still at the bottom of the page. fixed sticks it to the window.": "en068",
+    "The offsets are there, but there’s no position, so they don’t work. The button needs position fixed.": "en069",
+    "The button stuck to the window; now set the corner: bottom and right.": "en070",
+    "The button is still hiding at the bottom of the page. Pin it to the window: position fixed.": "en071",
+    "The button isn’t in the bottom left corner yet. You need fixed, bottom and left.": "en072",
+    "The star is in place, but the Moon didn’t move. The top and left offsets only work with position: give the Moon relative.": "en073",
+    "The Moon should move from its own place, and relative does that.": "en074",
+    "The star isn’t in the corner yet. It needs to leave the flow and go to the corner: absolute.": "en075",
+    "The rocket is still on the pad. An offset only works with position: add relative.": "en076",
+    "The badge is still in the line of text. Take it out of the flow: position absolute.": "en077",
+    "At what height should the badge stand? Write top or bottom.": "en078",
+    "Which side should the badge be on? Write left or right.": "en079",
+    "The badge has no background. Write a color for background-color.": "en080",
+    "The badge flew out of the card. Use smaller offsets, for example ten pixels.": "en081",
+    "Hello!": "en082",
+    "Great! Now one more small task: the same thing for another case.": "en083",
+    "Great, now you’ve really got it! Let’s move on.": "en084",
+    "See the red planet with your own eyes!": "en085",
+    "Day 1. The rocket flew into space. From the window, Earth looks tiny.": "en086",
+    "Day 2. We landed on the Moon. Everything is so light here, I jump really high!": "en087",
+    "Day 3. We’re heading to Mars. The red planet keeps getting bigger.": "en088",
+    "Day 4. I counted the stars, but lost count. There are so many!": "en089",
+    "Day 5. Time to go home. I’ll write more tomorrow!": "en090",
+    "We’ll fly over the rings!": "en091",
+    "Well done!": "en092",
+    "Everything in the window lives inside body.": "en093",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

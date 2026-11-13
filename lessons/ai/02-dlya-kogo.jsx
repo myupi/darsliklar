@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8081,15 +7632,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -16553,3 +16097,1379 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .a1-fin .a1-hw-t { font-size: 12px; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 225, ru 228, en 226; всего знаков 62552. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! O'tgan darsda to'g'ri [English pronunciation] prompt [O'zbekcha tallaffuz] yozishni o'rgandik: nima va nega. Mana, maktab futbol turniri uchun promptim. Bu turnir birinchi va ikkinchi sinf bolalari uchun. Yuborishni bosing, qani, sayt qanday chiqarkin?", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'yinchilar ro'yxatdan o'tsin", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda sun'iy intellekt yaratgan sayt chiqadi", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, sayt to'g'ri chiqdi: turnir ham, ro'yxatdan o'tish ham bor. Lekin saytni birinchi sinf o'quvchisi ochdi va zerikdi! Unga harflar mayda, so'zlar qiyin, qiziqarli narsa yo'q.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Menimcha, yaxshi sayt hammaga birdek yoqishi kerak: kattalarga ham, bolalarga ham. Men uni hamma uchun qildim. Siz nima deb o'ylaysiz? Bugun uchinchi savolni o'rganamiz: sayt kim uchun?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoriga, saytdagi harflarga, ranglarga va tepadagi yozuvga qarang.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun? bu saytni kimlar ko'rishi: yoshi va kimligi. Sun'iy intellekt shunga qarab dizayn va so'zlarni tanlaydi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bitta voqeani do'stingizga bir xil, buvingizga boshqacha aytib berasiz. Sayt ham xuddi shunday.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi savol: sayt kim uchun? Buni auditoriya deyishadi, ya'ni saytni ko'radigan odamlar degani. Promptga yangi qator qo'shamiz. Hozircha u bo'sh, shuning uchun sun'iy intellekt saytni hech kimga moslamadi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: yetti-sakkiz yoshli bolalar. Qarang: harflar katta, ranglar yorqin, tugma o'yinchoqdek. Sun'iy intellekt saytni kichkintoylarga moslab qayta yasadi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi xuddi shu sayt o'yinchilarning ota-onalari uchun. Ranglar sokin bo'ldi va yangi bo'lim chiqdi: xavfsizlik, narx va jadval. Ota-onalar aynan shuni so'raydi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buvi va bobolar uchun esa harflar juda katta, ortiqcha narsa yo'q, telefon raqami ko'rinib turibdi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, nima va nega bir xil bo'lsa ham, Kim uchun? o'zgarsa, sayt ham o'zgaradi: ko'rinishi, so'zlari va bo'limlari.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Robot to'garagi sayt so'radi. Nima? va Nega? tayyor. Buyurtmani o'qing va Kim uchun? qatoriga sayt kimlar uchunligini yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar to'garakka yozilsin", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmaga qarang: to'garak kichkintoylarni yoki kattalarni emas, o'n ikki yoshdan o'n to'rt yoshgacha bo'lgan o'quvchilarni kutyapti.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buyurtmani qayta o'qing: unda kimlar yozilgan?", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yoshini va kimligini yozing: bu sun'iy intellektga eng ko'p yordam beradi.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namunadagidek yozing va Yuborishni bosing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sayt o'smirlarga moslashdi: zamonaviy, qorong'i ranglar, tepada yoshi yozilgan. Sun'iy intellekt kim uchunligini bildi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Ikki Kim uchun? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi birida kimligi aniq: yoshi, kimligi yoki nimani yaxshi ko'rishi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma, odamlar, mijozlar juda umumiy so'zlar.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma uchun degani hech kim uchun degani. Yoshi yozilgani yaxshiroq.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisida kimligi ham, nimani yaxshi ko'rishi ham bor.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi aniq: kimlar va nima izlashi aytilgan.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Umumiy so'zni aniq auditoriyadan ajratasiz.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoriga va saytdagi birinchi kartochkalarga qarang.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiziqish, ya'ni auditoriya yaxshi ko'radigan narsa, saytda kartochka bo'lib chiqadi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stingizga sovg'a tanlasangiz, u nimani yaxshi ko'rishini o'ylaysiz. Sayt ham shunday tanlanadi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchunligini yozish bu yarim ish. Yana bir sir bor: auditoriya nimani yaxshi ko'radi? Qarang, hozir faqat yoshi yozilgan.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar ko'rgazmaga kelsin", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shamiz: komikslarni yaxshi ko'radi. Saytda darhol Komikslar kartochkasi chiqdi!", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana sarguzashtlarni qo'shamiz. Mana, Sarguzashtlar ham paydo bo'ldi. Sun'iy intellekt ular yaxshi ko'rgan narsani saytga qo'yadi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Agar ular o'yin va sovg'alarni yaxshi ko'rsa-chi? Qarang, kartochkalar ham boshqacha bo'ldi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, Kim uchun? qatoriga yoshidan tashqari ular nimani yaxshi ko'rishini ham yozing. Sun'iy intellekt saytni ularga yanada qiziqarli qiladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Maktabda hayvonlar bayrami bo'ladi. Buyurtmani o'qing va Kim uchun? qatoriga kimlar uchunligini va ular nimani yaxshi ko'rishini yozing.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar bayramga kelsin", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada yoshi bor: sakkiz yoshdan o'n yoshgacha bo'lgan bolalar.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kimligi bor. Endi ular nimani yaxshi ko'rishini qo'shing: buyurtmada yozilgan.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada ikki narsa bor: kimlar va ular nimani yaxshi ko'radi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin yoshini va kimligini, keyin ular nimani yaxshi ko'rishini yozing.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Saytda Hayvonlar va O'yinlar kartochkalari chiqdi, harflar katta va yorqin. Bu aynan bolalar uchun sayt!", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi uchta savolni birga ishlatamiz. Men gap aytaman, siz u promptning qaysi qatoriga tushishini tanlang: Nima, Nega yoki Kim uchun?", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nimani aytyapti: narsanimi, maqsadnimi yoki odamlarnimi?", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt nima ekani bu Nima. Kim nima qilsin bu Nega. Kimlar va yoshi bu Kim uchun.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm kursi sayti", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu nima yaratishimiz: rasm kursi sayti.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 7–9 yoshli bolalar", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu kimlar uchunligi: yoshi bilan.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar pitsa buyurtma qilsin", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu maqsad: sayt nima qilishi.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] futbolni yaxshi ko'radigan o'smirlar", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu auditoriya va uning qiziqishi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar kursga yozilsin", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu maqsad: kim nima qilsin.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kitob do'koni sayti", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu aniq narsa: kitob do'koni sayti.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Uchta savolni bir-biridan ajratasiz.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yangi buyurtma! Mahalla oshxonasi sayt so'radi. Buyurtmani diqqat bilan o'qing: sayt kimlar uchun?", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar ovqat buyurtma qilsin", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buyurtmaga qarang: ovqatni ko'pincha kimlar buyurtma qiladi?", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada ovqatni kimlar buyurtma qilishi yozilgan.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bular buvi va bobolar, ya'ni keksalar.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Harflar juda katta, telefon raqami ko'rinib turibdi. Buvi va bobolarga qulay sayt chiqdi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoriga, saytning tepasiga va pastki bo'limga qarang.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki auditoriya, ya'ni saytni ikki xil odam ko'radi: biri tanlaydi, boshqasi qaror qiladi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinchoq do'konida bolalar o'yinchoq tanlaydi, ota-onalar esa narxga qaraydi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ba'zan saytni ikki xil odam ko'radi. Yozgi lagerni bolalar tanlaydi, lekin pulni ota-onalar to'laydi. Qarang, hozir sayt faqat bolalar uchun.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar lagerga yozilsin", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi faqat ota-onalar uchun yozamiz. Sayt sokin bo'ldi, xavfsizlik va narx chiqdi, lekin bolalarga endi qiziq emas.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkalasini yozamiz: bolalar va ularning ota-onalari. Mana: tepasi bolalarga yorqin, pastida ota-onalar uchun bo'lim. Ikkalasi ham xursand!", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, saytni ikki xil odam ko'rsa, ikkalasini ham yozing: oldin asosiysini, keyin ikkinchisini.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Suzish kursi sayt so'radi. Buyurtmani o'qing: bu yerda ikki xil odam bor. Ikkalasini Kim uchun? qatoriga yozing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar kursga yozilsin", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalar bor, lekin ularni kim yozdiradi? Ota-onalarni ham qo'shing.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ota-onalar bor. Kurs esa kimlar uchun? Bolalarni ham yozing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buyurtmaga qarang: kim suzadi va kim yozdiradi?", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buyurtmada kimlar bor: kim suzadi va kim yozdiradi?", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalar va ota-onalar: ikkalasini va so'zi bilan yozing.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Tepasi bolalarga yorqin, pastida ota-onalar uchun xavfsizlik va narx. Ikkalasiga ham mos sayt.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men raqs to'garagi uchun Kim uchun? ni yozmadim. Qarang, sun'iy intellekt o'zi taxmin qildi: kattalar uchun! Qora va oltin rangli, jiddiy sayt chiqdi. Ustoz esa kichkintoylar keladi deydi. Kim uchun? qatorini yozing.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar to'garakka yozilsin", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu yana kattalar uchun. Ustoz kimlar keladi dedi?", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmaga qarang: to'garakka besh yoshdan yetti yoshgacha bo'lgan kichkintoylar keladi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sun'iy intellekt kimni taxmin qildi? Ustoz esa kimni aytdi?", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ustoz kichkintoylarni va ularning yoshini aytdi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Qora va oltin rang ketdi, sayt yorqin va quvnoq bo'ldi. Kim uchunligini aytsangiz, sun'iy intellekt taxmin qilmaydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi detektiv bo'lamiz. Saytga qarab topamiz: u kim uchun yaratilgan va promptda nima yozilgan edi?", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflarga, ranglarga va qo'shimcha bo'limlarga qarang.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalar uchun yorqin va katta. Ota-onalar uchun xavfsizlik va narx. Keksalar uchun juda katta harflar va telefon.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar katta, ranglar yorqin, tugma o'yinchoqdek: bu bolalar uchun.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar juda katta, telefon raqami bor: bu keksalar uchun.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sokin ranglar, xavfsizlik, narx va jadval: bu ota-onalar uchun.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytda Komikslar kartochkasi bor, demak promptda komikslar yozilgan. Bu C.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Saytga qarab uning auditoriyasini topa olasiz.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men server sayti uchun Kim uchun? qatoriga hamma uchun deb yozdim. Sayt hech kimga moslanmadi, oddiy chiqdi. Rahbar esa kimlar o'ynashini aytdi. Mening qatorimni tuzating.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'yinchilar serverga qo'shilsin", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma uchun qoldi. Rahbar kimlar o'ynashini aytdi: buyurtmani o'qing.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yoshi bor. Ular nimani yaxshi ko'radi? Buni ham qo'shing.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmaga qarang: serverda o'n yoshdan o'n uch yoshgacha bo'lgan o'yinchilar o'ynaydi.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rahbar ikki narsani aytdi: o'yinchilarning yoshi va ular nimani yaxshi ko'rishi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma uchun ni o'chiring va yoshini, keyin qiziqishini yozing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sayt o'smirlarga moslashdi va Qurilish kartochkasi chiqdi. Endi u aniq o'yinchilar uchun.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi uchala qatorni o'zingiz yozasiz. Maktabda robotlar ko'rgazmasi bo'ladi. Buyurtmani o'qing va Nima?, Nega? va Kim uchun? ni yozing.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima? qatoriga yozing: qanday sayt yaratamiz?", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt robotlar haqida bo'lishi kerak: buyurtmani o'qing.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat mavzu. Robotlarning nimasi: ko'rgazmami, do'konmi? Aniq yozing.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Nega? qatorini yozing: sayt nima qilishi kerak?", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu istak, maqsad emas. Sayt mehmon uchun nima qilsin?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada maqsad bor: bolalar ko'rgazmaga kelsin.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada kimlar kelishi yozilgan: to'qqiz yoshdan o'n bir yoshgacha bo'lgan bolalar.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uchala javob bor: nima, nega va kim uchun.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nima: robotlar ko'rgazmasi sayti. Nega: bolalar kelsin. Kim uchun: yoshi va qiziqishi.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Uchala qatorni o'zingiz yozdingiz, sayt esa aynan shu bolalar uchun chiqdi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingiz! O'zingiz yaxshi ko'rgan narsa uchun sayt o'ylang: klub, o'yin serveri, do'kon yoki bayram. Uchala qatorni yozing va kim uchun ekanini aniq ayting.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima? qatoriga yozing: qanday sayt yaratasiz?", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima yaratasiz? Ular nima qilsin? Sayt kim uchun?", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun? qatoriga yoshini va ular nimani yaxshi ko'rishini yozing.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Bu sizning uch qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: auditoriya, yosh yoki qiziqish?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: sun'iy intellekt saytni promptda aytilgan odamlarga moslaydi.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaxshi sayt hammaga birdek yoqadi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida sayt kimga moslansa, o'shanga yoqadi. Hamma uchun degani hech kim uchun.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun? o'zgarsa, saytning ko'rinishi ham o'zgaradi.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: harflar, ranglar va so'zlar auditoriyaga moslanadi.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun? ga odamlar deb yozish yetarli.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida yoshini, kimligini va nimani yaxshi ko'rishini yozish kerak.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Auditoriya nimani yaxshi ko'rishini yozsak, sun'iy intellekt saytga shuni qo'yadi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: komikslar desangiz, komikslar kartochkasi chiqadi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytni ikki xil odam ko'rsa, faqat bittasini yozish kerak.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida ikkalasini yozing: masalan, bolalar va ularning ota-onalari.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz auditoriyani to'g'ri o'ylaysiz.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Men yaxshi sayt hammaga yoqadi deb o'ylagandim. Lekin bolalarga bitta narsa, ota-onalarga boshqa, buvi va bobolarga esa uchinchisi kerak. Hamma uchun qilingan sayt hech kimga to'liq yoqmaydi. Men adashibman.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning uch qatorli promptingiz va saytingiz.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nima? bu aniq narsa, Nega? esa maqsad.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun? bu auditoriya, ya'ni saytni ko'radigan odamlar degani: yoshi, kimligi va nimani yaxshi ko'rishi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda to'rtinchi savol: saytda nima bo'ladi? Ko'rishguncha!", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] maqsad: sayt nima qilsin", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun?", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Birinchi sinf o'quvchisi, 7 yosh: Harflar mayda, so'zlar qiyin. Zerikarli! O'yin qani?", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun yaratamiz?", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Robot to'garagi yangi a'zolar qidiryapti: 12–14 yoshli maktab o'quvchilari.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt kim uchun?", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi biri aniqroq?", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Kim uchun? aniqroq?", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nimani yaxshi ko'radi?", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maktabda Hayvonlar bayrami bo'ladi. U 8–10 yoshli bolalar uchun, ular hayvonlarni va o'yinlarni yaxshi ko'radi.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] kim uchun va nimani yaxshi ko'radi?", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qator?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qaysi qatorga?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mahalla oshxonasi sayt so'rayapti. Ovqatni ko'pincha mahalladagi buvi va bobolar buyurtma qiladi.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suzish kursi 6–9 yoshli bolalarni kutadi. Bolalarni ota-onalari yozdiradi, ular xavfsizlik va narxni so'raydi.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] kimlar uchun?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqs to'garagi ustozi: Bizga 5–7 yoshli kichkintoylar keladi.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu sayt kim uchun?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Kim uchun? shu saytni yaratdi?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Server rahbari: Serverimizda 10–13 yoshli o'yinchilar o'ynaydi, ular qurilishni yaxshi ko'radi.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maktabda robotlar ko'rgazmasi bo'ladi. Unga 9–11 yoshli bolalar kelsin, ular o'yinlarni yaxshi ko'radi.", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima yaratamiz?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt nima qilishi kerak?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima yaratasiz?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozyapti…", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Saytda nima bo'ladi?", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun? qatoriga yozing: saytni kimlar ko'radi?", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Hamma uchun desangiz, sun'iy intellekt saytni hech kimga moslamaydi. Buyurtmaga qarang: aynan kimlar?", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt bu so'zdan kimligini tushunmadi. Yoshini yoki kimligini yozing: bolalar, o'quvchilar, ota-onalar.", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng kuchli jamoalar bir maydonda!", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi pishgan, issiq va mazali.", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiziqarli mashg'ulotlar va do'stona jamoa.", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi bir joyda: qulay va tez.", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammani kutamiz!", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlaringiz bilan birga o'ynang!", required: true },
+    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Noldan boshlab o'rganing.", required: true },
+    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unutilmas yoz shu yerda boshlanadi!", required: true },
+    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir jamoa, bir maqsad!", required: true },
+    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bilasizmi?", required: true },
+    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tarix, qoidalar va qiziqarli faktlar.", required: true },
+    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz bilan hammasi oson.", required: true },
+    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", required: true },
+    { id: "uz200", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savollaringiz bormi? Bizga qo'ng'iroq qiling.", required: true },
+    { id: "uz201", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir necha bosishda buyurtma bering!", required: true },
+    { id: "uz202", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sizni kutamiz! Manzil va vaqt quyida.", required: true },
+    { id: "uz203", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon, qayerda va qanday: hammasi shu yerda.", required: true },
+    { id: "uz204", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Farzandingiz uchun xavfsiz, foydali va qulay.", required: true },
+    { id: "uz205", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.", required: true },
+    { id: "uz206", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dars uchun tayyor reja va materiallar.", required: true },
+    { id: "uz207", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Professional yondashuv va yuqori sifat.", required: true },
+    { id: "uz208", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Savolingiz bormi?", required: true },
+    { id: "uz209", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.", required: true },
+    { id: "uz210", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda zo'r! Yana kelamiz.", required: true },
+    { id: "uz211", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tez va mazali.", required: true },
+    { id: "uz212", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalarim juda xursand.", required: true },
+    { id: "uz213", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlarimga ham aytdim.", required: true },
+    { id: "uz214", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qancha turadi? Narxlar bo'limida.", required: true },
+    { id: "uz215", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qachon ochiq? Har kuni.", required: true },
+    { id: "uz216", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qanday yozilaman? Formani to'ldiring.", required: true },
+    { id: "uz217", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.", required: true },
+    { id: "uz218", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ✅ Rahmat!", required: true },
+    { id: "uz219", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javob: hammasi narxlar bo'limida yozilgan.", required: true },
+    { id: "uz220", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 🎁 Obuna bo'ling!", required: true },
+    { id: "uz221", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] −50% CHEGIRMA!", required: true },
+    { id: "uz222", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ichida nima?", required: true },
+    { id: "uz223", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rinishi?", required: true },
+    { id: "uz224", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday ishlaydi?", required: true },
+    { id: "uz225", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidalar?", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! На прошлом уроке мы научились писать правильный промпт: что и зачем. Вот мой промпт для школьного футбольного турнира. Турнир, для первого и второго класса. Нажми Отправить, посмотрим, какой выйдет сайт!", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы игроки записывались", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь появится сайт, который сделает ИИ", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, сайт получился правильный: есть и турнир, и запись. Но его открыл первоклассник, и заскучал! Буквы для него мелкие, слова сложные, ничего интересного.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] По-моему, хороший сайт должен нравиться всем одинаково: и взрослым, и детям. Я сделал его для всех. А ты как думаешь? Сегодня разберём третий вопрос: для кого сайт?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку промпта, на буквы, цвета и надпись вверху сайта.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для кого?, это кто будет смотреть сайт: возраст и кто они. По этому ИИ выбирает дизайн и слова.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одну и ту же историю другу ты расскажешь так, а бабушке, иначе. С сайтом так же.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третий вопрос: для кого сайт? Это называют аудиторией, то есть людьми, которые будут смотреть сайт. Добавим в промпт новую строку. Пока она пустая, поэтому ИИ ни под кого сайт не подстроил.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: дети семи-восьми лет. Смотри: буквы крупные, цвета яркие, кнопка как игрушка. ИИ переделал сайт под малышей.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь тот же сайт, для родителей игроков. Цвета стали спокойными, и появился новый раздел: безопасность, цены и расписание. Родители спрашивают именно об этом.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А для бабушек и дедушек, очень крупные буквы, ничего лишнего и сразу виден номер телефона.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, даже если Что? и Зачем? те же, стоит поменять Для кого?, и меняется сайт: вид, слова и разделы.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Кружок робототехники попросил сайт. Что? и Зачем? готовы. Прочитай заказ и напиши в строку Для кого?, для кого этот сайт.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались в кружок", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри в заказ: кружок ждёт не малышей и не взрослых, а школьников от двенадцати до четырнадцати лет.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Перечитай заказ: кто там назван?", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши возраст и кто они: это больше всего поможет ИИ.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши как в образце и нажми Отправить.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Сайт подстроился под подростков: современный, тёмные цвета, вверху указан возраст. ИИ понял, для кого он.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Какое из двух Для кого? больше поможет ИИ?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где понятно, кто это: возраст, кто они или что любят?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все, люди, клиенты, слишком общие слова.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для всех, значит ни для кого. Лучше, где указан возраст.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первом есть и кто они, и что любят.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Второй точный: сказано, кто и что ищет.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отличаешь общее слово от точной аудитории.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку промпта и на первые карточки сайта.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Интерес, то, что любит аудитория,, появляется на сайте карточкой.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбирая другу подарок, ты думаешь, что он любит. Сайт выбирают так же.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написать, для кого сайт,, это полдела. Есть ещё секрет: что любит аудитория? Смотри, сейчас указан только возраст.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети пришли на выставку", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим: любят комиксы. На сайте сразу появилась карточка Комиксы!", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим ещё приключения. Вот появились и Приключения. ИИ ставит на сайт то, что они любят.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если они любят игры и подарки? Смотри, и карточки стали другими.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в строку Для кого? пиши не только возраст, но и что они любят. ИИ сделает сайт для них ещё интереснее.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. В школе будет праздник животных. Прочитай заказ и напиши в строку Для кого?, для кого он и что они любят.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети пришли на праздник", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе указан возраст: дети от восьми до десяти лет.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кто они, есть. Теперь добавь, что они любят: это есть в заказе.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе две вещи: кто они и что любят.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала возраст и кто они, потом, что они любят.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! На сайте появились карточки Животные и Игры, буквы крупные и яркие. Это сайт именно для детей!", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь используем все три вопроса. Я говорю фразу, а ты выбираешь, в какую строку промпта она попадает: Что, Зачем или Для кого?", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о вещи, о цели или о людях?", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что за сайт, это Что?. Кто что должен сделать, Зачем?. Кто они и сколько им лет, Для кого?.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт курса рисования", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это что мы создаём: сайт курса рисования.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] дети 7–9 лет", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это для кого: с возрастом.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали пиццу", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это цель: что делает сайт.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] подростки, которые любят футбол", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это аудитория и её интерес.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы ученики записывались на курс", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это цель: кто что должен сделать.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт книжного магазина", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это конкретная вещь: сайт книжного магазина.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты различаешь все три вопроса.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Новый заказ! Столовая нашего района попросила сайт. Внимательно прочитай заказ: для кого этот сайт?", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали еду", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в заказ: кто чаще всего заказывает еду?", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе написано, кто заказывает еду.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это бабушки и дедушки, то есть старшее поколение.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Буквы очень крупные, номер телефона сразу виден. Вышел удобный сайт для бабушек и дедушек.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку промпта, на верх сайта и на нижний раздел.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две аудитории, это когда сайт смотрят двое разных: один выбирает, другой решает.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В магазине игрушек дети выбирают игрушку, а родители смотрят на цену.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Бывает, что сайт смотрят двое разных людей. Летний лагерь выбирают дети, а платят родители. Смотри, сейчас сайт только для детей.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы детей записывали в лагерь", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напишем только родителей. Сайт стал спокойным, появились безопасность и цены, но детям уже неинтересно.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем обоих: дети и их родители. Вот: верх яркий для детей, внизу, раздел для родителей. Довольны все!", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, если сайт смотрят двое разных, пиши обоих: сначала главного, потом второго.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Курс плавания попросил сайт. Прочитай заказ: тут двое разных людей. Напиши обоих в строку Для кого?.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы детей записывали на курс", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети есть, а кто их записывает? Добавь и родителей.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Родители есть. А курс для кого? Напиши и детей.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в заказ: кто плавает и кто записывает?", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кто в заказе: кто плавает и кто записывает?", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети и родители: напиши обоих через и.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Верх яркий для детей, внизу для родителей, безопасность и цены. Сайт подходит обоим.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я не написал Для кого? для танцевального кружка. Смотри, ИИ сам догадался: для взрослых! Вышел строгий сайт в чёрном с золотом. А руководитель говорит, что приходят малыши. Напиши строку Для кого?.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в кружок", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это снова для взрослых. Кто, по словам руководителя, приходит?", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри в заказ: в кружок приходят малыши от пяти до семи лет.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кого додумал ИИ? А кого назвал руководитель?", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Руководитель назвал малышей и их возраст.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Чёрное с золотом ушло, сайт стал ярким и весёлым. Скажи, для кого сайт,, и ИИ не будет гадать.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь побудем детективами. По сайту найдём: для кого он сделан и что было написано в промпте?", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на буквы, цвета и дополнительные разделы.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Детям, ярко и крупно. Родителям, безопасность и цены. Старшим, очень крупные буквы и телефон.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Буквы крупные, цвета яркие, кнопка как игрушка: это для детей.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень крупные буквы и номер телефона: это для старшего поколения.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спокойные цвета, безопасность, цены и расписание: это для родителей.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На сайте есть карточка Комиксы, значит, в промпте написаны комиксы. Это C.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты находишь аудиторию сайта по его виду.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал для сайта сервера в строку Для кого? для всех. Сайт ни под кого не подстроился, вышел обычным. А админ сказал, кто играет. Исправь мою строку.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы игроки вступали на сервер", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для всех осталось. Админ сказал, кто играет: прочитай заказ.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Возраст есть. А что они любят? Добавь и это.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри в заказ: на сервере играют ребята от десяти до тринадцати лет.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Админ сказал две вещи: возраст игроков и что они любят.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри для всех и напиши возраст, а потом интерес.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Сайт подстроился под подростков, и появилась карточка Стройка. Теперь он точно для игроков.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь все три строки пишешь ты. В школе будет выставка роботов. Прочитай заказ и напиши Что?, Зачем? и Для кого?.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Что?: какой сайт создаём?", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт должен быть про роботов: прочитай заказ.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только тема. Что именно про роботов: выставка, магазин? Напиши точно.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Зачем?: что должен сделать сайт?", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это пожелание, а не цель. Что сайт должен сделать для гостя?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе есть цель: чтобы дети пришли на выставку.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Для кого?: кто будет смотреть сайт?", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе сказано, кто придёт: дети от девяти до одиннадцати лет.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе есть все три ответа: что, зачем и для кого.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что: сайт выставки роботов. Зачем: чтобы дети пришли. Для кого: возраст и интерес.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Все три строки написаны тобой, и сайт вышел именно для этих детей.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь твой сайт! Придумай сайт для того, что тебе нравится: клуб, игровой сервер, магазин или праздник. Напиши все три строки и точно скажи, для кого он.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Что?: какой сайт создаёшь?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши цель: чтобы записывались, заказывали или приходили?", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что создаёшь? Что они должны сделать? Для кого сайт?", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В строку Для кого? напиши возраст и что они любят.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Это твой промпт из трёх строк. Дома отправишь его настоящему ИИ.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: об аудитории, возрасте или интересах?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: ИИ подстраивает сайт под людей, названных в промпте.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хороший сайт нравится всем одинаково.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле сайт нравится тем, под кого он сделан. Для всех, значит ни для кого.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если поменять Для кого?, меняется и вид сайта.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: буквы, цвета и слова подстраиваются под аудиторию.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Для кого? достаточно написать люди.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле нужно написать возраст, кто они и что любят.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать, что любит аудитория, ИИ добавит это на сайт.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: напишешь комиксы, появится карточка комиксов.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если сайт смотрят двое разных, писать нужно только одного.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле пиши обоих: например, дети и их родители.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты правильно думаешь об аудитории.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Я думал, что хороший сайт нравится всем. Но детям нужно одно, родителям, другое, а бабушкам и дедушкам, третье. Сайт для всех никому не подходит по-настоящему. Я ошибся.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой промпт из трёх строк и твой сайт.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что?, конкретная вещь, Зачем?, цель.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для кого?, это аудитория, то есть люди, которые будут смотреть сайт: возраст, кто они и что любят.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, четвёртый вопрос: что будет на сайте? До встречи!", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] цель: что сделает сайт", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого?", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Первоклассник, 7 лет: Буквы мелкие, слова сложные. Скучно! А где игра?", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого создаём?", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кружок робототехники ищет новых ребят: школьников 12–14 лет.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого сайт?", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Для кого?", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что точнее?", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Для кого? точнее?", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что любят?", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В школе будет Праздник животных. Он для детей 8–10 лет, они любят животных и игры.", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого и что они любят?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая строка?", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какую строку?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Столовая нашего района просит сайт. Еду чаще всего заказывают бабушки и дедушки района.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Курс плавания ждёт детей 6–9 лет. Записывают их родители, они спрашивают о безопасности и ценах.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Руководитель танцевального кружка: К нам приходят малыши 5–7 лет.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого этот сайт?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Для кого? дало этот сайт?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Админ сервера: У нас играют ребята 10–13 лет, они любят строить.", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В школе будет выставка роботов. Пусть на неё придут дети 9–11 лет, они любят игры.", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что создаём?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что должен сделать сайт?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что создаёшь?", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отправь свой промпт настоящему ИИ и сделай свой сайт.", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишет…", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что должно быть на сайте?", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши в строку Для кого?: кто будет смотреть сайт?", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Если написать для всех, ИИ ни под кого сайт не подстроит. Посмотри в заказ: кто именно?", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не понял по этому слову, кто это. Напиши возраст или кто они: дети, школьники, родители.", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сильнейшие команды на одном поле!", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свежее, горячее и вкусное.", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Интересные занятия и дружная команда.", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё в одном месте: удобно и быстро.", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём всех!", required: true },
+    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Играй вместе с друзьями!", required: true },
+    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Учись с нуля.", required: true },
+    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Незабываемое лето начинается здесь!", required: true },
+    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна команда, одна цель!", required: true },
+    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А ты знал?", required: true },
+    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] История, правила и интересные факты.", required: true },
+    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С нами всё просто.", required: true },
+    { id: "ru201", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запишись прямо сейчас: мест немного!", required: true },
+    { id: "ru202", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы? Позвони нам.", required: true },
+    { id: "ru203", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закажи в пару нажатий!", required: true },
+    { id: "ru204", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём тебя! Адрес и время ниже.", required: true },
+    { id: "ru205", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда, где и как: всё здесь.", required: true },
+    { id: "ru206", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Безопасно, полезно и удобно для вашего ребёнка.", required: true },
+    { id: "ru207", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё просто и понятно. Есть вопросы, позвоните.", required: true },
+    { id: "ru208", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готовый план и материалы для урока.", required: true },
+    { id: "ru209", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Профессиональный подход и высокое качество.", required: true },
+    { id: "ru210", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы?", required: true },
+    { id: "ru211", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 📞 +998 90 123 45 67, позвоните, всё объясним.", required: true },
+    { id: "ru212", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень круто! Придём ещё.", required: true },
+    { id: "ru213", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё быстро и вкусно.", required: true },
+    { id: "ru214", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети очень довольны.", required: true },
+    { id: "ru215", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рассказал и друзьям.", required: true },
+    { id: "ru216", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Сколько стоит? Смотри в ценах.", required: true },
+    { id: "ru217", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Когда открыто? Каждый день.", required: true },
+    { id: "ru218", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Как записаться? Заполни форму.", required: true },
+    { id: "ru219", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы работаем с 2015 года и стараемся порадовать каждого гостя.", required: true },
+    { id: "ru220", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ✅ Спасибо!", required: true },
+    { id: "ru221", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ответ: всё написано в разделе цен.", required: true },
+    { id: "ru222", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 🎁 Подпишись!", required: true },
+    { id: "ru223", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] −50% СКИДКА!", required: true },
+    { id: "ru224", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем?", required: true },
+    { id: "ru225", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что внутри?", required: true },
+    { id: "ru226", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как выглядит?", required: true },
+    { id: "ru227", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как ведёт себя?", required: true },
+    { id: "ru228", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие правила?", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Last lesson we learned to write a proper prompt: what and why. Here’s my prompt for the school football tournament. The tournament is for first and second graders. Tap Send and let’s see the site!", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get players to sign up", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site the AI makes will appear here", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, the site came out right: there’s the tournament and the sign-up. But a first grader opened it and got bored! The letters are tiny, the words are hard, nothing fun.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] I think a good site should please everyone equally: adults and kids. I made it for everyone. What do you think? Today we learn the third question: who is the site for?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the prompt line and at the site’s letters, colours and the label at the top.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Who for? is who will look at the site: their age and who they are. The AI picks the design and words from it.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’d tell the same story one way to a friend and another way to your grandma. Sites work the same way.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third question: who is the site for? We call it the audience, that is, the people who will look at the site. Let’s add a new line to the prompt. It’s empty for now, so the AI didn’t tailor the site to anyone.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: kids aged seven to eight. Look: big letters, bright colours, a button like a toy. The AI remade the site for little kids.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the same site for the players’ parents. The colours calmed down and a new section appeared: safety, prices and the schedule. That’s exactly what parents ask about.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And for grandparents: very big letters, nothing extra, and the phone number right there.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So even with the same What? and Why?, change Who for? and the site changes: its look, words and sections.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The robotics club asked for a site. What? and Why? are ready. Read the request and write in the Who for? line who the site is for.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the club", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the request: the club isn’t waiting for little kids or adults, but for students aged twelve to fourteen.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the request again: who does it name?", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write their age and who they are: that helps the AI most.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write it like the example and tap Send.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The site adapted to teens: modern, dark colours, the age at the top. The AI knew who it was for.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. Which of the two Who for? lines helps the AI more?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which one makes it clear who they are: their age, who they are or what they love?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everyone, people, customers are too general.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For everyone means for no one. The one with an age is better.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first one says who they are and what they love.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second one is precise: it says who and what they’re looking for.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tell a general word from a precise audience.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the prompt line and at the site’s first cards.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An interest, that is, something the audience loves, shows up on the site as a card.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you choose a gift for a friend, you think about what they love. A site is chosen the same way.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Writing who the site is for is only half the job. There’s one more secret: what does the audience love? Look, right now only the age is written.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to come to the fair", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We add: they love comics. A Comics card appeared on the site right away!", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s add adventures too. There, Adventures appeared. The AI puts what they love on the site.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And what if they love games and prizes? Look, the cards changed too.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So in the Who for? line write not only the age but also what they love. The AI will make the site even more fun for them.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The school is holding an animal festival. Read the request and write in the Who for? line who it’s for and what they love.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to come to the festival", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request gives an age: kids from eight to ten.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’ve got who they are. Now add what they love: it’s in the request.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has two things: who they are and what they love.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First their age and who they are, then what they love.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Animals and Games cards appeared, with big bright letters. This is a site made for kids!", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s use all three questions. I say a phrase, and you choose which prompt line it goes in: What, Why or Who for?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What is the phrase about: a thing, a goal or people?", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What the site is: What?. Who should do what: Why?. Who they are and their age: Who for?.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A drawing course site", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s what we’re making: a drawing course site.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] kids aged 7–9", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s who it’s for, with an age.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order pizza", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the goal: what the site does.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] teens who love football", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the audience and its interest.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the course", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s the goal: who should do what.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A bookshop site", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a specific thing: a bookshop site.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can tell all three questions apart.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] A new request! Our neighbourhood canteen asked for a site. Read the request carefully: who is the site for?", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order food", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Check the request: who orders the food most often?", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request says who orders the food.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] They’re grandparents, that is, older people.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Very big letters and the phone number right there. A site that’s easy for grandparents.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the prompt line, the top of the site and the bottom section.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two audiences means two different kinds of people look at the site: one chooses, the other decides.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In a toy shop, kids choose the toy and parents look at the price.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sometimes two different kinds of people look at a site. Kids choose a summer camp, but parents pay. Look, right now the site is only for kids.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids signed up for camp", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we write only parents. The site calmed down, safety and prices appeared, but it’s no fun for kids any more.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write both: kids and their parents. There: a bright top for kids, a section for parents below. Everyone’s happy!", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So if two kinds of people look at the site, write both: the main one first, then the second.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The swimming course asked for a site. Read the request: there are two kinds of people here. Write both in the Who for? line.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids signed up for the course", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’ve got the kids, but who signs them up? Add the parents too.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’ve got the parents. But who is the course for? Write the kids too.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Check the request: who swims and who signs them up?", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Who’s in the request: who swims and who signs them up?", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Kids and parents: write both, joined with and.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! A bright top for kids, safety and prices for parents below. The site suits both.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I didn’t write Who for? for the dance club. Look, the AI guessed by itself: for adults! It made a serious black-and-gold site. But the teacher says little ones come. Write the Who for? line.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the club", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That’s for adults again. Who did the teacher say comes?", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the request: little ones from five to seven come to the club.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Who did the AI guess? And who did the teacher name?", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The teacher named little ones and their age.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The black and gold are gone; the site is bright and cheerful. Say who it’s for and the AI won’t guess.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s be detectives. From the site we’ll work out who it was made for and what the prompt said.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the letters, the colours and the extra sections.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For kids: bright and big. For parents: safety and prices. For older people: very big letters and a phone number.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Big letters, bright colours, a toy-like button: this is for kids.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Very big letters and a phone number: this is for older people.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Calm colours, safety, prices and a schedule: this is for parents.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site has a Comics card, so the prompt mentioned comics. That’s C.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can work out a site’s audience just by looking at it.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, for the server site I wrote for everyone in the Who for? line. The site didn’t adapt to anyone and came out plain. But the admin said who plays. Fix my line.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get players to join the server", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For everyone is still there. The admin said who plays: read the request.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You’ve got the age. What do they love? Add that too.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the request: the players are aged ten to thirteen.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The admin said two things: the players’ age and what they love.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Delete for everyone and write the age, then the interest.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The site adapted to teens and a Building card appeared. Now it’s really for the players.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you write all three lines. The school is holding a robot fair. Read the request and write What?, Why? and Who for?.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the What? line: what site are we making?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site should be about robots: read the request.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a topic. What exactly about robots: a fair, a shop? Be specific.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Why? line: what should the site do?", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That’s a wish, not a goal. What should the site do for a visitor?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has a goal: kids should come to the fair.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Who for? line: who will look at the site?", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request says who should come: kids aged nine to eleven.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has all three answers: what, why and who for.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What: a robot fair site. Why: kids should come. Who for: age and interest.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! You wrote all three lines, and the site came out just right for these kids.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now your own site! Think of a site for something you love: a club, a game server, a shop or a party. Write all three lines and say exactly who it’s for.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the What? line: what site are you making?", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a topic. Write a specific thing: a club, server, shop or party site.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the goal: should people sign up, order or come?", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What are you making? What should they do? Who is the site for?", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the Who for? line write their age and what they love.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! That’s your three-line prompt. At home you’ll send it to a real AI.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now a quick check. I say a sentence, and you choose: true or false?", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s it about: the audience, age or interests?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: the AI tailors the site to the people named in the prompt.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A good site pleases everyone equally.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually a site pleases the people it’s made for. For everyone means for no one.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Change Who for? and the site’s look changes too.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: letters, colours and words adapt to the audience.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Writing people in Who for? is enough.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually you should write their age, who they are and what they love.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If we write what the audience loves, the AI puts it on the site.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: write comics and a comics card appears.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If two kinds of people look at a site, you should write only one.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually write both: for example, kids and their parents.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You think about audiences the right way.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the riddle. I thought a good site pleases everyone. But kids need one thing, parents another, and grandparents a third. A site for everyone doesn’t really suit anyone. I was wrong.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your three-line prompt and your site.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What? is a specific thing, Why? is the goal.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Who for? is the audience, that is, the people who will look at the site: their age, who they are and what they love.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Homework: copy your prompt and send it to a real AI. Next lesson: the fourth question, what goes on the site? See you!", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] the goal: what the site should do", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Who for?", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] A first grader, age 7: The letters are tiny, the words are hard. Boring! Where’s the fun?", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Who is it for?", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The robotics club is looking for new members: students aged 12–14.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who is the site for?", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which is clearer?", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which Who for? is clearer?", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What do they love?", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The school is holding an Animal Festival. It’s for kids aged 8–10, who love animals and games.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who for and what do they love?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which line?", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which line is it?", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our neighbourhood canteen wants a site. Most orders come from the grandparents in the area.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The swimming course is for kids aged 6–9. Their parents sign them up and ask about safety and prices.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who for?", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The dance club teacher: Little ones aged 5–7 come to us.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Who is this site for?", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which Who for? made this site?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The server admin: Our players are aged 10–13, and they love building.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The school is holding a robot fair. Kids aged 9–11 should come; they love games.", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what are we making?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what should the site do?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what are you making?", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Send your prompt to a real AI and make your site.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Typing…", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What goes on the site?", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write in the Who for? line: who will look at the site?", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] If you write for everyone, the AI won’t tailor the site to anyone. Check the request: who exactly?", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI couldn’t tell who that is. Write their age or who they are: kids, students, parents.", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The strongest teams on one field!", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fresh, hot and tasty.", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fun sessions and a friendly team.", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in one place: quick and easy.", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everyone is welcome!", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Play with your friends!", required: true },
+    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Learn from scratch.", required: true },
+    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An unforgettable summer starts here!", required: true },
+    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One team, one goal!", required: true },
+    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did you know?", required: true },
+    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] History, rules and fun facts.", required: true },
+    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything is easy with us.", required: true },
+    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sign up now: places are limited!", required: true },
+    { id: "en200", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Got questions? Give us a call.", required: true },
+    { id: "en201", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Order in just a few taps!", required: true },
+    { id: "en202", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’re waiting for you! Address and time below.", required: true },
+    { id: "en203", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When, where and how: it’s all here.", required: true },
+    { id: "en204", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Safe, useful and convenient for your child.", required: true },
+    { id: "en205", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Simple and clear. Questions? Just give us a call.", required: true },
+    { id: "en206", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A ready plan and materials for your class.", required: true },
+    { id: "en207", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A professional approach and top quality.", required: true },
+    { id: "en208", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Got questions?", required: true },
+    { id: "en209", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 📞 +998 90 123 45 67: call us and we’ll explain everything.", required: true },
+    { id: "en210", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Really great! We’ll be back.", required: true },
+    { id: "en211", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything was quick and tasty.", required: true },
+    { id: "en212", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My kids loved it.", required: true },
+    { id: "en213", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I told my friends too.", required: true },
+    { id: "en214", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How much is it? See prices.", required: true },
+    { id: "en215", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ When are you open? Every day.", required: true },
+    { id: "en216", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How do I sign up? Fill in the form.", required: true },
+    { id: "en217", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’ve been working since 2015 and try to make every visitor happy.", required: true },
+    { id: "en218", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ✅ Thank you!", required: true },
+    { id: "en219", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Answer: it’s all in the prices section.", required: true },
+    { id: "en220", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 🎁 Subscribe!", required: true },
+    { id: "en221", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] −50% OFF!", required: true },
+    { id: "en222", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] For whom?", required: true },
+    { id: "en223", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s inside?", required: true },
+    { id: "en224", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it looks?", required: true },
+    { id: "en225", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it behaves?", required: true },
+    { id: "en226", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What rules?", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! O'tgan darsda to'g'ri [English pronunciation] prompt [O'zbekcha tallaffuz] yozishni o'rgandik: nima va nega. Mana, maktab futbol turniri uchun promptim. Bu turnir birinchi va ikkinchi sinf bolalari uchun. Yuborishni bosing, qani, sayt qanday chiqarkin?": "uz001",
+    "o'yinchilar ro'yxatdan o'tsin": "uz002",
+    "Bu yerda sun'iy intellekt yaratgan sayt chiqadi": "uz003",
+    "Voy, sayt to'g'ri chiqdi: turnir ham, ro'yxatdan o'tish ham bor. Lekin saytni birinchi sinf o'quvchisi ochdi va zerikdi! Unga harflar mayda, so'zlar qiyin, qiziqarli narsa yo'q.": "uz004",
+    "Menimcha, yaxshi sayt hammaga birdek yoqishi kerak: kattalarga ham, bolalarga ham. Men uni hamma uchun qildim. Siz nima deb o'ylaysiz? Bugun uchinchi savolni o'rganamiz: sayt kim uchun?": "uz005",
+    "Prompt qatoriga, saytdagi harflarga, ranglarga va tepadagi yozuvga qarang.": "uz006",
+    "Kim uchun? bu saytni kimlar ko'rishi: yoshi va kimligi. Sun'iy intellekt shunga qarab dizayn va so'zlarni tanlaydi.": "uz007",
+    "Bitta voqeani do'stingizga bir xil, buvingizga boshqacha aytib berasiz. Sayt ham xuddi shunday.": "uz008",
+    "Uchinchi savol: sayt kim uchun? Buni auditoriya deyishadi, ya'ni saytni ko'radigan odamlar degani. Promptga yangi qator qo'shamiz. Hozircha u bo'sh, shuning uchun sun'iy intellekt saytni hech kimga moslamadi.": "uz009",
+    "Yozamiz: yetti-sakkiz yoshli bolalar. Qarang: harflar katta, ranglar yorqin, tugma o'yinchoqdek. Sun'iy intellekt saytni kichkintoylarga moslab qayta yasadi.": "uz010",
+    "Endi xuddi shu sayt o'yinchilarning ota-onalari uchun. Ranglar sokin bo'ldi va yangi bo'lim chiqdi: xavfsizlik, narx va jadval. Ota-onalar aynan shuni so'raydi.": "uz011",
+    "Buvi va bobolar uchun esa harflar juda katta, ortiqcha narsa yo'q, telefon raqami ko'rinib turibdi.": "uz012",
+    "Demak, nima va nega bir xil bo'lsa ham, Kim uchun? o'zgarsa, sayt ham o'zgaradi: ko'rinishi, so'zlari va bo'limlari.": "uz013",
+    "Endi siz. Robot to'garagi sayt so'radi. Nima? va Nega? tayyor. Buyurtmani o'qing va Kim uchun? qatoriga sayt kimlar uchunligini yozing.": "uz014",
+    "o'quvchilar to'garakka yozilsin": "uz015",
+    "Buyurtmaga qarang: to'garak kichkintoylarni yoki kattalarni emas, o'n ikki yoshdan o'n to'rt yoshgacha bo'lgan o'quvchilarni kutyapti.": "uz016",
+    "Buyurtmani qayta o'qing: unda kimlar yozilgan?": "uz017",
+    "Yoshini va kimligini yozing: bu sun'iy intellektga eng ko'p yordam beradi.": "uz018",
+    "Namunadagidek yozing va Yuborishni bosing.": "uz019",
+    "Zo'r! Sayt o'smirlarga moslashdi: zamonaviy, qorong'i ranglar, tepada yoshi yozilgan. Sun'iy intellekt kim uchunligini bildi.": "uz020",
+    "Endi o'zingizni sinab ko'ring. Ikki Kim uchun? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?": "uz021",
+    "Qaysi birida kimligi aniq: yoshi, kimligi yoki nimani yaxshi ko'rishi?": "uz022",
+    "Hamma, odamlar, mijozlar juda umumiy so'zlar.": "uz023",
+    "Hamma uchun degani hech kim uchun degani. Yoshi yozilgani yaxshiroq.": "uz024",
+    "Birinchisida kimligi ham, nimani yaxshi ko'rishi ham bor.": "uz025",
+    "Ikkinchisi aniq: kimlar va nima izlashi aytilgan.": "uz026",
+    "Barakalla!": "uz027",
+    "Hammasi to'g'ri! Umumiy so'zni aniq auditoriyadan ajratasiz.": "uz028",
+    "Prompt qatoriga va saytdagi birinchi kartochkalarga qarang.": "uz029",
+    "Qiziqish, ya'ni auditoriya yaxshi ko'radigan narsa, saytda kartochka bo'lib chiqadi.": "uz030",
+    "Do'stingizga sovg'a tanlasangiz, u nimani yaxshi ko'rishini o'ylaysiz. Sayt ham shunday tanlanadi.": "uz031",
+    "Kim uchunligini yozish bu yarim ish. Yana bir sir bor: auditoriya nimani yaxshi ko'radi? Qarang, hozir faqat yoshi yozilgan.": "uz032",
+    "bolalar ko'rgazmaga kelsin": "uz033",
+    "Qo'shamiz: komikslarni yaxshi ko'radi. Saytda darhol Komikslar kartochkasi chiqdi!": "uz034",
+    "Yana sarguzashtlarni qo'shamiz. Mana, Sarguzashtlar ham paydo bo'ldi. Sun'iy intellekt ular yaxshi ko'rgan narsani saytga qo'yadi.": "uz035",
+    "Agar ular o'yin va sovg'alarni yaxshi ko'rsa-chi? Qarang, kartochkalar ham boshqacha bo'ldi.": "uz036",
+    "Demak, Kim uchun? qatoriga yoshidan tashqari ular nimani yaxshi ko'rishini ham yozing. Sun'iy intellekt saytni ularga yanada qiziqarli qiladi.": "uz037",
+    "Endi siz. Maktabda hayvonlar bayrami bo'ladi. Buyurtmani o'qing va Kim uchun? qatoriga kimlar uchunligini va ular nimani yaxshi ko'rishini yozing.": "uz038",
+    "bolalar bayramga kelsin": "uz039",
+    "Buyurtmada yoshi bor: sakkiz yoshdan o'n yoshgacha bo'lgan bolalar.": "uz040",
+    "Kimligi bor. Endi ular nimani yaxshi ko'rishini qo'shing: buyurtmada yozilgan.": "uz041",
+    "Buyurtmada ikki narsa bor: kimlar va ular nimani yaxshi ko'radi.": "uz042",
+    "Oldin yoshini va kimligini, keyin ular nimani yaxshi ko'rishini yozing.": "uz043",
+    "Ajoyib! Saytda Hayvonlar va O'yinlar kartochkalari chiqdi, harflar katta va yorqin. Bu aynan bolalar uchun sayt!": "uz044",
+    "Endi uchta savolni birga ishlatamiz. Men gap aytaman, siz u promptning qaysi qatoriga tushishini tanlang: Nima, Nega yoki Kim uchun?": "uz045",
+    "Gap nimani aytyapti: narsanimi, maqsadnimi yoki odamlarnimi?": "uz046",
+    "Sayt nima ekani bu Nima. Kim nima qilsin bu Nega. Kimlar va yoshi bu Kim uchun.": "uz047",
+    "Rasm kursi sayti": "uz048",
+    "Bu nima yaratishimiz: rasm kursi sayti.": "uz049",
+    "7–9 yoshli bolalar": "uz050",
+    "Bu kimlar uchunligi: yoshi bilan.": "uz051",
+    "odamlar pitsa buyurtma qilsin": "uz052",
+    "Bu maqsad: sayt nima qilishi.": "uz053",
+    "futbolni yaxshi ko'radigan o'smirlar": "uz054",
+    "Bu auditoriya va uning qiziqishi.": "uz055",
+    "o'quvchilar kursga yozilsin": "uz056",
+    "Bu maqsad: kim nima qilsin.": "uz057",
+    "Kitob do'koni sayti": "uz058",
+    "Bu aniq narsa: kitob do'koni sayti.": "uz059",
+    "Zo'r! Uchta savolni bir-biridan ajratasiz.": "uz060",
+    "Yangi buyurtma! Mahalla oshxonasi sayt so'radi. Buyurtmani diqqat bilan o'qing: sayt kimlar uchun?": "uz061",
+    "odamlar ovqat buyurtma qilsin": "uz062",
+    "Buyurtmaga qarang: ovqatni ko'pincha kimlar buyurtma qiladi?": "uz063",
+    "Buyurtmada ovqatni kimlar buyurtma qilishi yozilgan.": "uz064",
+    "Bular buvi va bobolar, ya'ni keksalar.": "uz065",
+    "Zo'r! Harflar juda katta, telefon raqami ko'rinib turibdi. Buvi va bobolarga qulay sayt chiqdi.": "uz066",
+    "Prompt qatoriga, saytning tepasiga va pastki bo'limga qarang.": "uz067",
+    "Ikki auditoriya, ya'ni saytni ikki xil odam ko'radi: biri tanlaydi, boshqasi qaror qiladi.": "uz068",
+    "O'yinchoq do'konida bolalar o'yinchoq tanlaydi, ota-onalar esa narxga qaraydi.": "uz069",
+    "Ba'zan saytni ikki xil odam ko'radi. Yozgi lagerni bolalar tanlaydi, lekin pulni ota-onalar to'laydi. Qarang, hozir sayt faqat bolalar uchun.": "uz070",
+    "bolalar lagerga yozilsin": "uz071",
+    "Endi faqat ota-onalar uchun yozamiz. Sayt sokin bo'ldi, xavfsizlik va narx chiqdi, lekin bolalarga endi qiziq emas.": "uz072",
+    "Ikkalasini yozamiz: bolalar va ularning ota-onalari. Mana: tepasi bolalarga yorqin, pastida ota-onalar uchun bo'lim. Ikkalasi ham xursand!": "uz073",
+    "Demak, saytni ikki xil odam ko'rsa, ikkalasini ham yozing: oldin asosiysini, keyin ikkinchisini.": "uz074",
+    "Endi siz. Suzish kursi sayt so'radi. Buyurtmani o'qing: bu yerda ikki xil odam bor. Ikkalasini Kim uchun? qatoriga yozing.": "uz075",
+    "bolalar kursga yozilsin": "uz076",
+    "Bolalar bor, lekin ularni kim yozdiradi? Ota-onalarni ham qo'shing.": "uz077",
+    "Ota-onalar bor. Kurs esa kimlar uchun? Bolalarni ham yozing.": "uz078",
+    "Buyurtmaga qarang: kim suzadi va kim yozdiradi?": "uz079",
+    "Buyurtmada kimlar bor: kim suzadi va kim yozdiradi?": "uz080",
+    "Bolalar va ota-onalar: ikkalasini va so'zi bilan yozing.": "uz081",
+    "Barakalla! Tepasi bolalarga yorqin, pastida ota-onalar uchun xavfsizlik va narx. Ikkalasiga ham mos sayt.": "uz082",
+    "Men raqs to'garagi uchun Kim uchun? ni yozmadim. Qarang, sun'iy intellekt o'zi taxmin qildi: kattalar uchun! Qora va oltin rangli, jiddiy sayt chiqdi. Ustoz esa kichkintoylar keladi deydi. Kim uchun? qatorini yozing.": "uz083",
+    "bolalar to'garakka yozilsin": "uz084",
+    "Bu yana kattalar uchun. Ustoz kimlar keladi dedi?": "uz085",
+    "Buyurtmaga qarang: to'garakka besh yoshdan yetti yoshgacha bo'lgan kichkintoylar keladi.": "uz086",
+    "Sun'iy intellekt kimni taxmin qildi? Ustoz esa kimni aytdi?": "uz087",
+    "Ustoz kichkintoylarni va ularning yoshini aytdi.": "uz088",
+    "Zo'r! Qora va oltin rang ketdi, sayt yorqin va quvnoq bo'ldi. Kim uchunligini aytsangiz, sun'iy intellekt taxmin qilmaydi.": "uz089",
+    "Endi detektiv bo'lamiz. Saytga qarab topamiz: u kim uchun yaratilgan va promptda nima yozilgan edi?": "uz090",
+    "Harflarga, ranglarga va qo'shimcha bo'limlarga qarang.": "uz091",
+    "Bolalar uchun yorqin va katta. Ota-onalar uchun xavfsizlik va narx. Keksalar uchun juda katta harflar va telefon.": "uz092",
+    "Harflar katta, ranglar yorqin, tugma o'yinchoqdek: bu bolalar uchun.": "uz093",
+    "Harflar juda katta, telefon raqami bor: bu keksalar uchun.": "uz094",
+    "Sokin ranglar, xavfsizlik, narx va jadval: bu ota-onalar uchun.": "uz095",
+    "Saytda Komikslar kartochkasi bor, demak promptda komikslar yozilgan. Bu C.": "uz096",
+    "Zo'r! Saytga qarab uning auditoriyasini topa olasiz.": "uz097",
+    "Voy, men server sayti uchun Kim uchun? qatoriga hamma uchun deb yozdim. Sayt hech kimga moslanmadi, oddiy chiqdi. Rahbar esa kimlar o'ynashini aytdi. Mening qatorimni tuzating.": "uz098",
+    "o'yinchilar serverga qo'shilsin": "uz099",
+    "Hamma uchun qoldi. Rahbar kimlar o'ynashini aytdi: buyurtmani o'qing.": "uz100",
+    "Yoshi bor. Ular nimani yaxshi ko'radi? Buni ham qo'shing.": "uz101",
+    "Buyurtmaga qarang: serverda o'n yoshdan o'n uch yoshgacha bo'lgan o'yinchilar o'ynaydi.": "uz102",
+    "Rahbar ikki narsani aytdi: o'yinchilarning yoshi va ular nimani yaxshi ko'rishi.": "uz103",
+    "Hamma uchun ni o'chiring va yoshini, keyin qiziqishini yozing.": "uz104",
+    "Ajoyib! Sayt o'smirlarga moslashdi va Qurilish kartochkasi chiqdi. Endi u aniq o'yinchilar uchun.": "uz105",
+    "Endi uchala qatorni o'zingiz yozasiz. Maktabda robotlar ko'rgazmasi bo'ladi. Buyurtmani o'qing va Nima?, Nega? va Kim uchun? ni yozing.": "uz106",
+    "Nima? qatoriga yozing: qanday sayt yaratamiz?": "uz107",
+    "Sayt robotlar haqida bo'lishi kerak: buyurtmani o'qing.": "uz108",
+    "Bu faqat mavzu. Robotlarning nimasi: ko'rgazmami, do'konmi? Aniq yozing.": "uz109",
+    "Endi Nega? qatorini yozing: sayt nima qilishi kerak?": "uz110",
+    "Bu istak, maqsad emas. Sayt mehmon uchun nima qilsin?": "uz111",
+    "Buyurtmada maqsad bor: bolalar ko'rgazmaga kelsin.": "uz112",
+    "Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?": "uz113",
+    "Buyurtmada kimlar kelishi yozilgan: to'qqiz yoshdan o'n bir yoshgacha bo'lgan bolalar.": "uz114",
+    "Buyurtmada uchala javob bor: nima, nega va kim uchun.": "uz115",
+    "Nima: robotlar ko'rgazmasi sayti. Nega: bolalar kelsin. Kim uchun: yoshi va qiziqishi.": "uz116",
+    "Barakalla! Uchala qatorni o'zingiz yozdingiz, sayt esa aynan shu bolalar uchun chiqdi.": "uz117",
+    "Endi o'z saytingiz! O'zingiz yaxshi ko'rgan narsa uchun sayt o'ylang: klub, o'yin serveri, do'kon yoki bayram. Uchala qatorni yozing va kim uchun ekanini aniq ayting.": "uz118",
+    "Nima? qatoriga yozing: qanday sayt yaratasiz?": "uz119",
+    "Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.": "uz120",
+    "Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?": "uz121",
+    "Nima yaratasiz? Ular nima qilsin? Sayt kim uchun?": "uz122",
+    "Kim uchun? qatoriga yoshini va ular nimani yaxshi ko'rishini yozing.": "uz123",
+    "Voy, zo'r! Bu sizning uch qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.": "uz124",
+    "Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?": "uz125",
+    "Gap nima haqida: auditoriya, yosh yoki qiziqish?": "uz126",
+    "Esingizdami: sun'iy intellekt saytni promptda aytilgan odamlarga moslaydi.": "uz127",
+    "Yaxshi sayt hammaga birdek yoqadi.": "uz128",
+    "Aslida sayt kimga moslansa, o'shanga yoqadi. Hamma uchun degani hech kim uchun.": "uz129",
+    "Kim uchun? o'zgarsa, saytning ko'rinishi ham o'zgaradi.": "uz130",
+    "To'g'ri: harflar, ranglar va so'zlar auditoriyaga moslanadi.": "uz131",
+    "Kim uchun? ga odamlar deb yozish yetarli.": "uz132",
+    "Aslida yoshini, kimligini va nimani yaxshi ko'rishini yozish kerak.": "uz133",
+    "Auditoriya nimani yaxshi ko'rishini yozsak, sun'iy intellekt saytga shuni qo'yadi.": "uz134",
+    "To'g'ri: komikslar desangiz, komikslar kartochkasi chiqadi.": "uz135",
+    "Saytni ikki xil odam ko'rsa, faqat bittasini yozish kerak.": "uz136",
+    "Aslida ikkalasini yozing: masalan, bolalar va ularning ota-onalari.": "uz137",
+    "Hammasi to'g'ri! Siz auditoriyani to'g'ri o'ylaysiz.": "uz138",
+    "Endi topishmoqqa qaytamiz. Men yaxshi sayt hammaga yoqadi deb o'ylagandim. Lekin bolalarga bitta narsa, ota-onalarga boshqa, buvi va bobolarga esa uchinchisi kerak. Hamma uchun qilingan sayt hech kimga to'liq yoqmaydi. Men adashibman.": "uz139",
+    "Qarang, bu sizning uch qatorli promptingiz va saytingiz.": "uz140",
+    "Nima? bu aniq narsa, Nega? esa maqsad.": "uz141",
+    "Kim uchun? bu auditoriya, ya'ni saytni ko'radigan odamlar degani: yoshi, kimligi va nimani yaxshi ko'rishi.": "uz142",
+    "Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda to'rtinchi savol: saytda nima bo'ladi? Ko'rishguncha!": "uz143",
+    "maqsad: sayt nima qilsin": "uz144",
+    "Voy, zo‘r!": "uz145",
+    "Ana! Chiqdi!": "uz146",
+    "Super!": "uz147",
+    "Qoyil!": "uz148",
+    "Ura!": "uz149",
+    "Zo‘r-ku!": "uz150",
+    "Yana bir bor urinib ko‘ring.": "uz151",
+    "Diqqat bilan qarang.": "uz152",
+    "Yaqin qoldingiz. Shoshilmang.": "uz153",
+    "Kim uchun?": "uz154",
+    "Birinchi sinf o'quvchisi, 7 yosh: Harflar mayda, so'zlar qiyin. Zerikarli! O'yin qani?": "uz155",
+    "Kim uchun yaratamiz?": "uz156",
+    "Robot to'garagi yangi a'zolar qidiryapti: 12–14 yoshli maktab o'quvchilari.": "uz157",
+    "sayt kim uchun?": "uz158",
+    "Qaysi biri aniqroq?": "uz159",
+    "Qaysi Kim uchun? aniqroq?": "uz160",
+    "Nimani yaxshi ko'radi?": "uz161",
+    "Maktabda Hayvonlar bayrami bo'ladi. U 8–10 yoshli bolalar uchun, ular hayvonlarni va o'yinlarni yaxshi ko'radi.": "uz162",
+    "kim uchun va nimani yaxshi ko'radi?": "uz163",
+    "Qaysi qator?": "uz164",
+    "Bu qaysi qatorga?": "uz165",
+    "Mahalla oshxonasi sayt so'rayapti. Ovqatni ko'pincha mahalladagi buvi va bobolar buyurtma qiladi.": "uz166",
+    "Suzish kursi 6–9 yoshli bolalarni kutadi. Bolalarni ota-onalari yozdiradi, ular xavfsizlik va narxni so'raydi.": "uz167",
+    "kimlar uchun?": "uz168",
+    "Raqs to'garagi ustozi: Bizga 5–7 yoshli kichkintoylar keladi.": "uz169",
+    "Bu sayt kim uchun?": "uz170",
+    "Qaysi Kim uchun? shu saytni yaratdi?": "uz171",
+    "Server rahbari: Serverimizda 10–13 yoshli o'yinchilar o'ynaydi, ular qurilishni yaxshi ko'radi.": "uz172",
+    "Maktabda robotlar ko'rgazmasi bo'ladi. Unga 9–11 yoshli bolalar kelsin, ular o'yinlarni yaxshi ko'radi.": "uz173",
+    "nima yaratamiz?": "uz174",
+    "sayt nima qilishi kerak?": "uz175",
+    "nima yaratasiz?": "uz176",
+    "To'g'rimi?": "uz177",
+    "To'g'rimi yoki noto'g'rimi?": "uz178",
+    "Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.": "uz179",
+    "Yozyapti…": "uz180",
+    "Saytda nima bo'ladi?": "uz181",
+    "Kim uchun? qatoriga yozing: saytni kimlar ko'radi?": "uz182",
+    "Hamma uchun desangiz, sun'iy intellekt saytni hech kimga moslamaydi. Buyurtmaga qarang: aynan kimlar?": "uz183",
+    "Sun'iy intellekt bu so'zdan kimligini tushunmadi. Yoshini yoki kimligini yozing: bolalar, o'quvchilar, ota-onalar.": "uz184",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz185",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz186",
+    "Eng kuchli jamoalar bir maydonda!": "uz187",
+    "Yangi pishgan, issiq va mazali.": "uz188",
+    "Qiziqarli mashg'ulotlar va do'stona jamoa.": "uz189",
+    "Hammasi bir joyda: qulay va tez.": "uz190",
+    "Hammani kutamiz!": "uz191",
+    "Do'stlaringiz bilan birga o'ynang!": "uz192",
+    "Noldan boshlab o'rganing.": "uz193",
+    "Unutilmas yoz shu yerda boshlanadi!": "uz194",
+    "Bir jamoa, bir maqsad!": "uz195",
+    "Bilasizmi?": "uz196",
+    "Tarix, qoidalar va qiziqarli faktlar.": "uz197",
+    "Biz bilan hammasi oson.": "uz198",
+    "Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!": "uz199",
+    "Savollaringiz bormi? Bizga qo'ng'iroq qiling.": "uz200",
+    "Bir necha bosishda buyurtma bering!": "uz201",
+    "Sizni kutamiz! Manzil va vaqt quyida.": "uz202",
+    "Qachon, qayerda va qanday: hammasi shu yerda.": "uz203",
+    "Farzandingiz uchun xavfsiz, foydali va qulay.": "uz204",
+    "Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.": "uz205",
+    "Dars uchun tayyor reja va materiallar.": "uz206",
+    "Professional yondashuv va yuqori sifat.": "uz207",
+    "Savolingiz bormi?": "uz208",
+    "📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.": "uz209",
+    "Juda zo'r! Yana kelamiz.": "uz210",
+    "Hammasi tez va mazali.": "uz211",
+    "Bolalarim juda xursand.": "uz212",
+    "Do'stlarimga ham aytdim.": "uz213",
+    "❓ Qancha turadi? Narxlar bo'limida.": "uz214",
+    "❓ Qachon ochiq? Har kuni.": "uz215",
+    "❓ Qanday yozilaman? Formani to'ldiring.": "uz216",
+    "Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.": "uz217",
+    "✅ Rahmat!": "uz218",
+    "Javob: hammasi narxlar bo'limida yozilgan.": "uz219",
+    "🎁 Obuna bo'ling!": "uz220",
+    "−50% CHEGIRMA!": "uz221",
+    "Ichida nima?": "uz222",
+    "Ko'rinishi?": "uz223",
+    "Qanday ishlaydi?": "uz224",
+    "Qoidalar?": "uz225",
+  },
+  ru: {
+    "Привет! На прошлом уроке мы научились писать правильный промпт: что и зачем. Вот мой промпт для школьного футбольного турнира. Турнир, для первого и второго класса. Нажми Отправить, посмотрим, какой выйдет сайт!": "ru001",
+    "чтобы игроки записывались": "ru002",
+    "Здесь появится сайт, который сделает ИИ": "ru003",
+    "Ого, сайт получился правильный: есть и турнир, и запись. Но его открыл первоклассник, и заскучал! Буквы для него мелкие, слова сложные, ничего интересного.": "ru004",
+    "По-моему, хороший сайт должен нравиться всем одинаково: и взрослым, и детям. Я сделал его для всех. А ты как думаешь? Сегодня разберём третий вопрос: для кого сайт?": "ru005",
+    "Посмотри на строку промпта, на буквы, цвета и надпись вверху сайта.": "ru006",
+    "Для кого?, это кто будет смотреть сайт: возраст и кто они. По этому ИИ выбирает дизайн и слова.": "ru007",
+    "Одну и ту же историю другу ты расскажешь так, а бабушке, иначе. С сайтом так же.": "ru008",
+    "Третий вопрос: для кого сайт? Это называют аудиторией, то есть людьми, которые будут смотреть сайт. Добавим в промпт новую строку. Пока она пустая, поэтому ИИ ни под кого сайт не подстроил.": "ru009",
+    "Пишем: дети семи-восьми лет. Смотри: буквы крупные, цвета яркие, кнопка как игрушка. ИИ переделал сайт под малышей.": "ru010",
+    "Теперь тот же сайт, для родителей игроков. Цвета стали спокойными, и появился новый раздел: безопасность, цены и расписание. Родители спрашивают именно об этом.": "ru011",
+    "А для бабушек и дедушек, очень крупные буквы, ничего лишнего и сразу виден номер телефона.": "ru012",
+    "Значит, даже если Что? и Зачем? те же, стоит поменять Для кого?, и меняется сайт: вид, слова и разделы.": "ru013",
+    "Теперь ты. Кружок робототехники попросил сайт. Что? и Зачем? готовы. Прочитай заказ и напиши в строку Для кого?, для кого этот сайт.": "ru014",
+    "чтобы школьники записывались в кружок": "ru015",
+    "Посмотри в заказ: кружок ждёт не малышей и не взрослых, а школьников от двенадцати до четырнадцати лет.": "ru016",
+    "Перечитай заказ: кто там назван?": "ru017",
+    "Напиши возраст и кто они: это больше всего поможет ИИ.": "ru018",
+    "Напиши как в образце и нажми Отправить.": "ru019",
+    "Огонь! Сайт подстроился под подростков: современный, тёмные цвета, вверху указан возраст. ИИ понял, для кого он.": "ru020",
+    "Теперь проверь себя. Какое из двух Для кого? больше поможет ИИ?": "ru021",
+    "Где понятно, кто это: возраст, кто они или что любят?": "ru022",
+    "Все, люди, клиенты, слишком общие слова.": "ru023",
+    "Для всех, значит ни для кого. Лучше, где указан возраст.": "ru024",
+    "В первом есть и кто они, и что любят.": "ru025",
+    "Второй точный: сказано, кто и что ищет.": "ru026",
+    "Точно!": "ru027",
+    "Всё верно! Ты отличаешь общее слово от точной аудитории.": "ru028",
+    "Посмотри на строку промпта и на первые карточки сайта.": "ru029",
+    "Интерес, то, что любит аудитория,, появляется на сайте карточкой.": "ru030",
+    "Выбирая другу подарок, ты думаешь, что он любит. Сайт выбирают так же.": "ru031",
+    "Написать, для кого сайт,, это полдела. Есть ещё секрет: что любит аудитория? Смотри, сейчас указан только возраст.": "ru032",
+    "чтобы дети пришли на выставку": "ru033",
+    "Добавим: любят комиксы. На сайте сразу появилась карточка Комиксы!": "ru034",
+    "Добавим ещё приключения. Вот появились и Приключения. ИИ ставит на сайт то, что они любят.": "ru035",
+    "А если они любят игры и подарки? Смотри, и карточки стали другими.": "ru036",
+    "Значит, в строку Для кого? пиши не только возраст, но и что они любят. ИИ сделает сайт для них ещё интереснее.": "ru037",
+    "Теперь ты. В школе будет праздник животных. Прочитай заказ и напиши в строку Для кого?, для кого он и что они любят.": "ru038",
+    "чтобы дети пришли на праздник": "ru039",
+    "В заказе указан возраст: дети от восьми до десяти лет.": "ru040",
+    "Кто они, есть. Теперь добавь, что они любят: это есть в заказе.": "ru041",
+    "В заказе две вещи: кто они и что любят.": "ru042",
+    "Сначала возраст и кто они, потом, что они любят.": "ru043",
+    "Класс! На сайте появились карточки Животные и Игры, буквы крупные и яркие. Это сайт именно для детей!": "ru044",
+    "Теперь используем все три вопроса. Я говорю фразу, а ты выбираешь, в какую строку промпта она попадает: Что, Зачем или Для кого?": "ru045",
+    "О чём фраза: о вещи, о цели или о людях?": "ru046",
+    "Что за сайт, это Что?. Кто что должен сделать, Зачем?. Кто они и сколько им лет, Для кого?.": "ru047",
+    "Сайт курса рисования": "ru048",
+    "Это что мы создаём: сайт курса рисования.": "ru049",
+    "дети 7–9 лет": "ru050",
+    "Это для кого: с возрастом.": "ru051",
+    "чтобы люди заказывали пиццу": "ru052",
+    "Это цель: что делает сайт.": "ru053",
+    "подростки, которые любят футбол": "ru054",
+    "Это аудитория и её интерес.": "ru055",
+    "чтобы ученики записывались на курс": "ru056",
+    "Это цель: кто что должен сделать.": "ru057",
+    "Сайт книжного магазина": "ru058",
+    "Это конкретная вещь: сайт книжного магазина.": "ru059",
+    "Класс! Ты различаешь все три вопроса.": "ru060",
+    "Новый заказ! Столовая нашего района попросила сайт. Внимательно прочитай заказ: для кого этот сайт?": "ru061",
+    "чтобы люди заказывали еду": "ru062",
+    "Посмотри в заказ: кто чаще всего заказывает еду?": "ru063",
+    "В заказе написано, кто заказывает еду.": "ru064",
+    "Это бабушки и дедушки, то есть старшее поколение.": "ru065",
+    "Огонь! Буквы очень крупные, номер телефона сразу виден. Вышел удобный сайт для бабушек и дедушек.": "ru066",
+    "Посмотри на строку промпта, на верх сайта и на нижний раздел.": "ru067",
+    "Две аудитории, это когда сайт смотрят двое разных: один выбирает, другой решает.": "ru068",
+    "В магазине игрушек дети выбирают игрушку, а родители смотрят на цену.": "ru069",
+    "Бывает, что сайт смотрят двое разных людей. Летний лагерь выбирают дети, а платят родители. Смотри, сейчас сайт только для детей.": "ru070",
+    "чтобы детей записывали в лагерь": "ru071",
+    "Теперь напишем только родителей. Сайт стал спокойным, появились безопасность и цены, но детям уже неинтересно.": "ru072",
+    "Пишем обоих: дети и их родители. Вот: верх яркий для детей, внизу, раздел для родителей. Довольны все!": "ru073",
+    "Значит, если сайт смотрят двое разных, пиши обоих: сначала главного, потом второго.": "ru074",
+    "Теперь ты. Курс плавания попросил сайт. Прочитай заказ: тут двое разных людей. Напиши обоих в строку Для кого?.": "ru075",
+    "чтобы детей записывали на курс": "ru076",
+    "Дети есть, а кто их записывает? Добавь и родителей.": "ru077",
+    "Родители есть. А курс для кого? Напиши и детей.": "ru078",
+    "Посмотри в заказ: кто плавает и кто записывает?": "ru079",
+    "Кто в заказе: кто плавает и кто записывает?": "ru080",
+    "Дети и родители: напиши обоих через и.": "ru081",
+    "Молодец! Верх яркий для детей, внизу для родителей, безопасность и цены. Сайт подходит обоим.": "ru082",
+    "Я не написал Для кого? для танцевального кружка. Смотри, ИИ сам догадался: для взрослых! Вышел строгий сайт в чёрном с золотом. А руководитель говорит, что приходят малыши. Напиши строку Для кого?.": "ru083",
+    "чтобы дети записывались в кружок": "ru084",
+    "Это снова для взрослых. Кто, по словам руководителя, приходит?": "ru085",
+    "Посмотри в заказ: в кружок приходят малыши от пяти до семи лет.": "ru086",
+    "Кого додумал ИИ? А кого назвал руководитель?": "ru087",
+    "Руководитель назвал малышей и их возраст.": "ru088",
+    "Огонь! Чёрное с золотом ушло, сайт стал ярким и весёлым. Скажи, для кого сайт,, и ИИ не будет гадать.": "ru089",
+    "Теперь побудем детективами. По сайту найдём: для кого он сделан и что было написано в промпте?": "ru090",
+    "Посмотри на буквы, цвета и дополнительные разделы.": "ru091",
+    "Детям, ярко и крупно. Родителям, безопасность и цены. Старшим, очень крупные буквы и телефон.": "ru092",
+    "Буквы крупные, цвета яркие, кнопка как игрушка: это для детей.": "ru093",
+    "Очень крупные буквы и номер телефона: это для старшего поколения.": "ru094",
+    "Спокойные цвета, безопасность, цены и расписание: это для родителей.": "ru095",
+    "На сайте есть карточка Комиксы, значит, в промпте написаны комиксы. Это C.": "ru096",
+    "Класс! Ты находишь аудиторию сайта по его виду.": "ru097",
+    "Ой, я написал для сайта сервера в строку Для кого? для всех. Сайт ни под кого не подстроился, вышел обычным. А админ сказал, кто играет. Исправь мою строку.": "ru098",
+    "чтобы игроки вступали на сервер": "ru099",
+    "Для всех осталось. Админ сказал, кто играет: прочитай заказ.": "ru100",
+    "Возраст есть. А что они любят? Добавь и это.": "ru101",
+    "Посмотри в заказ: на сервере играют ребята от десяти до тринадцати лет.": "ru102",
+    "Админ сказал две вещи: возраст игроков и что они любят.": "ru103",
+    "Сотри для всех и напиши возраст, а потом интерес.": "ru104",
+    "Класс! Сайт подстроился под подростков, и появилась карточка Стройка. Теперь он точно для игроков.": "ru105",
+    "Теперь все три строки пишешь ты. В школе будет выставка роботов. Прочитай заказ и напиши Что?, Зачем? и Для кого?.": "ru106",
+    "Напиши строку Что?: какой сайт создаём?": "ru107",
+    "Сайт должен быть про роботов: прочитай заказ.": "ru108",
+    "Это только тема. Что именно про роботов: выставка, магазин? Напиши точно.": "ru109",
+    "Теперь напиши строку Зачем?: что должен сделать сайт?": "ru110",
+    "Это пожелание, а не цель. Что сайт должен сделать для гостя?": "ru111",
+    "В заказе есть цель: чтобы дети пришли на выставку.": "ru112",
+    "Теперь напиши строку Для кого?: кто будет смотреть сайт?": "ru113",
+    "В заказе сказано, кто придёт: дети от девяти до одиннадцати лет.": "ru114",
+    "В заказе есть все три ответа: что, зачем и для кого.": "ru115",
+    "Что: сайт выставки роботов. Зачем: чтобы дети пришли. Для кого: возраст и интерес.": "ru116",
+    "Молодец! Все три строки написаны тобой, и сайт вышел именно для этих детей.": "ru117",
+    "А теперь твой сайт! Придумай сайт для того, что тебе нравится: клуб, игровой сервер, магазин или праздник. Напиши все три строки и точно скажи, для кого он.": "ru118",
+    "Напиши строку Что?: какой сайт создаёшь?": "ru119",
+    "Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.": "ru120",
+    "Напиши цель: чтобы записывались, заказывали или приходили?": "ru121",
+    "Что создаёшь? Что они должны сделать? Для кого сайт?": "ru122",
+    "В строку Для кого? напиши возраст и что они любят.": "ru123",
+    "Ого, классно! Это твой промпт из трёх строк. Дома отправишь его настоящему ИИ.": "ru124",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?": "ru125",
+    "О чём фраза: об аудитории, возрасте или интересах?": "ru126",
+    "Вспомни: ИИ подстраивает сайт под людей, названных в промпте.": "ru127",
+    "Хороший сайт нравится всем одинаково.": "ru128",
+    "На самом деле сайт нравится тем, под кого он сделан. Для всех, значит ни для кого.": "ru129",
+    "Если поменять Для кого?, меняется и вид сайта.": "ru130",
+    "Верно: буквы, цвета и слова подстраиваются под аудиторию.": "ru131",
+    "В Для кого? достаточно написать люди.": "ru132",
+    "На самом деле нужно написать возраст, кто они и что любят.": "ru133",
+    "Если написать, что любит аудитория, ИИ добавит это на сайт.": "ru134",
+    "Верно: напишешь комиксы, появится карточка комиксов.": "ru135",
+    "Если сайт смотрят двое разных, писать нужно только одного.": "ru136",
+    "На самом деле пиши обоих: например, дети и их родители.": "ru137",
+    "Всё верно! Ты правильно думаешь об аудитории.": "ru138",
+    "Вернёмся к загадке. Я думал, что хороший сайт нравится всем. Но детям нужно одно, родителям, другое, а бабушкам и дедушкам, третье. Сайт для всех никому не подходит по-настоящему. Я ошибся.": "ru139",
+    "Смотри, это твой промпт из трёх строк и твой сайт.": "ru140",
+    "Что?, конкретная вещь, Зачем?, цель.": "ru141",
+    "Для кого?, это аудитория, то есть люди, которые будут смотреть сайт: возраст, кто они и что любят.": "ru142",
+    "Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, четвёртый вопрос: что будет на сайте? До встречи!": "ru143",
+    "цель: что сделает сайт": "ru144",
+    "Вау, классно!": "ru145",
+    "Есть! Получилось!": "ru146",
+    "Супер!": "ru147",
+    "Огонь!": "ru148",
+    "Ура!": "ru149",
+    "Вот это да!": "ru150",
+    "Попробуй ещё раз.": "ru151",
+    "Посмотри внимательно.": "ru152",
+    "Уже близко. Не спеши.": "ru153",
+    "Для кого?": "ru154",
+    "Первоклассник, 7 лет: Буквы мелкие, слова сложные. Скучно! А где игра?": "ru155",
+    "Для кого создаём?": "ru156",
+    "Кружок робототехники ищет новых ребят: школьников 12–14 лет.": "ru157",
+    "для кого сайт?": "ru158",
+    "Напиши строку Для кого?": "ru159",
+    "Что точнее?": "ru160",
+    "Какое Для кого? точнее?": "ru161",
+    "Что любят?": "ru162",
+    "В школе будет Праздник животных. Он для детей 8–10 лет, они любят животных и игры.": "ru163",
+    "для кого и что они любят?": "ru164",
+    "Какая строка?": "ru165",
+    "В какую строку?": "ru166",
+    "Столовая нашего района просит сайт. Еду чаще всего заказывают бабушки и дедушки района.": "ru167",
+    "Курс плавания ждёт детей 6–9 лет. Записывают их родители, они спрашивают о безопасности и ценах.": "ru168",
+    "для кого?": "ru169",
+    "Руководитель танцевального кружка: К нам приходят малыши 5–7 лет.": "ru170",
+    "Для кого этот сайт?": "ru171",
+    "Какое Для кого? дало этот сайт?": "ru172",
+    "Админ сервера: У нас играют ребята 10–13 лет, они любят строить.": "ru173",
+    "В школе будет выставка роботов. Пусть на неё придут дети 9–11 лет, они любят игры.": "ru174",
+    "что создаём?": "ru175",
+    "что должен сделать сайт?": "ru176",
+    "что создаёшь?": "ru177",
+    "Верно или нет?": "ru178",
+    "Верно или неверно?": "ru179",
+    "Отправь свой промпт настоящему ИИ и сделай свой сайт.": "ru180",
+    "Пишет…": "ru181",
+    "Что должно быть на сайте?": "ru182",
+    "Напиши в строку Для кого?: кто будет смотреть сайт?": "ru183",
+    "Если написать для всех, ИИ ни под кого сайт не подстроит. Посмотри в заказ: кто именно?": "ru184",
+    "ИИ не понял по этому слову, кто это. Напиши возраст или кто они: дети, школьники, родители.": "ru185",
+    "Молодец!": "ru186",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru187",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru188",
+    "Сильнейшие команды на одном поле!": "ru189",
+    "Свежее, горячее и вкусное.": "ru190",
+    "Интересные занятия и дружная команда.": "ru191",
+    "Всё в одном месте: удобно и быстро.": "ru192",
+    "Ждём всех!": "ru193",
+    "Играй вместе с друзьями!": "ru194",
+    "Учись с нуля.": "ru195",
+    "Незабываемое лето начинается здесь!": "ru196",
+    "Одна команда, одна цель!": "ru197",
+    "А ты знал?": "ru198",
+    "История, правила и интересные факты.": "ru199",
+    "С нами всё просто.": "ru200",
+    "Запишись прямо сейчас: мест немного!": "ru201",
+    "Есть вопросы? Позвони нам.": "ru202",
+    "Закажи в пару нажатий!": "ru203",
+    "Ждём тебя! Адрес и время ниже.": "ru204",
+    "Когда, где и как: всё здесь.": "ru205",
+    "Безопасно, полезно и удобно для вашего ребёнка.": "ru206",
+    "Всё просто и понятно. Есть вопросы, позвоните.": "ru207",
+    "Готовый план и материалы для урока.": "ru208",
+    "Профессиональный подход и высокое качество.": "ru209",
+    "Есть вопросы?": "ru210",
+    "📞 +998 90 123 45 67, позвоните, всё объясним.": "ru211",
+    "Очень круто! Придём ещё.": "ru212",
+    "Всё быстро и вкусно.": "ru213",
+    "Дети очень довольны.": "ru214",
+    "Рассказал и друзьям.": "ru215",
+    "❓ Сколько стоит? Смотри в ценах.": "ru216",
+    "❓ Когда открыто? Каждый день.": "ru217",
+    "❓ Как записаться? Заполни форму.": "ru218",
+    "Мы работаем с 2015 года и стараемся порадовать каждого гостя.": "ru219",
+    "✅ Спасибо!": "ru220",
+    "Ответ: всё написано в разделе цен.": "ru221",
+    "🎁 Подпишись!": "ru222",
+    "−50% СКИДКА!": "ru223",
+    "Зачем?": "ru224",
+    "Что внутри?": "ru225",
+    "Как выглядит?": "ru226",
+    "Как ведёт себя?": "ru227",
+    "Какие правила?": "ru228",
+  },
+  en: {
+    "Hi! Last lesson we learned to write a proper prompt: what and why. Here’s my prompt for the school football tournament. The tournament is for first and second graders. Tap Send and let’s see the site!": "en001",
+    "get players to sign up": "en002",
+    "The site the AI makes will appear here": "en003",
+    "Wow, the site came out right: there’s the tournament and the sign-up. But a first grader opened it and got bored! The letters are tiny, the words are hard, nothing fun.": "en004",
+    "I think a good site should please everyone equally: adults and kids. I made it for everyone. What do you think? Today we learn the third question: who is the site for?": "en005",
+    "Look at the prompt line and at the site’s letters, colours and the label at the top.": "en006",
+    "Who for? is who will look at the site: their age and who they are. The AI picks the design and words from it.": "en007",
+    "You’d tell the same story one way to a friend and another way to your grandma. Sites work the same way.": "en008",
+    "The third question: who is the site for? We call it the audience, that is, the people who will look at the site. Let’s add a new line to the prompt. It’s empty for now, so the AI didn’t tailor the site to anyone.": "en009",
+    "We write: kids aged seven to eight. Look: big letters, bright colours, a button like a toy. The AI remade the site for little kids.": "en010",
+    "Now the same site for the players’ parents. The colours calmed down and a new section appeared: safety, prices and the schedule. That’s exactly what parents ask about.": "en011",
+    "And for grandparents: very big letters, nothing extra, and the phone number right there.": "en012",
+    "So even with the same What? and Why?, change Who for? and the site changes: its look, words and sections.": "en013",
+    "Your turn. The robotics club asked for a site. What? and Why? are ready. Read the request and write in the Who for? line who the site is for.": "en014",
+    "get students to sign up for the club": "en015",
+    "Check the request: the club isn’t waiting for little kids or adults, but for students aged twelve to fourteen.": "en016",
+    "Read the request again: who does it name?": "en017",
+    "Write their age and who they are: that helps the AI most.": "en018",
+    "Write it like the example and tap Send.": "en019",
+    "Awesome! The site adapted to teens: modern, dark colours, the age at the top. The AI knew who it was for.": "en020",
+    "Now check yourself. Which of the two Who for? lines helps the AI more?": "en021",
+    "Which one makes it clear who they are: their age, who they are or what they love?": "en022",
+    "Everyone, people, customers are too general.": "en023",
+    "For everyone means for no one. The one with an age is better.": "en024",
+    "The first one says who they are and what they love.": "en025",
+    "The second one is precise: it says who and what they’re looking for.": "en026",
+    "Exactly!": "en027",
+    "All correct! You can tell a general word from a precise audience.": "en028",
+    "Look at the prompt line and at the site’s first cards.": "en029",
+    "An interest, that is, something the audience loves, shows up on the site as a card.": "en030",
+    "When you choose a gift for a friend, you think about what they love. A site is chosen the same way.": "en031",
+    "Writing who the site is for is only half the job. There’s one more secret: what does the audience love? Look, right now only the age is written.": "en032",
+    "get kids to come to the fair": "en033",
+    "We add: they love comics. A Comics card appeared on the site right away!": "en034",
+    "Let’s add adventures too. There, Adventures appeared. The AI puts what they love on the site.": "en035",
+    "And what if they love games and prizes? Look, the cards changed too.": "en036",
+    "So in the Who for? line write not only the age but also what they love. The AI will make the site even more fun for them.": "en037",
+    "Your turn. The school is holding an animal festival. Read the request and write in the Who for? line who it’s for and what they love.": "en038",
+    "get kids to come to the festival": "en039",
+    "The request gives an age: kids from eight to ten.": "en040",
+    "You’ve got who they are. Now add what they love: it’s in the request.": "en041",
+    "The request has two things: who they are and what they love.": "en042",
+    "First their age and who they are, then what they love.": "en043",
+    "Great! Animals and Games cards appeared, with big bright letters. This is a site made for kids!": "en044",
+    "Now let’s use all three questions. I say a phrase, and you choose which prompt line it goes in: What, Why or Who for?": "en045",
+    "What is the phrase about: a thing, a goal or people?": "en046",
+    "What the site is: What?. Who should do what: Why?. Who they are and their age: Who for?.": "en047",
+    "A drawing course site": "en048",
+    "That’s what we’re making: a drawing course site.": "en049",
+    "kids aged 7–9": "en050",
+    "That’s who it’s for, with an age.": "en051",
+    "get people to order pizza": "en052",
+    "That’s the goal: what the site does.": "en053",
+    "teens who love football": "en054",
+    "That’s the audience and its interest.": "en055",
+    "get students to sign up for the course": "en056",
+    "That’s the goal: who should do what.": "en057",
+    "A bookshop site": "en058",
+    "That’s a specific thing: a bookshop site.": "en059",
+    "Great! You can tell all three questions apart.": "en060",
+    "A new request! Our neighbourhood canteen asked for a site. Read the request carefully: who is the site for?": "en061",
+    "get people to order food": "en062",
+    "Check the request: who orders the food most often?": "en063",
+    "The request says who orders the food.": "en064",
+    "They’re grandparents, that is, older people.": "en065",
+    "Awesome! Very big letters and the phone number right there. A site that’s easy for grandparents.": "en066",
+    "Look at the prompt line, the top of the site and the bottom section.": "en067",
+    "Two audiences means two different kinds of people look at the site: one chooses, the other decides.": "en068",
+    "In a toy shop, kids choose the toy and parents look at the price.": "en069",
+    "Sometimes two different kinds of people look at a site. Kids choose a summer camp, but parents pay. Look, right now the site is only for kids.": "en070",
+    "get kids signed up for camp": "en071",
+    "Now we write only parents. The site calmed down, safety and prices appeared, but it’s no fun for kids any more.": "en072",
+    "We write both: kids and their parents. There: a bright top for kids, a section for parents below. Everyone’s happy!": "en073",
+    "So if two kinds of people look at the site, write both: the main one first, then the second.": "en074",
+    "Your turn. The swimming course asked for a site. Read the request: there are two kinds of people here. Write both in the Who for? line.": "en075",
+    "get kids signed up for the course": "en076",
+    "You’ve got the kids, but who signs them up? Add the parents too.": "en077",
+    "You’ve got the parents. But who is the course for? Write the kids too.": "en078",
+    "Check the request: who swims and who signs them up?": "en079",
+    "Who’s in the request: who swims and who signs them up?": "en080",
+    "Kids and parents: write both, joined with and.": "en081",
+    "Well done! A bright top for kids, safety and prices for parents below. The site suits both.": "en082",
+    "I didn’t write Who for? for the dance club. Look, the AI guessed by itself: for adults! It made a serious black-and-gold site. But the teacher says little ones come. Write the Who for? line.": "en083",
+    "get kids to sign up for the club": "en084",
+    "That’s for adults again. Who did the teacher say comes?": "en085",
+    "Check the request: little ones from five to seven come to the club.": "en086",
+    "Who did the AI guess? And who did the teacher name?": "en087",
+    "The teacher named little ones and their age.": "en088",
+    "Awesome! The black and gold are gone; the site is bright and cheerful. Say who it’s for and the AI won’t guess.": "en089",
+    "Let’s be detectives. From the site we’ll work out who it was made for and what the prompt said.": "en090",
+    "Look at the letters, the colours and the extra sections.": "en091",
+    "For kids: bright and big. For parents: safety and prices. For older people: very big letters and a phone number.": "en092",
+    "Big letters, bright colours, a toy-like button: this is for kids.": "en093",
+    "Very big letters and a phone number: this is for older people.": "en094",
+    "Calm colours, safety, prices and a schedule: this is for parents.": "en095",
+    "The site has a Comics card, so the prompt mentioned comics. That’s C.": "en096",
+    "Great! You can work out a site’s audience just by looking at it.": "en097",
+    "Oops, for the server site I wrote for everyone in the Who for? line. The site didn’t adapt to anyone and came out plain. But the admin said who plays. Fix my line.": "en098",
+    "get players to join the server": "en099",
+    "For everyone is still there. The admin said who plays: read the request.": "en100",
+    "You’ve got the age. What do they love? Add that too.": "en101",
+    "Check the request: the players are aged ten to thirteen.": "en102",
+    "The admin said two things: the players’ age and what they love.": "en103",
+    "Delete for everyone and write the age, then the interest.": "en104",
+    "Great! The site adapted to teens and a Building card appeared. Now it’s really for the players.": "en105",
+    "Now you write all three lines. The school is holding a robot fair. Read the request and write What?, Why? and Who for?.": "en106",
+    "Write the What? line: what site are we making?": "en107",
+    "The site should be about robots: read the request.": "en108",
+    "That’s just a topic. What exactly about robots: a fair, a shop? Be specific.": "en109",
+    "Now write the Why? line: what should the site do?": "en110",
+    "That’s a wish, not a goal. What should the site do for a visitor?": "en111",
+    "The request has a goal: kids should come to the fair.": "en112",
+    "Now write the Who for? line: who will look at the site?": "en113",
+    "The request says who should come: kids aged nine to eleven.": "en114",
+    "The request has all three answers: what, why and who for.": "en115",
+    "What: a robot fair site. Why: kids should come. Who for: age and interest.": "en116",
+    "Well done! You wrote all three lines, and the site came out just right for these kids.": "en117",
+    "Now your own site! Think of a site for something you love: a club, a game server, a shop or a party. Write all three lines and say exactly who it’s for.": "en118",
+    "Write the What? line: what site are you making?": "en119",
+    "That’s just a topic. Write a specific thing: a club, server, shop or party site.": "en120",
+    "Write the goal: should people sign up, order or come?": "en121",
+    "What are you making? What should they do? Who is the site for?": "en122",
+    "In the Who for? line write their age and what they love.": "en123",
+    "Wow, great! That’s your three-line prompt. At home you’ll send it to a real AI.": "en124",
+    "Now a quick check. I say a sentence, and you choose: true or false?": "en125",
+    "What’s it about: the audience, age or interests?": "en126",
+    "Remember: the AI tailors the site to the people named in the prompt.": "en127",
+    "A good site pleases everyone equally.": "en128",
+    "Actually a site pleases the people it’s made for. For everyone means for no one.": "en129",
+    "Change Who for? and the site’s look changes too.": "en130",
+    "Right: letters, colours and words adapt to the audience.": "en131",
+    "Writing people in Who for? is enough.": "en132",
+    "Actually you should write their age, who they are and what they love.": "en133",
+    "If we write what the audience loves, the AI puts it on the site.": "en134",
+    "Right: write comics and a comics card appears.": "en135",
+    "If two kinds of people look at a site, you should write only one.": "en136",
+    "Actually write both: for example, kids and their parents.": "en137",
+    "All correct! You think about audiences the right way.": "en138",
+    "Back to the riddle. I thought a good site pleases everyone. But kids need one thing, parents another, and grandparents a third. A site for everyone doesn’t really suit anyone. I was wrong.": "en139",
+    "Look, this is your three-line prompt and your site.": "en140",
+    "What? is a specific thing, Why? is the goal.": "en141",
+    "Who for? is the audience, that is, the people who will look at the site: their age, who they are and what they love.": "en142",
+    "Homework: copy your prompt and send it to a real AI. Next lesson: the fourth question, what goes on the site? See you!": "en143",
+    "the goal: what the site should do": "en144",
+    "Wow, awesome!": "en145",
+    "Yes! You did it!": "en146",
+    "Super!": "en147",
+    "Brilliant!": "en148",
+    "Hooray!": "en149",
+    "Amazing!": "en150",
+    "Try once more.": "en151",
+    "Take a closer look.": "en152",
+    "You are close. No rush.": "en153",
+    "Who for?": "en154",
+    "A first grader, age 7: The letters are tiny, the words are hard. Boring! Where’s the fun?": "en155",
+    "Who is it for?": "en156",
+    "The robotics club is looking for new members: students aged 12–14.": "en157",
+    "who is the site for?": "en158",
+    "Which is clearer?": "en159",
+    "Which Who for? is clearer?": "en160",
+    "What do they love?": "en161",
+    "The school is holding an Animal Festival. It’s for kids aged 8–10, who love animals and games.": "en162",
+    "who for and what do they love?": "en163",
+    "Which line?": "en164",
+    "Which line is it?": "en165",
+    "Our neighbourhood canteen wants a site. Most orders come from the grandparents in the area.": "en166",
+    "The swimming course is for kids aged 6–9. Their parents sign them up and ask about safety and prices.": "en167",
+    "who for?": "en168",
+    "The dance club teacher: Little ones aged 5–7 come to us.": "en169",
+    "Who is this site for?": "en170",
+    "Which Who for? made this site?": "en171",
+    "The server admin: Our players are aged 10–13, and they love building.": "en172",
+    "The school is holding a robot fair. Kids aged 9–11 should come; they love games.": "en173",
+    "what are we making?": "en174",
+    "what should the site do?": "en175",
+    "what are you making?": "en176",
+    "True or false?": "en177",
+    "Send your prompt to a real AI and make your site.": "en178",
+    "Typing…": "en179",
+    "What goes on the site?": "en180",
+    "Write in the Who for? line: who will look at the site?": "en181",
+    "If you write for everyone, the AI won’t tailor the site to anyone. Check the request: who exactly?": "en182",
+    "The AI couldn’t tell who that is. Write their age or who they are: kids, students, parents.": "en183",
+    "Well done!": "en184",
+    "Everything in the window lives inside body.": "en185",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en186",
+    "The strongest teams on one field!": "en187",
+    "Fresh, hot and tasty.": "en188",
+    "Fun sessions and a friendly team.": "en189",
+    "Everything in one place: quick and easy.": "en190",
+    "Everyone is welcome!": "en191",
+    "Play with your friends!": "en192",
+    "Learn from scratch.": "en193",
+    "An unforgettable summer starts here!": "en194",
+    "One team, one goal!": "en195",
+    "Did you know?": "en196",
+    "History, rules and fun facts.": "en197",
+    "Everything is easy with us.": "en198",
+    "Sign up now: places are limited!": "en199",
+    "Got questions? Give us a call.": "en200",
+    "Order in just a few taps!": "en201",
+    "We’re waiting for you! Address and time below.": "en202",
+    "When, where and how: it’s all here.": "en203",
+    "Safe, useful and convenient for your child.": "en204",
+    "Simple and clear. Questions? Just give us a call.": "en205",
+    "A ready plan and materials for your class.": "en206",
+    "A professional approach and top quality.": "en207",
+    "Got questions?": "en208",
+    "📞 +998 90 123 45 67: call us and we’ll explain everything.": "en209",
+    "Really great! We’ll be back.": "en210",
+    "Everything was quick and tasty.": "en211",
+    "My kids loved it.": "en212",
+    "I told my friends too.": "en213",
+    "❓ How much is it? See prices.": "en214",
+    "❓ When are you open? Every day.": "en215",
+    "❓ How do I sign up? Fill in the form.": "en216",
+    "We’ve been working since 2015 and try to make every visitor happy.": "en217",
+    "✅ Thank you!": "en218",
+    "Answer: it’s all in the prices section.": "en219",
+    "🎁 Subscribe!": "en220",
+    "−50% OFF!": "en221",
+    "For whom?": "en222",
+    "What’s inside?": "en223",
+    "How it looks?": "en224",
+    "How it behaves?": "en225",
+    "What rules?": "en226",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

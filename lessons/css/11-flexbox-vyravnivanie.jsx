@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8065,15 +7616,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14336,3 +13880,1115 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c11-sheet .kz-scene .kz-br.c11-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c11-sheet .kz-scene .kz-br.c11-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 182, ru 183, en 182; всего знаков 68807. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Javonim qatorga tizildi, lekin qarang: kartochkalar chap chetga siqilib, bir-biriga yopishib qolgan. Men ularni javonning qoq o'rtasiga qo'ymoqchiman, orasida bo'shliq bilan. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Kartochkalar javonning o'rtasida, ham chapdan o'ngga, ham tepadan pastga. Oralarida esa bo'shliq bor.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni uchta xususiyat qildi: [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekisladi, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab, [English pronunciation] gap [O'zbekcha tallaffuz] esa oraliq qo'ydi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun elementlarni [English pronunciation] flex [O'zbekcha tallaffuz] qutida tekislashni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta kartochkalarni tepadan pastga o'rtaga qo'ymoqchi bo'lib, [English pronunciation] justify-content center [O'zbekcha tallaffuz] yozgan edim. Menimcha, ular tepadan pastga o'rtaga tushishi kerak. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'q sariq strelkaga va kartochkalarga qarang: ular strelka bo'ylab boshiga, o'rtasiga yoki oxiriga yig'iladi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] justify-content [O'zbekcha tallaffuz] kartochkalarni asosiy o'q bo'ylab tekislaydi: [English pronunciation] flex-start [O'zbekcha tallaffuz] boshiga, [English pronunciation] center [O'zbekcha tallaffuz] o'rtaga, [English pronunciation] flex-end [O'zbekcha tallaffuz] oxiriga, [English pronunciation] space-between [O'zbekcha tallaffuz] esa oralarini teng bo'ladi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javonga kitob qo'yayotganda ularni chetga, o'rtaga yoki butun javon bo'ylab teng tarqatib qo'yasiz. [English pronunciation] justify-content [O'zbekcha tallaffuz] ham shuni qiladi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi [English pronunciation] justify-content [O'zbekcha tallaffuz]. U elementlarni asosiy o'q bo'ylab tekislaydi, ya'ni to'q sariq strelka yo'nalishida. Hozir ular odatdagidek boshida turibdi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz], ya'ni o'rta. Kartochkalar javonning o'rtasiga yig'ildi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-end [O'zbekcha tallaffuz], ya'ni oxiri. Kartochkalar o'ng chetga o'tdi, strelka tugaydigan joyga.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] space-between [O'zbekcha tallaffuz], ya'ni orasida joy. Birinchisi chapda, oxirgisi o'ngda, qolgan joy esa ular orasida teng bo'lindi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekislaydi: boshi, o'rtasi, oxiri yoki orasida joy bilan.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Kartochkalar javonning o'rtasida tursin: [English pronunciation] justify-content [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: bitta so'z.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da bu so'z amerikacha yoziladi: oxiri er bilan.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da o'rta middle emas. Boshqa so'z kerak.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] justify-content [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz] bilan kartochkalar boshida qoladi. O'rta kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-end [O'zbekcha tallaffuz] bilan ular oxiriga o'tdi. O'rta kerak.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] space-between [O'zbekcha tallaffuz] bilan ular chetlarga tarqaldi. O'rta kerak.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. O'rta kerak.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'rta inglizcha qanday?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rta [English pronunciation] center [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Kartochkalar javonning o'rtasida.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qiymatlarni javonlar bilan juftlang. Chapdan qiymatni, o'ngdan esa shunday tekislangan javonni bosing.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz]: hammasi boshida, chap chetda.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz]: hammasi o'rtada yig'ilgan.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] space-between [O'zbekcha tallaffuz]: chetlarda va orasida teng joy.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu boshida.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu o'rtada.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu orasida joy bilan.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdan qiymatni tanlang.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kubiklar qayerda yig'ilganiga qarang: chapdami, o'rtadami, chetlardami?", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz] chapda, [English pronunciation] center [O'zbekcha tallaffuz] o'rtada, [English pronunciation] space-between [O'zbekcha tallaffuz] chetlarda.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan juftlikni bosing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Tekislashni ko'z bilan o'qiysiz.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Binafsha strelkaga qarang: kartochkalar uning bo'ylab tepaga, o'rtaga yoki pastga ko'chadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi. [English pronunciation] stretch [O'zbekcha tallaffuz] cho'zadi, [English pronunciation] flex-start [O'zbekcha tallaffuz] boshiga, [English pronunciation] center [O'zbekcha tallaffuz] o'rtaga, [English pronunciation] flex-end [O'zbekcha tallaffuz] oxiriga qo'yadi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmlarni devorga ilganda ularni bir chiziqqa tepadan, o'rtadan yoki pastdan tekislaysiz. [English pronunciation] align-items [O'zbekcha tallaffuz] ham shunday tekislaydi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi [English pronunciation] align-items [O'zbekcha tallaffuz]. U elementlarni ko'ndalang o'q bo'ylab tekislaydi, ya'ni binafsha strelka yo'nalishida. Odatda u [English pronunciation] stretch [O'zbekcha tallaffuz], ya'ni cho'zish: kartochkalar javonning butun balandligini egallaydi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz]: kartochkalar cho'zilmadi va tepaga, strelka boshiga ko'tarildi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz]: tepadan pastga o'rtada.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-end [O'zbekcha tallaffuz]: pastga, strelka oxiriga tushdi.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi. Qiymatlar o'sha-o'sha: [English pronunciation] flex-start [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] flex-end [O'zbekcha tallaffuz].", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kartochkalar javonning pastiga tushsin, xuddi tokchada turgandek: [English pronunciation] align-items [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: ikki so'z, orasida chiziqcha.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da past bottom emas. Strelka oxiri kerak: [English pronunciation] flex [O'zbekcha tallaffuz] va end.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Deyarli! end ham kartochkalarni pastga tushiradi, lekin [English pronunciation] Flexbox [O'zbekcha tallaffuz] da [English pronunciation] flex-end [O'zbekcha tallaffuz] yozish qabul qilingan: oldiga [English pronunciation] flex [O'zbekcha tallaffuz] va chiziqcha qo'shing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz] bilan ular tepaga chiqdi. Past kerak.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz] bilan ular o'rtada. Past kerak.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] stretch [O'zbekcha tallaffuz] bilan ular butun balandlikka cho'zildi. Past kerak.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Past, ya'ni strelka oxiri kerak.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Binafsha strelka pastga qaraydi. Uning oxiri qanday ataladi?", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxiri [English pronunciation] flex-end [O'zbekcha tallaffuz].", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-end [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Kartochkalar javonning pastida turibdi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Javonga qarang va uni qaysi kod shunday qilganini tanlang. Strelkalar yordam beradi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kartochkalar qaysi strelka bo'ylab siljigan: to'q sariqmi yoki binafsha?", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'q sariq strelka bo'ylab [English pronunciation] justify-content [O'zbekcha tallaffuz], binafsha bo'ylab [English pronunciation] align-items [O'zbekcha tallaffuz].", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar chapdan o'ngga o'rtada va cho'zilgan: [English pronunciation] justify-content center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar chapda, lekin tepadan pastga o'rtada: [English pronunciation] align-items center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar cho'zilmagan va tepada: [English pronunciation] align-items flex-start [O'zbekcha tallaffuz].", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! justify va align ni adashtirmaysiz.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar orasiga qarang: oldin bo'sh joy paydo bo'ladi, keyin sig'maganlari yangi qatorga o'tadi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gap [O'zbekcha tallaffuz] kartochkalar orasiga bir xil bo'sh joy qo'yadi. [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] sig'magan kartochkalarni yangi qatorga o'tkazadi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Daftarda so'z qatorga sig'masa, keyingi qatorga yozasiz. [English pronunciation] flex-wrap [O'zbekcha tallaffuz] ham kartochkalarni shunday keyingi qatorga o'tkazadi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi javonda oltita kartochka. Ular bir qatorga zo'rg'a sig'yapti va bir-biriga yopishgan.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gap [O'zbekcha tallaffuz] o'n ikki piksel: kartochkalar orasida teng bo'shliq paydo bo'ldi. [English pronunciation] gap [O'zbekcha tallaffuz] ya'ni oraliq degani.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir kartochkaga [English pronunciation] width [O'zbekcha tallaffuz] to'qson piksel berdik. Lekin oltitasi bitta qatorga sig'maydi, shuning uchun [English pronunciation] flex [O'zbekcha tallaffuz] ularni o'zi ingichkaroq qildi. Qarang: kartochkalar ingichkalashdi.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz], ya'ni o'rash: sig'magan kartochkalar yangi qatorga o'tdi, siqilish yo'qoldi va kartochkalar yana to'liq kenglikda.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq qo'yadi, [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] esa sig'maganlarni yangi qatorga o'tkazadi.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kartochkalar orasida yigirma piksel bo'shliq bo'lsin: [English pronunciation] gap [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat son yozildi. Son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, orasida bo'sh joysiz.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa oraliq. Yigirma piksel kerak.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son yigirma, birlik [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yigirma sonini yozing, yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'ying va Tekshirishni bosing.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kartochkalar orasida teng bo'shliq.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa qaysi xususiyat kerakligini tanlang.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Vazifa nima haqida: asosiy o'q, ko'ndalang o'q, oraliq yoki yangi qator?", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq, [English pronunciation] flex-wrap [O'zbekcha tallaffuz] yangi qator.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar orasida bo'shliq bo'lsin.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oraliq [English pronunciation] gap [O'zbekcha tallaffuz] bilan beriladi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sig'magan kartochkalar yangi qatorga o'tsin.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi qatorga o'tkazish [English pronunciation] flex-wrap [O'zbekcha tallaffuz] bilan.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qatordagi kartochkalar tepadan pastga o'rtada tursin.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qatorda tepadan pastga bu ko'ndalang o'q: [English pronunciation] align-items [O'zbekcha tallaffuz].", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyu havolalari chap va o'ng chetlarga tarqalsin.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chapdan o'ngga asosiy o'q: [English pronunciation] justify-content space-between [O'zbekcha tallaffuz].", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! To'rtala xususiyatni joyida ishlatasiz.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin kartochkalar qayerda turganiga qarang.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatlar aniq yozilishi kerak: [English pronunciation] center [O'zbekcha tallaffuz], [English pronunciation] flex-end [O'zbekcha tallaffuz]. [English pronunciation] justify-content [O'zbekcha tallaffuz] esa doim asosiy o'q bo'yicha ishlaydi, u qaysi tomonga qaramasin.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Navbatni burab qo'ysangiz ham, oldindagi odam oldinda qoladi. Asosiy o'q burilsa ham, [English pronunciation] justify-content [O'zbekcha tallaffuz] unga ergashadi.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tekislashda ham xatolar bo'ladi. Keling, ikkita xatoni va bitta tuzoqni ko'ramiz. Hozir kartochkalar o'rtada: chapdan o'ngga ham, tepadan pastga ham.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] center [O'zbekcha tallaffuz] britancha yozilgan, oxiri re bilan. [English pronunciation] CSS [O'zbekcha tallaffuz] faqat amerikacha yozuvni taniydi, shuning uchun kartochkalar chap chetga ketdi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: [English pronunciation] align-items [O'zbekcha tallaffuz] uchun middle yozilgan. Bunday qiymat yo'q, brauzer uni tashlab yubordi, kartochkalar yana butun balandlikka cho'zildi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tuzoq: [English pronunciation] column [O'zbekcha tallaffuz] da o'qlar almashadi. [English pronunciation] justify-content center [O'zbekcha tallaffuz] endi kartochkalarni tepadan pastga o'rtaga qo'ydi, chunki asosiy o'q pastga qaraydi.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, so'zlar aniq yoziladi: [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] flex-end [O'zbekcha tallaffuz]. justify esa doim asosiy o'q bo'ylab ishlaydi, o'q qayoqqa qaramasin.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men kartochkalarni tepadan pastga o'rtaga qo'ymoqchi edim, lekin ular cho'zilib qolaveradi! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] middle [English pronunciation] CSS [O'zbekcha tallaffuz] da yo'q. O'rta uchun boshqa so'z bor.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Deyarli! [English pronunciation] CSS [O'zbekcha tallaffuz] da amerikacha: oxiri er bilan.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. O'rta uchun so'zni tekshiring.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz] bilan ular tepada. O'rta kerak.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-end [O'zbekcha tallaffuz] bilan ular pastda. O'rta kerak.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] stretch [O'zbekcha tallaffuz] bilan ular cho'zilgan. O'rta kerak.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] middle so'zi [English pronunciation] CSS [O'zbekcha tallaffuz] da yo'q.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rta uchun [English pronunciation] center [O'zbekcha tallaffuz] ishlatiladi.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Kartochkalar tepadan pastga o'rtada.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Javonga qarang va o'sha qoidani bosing.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: javonda uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] center [O'zbekcha tallaffuz] britancha yozilgan edi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Yigirma sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Javonga qarang: qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar chapdan o'ngga o'rtadami? [English pronunciation] justify-content [O'zbekcha tallaffuz] qiymatini tekshiring.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar orasida bo'shliq bormi? [English pronunciation] gap [O'zbekcha tallaffuz] qiymatini tekshiring.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato birinchi qoidada: centre. O'sha qatorni bosing.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato uchinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz tekislashni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Menyu [English pronunciation] nav tag [O'zbekcha tallaffuz]-i ichida. U [English pronunciation] flex [O'zbekcha tallaffuz] bo'lsin va havolalar chap va o'ng chetlarga tarqalsin, oralarida teng joy bilan.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyatlar.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat orasida ikki nuqta yo'q.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyu [English pronunciation] nav tag [O'zbekcha tallaffuz]-i ichida: selektor [English pronunciation] nav [O'zbekcha tallaffuz].", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval [English pronunciation] nav flex [O'zbekcha tallaffuz] bo'lishi kerak: [English pronunciation] display flex [O'zbekcha tallaffuz].", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex [O'zbekcha tallaffuz] bor, havolalar esa hali chapda. Tekislashni ham yozing.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tekislash boshqacha. Havolalar chetlarga tarqalsin, oralarida teng joy.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat o'rtasida nuqtali vergul kerak: [English pronunciation] flex [O'zbekcha tallaffuz] dan keyin nuqtali vergul qo'ying.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki xususiyat kerak: biri [English pronunciation] flex [O'zbekcha tallaffuz] qiladi, ikkinchisi asosiy o'q bo'ylab tekislaydi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display flex [O'zbekcha tallaffuz] va [English pronunciation] justify-content space-between [O'zbekcha tallaffuz].", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Menyu butun kenglikka tarqaldi, xuddi haqiqiy saytlardagidek. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z javoningizni tekislang. Asosiy o'q, ko'ndalang o'q va oraliq uchun istalgan qiymatni yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] justify-content [O'zbekcha tallaffuz] va [English pronunciation] align-items [O'zbekcha tallaffuz] uchun [English pronunciation] center [O'zbekcha tallaffuz], [English pronunciation] flex-start [O'zbekcha tallaffuz] yoki [English pronunciation] flex-end [O'zbekcha tallaffuz] kabi so'z; [English pronunciation] gap [O'zbekcha tallaffuz] uchun son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: [English pronunciation] space-between [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va o'n ikki piksel. Keyin Tayyorni bosing.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning javoningiz.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap qaysi xususiyat haqida va qaysi o'q bo'ylab?", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: justify asosiy o'q, align ko'ndalang o'q, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq, [English pronunciation] wrap [O'zbekcha tallaffuz] yangi qator.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] justify-content [O'zbekcha tallaffuz] elementlarni asosiy o'q bo'ylab tekislaydi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: justify asosiy o'q bo'ylab ishlaydi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida qatordagi kartochkalarni chapdan o'ngga o'rtaga qo'yadi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab: qatorda bu tepadan pastga.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gap [O'zbekcha tallaffuz] kartochkalar orasiga bo'shliq qo'yadi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] gap [O'zbekcha tallaffuz] bu oraliq.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] kartochkalarni kichraytiradi.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] wrap [O'zbekcha tallaffuz] ularni yangi qatorga o'tkazadi, o'lchami esa saqlanadi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] flex [O'zbekcha tallaffuz] tekislashni yaxshi bilasiz.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men kartochkalarni tepadan pastga o'rtaga qo'yish uchun [English pronunciation] justify-content center [O'zbekcha tallaffuz] yozgan edim? Qarang: ular chapdan o'ngga o'rtaga keldi, tepadan pastga esa o'zgarmadi. Men adashibman! justify asosiy o'q bo'ylab ishlaydi, qatorda bu chapdan o'ngga.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadan pastga o'rtaga qo'yish uchun [English pronunciation] align-items center [O'zbekcha tallaffuz] kerak edi. Mana!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning javoningiz, o'zingiz tanlagan qiymatlar bilan!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekislaydi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gap [O'zbekcha tallaffuz] elementlar orasiga oraliq qo'yadi.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] sig'maganlarni yangi qatorga o'tkazadi.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz [English pronunciation] Flexbox [O'zbekcha tallaffuz] bilan har qanday qatorni chiroyli tekislay olasiz. Keyingi darsda elementlarni sahifaning istalgan joyiga qo'yishni o'rganamiz. Ko'rishguncha!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi kod?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Javonni qaysi kod shunday qildi?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi xususiyat?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu vazifa uchun qaysi xususiyat kerak?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Моя полка выстроилась в ряд, но смотри: карточки прижались к левому краю и слиплись. Я хочу поставить их ровно в середину полки, с промежутками. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Карточки в середине полки и слева направо, и сверху вниз. А между ними, промежутки.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделали три свойства: [English pronunciation] justify-content [Русское произношение] выровнял по главной оси, [English pronunciation] align-items [Русское произношение], по поперечной, а [English pronunciation] gap [Русское произношение] поставил промежутки.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься выравнивать элементы во [English pronunciation] flex [Русское произношение]-коробке. Но сначала загадка. В первый раз, чтобы поставить карточки по центру сверху вниз, я написал [English pronunciation] justify-content center [Русское произношение]. По-моему, они должны встать по центру сверху вниз. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на оранжевую стрелку и карточки: они собираются вдоль стрелки в начале, в середине или в конце.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] justify-content [Русское произношение] выравнивает карточки по главной оси: [English pronunciation] flex-start [Русское произношение], в начало, [English pronunciation] center [Русское произношение], в середину, [English pronunciation] flex-end [Русское произношение], в конец, [English pronunciation] space-between [Русское произношение], делит место между ними поровну.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ставя книги на полку, ты двигаешь их к краю, в середину или расставляешь ровно по всей полке. [English pronunciation] justify-content [Русское произношение] делает то же самое.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первое, [English pronunciation] justify-content [Русское произношение]. Оно выравнивает элементы по главной оси, то есть по оранжевой стрелке. Сейчас они, как обычно, стоят в начале.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] center [Русское произношение], то есть середина. Карточки собрались в середине полки.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-end [Русское произношение], то есть конец. Карточки ушли к правому краю, туда, где кончается стрелка.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] space-between [Русское произношение], то есть место между. Первая слева, последняя справа, а остальное место поделено между ними поровну.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] justify-content [Русское произношение] выравнивает по главной оси: в начало, в середину, в конец или с местом между.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Пусть карточки стоят в середине полки: впиши значение для [English pronunciation] justify-content [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: одно слово.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] это слово пишется по-американски: на конце er.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] середина, не middle. Нужно другое слово.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] justify-content [Русское произношение].", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] flex-start [Русское произношение] карточки останутся в начале. Нужна середина.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] flex-end [Русское произношение] они ушли в конец. Нужна середина.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] space-between [Русское произношение] они разошлись по краям. Нужна середина.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужна середина.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как по-английски середина, центр?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Середина, [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Карточки в середине полки.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соедини значения с полками. Нажми значение слева, а потом полку, выровненную так, справа.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-start [Русское произношение]: все в начале, у левого края.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] center [Русское произношение]: все собрались в середине.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] space-between [Русское произношение]: по краям и с равными промежутками.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это в начале.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это в середине.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это с местом между.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери значение слева.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри, где собрались кубики: слева, в середине, по краям?", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-start [Русское произношение], слева, [English pronunciation] center [Русское произношение], в середине, [English pronunciation] space-between [Русское произношение], по краям.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую пару.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Ты читаешь выравнивание на глаз.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на фиолетовую стрелку: карточки двигаются вдоль неё вверх, в середину или вниз.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси. [English pronunciation] stretch [Русское произношение] растягивает, [English pronunciation] flex-start [Русское произношение] ставит в начало, [English pronunciation] center [Русское произношение], в середину, [English pronunciation] flex-end [Русское произношение], в конец.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вешая картинки на стену, ты выравниваешь их по верху, по середине или по низу. [English pronunciation] align-items [Русское произношение] выравнивает так же.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Второе, [English pronunciation] align-items [Русское произношение]. Оно выравнивает элементы по поперечной оси, то есть по фиолетовой стрелке. Обычно это [English pronunciation] stretch [Русское произношение], то есть растянуть: карточки занимают всю высоту полки.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-start [Русское произношение]: карточки перестали растягиваться и поднялись наверх, к началу стрелки.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] center [Русское произношение]: по центру сверху вниз.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-end [Русское произношение]: опустились вниз, к концу стрелки.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси. Значения те же: [English pronunciation] flex-start [Русское произношение], [English pronunciation] center [Русское произношение] и [English pronunciation] flex-end [Русское произношение].", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть карточки опустятся на дно полки, будто стоят на ней: впиши значение для [English pronunciation] align-items [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: два слова через чёрточку.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] низ, не bottom. Нужен конец стрелки: [English pronunciation] flex [Русское произношение] и end.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! end тоже опустит карточки, но во [English pronunciation] Flexbox [Русское произношение] принято писать [English pronunciation] flex-end [Русское произношение]: допиши впереди [English pronunciation] flex [Русское произношение] и чёрточку.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Два слова пишутся через чёрточку, без пробела.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] flex-start [Русское произношение] они поднялись наверх. Нужен низ.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] center [Русское произношение] они посередине. Нужен низ.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Со [English pronunciation] stretch [Русское произношение] они растянуты на всю высоту. Нужен низ.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужен низ, то есть конец стрелки.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Фиолетовая стрелка смотрит вниз. Как называется её конец?", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Конец, [English pronunciation] flex-end [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] flex-end [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Карточки стоят на дне полки.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Посмотри на полку и выбери, какой код сделал её такой. Стрелки помогут.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вдоль какой стрелки сдвинулись карточки: оранжевой или фиолетовой?", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вдоль оранжевой, [English pronunciation] justify-content [Русское произношение], вдоль фиолетовой, [English pronunciation] align-items [Русское произношение].", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки посередине слева направо и растянуты: [English pronunciation] justify-content center [Русское произношение].", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки слева, но посередине сверху вниз: [English pronunciation] align-items center [Русское произношение].", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки не растянуты и наверху: [English pronunciation] align-items flex-start [Русское произношение].", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь justify и align.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри между карточками: сначала появляются промежутки, потом то, что не поместилось, переходит на новую строку.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] gap [Русское произношение] ставит одинаковые промежутки между карточками. [English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если слово не помещается в строку тетради, ты пишешь его на следующей. [English pronunciation] flex-wrap [Русское произношение] переносит карточки так же.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь на полке шесть карточек. Они еле помещаются в ряд и слиплись.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] gap [Русское произношение] двенадцать пикселей: между карточками появились равные промежутки. [English pronunciation] gap [Русское произношение], то есть промежуток.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждой карточке дали [English pronunciation] width [Русское произношение] девяносто пикселей. Но шесть таких в один ряд не влезают, и [English pronunciation] flex [Русское произношение] сам сделал их уже. Смотри: карточки стали тоньше.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-wrap wrap [Русское произношение], то есть перенос: не поместившиеся карточки перешли на новую строку, сжатие пропало, и карточки снова полной ширины.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] gap [Русское произношение] ставит промежутки, а [English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть между карточками будет промежуток двадцать пикселей: впиши значение для [English pronunciation] gap [Русское произношение].", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написано только число. Добавь к числу [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение] без пробела.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой промежуток. Нужно двадцать пикселей.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение, число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число двадцать, единица [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши число двадцать, допиши [English pronunciation] px [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Между карточками равные промежутки.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, какое свойство нужно.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём задача: главная ось, поперечная ось, промежуток или новая строка?", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] justify-content [Русское произношение], главная ось, [English pronunciation] align-items [Русское произношение], поперечная, [English pronunciation] gap [Русское произношение], промежуток, [English pronunciation] flex-wrap [Русское произношение], новая строка.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между карточками нужны промежутки.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Промежуток задаёт [English pronunciation] gap [Русское произношение].", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не поместившиеся карточки должны перейти на новую строку.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перенос на новую строку, это [English pronunciation] flex-wrap [Русское произношение].", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки в ряд должны стоять посередине сверху вниз.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В ряду сверху вниз, это поперечная ось: [English pronunciation] align-items [Русское произношение].", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылки меню должны разойтись к левому и правому краю.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слева направо, главная ось: [English pronunciation] justify-content space-between [Русское произношение].", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты применяешь все четыре свойства к месту.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на код: слово написано верно? Потом смотри, где стоят карточки.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значения пишутся точно: [English pronunciation] center [Русское произношение], [English pronunciation] flex-end [Русское произношение]. А [English pronunciation] justify-content [Русское произношение] всегда работает по главной оси, куда бы она ни смотрела.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если развернуть очередь, первый всё равно останется первым. Повернулась главная ось, [English pronunciation] justify-content [Русское произношение] следует за ней.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в выравнивании бывают ошибки. Давай посмотрим на две ошибки и одну ловушку. Сейчас карточки в середине, и слева направо, и сверху вниз.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: [English pronunciation] center [Русское произношение] написан по-британски, с re на конце. [English pronunciation] CSS [Русское произношение] знает только американское написание, карточки уехали к левому краю.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: для [English pronunciation] align-items [Русское произношение] написано middle. Такого значения нет, браузер его выбросил, и карточки опять растянулись на всю высоту.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ловушка: в [English pronunciation] column [Русское произношение] оси меняются. Теперь [English pronunciation] justify-content center [Русское произношение] ставит карточки посередине сверху вниз, ведь главная ось смотрит вниз.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, слова пишутся точно: [English pronunciation] center [Русское произношение] и [English pronunciation] flex-end [Русское произношение]. А justify всегда работает по главной оси, куда бы она ни смотрела.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я хотел поставить карточки посередине сверху вниз, а они всё растянуты! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] middle в [English pronunciation] CSS [Русское произношение] нет. Для середины есть другое слово.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! В [English pronunciation] CSS [Русское произношение] по-американски: на конце er.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для середины.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] flex-start [Русское произношение] они наверху. Нужна середина.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] flex-end [Русское произношение] они внизу. Нужна середина.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Со [English pronunciation] stretch [Русское произношение] они растянуты. Нужна середина.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слова middle в [English pronunciation] CSS [Русское произношение] нет.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для середины используют [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Карточки посередине сверху вниз.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на полку и нажми это правило.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на полке видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! [English pronunciation] center [Русское произношение] был написан по-британски.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! После двадцати не было [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на полку: что не так, как в коде?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки посередине слева направо? Проверь значение [English pronunciation] justify-content [Русское произношение].", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть ли промежутки между карточками? Проверь значение [English pronunciation] gap [Русское произношение].", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в первом правиле: centre. Нажми эту строку.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в третьем правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь выравнивание как настоящий разработчик.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. Меню лежит в теге [English pronunciation] nav [Русское произношение]. Пусть он будет [English pronunciation] flex [Русское произношение], а ссылки разойдутся к левому и правому краю, с равными промежутками.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойства.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меню лежит в теге [English pronunciation] nav [Русское произношение]: селектор, [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала [English pronunciation] nav [Русское произношение] должен быть [English pronunciation] flex [Русское произношение]: [English pronunciation] display flex [Русское произношение].", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex [Русское произношение] есть, а ссылки пока слева. Допиши и выравнивание.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выравнивание другое. Ссылки должны разойтись по краям с равными промежутками.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слова.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между двумя свойствами нужна точка с запятой: поставь её после [English pronunciation] flex [Русское произношение].", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны два свойства: одно делает [English pronunciation] flex [Русское произношение], второе выравнивает по главной оси.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] display flex [Русское произношение] и [English pronunciation] justify-content space-between [Русское произношение].", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Меню разошлось на всю ширину, как на настоящих сайтах. Правило написано тобой целиком.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь выровняй свою полку. Впиши любые значения для главной оси, поперечной оси и промежутка. Потом нажми Готово.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] justify-content [Русское произношение] и [English pronunciation] align-items [Русское произношение], слово вроде [English pronunciation] center [Русское произношение], [English pronunciation] flex-start [Русское произношение] или [English pronunciation] flex-end [Русское произношение]; для [English pronunciation] gap [Русское произношение], число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: [English pronunciation] space-between [Русское произношение], [English pronunciation] center [Русское произношение] и двенадцать пикселей. Потом нажми Готово.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твоя полка.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О каком свойстве фраза и по какой оси?", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: justify, главная ось, align, поперечная, [English pronunciation] gap [Русское произношение], промежуток, [English pronunciation] wrap [Русское произношение], новая строка.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] justify-content [Русское произношение] выравнивает элементы по главной оси.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: justify работает по главной оси.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило ставит карточки ряда посередине слева направо.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] align-items [Русское произношение], по поперечной оси: в ряду это сверху вниз.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] gap [Русское произношение] ставит промежутки между карточками.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] gap [Русское произношение], это промежуток.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-wrap wrap [Русское произношение] уменьшает карточки.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] wrap [Русское произношение] переносит их на новую строку, а размер сохраняется.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в выравнивании [English pronunciation] flex [Русское произношение].", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, чтобы поставить карточки посередине сверху вниз, я написал [English pronunciation] justify-content center [Русское произношение]? Смотри: они встали посередине слева направо, а сверху вниз ничего не изменилось. Я ошибся! justify работает по главной оси, а в ряду это слева направо.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чтобы поставить посередине сверху вниз, нужен был [English pronunciation] align-items center [Русское произношение]. Вот!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя полка с твоими собственными значениями!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] justify-content [Русское произношение] выравнивает по главной оси.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] gap [Русское произношение] ставит промежутки между элементами.", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты умеешь красиво выравнивать любой ряд с помощью [English pronunciation] Flexbox [Русское произношение]. На следующем уроке научимся ставить элементы в любое место страницы. До встречи!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код сделал полку такой?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое свойство нужно для этой задачи?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! My shelf lined up in a row, but look: the cards are squeezed to the left edge and stuck together. I want to put them right in the middle of the shelf, with gaps. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The cards are in the middle of the shelf both left to right and top to bottom. And there are gaps between them.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three properties did it: justify-content aligned along the main axis, align-items along the cross axis, and gap added the gaps.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to align elements in a flex box. But first, a riddle. The first time, to center the cards top to bottom, I wrote justify-content center. I think they should land in the middle top to bottom. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the orange arrow and the cards: they gather along the arrow at the start, the middle or the end.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] justify-content lines the cards up along the main axis: flex-start at the start, center in the middle, flex-end at the end, space-between shares the space evenly.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you put books on a shelf, you push them to an end, the middle, or spread them evenly. justify-content does the same.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first is justify-content. It aligns elements along the main axis, that is, along the orange arrow. Right now they stand at the start, as usual.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] center, meaning the middle. The cards gathered in the middle of the shelf.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-end, meaning the end. The cards moved to the right edge, where the arrow ends.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] space-between, meaning space between. The first on the left, the last on the right, and the rest of the space is shared equally between them.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So justify-content aligns along the main axis: to the start, the middle, the end, or with space between.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Let the cards stand in the middle of the shelf: type the value for justify-content.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: one word.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS this word uses the American spelling: it ends in er.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS the middle isn’t middle. Another word is needed.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for justify-content.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With flex-start the cards stay at the start. We need the middle.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With flex-end they moved to the end. We need the middle.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With space-between they spread to the edges. We need the middle.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need the middle.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English for the middle?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The middle is center.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type center and tap Check.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The cards are in the middle of the shelf.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now match the values with the shelves. Tap a value on the left, then the shelf aligned that way on the right.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-start: everything at the start, by the left edge.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] center: everything gathered in the middle.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] space-between: at the edges with equal space between.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s at the start.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s in the middle.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s with space between.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First pick a value on the left.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look where the blocks gathered: left, middle, or at the edges?", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-start is on the left, center in the middle, space-between at the edges.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing pair.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You read alignment by eye.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the purple arrow: the cards move along it to the top, the middle or the bottom.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] align-items lines things up along the cross axis. stretch stretches, flex-start puts at the start, center in the middle, flex-end at the end.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you hang pictures on a wall, you line them up by the top, the middle or the bottom. align-items lines up the same way.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second is align-items. It aligns elements along the cross axis, that is, along the purple arrow. By default it’s stretch: the cards take the full height of the shelf.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-start: the cards stopped stretching and rose to the top, to the start of the arrow.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] center: in the middle, top to bottom.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-end: they dropped down, to the end of the arrow.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So align-items aligns along the cross axis. The values are the same: flex-start, center and flex-end.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Let the cards drop to the bottom of the shelf, as if standing on it: type the value for align-items.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: two words joined by a dash.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS the bottom isn’t bottom. We need the end of the arrow: flex and end.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! end also moves the cards down, but in Flexbox we write flex-end: add flex and a dash in front.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Two words are joined by a dash, with no space.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With flex-start they went to the top. We need the bottom.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With center they’re in the middle. We need the bottom.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With stretch they fill the whole height. We need the bottom.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need the bottom, the end of the arrow.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The purple arrow points down. What’s its end called?", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The end is flex-end.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type flex-end and tap Check.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The cards stand at the bottom of the shelf.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Look at the shelf and pick which code made it look like that. The arrows will help.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which arrow did the cards move along: orange or purple?", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Along the orange one, justify-content; along the purple one, align-items.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards are in the middle left to right and stretched: justify-content center.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards are on the left but in the middle top to bottom: align-items center.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards aren’t stretched and are at the top: align-items flex-start.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up justify and align.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look between the cards: first gaps appear, then the ones that didn’t fit move to a new row.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gap puts equal gaps between the cards. flex-wrap wrap moves what doesn’t fit onto a new row.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If a word doesn’t fit on a notebook line, you write it on the next one. flex-wrap moves cards the same way.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now there are six cards on the shelf. They barely fit in a row and are stuck together.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gap twelve pixels: equal gaps appeared between the cards. gap means a gap.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We gave each card width ninety pixels. But six of them don’t fit in one row, so flex made them narrower by itself. Look: the cards got thinner.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-wrap wrap, meaning wrapping: the cards that didn’t fit moved to a new line, the squeezing is gone, and the cards are full width again.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So gap adds gaps, and flex-wrap wrap moves what doesn’t fit to a new line.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Let there be a twenty-pixel gap between the cards: type the value for gap.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: a number and px.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number. Add px to the number.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and px with no space.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different gap. We need twenty pixels.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value is a number and px.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is twenty, the unit is px.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the number twenty, add px and tap Check.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Equal gaps between the cards.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick which property is needed.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the task about: the main axis, the cross axis, a gap or a new line?", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] justify-content is the main axis, align-items the cross axis, gap the gap, flex-wrap a new line.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There should be gaps between the cards.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gap sets the gap.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards that don’t fit should move to a new line.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Moving to a new line is flex-wrap.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Cards in a row should stand in the middle top to bottom.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In a row, top to bottom is the cross axis: align-items.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The menu links should spread to the left and right edges.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Left to right is the main axis: justify-content space-between.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You use all four properties in the right place.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time, look at the code: is the word spelled right? Then see where the cards are.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Values must be exact: center, flex-end. And justify-content always works along the main axis, whichever way it points.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Turn a line around and the first person is still first. When the main axis turns, justify-content follows it.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Alignment has mistakes too. Let’s look at two mistakes and one trap. Right now the cards are in the middle, both left to right and top to bottom.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: center is spelled the British way, ending in re. CSS only knows the American spelling, so the cards moved to the left edge.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: align-items says middle. There’s no such value, the browser threw it away, and the cards stretched to the full height again.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The trap: in column the axes swap. Now justify-content center centers the cards top to bottom, because the main axis points down.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the words must be exact: center and flex-end. And justify always works along the main axis, wherever it points.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wanted to center the cards top to bottom, but they stay stretched! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] middle doesn’t exist in CSS. There’s another word for the middle.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! In CSS it’s the American spelling: ending in er.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for the middle.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With flex-start they’re at the top. We need the middle.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With flex-end they’re at the bottom. We need the middle.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With stretch they’re stretched. We need the middle.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word middle doesn’t exist in CSS.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] center is used for the middle.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The cards are in the middle top to bottom.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the shelf and tap that rule.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule doesn’t work?", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the shelf. What doesn’t match the code?", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! center was spelled the British way.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was no px after twenty.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the shelf: what doesn’t match the code?", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Are the cards in the middle left to right? Check the justify-content value.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Are there gaps between the cards? Check the gap value.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the first rule: centre. Tap that line.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the third rule: no px. Tap that line.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check alignment like a real developer.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. The menu is inside the nav tag. Make it flex and spread the links to the left and right edges, with equal space between them.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the properties inside curly braces.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The menu is in the nav tag: the selector is nav.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First nav has to be flex: display flex.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex is there, but the links are still on the left. Add the alignment too.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The alignment is different. The links should spread to the edges with equal space between.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the words.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two properties need a semicolon between them: put one after flex.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two properties are needed: one makes it flex, the other aligns along the main axis.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display flex and justify-content space-between.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The menu spreads across the full width, just like on real sites. You wrote the whole rule yourself.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now align your own shelf. Type any values for the main axis, the cross axis and the gap. Then tap Done.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For justify-content and align-items, a word like center, flex-start or flex-end; for gap, a number and px.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: space-between, center and twelve pixels. Then tap Done.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! This is your shelf.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property is the sentence about, and along which axis?", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: justify is the main axis, align the cross axis, gap the gap, wrap a new line.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] justify-content aligns elements along the main axis.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: justify works along the main axis.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule centers the row’s cards left to right.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually align-items works along the cross axis: in a row that’s top to bottom.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gap puts gaps between the cards.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: gap is the gap.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-wrap wrap makes the cards smaller.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually wrap moves them to a new line, and their size stays the same.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know flex alignment really well.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, to center the cards top to bottom, I wrote justify-content center? Look: they centered left to right, but nothing changed top to bottom. I was wrong! justify works along the main axis, and in a row that’s left to right.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] To center top to bottom, I needed align-items center. There!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your shelf with the values you picked yourself!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] justify-content aligns along the main axis.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] align-items aligns along the cross axis.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] gap puts gaps between elements.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-wrap wrap moves what doesn’t fit to a new line.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you can neatly align any row with Flexbox. Next lesson we’ll learn to place elements anywhere on the page. See you!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code made the shelf like this?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which property does this task need?", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Javonim qatorga tizildi, lekin qarang: kartochkalar chap chetga siqilib, bir-biriga yopishib qolgan. Men ularni javonning qoq o'rtasiga qo'ymoqchiman, orasida bo'shliq bilan. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Kartochkalar javonning o'rtasida, ham chapdan o'ngga, ham tepadan pastga. Oralarida esa bo'shliq bor.": "uz002",
+    "Buni uchta xususiyat qildi: [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekisladi, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab, [English pronunciation] gap [O'zbekcha tallaffuz] esa oraliq qo'ydi.": "uz003",
+    "Bugun elementlarni [English pronunciation] flex [O'zbekcha tallaffuz] qutida tekislashni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta kartochkalarni tepadan pastga o'rtaga qo'ymoqchi bo'lib, [English pronunciation] justify-content center [O'zbekcha tallaffuz] yozgan edim. Menimcha, ular tepadan pastga o'rtaga tushishi kerak. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "To'q sariq strelkaga va kartochkalarga qarang: ular strelka bo'ylab boshiga, o'rtasiga yoki oxiriga yig'iladi.": "uz005",
+    "[English pronunciation] justify-content [O'zbekcha tallaffuz] kartochkalarni asosiy o'q bo'ylab tekislaydi: [English pronunciation] flex-start [O'zbekcha tallaffuz] boshiga, [English pronunciation] center [O'zbekcha tallaffuz] o'rtaga, [English pronunciation] flex-end [O'zbekcha tallaffuz] oxiriga, [English pronunciation] space-between [O'zbekcha tallaffuz] esa oralarini teng bo'ladi.": "uz006",
+    "Javonga kitob qo'yayotganda ularni chetga, o'rtaga yoki butun javon bo'ylab teng tarqatib qo'yasiz. [English pronunciation] justify-content [O'zbekcha tallaffuz] ham shuni qiladi.": "uz007",
+    "Birinchisi [English pronunciation] justify-content [O'zbekcha tallaffuz]. U elementlarni asosiy o'q bo'ylab tekislaydi, ya'ni to'q sariq strelka yo'nalishida. Hozir ular odatdagidek boshida turibdi.": "uz008",
+    "[English pronunciation] center [O'zbekcha tallaffuz], ya'ni o'rta. Kartochkalar javonning o'rtasiga yig'ildi.": "uz009",
+    "[English pronunciation] flex-end [O'zbekcha tallaffuz], ya'ni oxiri. Kartochkalar o'ng chetga o'tdi, strelka tugaydigan joyga.": "uz010",
+    "[English pronunciation] space-between [O'zbekcha tallaffuz], ya'ni orasida joy. Birinchisi chapda, oxirgisi o'ngda, qolgan joy esa ular orasida teng bo'lindi.": "uz011",
+    "Demak, [English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekislaydi: boshi, o'rtasi, oxiri yoki orasida joy bilan.": "uz012",
+    "Endi navbat sizga. Kartochkalar javonning o'rtasida tursin: [English pronunciation] justify-content [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz013",
+    "Qiymatni yozing: bitta so'z.": "uz014",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da bu so'z amerikacha yoziladi: oxiri er bilan.": "uz015",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da o'rta middle emas. Boshqa so'z kerak.": "uz016",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] justify-content [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz017",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz] bilan kartochkalar boshida qoladi. O'rta kerak.": "uz018",
+    "[English pronunciation] flex-end [O'zbekcha tallaffuz] bilan ular oxiriga o'tdi. O'rta kerak.": "uz019",
+    "[English pronunciation] space-between [O'zbekcha tallaffuz] bilan ular chetlarga tarqaldi. O'rta kerak.": "uz020",
+    "Bu boshqa qiymat. O'rta kerak.": "uz021",
+    "O'rta inglizcha qanday?": "uz022",
+    "O'rta [English pronunciation] center [O'zbekcha tallaffuz] deyiladi.": "uz023",
+    "[English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz024",
+    "Zo'r! Kartochkalar javonning o'rtasida.": "uz025",
+    "Endi qiymatlarni javonlar bilan juftlang. Chapdan qiymatni, o'ngdan esa shunday tekislangan javonni bosing.": "uz026",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz]: hammasi boshida, chap chetda.": "uz027",
+    "[English pronunciation] center [O'zbekcha tallaffuz]: hammasi o'rtada yig'ilgan.": "uz028",
+    "[English pronunciation] space-between [O'zbekcha tallaffuz]: chetlarda va orasida teng joy.": "uz029",
+    "To'g'ri, bu boshida.": "uz030",
+    "To'g'ri, bu o'rtada.": "uz031",
+    "To'g'ri, bu orasida joy bilan.": "uz032",
+    "Oldin chapdan qiymatni tanlang.": "uz033",
+    "Kubiklar qayerda yig'ilganiga qarang: chapdami, o'rtadami, chetlardami?": "uz034",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz] chapda, [English pronunciation] center [O'zbekcha tallaffuz] o'rtada, [English pronunciation] space-between [O'zbekcha tallaffuz] chetlarda.": "uz035",
+    "Yonib turgan juftlikni bosing.": "uz036",
+    "Ajoyib! Tekislashni ko'z bilan o'qiysiz.": "uz037",
+    "Binafsha strelkaga qarang: kartochkalar uning bo'ylab tepaga, o'rtaga yoki pastga ko'chadi.": "uz038",
+    "[English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi. [English pronunciation] stretch [O'zbekcha tallaffuz] cho'zadi, [English pronunciation] flex-start [O'zbekcha tallaffuz] boshiga, [English pronunciation] center [O'zbekcha tallaffuz] o'rtaga, [English pronunciation] flex-end [O'zbekcha tallaffuz] oxiriga qo'yadi.": "uz039",
+    "Rasmlarni devorga ilganda ularni bir chiziqqa tepadan, o'rtadan yoki pastdan tekislaysiz. [English pronunciation] align-items [O'zbekcha tallaffuz] ham shunday tekislaydi.": "uz040",
+    "Ikkinchisi [English pronunciation] align-items [O'zbekcha tallaffuz]. U elementlarni ko'ndalang o'q bo'ylab tekislaydi, ya'ni binafsha strelka yo'nalishida. Odatda u [English pronunciation] stretch [O'zbekcha tallaffuz], ya'ni cho'zish: kartochkalar javonning butun balandligini egallaydi.": "uz041",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz]: kartochkalar cho'zilmadi va tepaga, strelka boshiga ko'tarildi.": "uz042",
+    "[English pronunciation] center [O'zbekcha tallaffuz]: tepadan pastga o'rtada.": "uz043",
+    "[English pronunciation] flex-end [O'zbekcha tallaffuz]: pastga, strelka oxiriga tushdi.": "uz044",
+    "Demak, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi. Qiymatlar o'sha-o'sha: [English pronunciation] flex-start [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] flex-end [O'zbekcha tallaffuz].": "uz045",
+    "Endi siz. Kartochkalar javonning pastiga tushsin, xuddi tokchada turgandek: [English pronunciation] align-items [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz046",
+    "Qiymatni yozing: ikki so'z, orasida chiziqcha.": "uz047",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da past bottom emas. Strelka oxiri kerak: [English pronunciation] flex [O'zbekcha tallaffuz] va end.": "uz048",
+    "Deyarli! end ham kartochkalarni pastga tushiradi, lekin [English pronunciation] Flexbox [O'zbekcha tallaffuz] da [English pronunciation] flex-end [O'zbekcha tallaffuz] yozish qabul qilingan: oldiga [English pronunciation] flex [O'zbekcha tallaffuz] va chiziqcha qo'shing.": "uz049",
+    "Brauzer bu so'zni tanimadi. Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi.": "uz050",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz] bilan ular tepaga chiqdi. Past kerak.": "uz051",
+    "[English pronunciation] center [O'zbekcha tallaffuz] bilan ular o'rtada. Past kerak.": "uz052",
+    "[English pronunciation] stretch [O'zbekcha tallaffuz] bilan ular butun balandlikka cho'zildi. Past kerak.": "uz053",
+    "Bu boshqa qiymat. Past, ya'ni strelka oxiri kerak.": "uz054",
+    "Binafsha strelka pastga qaraydi. Uning oxiri qanday ataladi?": "uz055",
+    "Oxiri [English pronunciation] flex-end [O'zbekcha tallaffuz].": "uz056",
+    "[English pronunciation] flex-end [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz057",
+    "Barakalla! Kartochkalar javonning pastida turibdi.": "uz058",
+    "Endi o'zingizni sinab ko'ring. Javonga qarang va uni qaysi kod shunday qilganini tanlang. Strelkalar yordam beradi.": "uz059",
+    "Kartochkalar qaysi strelka bo'ylab siljigan: to'q sariqmi yoki binafsha?": "uz060",
+    "To'q sariq strelka bo'ylab [English pronunciation] justify-content [O'zbekcha tallaffuz], binafsha bo'ylab [English pronunciation] align-items [O'zbekcha tallaffuz].": "uz061",
+    "Kartochkalar chapdan o'ngga o'rtada va cho'zilgan: [English pronunciation] justify-content center [O'zbekcha tallaffuz].": "uz062",
+    "Kartochkalar chapda, lekin tepadan pastga o'rtada: [English pronunciation] align-items center [O'zbekcha tallaffuz].": "uz063",
+    "Kartochkalar cho'zilmagan va tepada: [English pronunciation] align-items flex-start [O'zbekcha tallaffuz].": "uz064",
+    "Barakalla!": "uz065",
+    "Hammasi to'g'ri! justify va align ni adashtirmaysiz.": "uz066",
+    "Kartochkalar orasiga qarang: oldin bo'sh joy paydo bo'ladi, keyin sig'maganlari yangi qatorga o'tadi.": "uz067",
+    "[English pronunciation] gap [O'zbekcha tallaffuz] kartochkalar orasiga bir xil bo'sh joy qo'yadi. [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] sig'magan kartochkalarni yangi qatorga o'tkazadi.": "uz068",
+    "Daftarda so'z qatorga sig'masa, keyingi qatorga yozasiz. [English pronunciation] flex-wrap [O'zbekcha tallaffuz] ham kartochkalarni shunday keyingi qatorga o'tkazadi.": "uz069",
+    "Endi javonda oltita kartochka. Ular bir qatorga zo'rg'a sig'yapti va bir-biriga yopishgan.": "uz070",
+    "[English pronunciation] gap [O'zbekcha tallaffuz] o'n ikki piksel: kartochkalar orasida teng bo'shliq paydo bo'ldi. [English pronunciation] gap [O'zbekcha tallaffuz] ya'ni oraliq degani.": "uz071",
+    "Har bir kartochkaga [English pronunciation] width [O'zbekcha tallaffuz] to'qson piksel berdik. Lekin oltitasi bitta qatorga sig'maydi, shuning uchun [English pronunciation] flex [O'zbekcha tallaffuz] ularni o'zi ingichkaroq qildi. Qarang: kartochkalar ingichkalashdi.": "uz072",
+    "[English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz], ya'ni o'rash: sig'magan kartochkalar yangi qatorga o'tdi, siqilish yo'qoldi va kartochkalar yana to'liq kenglikda.": "uz073",
+    "Demak, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq qo'yadi, [English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] esa sig'maganlarni yangi qatorga o'tkazadi.": "uz074",
+    "Endi siz. Kartochkalar orasida yigirma piksel bo'shliq bo'lsin: [English pronunciation] gap [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz075",
+    "Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz076",
+    "Faqat son yozildi. Son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.": "uz077",
+    "Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, orasida bo'sh joysiz.": "uz078",
+    "Bu boshqa oraliq. Yigirma piksel kerak.": "uz079",
+    "Qiymat son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz080",
+    "Son yigirma, birlik [English pronunciation] px [O'zbekcha tallaffuz].": "uz081",
+    "Yigirma sonini yozing, yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'ying va Tekshirishni bosing.": "uz082",
+    "Ajoyib! Kartochkalar orasida teng bo'shliq.": "uz083",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa qaysi xususiyat kerakligini tanlang.": "uz084",
+    "Vazifa nima haqida: asosiy o'q, ko'ndalang o'q, oraliq yoki yangi qator?": "uz085",
+    "[English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q, [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq, [English pronunciation] flex-wrap [O'zbekcha tallaffuz] yangi qator.": "uz086",
+    "Kartochkalar orasida bo'shliq bo'lsin.": "uz087",
+    "Oraliq [English pronunciation] gap [O'zbekcha tallaffuz] bilan beriladi.": "uz088",
+    "Sig'magan kartochkalar yangi qatorga o'tsin.": "uz089",
+    "Yangi qatorga o'tkazish [English pronunciation] flex-wrap [O'zbekcha tallaffuz] bilan.": "uz090",
+    "Qatordagi kartochkalar tepadan pastga o'rtada tursin.": "uz091",
+    "Qatorda tepadan pastga bu ko'ndalang o'q: [English pronunciation] align-items [O'zbekcha tallaffuz].": "uz092",
+    "Menyu havolalari chap va o'ng chetlarga tarqalsin.": "uz093",
+    "Chapdan o'ngga asosiy o'q: [English pronunciation] justify-content space-between [O'zbekcha tallaffuz].": "uz094",
+    "Hammasi to'g'ri! To'rtala xususiyatni joyida ishlatasiz.": "uz095",
+    "Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin kartochkalar qayerda turganiga qarang.": "uz096",
+    "Qiymatlar aniq yozilishi kerak: [English pronunciation] center [O'zbekcha tallaffuz], [English pronunciation] flex-end [O'zbekcha tallaffuz]. [English pronunciation] justify-content [O'zbekcha tallaffuz] esa doim asosiy o'q bo'yicha ishlaydi, u qaysi tomonga qaramasin.": "uz097",
+    "Navbatni burab qo'ysangiz ham, oldindagi odam oldinda qoladi. Asosiy o'q burilsa ham, [English pronunciation] justify-content [O'zbekcha tallaffuz] unga ergashadi.": "uz098",
+    "Tekislashda ham xatolar bo'ladi. Keling, ikkita xatoni va bitta tuzoqni ko'ramiz. Hozir kartochkalar o'rtada: chapdan o'ngga ham, tepadan pastga ham.": "uz099",
+    "Birinchisi: [English pronunciation] center [O'zbekcha tallaffuz] britancha yozilgan, oxiri re bilan. [English pronunciation] CSS [O'zbekcha tallaffuz] faqat amerikacha yozuvni taniydi, shuning uchun kartochkalar chap chetga ketdi.": "uz100",
+    "Ikkinchisi: [English pronunciation] align-items [O'zbekcha tallaffuz] uchun middle yozilgan. Bunday qiymat yo'q, brauzer uni tashlab yubordi, kartochkalar yana butun balandlikka cho'zildi.": "uz101",
+    "Tuzoq: [English pronunciation] column [O'zbekcha tallaffuz] da o'qlar almashadi. [English pronunciation] justify-content center [O'zbekcha tallaffuz] endi kartochkalarni tepadan pastga o'rtaga qo'ydi, chunki asosiy o'q pastga qaraydi.": "uz102",
+    "Demak, so'zlar aniq yoziladi: [English pronunciation] center [O'zbekcha tallaffuz] va [English pronunciation] flex-end [O'zbekcha tallaffuz]. justify esa doim asosiy o'q bo'ylab ishlaydi, o'q qayoqqa qaramasin.": "uz103",
+    "Voy, men kartochkalarni tepadan pastga o'rtaga qo'ymoqchi edim, lekin ular cho'zilib qolaveradi! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz104",
+    "middle [English pronunciation] CSS [O'zbekcha tallaffuz] da yo'q. O'rta uchun boshqa so'z bor.": "uz105",
+    "Deyarli! [English pronunciation] CSS [O'zbekcha tallaffuz] da amerikacha: oxiri er bilan.": "uz106",
+    "Brauzer bu so'zni tanimadi. O'rta uchun so'zni tekshiring.": "uz107",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz] bilan ular tepada. O'rta kerak.": "uz108",
+    "[English pronunciation] flex-end [O'zbekcha tallaffuz] bilan ular pastda. O'rta kerak.": "uz109",
+    "[English pronunciation] stretch [O'zbekcha tallaffuz] bilan ular cho'zilgan. O'rta kerak.": "uz110",
+    "middle so'zi [English pronunciation] CSS [O'zbekcha tallaffuz] da yo'q.": "uz111",
+    "O'rta uchun [English pronunciation] center [O'zbekcha tallaffuz] ishlatiladi.": "uz112",
+    "Ura, ishladi! Kartochkalar tepadan pastga o'rtada.": "uz113",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Javonga qarang va o'sha qoidani bosing.": "uz114",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?": "uz115",
+    "Bu qoida ishlayapti: javonda uning izi bor. Qaysi narsa kod aytgandek emas?": "uz116",
+    "Topdingiz! [English pronunciation] center [O'zbekcha tallaffuz] britancha yozilgan edi.": "uz117",
+    "Topdingiz! Yigirma sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.": "uz118",
+    "Javonga qarang: qaysi narsa kod aytgandek emas?": "uz119",
+    "Kartochkalar chapdan o'ngga o'rtadami? [English pronunciation] justify-content [O'zbekcha tallaffuz] qiymatini tekshiring.": "uz120",
+    "Kartochkalar orasida bo'shliq bormi? [English pronunciation] gap [O'zbekcha tallaffuz] qiymatini tekshiring.": "uz121",
+    "Xato birinchi qoidada: centre. O'sha qatorni bosing.": "uz122",
+    "Xato uchinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.": "uz123",
+    "Super! Ikkalasi ham topildi. Siz tekislashni haqiqiy dasturchi kabi tekshiryapsiz.": "uz124",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Menyu [English pronunciation] nav tag [O'zbekcha tallaffuz]-i ichida. U [English pronunciation] flex [O'zbekcha tallaffuz] bo'lsin va havolalar chap va o'ng chetlarga tarqalsin, oralarida teng joy bilan.": "uz125",
+    "Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyatlar.": "uz126",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz127",
+    "Xususiyat va qiymat orasida ikki nuqta yo'q.": "uz128",
+    "Menyu [English pronunciation] nav tag [O'zbekcha tallaffuz]-i ichida: selektor [English pronunciation] nav [O'zbekcha tallaffuz].": "uz129",
+    "Avval [English pronunciation] nav flex [O'zbekcha tallaffuz] bo'lishi kerak: [English pronunciation] display flex [O'zbekcha tallaffuz].": "uz130",
+    "[English pronunciation] flex [O'zbekcha tallaffuz] bor, havolalar esa hali chapda. Tekislashni ham yozing.": "uz131",
+    "Tekislash boshqacha. Havolalar chetlarga tarqalsin, oralarida teng joy.": "uz132",
+    "Brauzer bu so'zni tanimadi. So'zlarni tekshiring.": "uz133",
+    "Ikki xususiyat o'rtasida nuqtali vergul kerak: [English pronunciation] flex [O'zbekcha tallaffuz] dan keyin nuqtali vergul qo'ying.": "uz134",
+    "Ikki xususiyat kerak: biri [English pronunciation] flex [O'zbekcha tallaffuz] qiladi, ikkinchisi asosiy o'q bo'ylab tekislaydi.": "uz135",
+    "[English pronunciation] display flex [O'zbekcha tallaffuz] va [English pronunciation] justify-content space-between [O'zbekcha tallaffuz].": "uz136",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz137",
+    "Ajoyib! Menyu butun kenglikka tarqaldi, xuddi haqiqiy saytlardagidek. Qoidani o'zingiz yozdingiz.": "uz138",
+    "Endi o'z javoningizni tekislang. Asosiy o'q, ko'ndalang o'q va oraliq uchun istalgan qiymatni yozing. Keyin Tayyorni bosing.": "uz139",
+    "Har bir maydonga bitta qiymat yozing.": "uz140",
+    "[English pronunciation] justify-content [O'zbekcha tallaffuz] va [English pronunciation] align-items [O'zbekcha tallaffuz] uchun [English pronunciation] center [O'zbekcha tallaffuz], [English pronunciation] flex-start [O'zbekcha tallaffuz] yoki [English pronunciation] flex-end [O'zbekcha tallaffuz] kabi so'z; [English pronunciation] gap [O'zbekcha tallaffuz] uchun son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz141",
+    "Masalan: [English pronunciation] space-between [O'zbekcha tallaffuz], [English pronunciation] center [O'zbekcha tallaffuz] va o'n ikki piksel. Keyin Tayyorni bosing.": "uz142",
+    "Voy, qanday chiroyli! Bu sizning javoningiz.": "uz143",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz144",
+    "Gap qaysi xususiyat haqida va qaysi o'q bo'ylab?": "uz145",
+    "Esingizdami: justify asosiy o'q, align ko'ndalang o'q, [English pronunciation] gap [O'zbekcha tallaffuz] oraliq, [English pronunciation] wrap [O'zbekcha tallaffuz] yangi qator.": "uz146",
+    "[English pronunciation] justify-content [O'zbekcha tallaffuz] elementlarni asosiy o'q bo'ylab tekislaydi.": "uz147",
+    "To'g'ri: justify asosiy o'q bo'ylab ishlaydi.": "uz148",
+    "Bu qoida qatordagi kartochkalarni chapdan o'ngga o'rtaga qo'yadi.": "uz149",
+    "Aslida [English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab: qatorda bu tepadan pastga.": "uz150",
+    "[English pronunciation] gap [O'zbekcha tallaffuz] kartochkalar orasiga bo'shliq qo'yadi.": "uz151",
+    "To'g'ri: [English pronunciation] gap [O'zbekcha tallaffuz] bu oraliq.": "uz152",
+    "[English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] kartochkalarni kichraytiradi.": "uz153",
+    "Aslida [English pronunciation] wrap [O'zbekcha tallaffuz] ularni yangi qatorga o'tkazadi, o'lchami esa saqlanadi.": "uz154",
+    "Hammasi to'g'ri! Siz [English pronunciation] flex [O'zbekcha tallaffuz] tekislashni yaxshi bilasiz.": "uz155",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men kartochkalarni tepadan pastga o'rtaga qo'yish uchun [English pronunciation] justify-content center [O'zbekcha tallaffuz] yozgan edim? Qarang: ular chapdan o'ngga o'rtaga keldi, tepadan pastga esa o'zgarmadi. Men adashibman! justify asosiy o'q bo'ylab ishlaydi, qatorda bu chapdan o'ngga.": "uz156",
+    "Tepadan pastga o'rtaga qo'yish uchun [English pronunciation] align-items center [O'zbekcha tallaffuz] kerak edi. Mana!": "uz157",
+    "Qarang, bu sizning javoningiz, o'zingiz tanlagan qiymatlar bilan!": "uz158",
+    "[English pronunciation] justify-content [O'zbekcha tallaffuz] asosiy o'q bo'ylab tekislaydi.": "uz159",
+    "[English pronunciation] align-items [O'zbekcha tallaffuz] ko'ndalang o'q bo'ylab tekislaydi.": "uz160",
+    "[English pronunciation] gap [O'zbekcha tallaffuz] elementlar orasiga oraliq qo'yadi.": "uz161",
+    "[English pronunciation] flex-wrap wrap [O'zbekcha tallaffuz] sig'maganlarni yangi qatorga o'tkazadi.": "uz162",
+    "Tabriklayman! Endi siz [English pronunciation] Flexbox [O'zbekcha tallaffuz] bilan har qanday qatorni chiroyli tekislay olasiz. Keyingi darsda elementlarni sahifaning istalgan joyiga qo'yishni o'rganamiz. Ko'rishguncha!": "uz163",
+    "Voy, zo‘r!": "uz164",
+    "Ana! Chiqdi!": "uz165",
+    "Super!": "uz166",
+    "Qoyil!": "uz167",
+    "Ura!": "uz168",
+    "Zo‘r-ku!": "uz169",
+    "Yana bir bor urinib ko‘ring.": "uz170",
+    "Diqqat bilan qarang.": "uz171",
+    "Yaqin qoldingiz. Shoshilmang.": "uz172",
+    "Qaysi kod?": "uz173",
+    "Javonni qaysi kod shunday qildi?": "uz174",
+    "Qaysi xususiyat?": "uz175",
+    "Bu vazifa uchun qaysi xususiyat kerak?": "uz176",
+    "To'g'rimi?": "uz177",
+    "To'g'rimi yoki noto'g'rimi?": "uz178",
+    "Salom, dunyo!": "uz179",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz180",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz181",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz182",
+  },
+  ru: {
+    "Привет! Моя полка выстроилась в ряд, но смотри: карточки прижались к левому краю и слиплись. Я хочу поставить их ровно в середину полки, с промежутками. Нажми Превратить.": "ru001",
+    "Вот! Карточки в середине полки и слева направо, и сверху вниз. А между ними, промежутки.": "ru002",
+    "Это сделали три свойства: [English pronunciation] justify-content [Русское произношение] выровнял по главной оси, [English pronunciation] align-items [Русское произношение], по поперечной, а [English pronunciation] gap [Русское произношение] поставил промежутки.": "ru003",
+    "Сегодня ты научишься выравнивать элементы во [English pronunciation] flex [Русское произношение]-коробке. Но сначала загадка. В первый раз, чтобы поставить карточки по центру сверху вниз, я написал [English pronunciation] justify-content center [Русское произношение]. По-моему, они должны встать по центру сверху вниз. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на оранжевую стрелку и карточки: они собираются вдоль стрелки в начале, в середине или в конце.": "ru005",
+    "[English pronunciation] justify-content [Русское произношение] выравнивает карточки по главной оси: [English pronunciation] flex-start [Русское произношение], в начало, [English pronunciation] center [Русское произношение], в середину, [English pronunciation] flex-end [Русское произношение], в конец, [English pronunciation] space-between [Русское произношение], делит место между ними поровну.": "ru006",
+    "Ставя книги на полку, ты двигаешь их к краю, в середину или расставляешь ровно по всей полке. [English pronunciation] justify-content [Русское произношение] делает то же самое.": "ru007",
+    "Первое, [English pronunciation] justify-content [Русское произношение]. Оно выравнивает элементы по главной оси, то есть по оранжевой стрелке. Сейчас они, как обычно, стоят в начале.": "ru008",
+    "[English pronunciation] center [Русское произношение], то есть середина. Карточки собрались в середине полки.": "ru009",
+    "[English pronunciation] flex-end [Русское произношение], то есть конец. Карточки ушли к правому краю, туда, где кончается стрелка.": "ru010",
+    "[English pronunciation] space-between [Русское произношение], то есть место между. Первая слева, последняя справа, а остальное место поделено между ними поровну.": "ru011",
+    "Значит, [English pronunciation] justify-content [Русское произношение] выравнивает по главной оси: в начало, в середину, в конец или с местом между.": "ru012",
+    "Теперь твоя очередь. Пусть карточки стоят в середине полки: впиши значение для [English pronunciation] justify-content [Русское произношение].": "ru013",
+    "Впиши значение: одно слово.": "ru014",
+    "В [English pronunciation] CSS [Русское произношение] это слово пишется по-американски: на конце er.": "ru015",
+    "В [English pronunciation] CSS [Русское произношение] середина, не middle. Нужно другое слово.": "ru016",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] justify-content [Русское произношение].": "ru017",
+    "С [English pronunciation] flex-start [Русское произношение] карточки останутся в начале. Нужна середина.": "ru018",
+    "С [English pronunciation] flex-end [Русское произношение] они ушли в конец. Нужна середина.": "ru019",
+    "С [English pronunciation] space-between [Русское произношение] они разошлись по краям. Нужна середина.": "ru020",
+    "Это другое значение. Нужна середина.": "ru021",
+    "Как по-английски середина, центр?": "ru022",
+    "Середина, [English pronunciation] center [Русское произношение].": "ru023",
+    "Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.": "ru024",
+    "Огонь! Карточки в середине полки.": "ru025",
+    "Теперь соедини значения с полками. Нажми значение слева, а потом полку, выровненную так, справа.": "ru026",
+    "[English pronunciation] flex-start [Русское произношение]: все в начале, у левого края.": "ru027",
+    "[English pronunciation] center [Русское произношение]: все собрались в середине.": "ru028",
+    "[English pronunciation] space-between [Русское произношение]: по краям и с равными промежутками.": "ru029",
+    "Верно, это в начале.": "ru030",
+    "Верно, это в середине.": "ru031",
+    "Верно, это с местом между.": "ru032",
+    "Сначала выбери значение слева.": "ru033",
+    "Посмотри, где собрались кубики: слева, в середине, по краям?": "ru034",
+    "[English pronunciation] flex-start [Русское произношение], слева, [English pronunciation] center [Русское произношение], в середине, [English pronunciation] space-between [Русское произношение], по краям.": "ru035",
+    "Нажми горящую пару.": "ru036",
+    "Отлично! Ты читаешь выравнивание на глаз.": "ru037",
+    "Посмотри на фиолетовую стрелку: карточки двигаются вдоль неё вверх, в середину или вниз.": "ru038",
+    "[English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси. [English pronunciation] stretch [Русское произношение] растягивает, [English pronunciation] flex-start [Русское произношение] ставит в начало, [English pronunciation] center [Русское произношение], в середину, [English pronunciation] flex-end [Русское произношение], в конец.": "ru039",
+    "Вешая картинки на стену, ты выравниваешь их по верху, по середине или по низу. [English pronunciation] align-items [Русское произношение] выравнивает так же.": "ru040",
+    "Второе, [English pronunciation] align-items [Русское произношение]. Оно выравнивает элементы по поперечной оси, то есть по фиолетовой стрелке. Обычно это [English pronunciation] stretch [Русское произношение], то есть растянуть: карточки занимают всю высоту полки.": "ru041",
+    "[English pronunciation] flex-start [Русское произношение]: карточки перестали растягиваться и поднялись наверх, к началу стрелки.": "ru042",
+    "[English pronunciation] center [Русское произношение]: по центру сверху вниз.": "ru043",
+    "[English pronunciation] flex-end [Русское произношение]: опустились вниз, к концу стрелки.": "ru044",
+    "Значит, [English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси. Значения те же: [English pronunciation] flex-start [Русское произношение], [English pronunciation] center [Русское произношение] и [English pronunciation] flex-end [Русское произношение].": "ru045",
+    "Теперь ты. Пусть карточки опустятся на дно полки, будто стоят на ней: впиши значение для [English pronunciation] align-items [Русское произношение].": "ru046",
+    "Впиши значение: два слова через чёрточку.": "ru047",
+    "В [English pronunciation] CSS [Русское произношение] низ, не bottom. Нужен конец стрелки: [English pronunciation] flex [Русское произношение] и end.": "ru048",
+    "Почти! end тоже опустит карточки, но во [English pronunciation] Flexbox [Русское произношение] принято писать [English pronunciation] flex-end [Русское произношение]: допиши впереди [English pronunciation] flex [Русское произношение] и чёрточку.": "ru049",
+    "Браузер не узнал это слово. Два слова пишутся через чёрточку, без пробела.": "ru050",
+    "С [English pronunciation] flex-start [Русское произношение] они поднялись наверх. Нужен низ.": "ru051",
+    "С [English pronunciation] center [Русское произношение] они посередине. Нужен низ.": "ru052",
+    "Со [English pronunciation] stretch [Русское произношение] они растянуты на всю высоту. Нужен низ.": "ru053",
+    "Это другое значение. Нужен низ, то есть конец стрелки.": "ru054",
+    "Фиолетовая стрелка смотрит вниз. Как называется её конец?": "ru055",
+    "Конец, [English pronunciation] flex-end [Русское произношение].": "ru056",
+    "Впиши [English pronunciation] flex-end [Русское произношение] и нажми Проверить.": "ru057",
+    "Молодец! Карточки стоят на дне полки.": "ru058",
+    "Теперь проверь себя. Посмотри на полку и выбери, какой код сделал её такой. Стрелки помогут.": "ru059",
+    "Вдоль какой стрелки сдвинулись карточки: оранжевой или фиолетовой?": "ru060",
+    "Вдоль оранжевой, [English pronunciation] justify-content [Русское произношение], вдоль фиолетовой, [English pronunciation] align-items [Русское произношение].": "ru061",
+    "Карточки посередине слева направо и растянуты: [English pronunciation] justify-content center [Русское произношение].": "ru062",
+    "Карточки слева, но посередине сверху вниз: [English pronunciation] align-items center [Русское произношение].": "ru063",
+    "Карточки не растянуты и наверху: [English pronunciation] align-items flex-start [Русское произношение].": "ru064",
+    "Точно!": "ru065",
+    "Всё верно! Ты не путаешь justify и align.": "ru066",
+    "Посмотри между карточками: сначала появляются промежутки, потом то, что не поместилось, переходит на новую строку.": "ru067",
+    "[English pronunciation] gap [Русское произношение] ставит одинаковые промежутки между карточками. [English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.": "ru068",
+    "Если слово не помещается в строку тетради, ты пишешь его на следующей. [English pronunciation] flex-wrap [Русское произношение] переносит карточки так же.": "ru069",
+    "Теперь на полке шесть карточек. Они еле помещаются в ряд и слиплись.": "ru070",
+    "[English pronunciation] gap [Русское произношение] двенадцать пикселей: между карточками появились равные промежутки. [English pronunciation] gap [Русское произношение], то есть промежуток.": "ru071",
+    "Каждой карточке дали [English pronunciation] width [Русское произношение] девяносто пикселей. Но шесть таких в один ряд не влезают, и [English pronunciation] flex [Русское произношение] сам сделал их уже. Смотри: карточки стали тоньше.": "ru072",
+    "[English pronunciation] flex-wrap wrap [Русское произношение], то есть перенос: не поместившиеся карточки перешли на новую строку, сжатие пропало, и карточки снова полной ширины.": "ru073",
+    "Значит, [English pronunciation] gap [Русское произношение] ставит промежутки, а [English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.": "ru074",
+    "Теперь ты. Пусть между карточками будет промежуток двадцать пикселей: впиши значение для [English pronunciation] gap [Русское произношение].": "ru075",
+    "Впиши значение: число и [English pronunciation] px [Русское произношение].": "ru076",
+    "Написано только число. Добавь к числу [English pronunciation] px [Русское произношение].": "ru077",
+    "Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение] без пробела.": "ru078",
+    "Это другой промежуток. Нужно двадцать пикселей.": "ru079",
+    "Значение, число и [English pronunciation] px [Русское произношение].": "ru080",
+    "Число двадцать, единица [English pronunciation] px [Русское произношение].": "ru081",
+    "Впиши число двадцать, допиши [English pronunciation] px [Русское произношение] и нажми Проверить.": "ru082",
+    "Отлично! Между карточками равные промежутки.": "ru083",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, какое свойство нужно.": "ru084",
+    "О чём задача: главная ось, поперечная ось, промежуток или новая строка?": "ru085",
+    "[English pronunciation] justify-content [Русское произношение], главная ось, [English pronunciation] align-items [Русское произношение], поперечная, [English pronunciation] gap [Русское произношение], промежуток, [English pronunciation] flex-wrap [Русское произношение], новая строка.": "ru086",
+    "Между карточками нужны промежутки.": "ru087",
+    "Промежуток задаёт [English pronunciation] gap [Русское произношение].": "ru088",
+    "Не поместившиеся карточки должны перейти на новую строку.": "ru089",
+    "Перенос на новую строку, это [English pronunciation] flex-wrap [Русское произношение].": "ru090",
+    "Карточки в ряд должны стоять посередине сверху вниз.": "ru091",
+    "В ряду сверху вниз, это поперечная ось: [English pronunciation] align-items [Русское произношение].": "ru092",
+    "Ссылки меню должны разойтись к левому и правому краю.": "ru093",
+    "Слева направо, главная ось: [English pronunciation] justify-content space-between [Русское произношение].": "ru094",
+    "Всё верно! Ты применяешь все четыре свойства к месту.": "ru095",
+    "Каждый раз смотри на код: слово написано верно? Потом смотри, где стоят карточки.": "ru096",
+    "Значения пишутся точно: [English pronunciation] center [Русское произношение], [English pronunciation] flex-end [Русское произношение]. А [English pronunciation] justify-content [Русское произношение] всегда работает по главной оси, куда бы она ни смотрела.": "ru097",
+    "Если развернуть очередь, первый всё равно останется первым. Повернулась главная ось, [English pronunciation] justify-content [Русское произношение] следует за ней.": "ru098",
+    "И в выравнивании бывают ошибки. Давай посмотрим на две ошибки и одну ловушку. Сейчас карточки в середине, и слева направо, и сверху вниз.": "ru099",
+    "Первая: [English pronunciation] center [Русское произношение] написан по-британски, с re на конце. [English pronunciation] CSS [Русское произношение] знает только американское написание, карточки уехали к левому краю.": "ru100",
+    "Вторая: для [English pronunciation] align-items [Русское произношение] написано middle. Такого значения нет, браузер его выбросил, и карточки опять растянулись на всю высоту.": "ru101",
+    "Ловушка: в [English pronunciation] column [Русское произношение] оси меняются. Теперь [English pronunciation] justify-content center [Русское произношение] ставит карточки посередине сверху вниз, ведь главная ось смотрит вниз.": "ru102",
+    "Значит, слова пишутся точно: [English pronunciation] center [Русское произношение] и [English pronunciation] flex-end [Русское произношение]. А justify всегда работает по главной оси, куда бы она ни смотрела.": "ru103",
+    "Ой, я хотел поставить карточки посередине сверху вниз, а они всё растянуты! В поле, моё значение. Найди ошибку и исправь.": "ru104",
+    "middle в [English pronunciation] CSS [Русское произношение] нет. Для середины есть другое слово.": "ru105",
+    "Почти! В [English pronunciation] CSS [Русское произношение] по-американски: на конце er.": "ru106",
+    "Браузер не узнал это слово. Проверь слово для середины.": "ru107",
+    "С [English pronunciation] flex-start [Русское произношение] они наверху. Нужна середина.": "ru108",
+    "С [English pronunciation] flex-end [Русское произношение] они внизу. Нужна середина.": "ru109",
+    "Со [English pronunciation] stretch [Русское произношение] они растянуты. Нужна середина.": "ru110",
+    "Слова middle в [English pronunciation] CSS [Русское произношение] нет.": "ru111",
+    "Для середины используют [English pronunciation] center [Русское произношение].": "ru112",
+    "Ура, заработало! Карточки посередине сверху вниз.": "ru113",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на полку и нажми это правило.": "ru114",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?": "ru115",
+    "Это правило работает: на полке видно, что оно сделало. Что не так, как в коде?": "ru116",
+    "Есть! [English pronunciation] center [Русское произношение] был написан по-британски.": "ru117",
+    "Есть! После двадцати не было [English pronunciation] px [Русское произношение].": "ru118",
+    "Посмотри на полку: что не так, как в коде?": "ru119",
+    "Карточки посередине слева направо? Проверь значение [English pronunciation] justify-content [Русское произношение].": "ru120",
+    "Есть ли промежутки между карточками? Проверь значение [English pronunciation] gap [Русское произношение].": "ru121",
+    "Ошибка в первом правиле: centre. Нажми эту строку.": "ru122",
+    "Ошибка в третьем правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.": "ru123",
+    "Супер! Обе найдены. Ты проверяешь выравнивание как настоящий разработчик.": "ru124",
+    "Теперь напиши правило целиком. Меню лежит в теге [English pronunciation] nav [Русское произношение]. Пусть он будет [English pronunciation] flex [Русское произношение], а ссылки разойдутся к левому и правому краю, с равными промежутками.": "ru125",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойства.": "ru126",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru127",
+    "Между свойством и значением нет двоеточия.": "ru128",
+    "Меню лежит в теге [English pronunciation] nav [Русское произношение]: селектор, [English pronunciation] nav [Русское произношение].": "ru129",
+    "Сначала [English pronunciation] nav [Русское произношение] должен быть [English pronunciation] flex [Русское произношение]: [English pronunciation] display flex [Русское произношение].": "ru130",
+    "[English pronunciation] flex [Русское произношение] есть, а ссылки пока слева. Допиши и выравнивание.": "ru131",
+    "Выравнивание другое. Ссылки должны разойтись по краям с равными промежутками.": "ru132",
+    "Браузер не узнал это слово. Проверь слова.": "ru133",
+    "Между двумя свойствами нужна точка с запятой: поставь её после [English pronunciation] flex [Русское произношение].": "ru134",
+    "Нужны два свойства: одно делает [English pronunciation] flex [Русское произношение], второе выравнивает по главной оси.": "ru135",
+    "[English pronunciation] display flex [Русское произношение] и [English pronunciation] justify-content space-between [Русское произношение].": "ru136",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru137",
+    "Отлично! Меню разошлось на всю ширину, как на настоящих сайтах. Правило написано тобой целиком.": "ru138",
+    "Теперь выровняй свою полку. Впиши любые значения для главной оси, поперечной оси и промежутка. Потом нажми Готово.": "ru139",
+    "В каждое поле, одно значение.": "ru140",
+    "Для [English pronunciation] justify-content [Русское произношение] и [English pronunciation] align-items [Русское произношение], слово вроде [English pronunciation] center [Русское произношение], [English pronunciation] flex-start [Русское произношение] или [English pronunciation] flex-end [Русское произношение]; для [English pronunciation] gap [Русское произношение], число и [English pronunciation] px [Русское произношение].": "ru141",
+    "Например: [English pronunciation] space-between [Русское произношение], [English pronunciation] center [Русское произношение] и двенадцать пикселей. Потом нажми Готово.": "ru142",
+    "Ого, как красиво! Это твоя полка.": "ru143",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru144",
+    "О каком свойстве фраза и по какой оси?": "ru145",
+    "Вспомни: justify, главная ось, align, поперечная, [English pronunciation] gap [Русское произношение], промежуток, [English pronunciation] wrap [Русское произношение], новая строка.": "ru146",
+    "[English pronunciation] justify-content [Русское произношение] выравнивает элементы по главной оси.": "ru147",
+    "Верно: justify работает по главной оси.": "ru148",
+    "Это правило ставит карточки ряда посередине слева направо.": "ru149",
+    "На самом деле [English pronunciation] align-items [Русское произношение], по поперечной оси: в ряду это сверху вниз.": "ru150",
+    "[English pronunciation] gap [Русское произношение] ставит промежутки между карточками.": "ru151",
+    "Верно: [English pronunciation] gap [Русское произношение], это промежуток.": "ru152",
+    "[English pronunciation] flex-wrap wrap [Русское произношение] уменьшает карточки.": "ru153",
+    "На самом деле [English pronunciation] wrap [Русское произношение] переносит их на новую строку, а размер сохраняется.": "ru154",
+    "Всё верно! Ты отлично разбираешься в выравнивании [English pronunciation] flex [Русское произношение].": "ru155",
+    "Вернёмся к загадке. Помнишь, чтобы поставить карточки посередине сверху вниз, я написал [English pronunciation] justify-content center [Русское произношение]? Смотри: они встали посередине слева направо, а сверху вниз ничего не изменилось. Я ошибся! justify работает по главной оси, а в ряду это слева направо.": "ru156",
+    "Чтобы поставить посередине сверху вниз, нужен был [English pronunciation] align-items center [Русское произношение]. Вот!": "ru157",
+    "Смотри, это твоя полка с твоими собственными значениями!": "ru158",
+    "[English pronunciation] justify-content [Русское произношение] выравнивает по главной оси.": "ru159",
+    "[English pronunciation] align-items [Русское произношение] выравнивает по поперечной оси.": "ru160",
+    "[English pronunciation] gap [Русское произношение] ставит промежутки между элементами.": "ru161",
+    "[English pronunciation] flex-wrap wrap [Русское произношение] переносит то, что не поместилось, на новую строку.": "ru162",
+    "Ура! Теперь ты умеешь красиво выравнивать любой ряд с помощью [English pronunciation] Flexbox [Русское произношение]. На следующем уроке научимся ставить элементы в любое место страницы. До встречи!": "ru163",
+    "Вау, классно!": "ru164",
+    "Есть! Получилось!": "ru165",
+    "Супер!": "ru166",
+    "Огонь!": "ru167",
+    "Ура!": "ru168",
+    "Вот это да!": "ru169",
+    "Попробуй ещё раз.": "ru170",
+    "Посмотри внимательно.": "ru171",
+    "Уже близко. Не спеши.": "ru172",
+    "Какой код?": "ru173",
+    "Какой код сделал полку такой?": "ru174",
+    "Какое свойство?": "ru175",
+    "Какое свойство нужно для этой задачи?": "ru176",
+    "Верно или нет?": "ru177",
+    "Верно или неверно?": "ru178",
+    "Привет, мир!": "ru179",
+    "Здесь нужны только слова, без угловых скобок.": "ru180",
+    "Молодец!": "ru181",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru182",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru183",
+  },
+  en: {
+    "Hi! My shelf lined up in a row, but look: the cards are squeezed to the left edge and stuck together. I want to put them right in the middle of the shelf, with gaps. Tap Transform.": "en001",
+    "There! The cards are in the middle of the shelf both left to right and top to bottom. And there are gaps between them.": "en002",
+    "Three properties did it: justify-content aligned along the main axis, align-items along the cross axis, and gap added the gaps.": "en003",
+    "Today you’ll learn to align elements in a flex box. But first, a riddle. The first time, to center the cards top to bottom, I wrote justify-content center. I think they should land in the middle top to bottom. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the orange arrow and the cards: they gather along the arrow at the start, the middle or the end.": "en005",
+    "justify-content lines the cards up along the main axis: flex-start at the start, center in the middle, flex-end at the end, space-between shares the space evenly.": "en006",
+    "When you put books on a shelf, you push them to an end, the middle, or spread them evenly. justify-content does the same.": "en007",
+    "The first is justify-content. It aligns elements along the main axis, that is, along the orange arrow. Right now they stand at the start, as usual.": "en008",
+    "center, meaning the middle. The cards gathered in the middle of the shelf.": "en009",
+    "flex-end, meaning the end. The cards moved to the right edge, where the arrow ends.": "en010",
+    "space-between, meaning space between. The first on the left, the last on the right, and the rest of the space is shared equally between them.": "en011",
+    "So justify-content aligns along the main axis: to the start, the middle, the end, or with space between.": "en012",
+    "Now it’s your turn. Let the cards stand in the middle of the shelf: type the value for justify-content.": "en013",
+    "Type the value: one word.": "en014",
+    "In CSS this word uses the American spelling: it ends in er.": "en015",
+    "In CSS the middle isn’t middle. Another word is needed.": "en016",
+    "The browser didn’t recognize that word. Check the word for justify-content.": "en017",
+    "With flex-start the cards stay at the start. We need the middle.": "en018",
+    "With flex-end they moved to the end. We need the middle.": "en019",
+    "With space-between they spread to the edges. We need the middle.": "en020",
+    "That’s a different value. We need the middle.": "en021",
+    "What’s the English for the middle?": "en022",
+    "The middle is center.": "en023",
+    "Type center and tap Check.": "en024",
+    "Awesome! The cards are in the middle of the shelf.": "en025",
+    "Now match the values with the shelves. Tap a value on the left, then the shelf aligned that way on the right.": "en026",
+    "flex-start: everything at the start, by the left edge.": "en027",
+    "center: everything gathered in the middle.": "en028",
+    "space-between: at the edges with equal space between.": "en029",
+    "Right, that’s at the start.": "en030",
+    "Right, that’s in the middle.": "en031",
+    "Right, that’s with space between.": "en032",
+    "First pick a value on the left.": "en033",
+    "Look where the blocks gathered: left, middle, or at the edges?": "en034",
+    "flex-start is on the left, center in the middle, space-between at the edges.": "en035",
+    "Tap the glowing pair.": "en036",
+    "Great! You read alignment by eye.": "en037",
+    "Look at the purple arrow: the cards move along it to the top, the middle or the bottom.": "en038",
+    "align-items lines things up along the cross axis. stretch stretches, flex-start puts at the start, center in the middle, flex-end at the end.": "en039",
+    "When you hang pictures on a wall, you line them up by the top, the middle or the bottom. align-items lines up the same way.": "en040",
+    "The second is align-items. It aligns elements along the cross axis, that is, along the purple arrow. By default it’s stretch: the cards take the full height of the shelf.": "en041",
+    "flex-start: the cards stopped stretching and rose to the top, to the start of the arrow.": "en042",
+    "center: in the middle, top to bottom.": "en043",
+    "flex-end: they dropped down, to the end of the arrow.": "en044",
+    "So align-items aligns along the cross axis. The values are the same: flex-start, center and flex-end.": "en045",
+    "Your turn. Let the cards drop to the bottom of the shelf, as if standing on it: type the value for align-items.": "en046",
+    "Type the value: two words joined by a dash.": "en047",
+    "In CSS the bottom isn’t bottom. We need the end of the arrow: flex and end.": "en048",
+    "Almost! end also moves the cards down, but in Flexbox we write flex-end: add flex and a dash in front.": "en049",
+    "The browser didn’t recognize that word. Two words are joined by a dash, with no space.": "en050",
+    "With flex-start they went to the top. We need the bottom.": "en051",
+    "With center they’re in the middle. We need the bottom.": "en052",
+    "With stretch they fill the whole height. We need the bottom.": "en053",
+    "That’s a different value. We need the bottom, the end of the arrow.": "en054",
+    "The purple arrow points down. What’s its end called?": "en055",
+    "The end is flex-end.": "en056",
+    "Type flex-end and tap Check.": "en057",
+    "Well done! The cards stand at the bottom of the shelf.": "en058",
+    "Now check yourself. Look at the shelf and pick which code made it look like that. The arrows will help.": "en059",
+    "Which arrow did the cards move along: orange or purple?": "en060",
+    "Along the orange one, justify-content; along the purple one, align-items.": "en061",
+    "The cards are in the middle left to right and stretched: justify-content center.": "en062",
+    "The cards are on the left but in the middle top to bottom: align-items center.": "en063",
+    "The cards aren’t stretched and are at the top: align-items flex-start.": "en064",
+    "Exactly!": "en065",
+    "All correct! You don’t mix up justify and align.": "en066",
+    "Look between the cards: first gaps appear, then the ones that didn’t fit move to a new row.": "en067",
+    "gap puts equal gaps between the cards. flex-wrap wrap moves what doesn’t fit onto a new row.": "en068",
+    "If a word doesn’t fit on a notebook line, you write it on the next one. flex-wrap moves cards the same way.": "en069",
+    "Now there are six cards on the shelf. They barely fit in a row and are stuck together.": "en070",
+    "gap twelve pixels: equal gaps appeared between the cards. gap means a gap.": "en071",
+    "We gave each card width ninety pixels. But six of them don’t fit in one row, so flex made them narrower by itself. Look: the cards got thinner.": "en072",
+    "flex-wrap wrap, meaning wrapping: the cards that didn’t fit moved to a new line, the squeezing is gone, and the cards are full width again.": "en073",
+    "So gap adds gaps, and flex-wrap wrap moves what doesn’t fit to a new line.": "en074",
+    "Your turn. Let there be a twenty-pixel gap between the cards: type the value for gap.": "en075",
+    "Type the value: a number and px.": "en076",
+    "Only a number. Add px to the number.": "en077",
+    "The browser didn’t recognize that value. Write a number and px with no space.": "en078",
+    "That’s a different gap. We need twenty pixels.": "en079",
+    "The value is a number and px.": "en080",
+    "The number is twenty, the unit is px.": "en081",
+    "Type the number twenty, add px and tap Check.": "en082",
+    "Great! Equal gaps between the cards.": "en083",
+    "Now check yourself. I’ll say a task, and you pick which property is needed.": "en084",
+    "What’s the task about: the main axis, the cross axis, a gap or a new line?": "en085",
+    "justify-content is the main axis, align-items the cross axis, gap the gap, flex-wrap a new line.": "en086",
+    "There should be gaps between the cards.": "en087",
+    "gap sets the gap.": "en088",
+    "The cards that don’t fit should move to a new line.": "en089",
+    "Moving to a new line is flex-wrap.": "en090",
+    "Cards in a row should stand in the middle top to bottom.": "en091",
+    "In a row, top to bottom is the cross axis: align-items.": "en092",
+    "The menu links should spread to the left and right edges.": "en093",
+    "Left to right is the main axis: justify-content space-between.": "en094",
+    "All correct! You use all four properties in the right place.": "en095",
+    "Each time, look at the code: is the word spelled right? Then see where the cards are.": "en096",
+    "Values must be exact: center, flex-end. And justify-content always works along the main axis, whichever way it points.": "en097",
+    "Turn a line around and the first person is still first. When the main axis turns, justify-content follows it.": "en098",
+    "Alignment has mistakes too. Let’s look at two mistakes and one trap. Right now the cards are in the middle, both left to right and top to bottom.": "en099",
+    "The first: center is spelled the British way, ending in re. CSS only knows the American spelling, so the cards moved to the left edge.": "en100",
+    "The second: align-items says middle. There’s no such value, the browser threw it away, and the cards stretched to the full height again.": "en101",
+    "The trap: in column the axes swap. Now justify-content center centers the cards top to bottom, because the main axis points down.": "en102",
+    "So the words must be exact: center and flex-end. And justify always works along the main axis, wherever it points.": "en103",
+    "Oops, I wanted to center the cards top to bottom, but they stay stretched! My value is in the field. Find the mistake and fix it.": "en104",
+    "middle doesn’t exist in CSS. There’s another word for the middle.": "en105",
+    "Almost! In CSS it’s the American spelling: ending in er.": "en106",
+    "The browser didn’t recognize that word. Check the word for the middle.": "en107",
+    "With flex-start they’re at the top. We need the middle.": "en108",
+    "With flex-end they’re at the bottom. We need the middle.": "en109",
+    "With stretch they’re stretched. We need the middle.": "en110",
+    "The word middle doesn’t exist in CSS.": "en111",
+    "center is used for the middle.": "en112",
+    "Hooray, it works! The cards are in the middle top to bottom.": "en113",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the shelf and tap that rule.": "en114",
+    "Great, the first one is found! Now something else broke. Which rule doesn’t work?": "en115",
+    "This rule works: you can see what it did on the shelf. What doesn’t match the code?": "en116",
+    "Found it! center was spelled the British way.": "en117",
+    "Found it! There was no px after twenty.": "en118",
+    "Look at the shelf: what doesn’t match the code?": "en119",
+    "Are the cards in the middle left to right? Check the justify-content value.": "en120",
+    "Are there gaps between the cards? Check the gap value.": "en121",
+    "The bug is in the first rule: centre. Tap that line.": "en122",
+    "The bug is in the third rule: no px. Tap that line.": "en123",
+    "Super! Both found. You check alignment like a real developer.": "en124",
+    "Now write the whole rule yourself. The menu is inside the nav tag. Make it flex and spread the links to the left and right edges, with equal space between them.": "en125",
+    "Write the rule: first the selector, then the properties inside curly braces.": "en126",
+    "The rule needs curly braces: an opening one and a closing one.": "en127",
+    "There’s no colon between the property and the value.": "en128",
+    "The menu is in the nav tag: the selector is nav.": "en129",
+    "First nav has to be flex: display flex.": "en130",
+    "flex is there, but the links are still on the left. Add the alignment too.": "en131",
+    "The alignment is different. The links should spread to the edges with equal space between.": "en132",
+    "The browser didn’t recognize that word. Check the words.": "en133",
+    "Two properties need a semicolon between them: put one after flex.": "en134",
+    "Two properties are needed: one makes it flex, the other aligns along the main axis.": "en135",
+    "display flex and justify-content space-between.": "en136",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en137",
+    "Great! The menu spreads across the full width, just like on real sites. You wrote the whole rule yourself.": "en138",
+    "Now align your own shelf. Type any values for the main axis, the cross axis and the gap. Then tap Done.": "en139",
+    "One value in each field.": "en140",
+    "For justify-content and align-items, a word like center, flex-start or flex-end; for gap, a number and px.": "en141",
+    "For example: space-between, center and twelve pixels. Then tap Done.": "en142",
+    "Wow, how pretty! This is your shelf.": "en143",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en144",
+    "Which property is the sentence about, and along which axis?": "en145",
+    "Remember: justify is the main axis, align the cross axis, gap the gap, wrap a new line.": "en146",
+    "justify-content aligns elements along the main axis.": "en147",
+    "Right: justify works along the main axis.": "en148",
+    "This rule centers the row’s cards left to right.": "en149",
+    "Actually align-items works along the cross axis: in a row that’s top to bottom.": "en150",
+    "gap puts gaps between the cards.": "en151",
+    "Right: gap is the gap.": "en152",
+    "flex-wrap wrap makes the cards smaller.": "en153",
+    "Actually wrap moves them to a new line, and their size stays the same.": "en154",
+    "All correct! You know flex alignment really well.": "en155",
+    "Back to our riddle. Remember, to center the cards top to bottom, I wrote justify-content center? Look: they centered left to right, but nothing changed top to bottom. I was wrong! justify works along the main axis, and in a row that’s left to right.": "en156",
+    "To center top to bottom, I needed align-items center. There!": "en157",
+    "Look, this is your shelf with the values you picked yourself!": "en158",
+    "justify-content aligns along the main axis.": "en159",
+    "align-items aligns along the cross axis.": "en160",
+    "gap puts gaps between elements.": "en161",
+    "flex-wrap wrap moves what doesn’t fit to a new line.": "en162",
+    "Hooray! Now you can neatly align any row with Flexbox. Next lesson we’ll learn to place elements anywhere on the page. See you!": "en163",
+    "Wow, awesome!": "en164",
+    "Yes! You did it!": "en165",
+    "Super!": "en166",
+    "Brilliant!": "en167",
+    "Hooray!": "en168",
+    "Amazing!": "en169",
+    "Try once more.": "en170",
+    "Take a closer look.": "en171",
+    "You are close. No rush.": "en172",
+    "Which code?": "en173",
+    "Which code made the shelf like this?": "en174",
+    "Which property?": "en175",
+    "Which property does this task need?": "en176",
+    "True or false?": "en177",
+    "Hello, world!": "en178",
+    "Only words here, no angle brackets.": "en179",
+    "Well done!": "en180",
+    "Everything in the window lives inside body.": "en181",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en182",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8034,15 +7585,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14066,3 +13610,1051 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c3-sheet .kz-br.c3-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 172, ru 171, en 172; всего знаков 58588. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Mening logotipim bor, uning rangi juda chiroyli. Saytdagi sarlavha ham xuddi shu rangda bo'lishini xohlayman. Ranglarning nomlari bilan urinib ko'rdim: [English pronunciation] orange [O'zbekcha tallaffuz], [English pronunciation] tomato [O'zbekcha tallaffuz], [English pronunciation] orangered [O'zbekcha tallaffuz]. Lekin qarang, hech biri aynan o'sha emas. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Endi sarlavha logotip bilan aynan bir xil rangda.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang nomi o'rniga men rang kodini yozdim. Kod bilan istalgan rangni aniq berish mumkin.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun rangni uch xil yozishni o'rganasiz: nomi bilan, [English pronunciation] hex [O'zbekcha tallaffuz] kod bilan va [English pronunciation] rgb [O'zbekcha tallaffuz] bilan. Lekin oldin kichik topishmoq. Men bir marta logotip kodini kichik harflar bilan yozib qo'ydim. Menimcha, endi rang boshqacha chiqadi yoki umuman ishlamaydi. Siz nima deb o'ylaysiz? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng oson usuldan boshlaymiz: rangning nomi. [English pronunciation] color [O'zbekcha tallaffuz] xususiyatiga inglizcha nom yozamiz. Hozir sarlavhada [English pronunciation] red [O'zbekcha tallaffuz], ya'ni qizil degani.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nomni [English pronunciation] blue [O'zbekcha tallaffuz] ga almashtiramiz. Brauzer bu so'zni taniydi va sarlavhani ko'k qiladi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldiga light so'zini qo'shsak, lightblue bo'ladi: och ko'k.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] dark so'zi esa rangni to'q qiladi: darkblue, to'q ko'k.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, rangni nomi bilan yozish mumkin: [English pronunciation] red [O'zbekcha tallaffuz], [English pronunciation] blue [O'zbekcha tallaffuz], [English pronunciation] green [O'zbekcha tallaffuz]. Brauzer yuzdan ortiq nomni biladi. Faqat nom inglizcha va bitta so'z bo'lib, bo'sh joysiz yoziladi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodda faqat bitta so'z o'zgaradi: [English pronunciation] color [O'zbekcha tallaffuz] dan keyingi rang nomi. Sarlavha shu so'z bilan birga o'zgaradi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom inglizcha bo'ladi. light. och, dark. to'q degani. Ular rang nomiga qo'shilib, bitta so'z bo'ladi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi qalamlar qutisiga o'xshaydi: har bir qalamda rang nomi yozilgan. Nomni aytsangiz, brauzer o'sha qalamni oladi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Sarlavhani yashil qiling. Yashil rang inglizchada [English pronunciation] green [O'zbekcha tallaffuz] bo'ladi. Uni maydonga yozing va Tekshirishni bosing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydon bo'sh. Rang nomini inglizcha yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bunday rangni bilmaydi. Nomni inglizcha va xatosiz yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer rangni tanidi, lekin bu yashil emas. Yashil inglizchada [English pronunciation] green [O'zbekcha tallaffuz].", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha qaysi rangda bo'lishi kerak? Shu rangning inglizcha nomi kerak.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashil inglizchada besh harfli so'z: g harfi bilan boshlanadi.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydonga [English pronunciation] green [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sarlavha yashil bo'ldi. Siz rangni nomi bilan yozdingiz.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi aksincha. Men rangni ko'rsataman, siz uning nomini tanlang.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri!", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rangga yaxshilab qarang: u qanday rang, och yoki to'qmi?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: light. och, dark. to'q.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yashil, inglizchada [English pronunciation] green [O'zbekcha tallaffuz].", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu och ko'k: oldida light bor.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu to'q ko'k: oldida dark bor.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Rang nomlarini yaxshi bilasiz.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nomlar qulay, lekin hamma rangning nomi yo'q. Mana [English pronunciation] orange [O'zbekcha tallaffuz]: logotipdagidan boshqacha. Rasm chizish dasturlarida palitra bo'ladi: har bir rang ostida uning kodi yozilgan.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Palitradan logotip rangini olamiz va kodini qoidaga qo'yamiz. Qarang, sarlavha logotip bilan aynan bir xil!", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshqa kvadratcha, ko'k. Uning kodini olamiz, sarlavha ko'k bo'ldi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma kodlar bir xil tuzilgan: oldin panjara belgisi, keyin oltita belgi. Belgilar raqamlar va A dan F gacha harflar. Bunday kod [English pronunciation] hex [O'zbekcha tallaffuz] kod, ya'ni rangning aniq raqami degani.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, aniq rang kerak bo'lsa, kodini palitradan olamiz: panjara belgisi va oltita belgi. Uni yod olish shart emas, faqat to'g'ri ko'chirish kerak.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Palitrani qarang: har bir kvadratcha ostida kod bor. Qoidaga aynan shu kod tushadi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod har doim panjara belgisi va oltita belgidan iborat. Bitta belgi ham tushib qolmasligi kerak.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi telefon raqamiga o'xshaydi: bitta raqam xato bo'lsa, boshqa odamga tushasiz. Kod ham aniq bo'lsa, rang aniq bo'ladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz palitradan rang oling. Sarlavhani binafsha qiling. Binafsha kvadratcha ostidagi kodni topib, maydonga ko'chiring. Panjara belgisi tugmasi pastda bor.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydon bo'sh. Binafsha kvadratcha ostidagi kodni ko'chiring.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodda nimadir tushib qoldi. Palitradagi bilan belgima-belgi solishtiring: oltita bo'lishi kerak.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer buni rang deb tanimadi. Palitradagi kodni ko'chiring.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang chiqdi, lekin bu binafsha emas. Aynan binafsha kvadratcha ostidagi kodni oling.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oz qoldi! Lekin bitta belgi palitradagidan farq qiladi. Kodni belgima-belgi solishtiring.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Palitrada to'rtta kvadratcha bor. Qaysi biri binafsha?", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Binafsha oxirgisi. Uning ostidagi kodni panjara belgisi bilan birga ko'chiring.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara tugmasini bosing, keyin 8E44AD deb yozing.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sarlavha binafsha bo'ldi. Kodni aniq ko'chirdingiz.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi kodlarni tekshiramiz. Har bir qoidaga qarang: [English pronunciation] hex [O'zbekcha tallaffuz] kod to'g'ri yozilganmi yoki buzilganmi?", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodning boshiga qarang, keyin belgilarni sanang.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri [English pronunciation] hex [O'zbekcha tallaffuz] kod: panjara belgisi va oltita belgi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara bor, belgilar oltita. Hammasi joyida.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshida panjara belgisi yo'q.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgilar beshta, bittasi tushib qolgan.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara va oltita belgi. Bu oq rang.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi buzilgan kodni darrov ko'rasiz.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rangni yana bir usulda yozish mumkin. Ekran har bir rangni uchta nurdan yig'adi: qizil, yashil va ko'k. [English pronunciation] rgb [O'zbekcha tallaffuz] da shu uch nurning har biri qancha ekanini son bilan yozamiz. Nol bo'lsa nur yo'q, ikki yuz ellik besh bo'lsa to'liq. Hozir faqat qizil to'liq yonib turibdi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizilni o'chirib, ko'kni to'liq yoqamiz. Sarlavha ko'k bo'ldi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qizil va yashilni birga yoqamiz. Qiziq, ular qo'shilib sariq rang berdi!", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma nur nol bo'lsa, ekran qorong'i, ya'ni qora degani. Hammasi to'liq bo'lsa, oq bo'ladi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] rgb [O'zbekcha tallaffuz] bu qavs ichida uchta son: qizil, yashil va ko'k nur. Har biri noldan ikki yuz ellik beshgacha.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodda uchta son bor va ostida uchta polosa. Birinchi son qizil polosa, ikkinchisi yashil, uchinchisi ko'k.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son nur kuchi: nol bo'lsa nur o'chgan, ikki yuz ellik besh bo'lsa to'liq yongan.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi uchta chiroqli sahnaga o'xshaydi: qizil, yashil va ko'k chiroqni qancha yoqsangiz, sahna shunday rangga kiradi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi nurni o'zingiz boshqaring. Qizil va ko'k o'chiq. Sarlavha yorqin yashil bo'lishi uchun yashil nurni to'liq yoqing: o'rtadagi bo'sh joyga nur uchun eng katta sonni yozing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydon bo'sh. Yashil nur uchun son yozing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat son kerak, harf va belgilarsiz.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday katta son bo'lmaydi: nur ikki yuz ellik beshdan ko'p yonmaydi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashil yondi, lekin to'liq emas. Polosaga qarang: u oxirigacha to'lsin.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yashil polosaga qarang. U oxirigacha to'lishi kerak.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'liq nur. [English pronunciation] rgb [O'zbekcha tallaffuz] dagi eng katta son. U ikki yuz ellik besh.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydonga 255 deb yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Sarlavha yorqin yashil. Siz nurni to'liq yoqdingiz.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kodni o'qiymiz. [English pronunciation] rgb [O'zbekcha tallaffuz] dagi sonlarga qarang va qaysi rang chiqishini tanlang.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi nur yonib turibdi? Qaysi son ikki yuz ellik besh?", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib doim bir xil: qizil, yashil, ko'k. Hammasi nol. qora, hammasi to'liq. oq.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat birinchi nur, qizil, to'liq.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma nur nol, demak qora.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat oxirgi nur, ko'k, to'liq.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma nur to'liq, demak oq.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! [English pronunciation] rgb [O'zbekcha tallaffuz] kodni o'qishni bilasiz.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod juda aniq narsa. Bitta belgi xato bo'lsa, brauzer rangni tanimaydi va qoidani tashlab yuboradi. Hozir hammasi joyida: sarlavha logotip bilan bir xil. Keling, ataylab buzib ko'ramiz.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara belgisini olib tashlaymiz. Sarlavha qora bo'ldi: brauzer bu oltita belgini rang deb tanimadi.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara qaytdi, lekin bitta belgi tushib qoldi, beshta qoldi. Yana ishlamadi.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom bilan ham shunday. gren deb bitta harf kam yozsak, brauzer bunday rangni bilmaydi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, rang ishlamasa, uchta narsani tekshiramiz: panjara belgisi bormi, belgilar oltitami, nom xatosiz yozilganmi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Logotip yonidagi yozuvga qarang: Bir xil yoki Boshqacha. Har safar kodda bitta narsa o'zgaradi.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer tanimagan rangni tashlab yuboradi. Shunda sarlavha oddiy, qora rangda qoladi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi manzilga o'xshaydi: uy raqamida bitta raqam tushib qolsa, pochtachi uyni topa olmaydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, bu mening kodim. Sarlavha logotip rangida bo'lishi kerak edi, lekin qora chiqdi. Kodni tuzating, keyin Tekshirishni bosing.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydon bo'sh. Logotip kodi FA4F28: panjara belgisini va shu kodni yozing.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hali ham kod oldida panjara belgisi yo'q.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer buni rang deb tanimadi. Oltita belgini o'zgartirmang, faqat oldiga panjara qo'ying.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang ishladi, lekin logotipdagidan boshqacha. Belgilarni o'zgartirmang.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Kodning boshiga qarang. U yerda nimadir yetishmayapti.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hex [O'zbekcha tallaffuz] kod har doim panjara belgisi bilan boshlanadi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod boshida panjara belgisi bo'lishi kerak. Namuna kod ostida: uni ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Rahmat! Sarlavha yana logotip bilan bir xil. Bitta belgi hammasini hal qildi.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi boshqa rang buzildi. Qaysi biri?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! gren da bitta harf tushib qolgan. To'g'risi [English pronunciation] green [O'zbekcha tallaffuz].", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] hex [O'zbekcha tallaffuz] kodda beshta belgi bor edi, oltita bo'lishi kerak.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: nima bo'yalmay qoldi?", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas oddiy qora qoldi. P qoidasidagi rang nomini harfma-harf o'qing.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha qora qoldi. [English pronunciation] H one [O'zbekcha tallaffuz] qoidasidagi [English pronunciation] hex [O'zbekcha tallaffuz] kodning belgilarini sanang.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato P qoidasida: gren. O'sha qatorni bosing.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato [English pronunciation] H one [O'zbekcha tallaffuz] qoidasida: belgilar beshta. O'sha qatorni bosing.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkala xato ham topildi. Siz ranglarni haqiqiy dizayner kabi tekshiryapsiz.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzas matni ko'k bo'lsin, faqat bu safar [English pronunciation] rgb [O'zbekcha tallaffuz] bilan. Esingizdami: ko'k uchun qizil va yashil nur o'chiq, ko'k esa to'liq. Abzas selektori P.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzasni tanlash uchun P selektori kerak.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn rangini [English pronunciation] color [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas ko'k bo'ldi, lekin bu safar [English pronunciation] rgb [O'zbekcha tallaffuz] bilan yozing: [English pronunciation] rgb [O'zbekcha tallaffuz] va qavs ichida uchta son.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni [English pronunciation] rgb [O'zbekcha tallaffuz] bilan yozing: [English pronunciation] rgb [O'zbekcha tallaffuz] so'zi va qavs ichida uchta son.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu [English pronunciation] rgb [O'zbekcha tallaffuz] ni tanimadi. Qavslar va sonlar orasidagi vergullarni tekshiring.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang chiqdi, lekin ko'k emas. Ko'k uchun faqat oxirgi son to'liq bo'ladi.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Abzas qaysi selektor bilan tanlanadi? Matn rangi uchun qaysi xususiyat kerak?", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor P, xususiyat [English pronunciation] color [O'zbekcha tallaffuz]. [English pronunciation] rgb [O'zbekcha tallaffuz] da qizil nol, yashil nol, ko'k ikki yuz ellik besh.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Abzas ko'k bo'ldi. Qoidani to'liq o'zingiz yozdingiz.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozing: nom, [English pronunciation] hex [O'zbekcha tallaffuz] yoki [English pronunciation] rgb [O'zbekcha tallaffuz]. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qaysi rang sizga yoqadi? Uni istalgan usulda yozing.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, nom bilan: [English pronunciation] red [O'zbekcha tallaffuz], gold. Yoki [English pronunciation] hex [O'zbekcha tallaffuz]: panjara va oltita belgi.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, sarlavhaga [English pronunciation] purple [O'zbekcha tallaffuz], fonga esa [English pronunciation] lavender [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning o'z ranglaringiz.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni bo'laklab o'qing: u rang nomi, [English pronunciation] hex [O'zbekcha tallaffuz] yoki [English pronunciation] rgb [O'zbekcha tallaffuz] haqidami?", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Dars esingizdami: nom inglizcha so'z, [English pronunciation] hex [O'zbekcha tallaffuz] panjara va oltita belgi, [English pronunciation] rgb [O'zbekcha tallaffuz] uchta nur: nol o'chiq degani, ikki yuz ellik besh to'liq degani. Gap shunga mos keladimi?", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] red [O'zbekcha tallaffuz] bu rang nomi, brauzer uni taniydi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] red [O'zbekcha tallaffuz] qizil rangning inglizcha nomi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hex [O'zbekcha tallaffuz] kod panjara belgisi bilan boshlanadi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: panjara belgisi, keyin oltita belgi.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rgb [O'zbekcha tallaffuz] da uchala son nol bo'lsa, rang oq bo'ladi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida hamma nur o'chiq bo'lsa, qora chiqadi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizil va yashil nur birga yonsa, sariq chiqadi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: [English pronunciation] rgb [O'zbekcha tallaffuz] da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz ranglarni yaxshi bilasiz.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men logotip kodini kichik harflar bilan yozgan edim va rang buziladi deb o'ylagan edim? Qarang: Bir xil!. Men adashibman. [English pronunciation] hex [O'zbekcha tallaffuz] kodda katta yoki kichik harf farqi yo'q, rang o'sha-o'sha.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rangni nomi bilan yozish mumkin: [English pronunciation] red [O'zbekcha tallaffuz], [English pronunciation] blue [O'zbekcha tallaffuz], [English pronunciation] green [O'zbekcha tallaffuz].", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Aniq rang uchun [English pronunciation] hex [O'zbekcha tallaffuz] kod: panjara belgisi va oltita belgi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rgb [O'zbekcha tallaffuz] esa uchta nur: qizil, yashil va ko'k.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir usul bor, [English pronunciation] hsl [O'zbekcha tallaffuz]. U bilan keyinroq tanishasiz.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz istalgan rangni yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening saytim.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men futbol va shaxmatni yaxshi ko'raman.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir xil!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi nom?", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kod to'g'rimi?", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kod to'g'rimi yoki buzilganmi?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi rang?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu kod qaysi rangni beradi?", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! У меня есть логотип, и цвет у него очень красивый. Хочу, чтобы заголовок на сайте был точно такого же цвета. Я попробовал имена цветов: [English pronunciation] orange [Русское произношение], [English pronunciation] tomato [Русское произношение], [English pronunciation] orangered [Русское произношение]. Но смотри, ни один не тот самый. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Теперь заголовок точно такого же цвета, как логотип.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вместо имени цвета я написал код цвета. Кодом можно точно задать любой цвет.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься записывать цвет тремя способами: названием, [English pronunciation] hex [Русское произношение]-кодом и через [English pronunciation] rgb [Русское произношение]. Но сначала маленькая загадка. Однажды я записал код логотипа маленькими буквами. По-моему, теперь цвет получится другой или вообще не сработает. Как думаешь? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начнём с самого простого способа: названия цвета. В свойство [English pronunciation] color [Русское произношение] пишем название по-английски. Сейчас у заголовка [English pronunciation] red [Русское произношение], то есть красный.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меняем название на [English pronunciation] blue [Русское произношение]. Браузер знает это слово и красит заголовок в синий.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим впереди light, получится lightblue, светло-синий.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А слово dark делает цвет тёмным: darkblue, тёмно-синий.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, цвет можно записать названием: [English pronunciation] red [Русское произношение], [English pronunciation] blue [Русское произношение], [English pronunciation] green [Русское произношение]. Браузер знает больше ста названий. Только название пишется по-английски и одним словом, без пробелов.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В коде меняется только одно слово, название цвета после [English pronunciation] color [Русское произношение]. Заголовок меняется вместе с ним.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название, английское. light значит светлый, dark, тёмный. Они пишутся слитно с цветом, одним словом.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это как коробка карандашей: на каждом написано название цвета. Называешь название, браузер берёт этот карандаш.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Сделай заголовок зелёным. Зелёный по-английски, [English pronunciation] green [Русское произношение]. Впиши его в поле и нажми Проверить.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле пустое. Впиши название цвета по-английски.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не знает такого цвета. Напиши название по-английски и без ошибок.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер узнал цвет, но это не зелёный. Зелёный по-английски, [English pronunciation] green [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каким должен стать заголовок? Нужно английское название этого цвета.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Зелёный по-английски, слово из пяти букв, начинается на g.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши в поле [English pronunciation] green [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! Заголовок стал зелёным. Цвет записан названием.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь наоборот. Я показываю цвет, а ты выбери его название.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на цвет: какой он, светлый или тёмный?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: light, светлый, dark, тёмный.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это зелёный, по-английски [English pronunciation] green [Русское произношение].", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это светло-синий: впереди light.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тёмно-синий: впереди dark.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Названия цветов ты знаешь.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Названия удобны, но не у каждого цвета есть название. Вот [English pronunciation] orange [Русское произношение]: не такой, как на логотипе. В программах для рисования есть палитра: под каждым цветом написан его код.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Берём из палитры цвет логотипа и ставим его код в правило. Смотри, заголовок совпал с логотипом!", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Другой квадратик, синий. Берём его код, заголовок синий.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все коды устроены одинаково: сначала решётка, потом шесть знаков. Знаки, цифры и буквы от A до F. Такой код называется [English pronunciation] hex [Русское произношение]-код, то есть точный номер цвета.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, если нужен точный цвет, берём его код из палитры: решётка и шесть знаков. Учить наизусть не нужно, нужно только правильно переписать.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на палитру: под каждым квадратиком есть код. В правило попадает именно он.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код, всегда решётка и шесть знаков. Нельзя потерять ни одного знака.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как номер телефона: одна неверная цифра, и попадёшь к другому человеку. Точный код, точный цвет.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь возьми цвет из палитры сам. Сделай заголовок фиолетовым. Найди код под фиолетовым квадратиком и перепиши его в поле. Кнопка с решёткой есть внизу.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле пустое. Перепиши код под фиолетовым квадратиком.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед кодом нет решётки. Без неё браузер не узнаёт цвет.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В коде что-то потерялось. Сверь с палитрой знак за знаком: их должно быть шесть.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал в этом цвет. Перепиши код из палитры.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет получился, но это не фиолетовый. Возьми код именно под фиолетовым квадратиком.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Но один знак отличается от палитры. Сверь код знак за знаком.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В палитре четыре квадратика. Какой из них фиолетовый?", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фиолетовый, последний. Перепиши код под ним вместе с решёткой.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми кнопку с решёткой, потом впиши 8E44AD.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Заголовок стал фиолетовым. Код переписан точно.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверим коды. Посмотри на каждое правило: [English pronunciation] hex [Русское произношение]-код записан верно или сломан?", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Верный", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на начало кода, потом посчитай знаки.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Верный [English pronunciation] hex [Русское произношение]-код, решётка и шесть знаков.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Решётка есть, знаков шесть. Всё на месте.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В начале нет решётки.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Знаков пять, один потерялся.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Решётка и шесть знаков. Это белый.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! Теперь сломанный код ты видишь сразу.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет можно записать ещё одним способом. Экран собирает каждый цвет из трёх лучей: красного, зелёного и синего. В [English pronunciation] rgb [Русское произношение] мы пишем числом, сколько каждого луча. Ноль, луча нет, двести пятьдесят пять, на полную. Сейчас на полную горит только красный.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Гасим красный и зажигаем синий на полную. Заголовок синий.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь зажжём вместе красный и зелёный. Интересно: вместе они дали жёлтый!", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если все лучи на нуле, экран тёмный, то есть чёрный. А если все на полную, белый.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] rgb [Русское произношение], это три числа в скобках: красный, зелёный и синий свет. Каждое, от нуля до двухсот пятидесяти пяти.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В коде три числа, а под ним три полосы. Первое число, красная полоса, второе, зелёная, третье, синяя.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число, это сила луча: ноль, луч выключен, двести пятьдесят пять, включён на полную.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это как сцена с тремя прожекторами: красным, зелёным и синим. Как их включишь, такого цвета и будет сцена.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь управляй лучом сам. Красный и синий выключены. Чтобы заголовок стал ярко-зелёным, зажги зелёный луч на полную: в пустое место посередине впиши самое большое число для луча.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле пустое. Впиши число для зелёного луча.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужно только число, без букв и знаков.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого большого числа не бывает: луч не горит сильнее двухсот пятидесяти пяти.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Зелёный горит, но не на полную. Посмотри на полосу: пусть она заполнится до конца.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на зелёную полосу. Она должна заполниться до конца.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Полный луч, самое большое число в [English pronunciation] rgb [Русское произношение]. Это двести пятьдесят пять.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши в поле 255.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Заголовок ярко-зелёный. Луч горит на полную.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь прочитаем код. Посмотри на числа в [English pronunciation] rgb [Русское произношение] и выбери, какой получится цвет.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой луч горит? Какое число, двести пятьдесят пять?", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок всегда один: красный, зелёный, синий. Все нули, чёрный, все на полную, белый.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Горит только первый луч, красный.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все лучи на нуле, значит, чёрный.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Горит только последний луч, синий.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все лучи на полную, значит, белый.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Ты умеешь читать [English pronunciation] rgb [Русское произношение]-код.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код, вещь очень точная. Одна ошибка в знаке, и браузер не узнаёт цвет и выбрасывает правило. Сейчас всё на месте: заголовок совпадает с логотипом. Давай нарочно сломаем.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Убираем решётку. Заголовок стал чёрным: браузер не узнал в шести знаках цвет.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Решётка вернулась, но один знак потерялся, осталось пять. Опять не работает.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С названием так же. Напишем gren без одной буквы, браузер такого цвета не знает.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, если цвет не работает, проверяем три вещи: есть ли решётка, шесть ли знаков, без ошибок ли название.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри на надпись у логотипа: Совпадает или Не тот. Каждый раз в коде меняется что-то одно.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет, который браузер не узнал, он выбрасывает. Тогда заголовок остаётся обычным, чёрным.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как адрес на письме: пропала одна цифра в номере дома, и почтальон не найдёт дом.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, это мой код. Заголовок должен был быть цвета логотипа, а получился чёрным. Исправь код и нажми Проверить.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поле пустое. Код логотипа, FA4F28: впиши решётку и этот код.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перед кодом всё ещё нет решётки.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал цвет. Шесть знаков не меняй, только поставь перед ними решётку.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет заработал, но не как на логотипе. Знаки не меняй.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Посмотри на начало кода. Там чего-то не хватает.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Hex-код всегда начинается с решётки.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В начале кода должна стоять решётка. Образец под кодом: перепиши его и нажми Проверить.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Спасибо! Заголовок снова совпал с логотипом. Один знак всё решил.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь сломался другой цвет. Какой?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: его цвет виден на странице. Что не покрасилось?", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В gren потерялась буква. Правильно, [English pronunciation] green [Русское произношение].", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В [English pronunciation] hex [Русское произношение]-коде было пять знаков, а нужно шесть.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что осталось не покрашенным?", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац остался обычным, чёрным. Прочитай по буквам название цвета в правиле P.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок остался чёрным. Посчитай знаки в [English pronunciation] hex [Русское произношение]-коде правила [English pronunciation] H one [Русское произношение].", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле P: gren. Нажми эту строку.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле [English pronunciation] H one [Русское произношение]: пять знаков. Нажми эту строку.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь цвета как настоящий дизайнер.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком сам. Пусть текст абзаца будет синим, только на этот раз через [English pronunciation] rgb [Русское произношение]. Вспомни: для синего красный и зелёный лучи выключены, а синий на полную. Селектор абзаца, P.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чтобы выбрать абзац, нужен селектор P.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет текста задаёт свойство [English pronunciation] color [Русское произношение].", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац синий, но в этот раз запиши через [English pronunciation] rgb [Русское произношение]: [English pronunciation] rgb [Русское произношение] и три числа в скобках.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запиши значение через [English pronunciation] rgb [Русское произношение]: слово [English pronunciation] rgb [Русское произношение] и три числа в скобках.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал этот [English pronunciation] rgb [Русское произношение]. Проверь скобки и запятые между числами.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет получился, но не синий. Для синего на полную только последнее число.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каким селектором выбирают абзац? Какое свойство нужно для цвета текста?", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор P, свойство [English pronunciation] color [Русское произношение]. В [English pronunciation] rgb [Русское произношение] красный ноль, зелёный ноль, синий двести пятьдесят пять.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Абзац синий. Всё правило, целиком твоё.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь выбери цвета для своей страницы. Можно любым способом: название, [English pronunciation] hex [Русское произношение] или [English pronunciation] rgb [Русское произношение]. Впиши один цвет для заголовка и другой для фона. Потом нажми Готово.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Какой цвет тебе нравится? Запиши его любым способом.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, названием: [English pronunciation] red [Русское произношение], gold. Или [English pronunciation] hex [Русское произношение]: решётка и шесть знаков.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, впиши [English pronunciation] purple [Русское произношение] для заголовка и [English pronunciation] lavender [Русское произношение] для фона. Потом нажми Готово.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твои собственные цвета.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу по частям: она про название, [English pronunciation] hex [Русское произношение] или [English pronunciation] rgb [Русское произношение]?", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни урок: название, английское слово, [English pronunciation] hex [Русское произношение], решётка и шесть знаков, [English pronunciation] rgb [Русское произношение], три луча, ноль, выключен, двести пятьдесят пять, на полную. Фраза с этим совпадает?", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] red [Русское произношение], это название цвета, браузер его знает.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] red [Русское произношение], английское название красного.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Hex-код начинается с решётки.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: решётка, потом шесть знаков.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если в [English pronunciation] rgb [Русское произношение] все три числа, ноль, цвет будет белым.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле, если все лучи выключены, получается чёрный.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если вместе зажечь красный и зелёный луч, выйдет жёлтый.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: в [English pronunciation] rgb [Русское произношение] красный и зелёный на полную, синий ноль, получается жёлтый.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в цветах.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я записал код логотипа маленькими буквами и думал, что цвет сломается? Смотри: Совпадает!. Я ошибся. В [English pronunciation] hex [Русское произношение]-коде неважно, большие буквы или маленькие, цвет тот же самый.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя страница в твоих собственных цветах!", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет можно записать названием: [English pronunciation] red [Русское произношение], [English pronunciation] blue [Русское произношение], [English pronunciation] green [Русское произношение].", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для точного цвета, [English pronunciation] hex [Русское произношение]-код: решётка и шесть знаков.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] rgb [Русское произношение], три луча: красный, зелёный и синий.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть ещё один способ, [English pronunciation] hsl [Русское произношение]. С ним познакомишься позже.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты можешь записать любой цвет. На следующем уроке поработаем с фоном. До встречи!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это мой сайт.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я люблю футбол и шахматы.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Совпадает!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое название?", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Код верный?", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Код верный или сломан?", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой цвет?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой цвет даст этот код?", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I have a logo, and its color is really nice. I want the heading on my site to be exactly the same color. I tried color names: orange, tomato, orangered. But look, none of them is exactly it. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! Now the heading is exactly the logo’s color.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Instead of a color name I wrote a color code. With a code you can give any color exactly.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn three ways to write a color: by name, with a hex code and with rgb. But first, a little riddle. Once I wrote the logo code in small letters. I think now the color will come out different, or not work at all. What do you think? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s start with the easiest way: the color’s name. We write an English name into the color property. Right now the heading has red.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We change the name to blue. The browser knows this word and paints the heading blue.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Add light in front and we get lightblue, a light blue.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the word dark makes it dark: darkblue.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a color can be written by name: red, blue, green. The browser knows more than a hundred names. The name is just in English and written as one word, without spaces.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only one word changes in the code: the color name after color. The heading changes with it.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name is English. light means pale, dark means deep. They join the color name as one word.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a box of pencils with a color name on each one. Say the name, and the browser takes that pencil.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the heading green. Type green into the field and tap Check.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field is empty. Type the color name in English.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser doesn’t know that color. Write the name in English, without typos.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser knew the color, but it isn’t green. Green is green in English.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What color should the heading be? You need that color’s English name.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Green in English is a five-letter word starting with g.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type green into the field and tap Check.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The heading turned green. You wrote a color by its name.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the other way round. I show a color, and you pick its name.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right!", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the color: what is it, light or dark?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: light means pale, dark means deep.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is green.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is a light blue: light in front.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is a dark blue: dark in front.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! You know the color names.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Names are handy, but not every color has a name. Here’s orange: not like the logo. Drawing programs have a palette: each color has its code written under it.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We take the logo color from the palette and put its code in the rule. Look, the heading matches the logo exactly!", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Another square, blue. We take its code, and the heading is blue.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All the codes are built the same way: first a hash sign, then six symbols. The symbols are digits and letters A to F. Such a code is called a hex code, that is, the color’s exact number.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So when you need an exact color, take its code from the palette: a hash sign and six symbols. No need to learn it by heart, just copy it correctly.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the palette: there’s a code under each square. That code goes into the rule.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A code is always a hash sign and six symbols. Not a single symbol can be lost.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a phone number: one wrong digit and you reach someone else. An exact code gives an exact color.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now take a color from the palette yourself. Make the heading purple. Find the code under the purple square and copy it into the field. There’s a hash sign button below.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field is empty. Copy the code under the purple square.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no hash sign before the code. Without it the browser doesn’t know the color.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Something got lost in the code. Compare it with the palette symbol by symbol: there should be six.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize this as a color. Copy the code from the palette.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You got a color, but not purple. Take the code under the purple square.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! But one symbol differs from the palette. Compare the code symbol by symbol.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] There are four squares in the palette. Which one is purple?", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Purple is the last one. Copy the code under it, hash sign included.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the hash sign button, then type 8E44AD.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The heading turned purple. You copied the code exactly.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s check codes. Look at each rule: is the hex code written right, or is it broken?", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the start of the code, then count the symbols.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A right hex code is a hash sign and six symbols.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a hash sign and six symbols. All good.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no hash sign at the start.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only five symbols; one got lost.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hash sign and six symbols. This is white.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now you spot a broken code right away.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s one more way to write a color. A screen builds every color from three lights: red, green and blue. In rgb we write how much of each light, as a number. Zero means no light, two hundred fifty-five means full. Right now only red is on full.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We switch red off and blue on full. The heading is blue.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s turn on red and green together. Interesting: together they make yellow!", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If every light is at zero, the screen is dark, that is, black. If all are full, it’s white.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So rgb is three numbers in brackets: red, green and blue light. Each goes from zero to two hundred fifty-five.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code has three numbers, and there are three bars below. The first number is the red bar, the second green, the third blue.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is the light’s strength: zero is off, two hundred fifty-five is full on.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like a stage with three spotlights, red, green and blue. However you switch them on, that’s the stage’s color.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you control the light. Red and blue are off. To make the heading bright green, turn green light on full: type the biggest number for a light into the empty spot in the middle.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field is empty. Type a number for green light.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number goes here, no letters or signs.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No number that big: light can’t go above two hundred fifty-five.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Green is on, but not full. Look at the bar: let it fill all the way.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the green bar. It should fill all the way.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Full light is the biggest number in rgb: two hundred fifty-five.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type 255 into the field.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! The heading is bright green. You turned the light on full.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s read codes. Look at the numbers in rgb and pick which color comes out.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which light is on? Which number is two hundred fifty-five?", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is always red, green, blue. All zero is black, all full is white.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the first light, red, is on.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Every light is zero, so it’s black.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only the last light, blue, is on.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Every light is full, so it’s white.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! You can read rgb codes.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A code is a very exact thing. One wrong symbol and the browser doesn’t know the color and throws the rule away. Right now all is well: the heading matches the logo. Let’s break it on purpose.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We remove the hash sign. The heading went black: the browser didn’t see a color in the six symbols.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The hash sign is back, but one symbol got lost; five are left. It fails again.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Same with names. Write gren with one letter missing, and the browser doesn’t know that color.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So when a color doesn’t work, check three things: is there a hash sign, are there six symbols, is the name spelled right.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the label by the logo: A match or Different. Each time one thing changes in the code.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser throws away a color it doesn’t know. Then the heading stays plain black.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s like an address on a letter: miss one digit of the house number and the mail carrier can’t find the house.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, this is my code. The heading should be the logo color, but it came out black. Fix the code and tap Check.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The field is empty. The logo code is FA4F28: type the hash sign and this code.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still no hash sign before the code.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize a color. Don’t change the six symbols, just put a hash sign in front.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The color works, but it isn’t the logo’s. Don’t change the symbols.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look at the start of the code. Something is missing there.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hex code always starts with a hash sign.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code must start with a hash sign. The example is under the code: copy it and tap Check.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Thanks! The heading matches the logo again. One symbol fixed it all.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one color doesn’t work. Look at the page and tap the broken rule.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first bug is found! Now another color broke. Which one?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: its color shows on the page. What didn’t get colored?", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Found it! gren is missing a letter. It should be green.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The hex code had five symbols, but it needs six.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what stayed uncolored?", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraph stayed plain black. Read the color name in the P rule letter by letter.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading stayed black. Count the symbols in the H one rule’s hex code.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the P rule: gren. Tap that line.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the H one rule: five symbols. Tap that line.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check colors like a real designer.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. Make the paragraph text blue, but this time with rgb. Remember: for blue, red and green light are off and blue is full. The paragraph selector is P.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value in curly braces.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] To pick the paragraph you need the P selector.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The color property sets the text color.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraph is blue, but this time write it with rgb: rgb and three numbers in brackets.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the value with rgb: the word rgb and three numbers in brackets.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize this rgb. Check the brackets and the commas between numbers.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You got a color, but not blue. For blue only the last number is full.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which selector picks the paragraph? Which property sets the text color?", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is P, the property color. In rgb red is zero, green zero, blue two hundred fifty-five.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The paragraph is blue. You wrote the whole rule yourself.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now pick colors for your own page. Any way you like: a name, hex or rgb. Type one color for the heading and another for the background. Then tap Done.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the heading and the background are the same color, the heading disappears. Pick different colors.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Which color do you like? Write it any way.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, a name like red or gold. Or hex: a hash sign and six symbols.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type purple for the heading and lavender for the background. Then tap Done.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! These are your very own colors.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence piece by piece: is it about a name, hex or rgb?", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the lesson: a name is an English word, hex is a hash sign and six symbols, rgb is three lights, zero is off, two hundred fifty-five is full. Does the sentence match that?", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] red is a color name, and the browser knows it.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: red is the English name for that color.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hex code starts with a hash sign.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: a hash sign, then six symbols.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If all three numbers in rgb are zero, the color is white.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually, with every light off you get black.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If red and green light shine together, you get yellow.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: full red and green with zero blue in rgb makes yellow.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know colors really well.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrote the logo code in small letters and thought the color would break? Look: A match!. I was wrong. In a hex code big or small letters don’t matter; the color is the same.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your page in the colors you picked yourself!", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A color can be written by name: red, blue, green.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For an exact color, a hex code: a hash sign and six symbols.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And rgb is three lights: red, green and blue.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s one more way, hsl. You’ll meet it later.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you can write any color. Next time we’ll work with backgrounds. See you!", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my site.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I love football and chess.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A match!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which name?", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is the code right?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is the code right or broken?", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which color?", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which color does this code give?", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Mening logotipim bor, uning rangi juda chiroyli. Saytdagi sarlavha ham xuddi shu rangda bo'lishini xohlayman. Ranglarning nomlari bilan urinib ko'rdim: [English pronunciation] orange [O'zbekcha tallaffuz], [English pronunciation] tomato [O'zbekcha tallaffuz], [English pronunciation] orangered [O'zbekcha tallaffuz]. Lekin qarang, hech biri aynan o'sha emas. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Endi sarlavha logotip bilan aynan bir xil rangda.": "uz002",
+    "Rang nomi o'rniga men rang kodini yozdim. Kod bilan istalgan rangni aniq berish mumkin.": "uz003",
+    "Bugun rangni uch xil yozishni o'rganasiz: nomi bilan, [English pronunciation] hex [O'zbekcha tallaffuz] kod bilan va [English pronunciation] rgb [O'zbekcha tallaffuz] bilan. Lekin oldin kichik topishmoq. Men bir marta logotip kodini kichik harflar bilan yozib qo'ydim. Menimcha, endi rang boshqacha chiqadi yoki umuman ishlamaydi. Siz nima deb o'ylaysiz? Javobni dars oxirida birga topamiz.": "uz004",
+    "Eng oson usuldan boshlaymiz: rangning nomi. [English pronunciation] color [O'zbekcha tallaffuz] xususiyatiga inglizcha nom yozamiz. Hozir sarlavhada [English pronunciation] red [O'zbekcha tallaffuz], ya'ni qizil degani.": "uz005",
+    "Nomni [English pronunciation] blue [O'zbekcha tallaffuz] ga almashtiramiz. Brauzer bu so'zni taniydi va sarlavhani ko'k qiladi.": "uz006",
+    "Oldiga light so'zini qo'shsak, lightblue bo'ladi: och ko'k.": "uz007",
+    "dark so'zi esa rangni to'q qiladi: darkblue, to'q ko'k.": "uz008",
+    "Demak, rangni nomi bilan yozish mumkin: [English pronunciation] red [O'zbekcha tallaffuz], [English pronunciation] blue [O'zbekcha tallaffuz], [English pronunciation] green [O'zbekcha tallaffuz]. Brauzer yuzdan ortiq nomni biladi. Faqat nom inglizcha va bitta so'z bo'lib, bo'sh joysiz yoziladi.": "uz009",
+    "Kodda faqat bitta so'z o'zgaradi: [English pronunciation] color [O'zbekcha tallaffuz] dan keyingi rang nomi. Sarlavha shu so'z bilan birga o'zgaradi.": "uz010",
+    "Nom inglizcha bo'ladi. light. och, dark. to'q degani. Ular rang nomiga qo'shilib, bitta so'z bo'ladi.": "uz011",
+    "Xuddi qalamlar qutisiga o'xshaydi: har bir qalamda rang nomi yozilgan. Nomni aytsangiz, brauzer o'sha qalamni oladi.": "uz012",
+    "Endi navbat sizga. Sarlavhani yashil qiling. Yashil rang inglizchada [English pronunciation] green [O'zbekcha tallaffuz] bo'ladi. Uni maydonga yozing va Tekshirishni bosing.": "uz013",
+    "Maydon bo'sh. Rang nomini inglizcha yozing.": "uz014",
+    "Brauzer bunday rangni bilmaydi. Nomni inglizcha va xatosiz yozing.": "uz015",
+    "Brauzer rangni tanidi, lekin bu yashil emas. Yashil inglizchada [English pronunciation] green [O'zbekcha tallaffuz].": "uz016",
+    "Sarlavha qaysi rangda bo'lishi kerak? Shu rangning inglizcha nomi kerak.": "uz017",
+    "Yashil inglizchada besh harfli so'z: g harfi bilan boshlanadi.": "uz018",
+    "Maydonga [English pronunciation] green [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz019",
+    "Zo'r! Sarlavha yashil bo'ldi. Siz rangni nomi bilan yozdingiz.": "uz020",
+    "Endi aksincha. Men rangni ko'rsataman, siz uning nomini tanlang.": "uz021",
+    "To'g'ri!": "uz022",
+    "Rangga yaxshilab qarang: u qanday rang, och yoki to'qmi?": "uz023",
+    "Esingizdami: light. och, dark. to'q.": "uz024",
+    "Bu yashil, inglizchada [English pronunciation] green [O'zbekcha tallaffuz].": "uz025",
+    "Bu och ko'k: oldida light bor.": "uz026",
+    "Bu to'q ko'k: oldida dark bor.": "uz027",
+    "Barakalla! Rang nomlarini yaxshi bilasiz.": "uz028",
+    "Nomlar qulay, lekin hamma rangning nomi yo'q. Mana [English pronunciation] orange [O'zbekcha tallaffuz]: logotipdagidan boshqacha. Rasm chizish dasturlarida palitra bo'ladi: har bir rang ostida uning kodi yozilgan.": "uz029",
+    "Palitradan logotip rangini olamiz va kodini qoidaga qo'yamiz. Qarang, sarlavha logotip bilan aynan bir xil!": "uz030",
+    "Boshqa kvadratcha, ko'k. Uning kodini olamiz, sarlavha ko'k bo'ldi.": "uz031",
+    "Hamma kodlar bir xil tuzilgan: oldin panjara belgisi, keyin oltita belgi. Belgilar raqamlar va A dan F gacha harflar. Bunday kod [English pronunciation] hex [O'zbekcha tallaffuz] kod, ya'ni rangning aniq raqami degani.": "uz032",
+    "Demak, aniq rang kerak bo'lsa, kodini palitradan olamiz: panjara belgisi va oltita belgi. Uni yod olish shart emas, faqat to'g'ri ko'chirish kerak.": "uz033",
+    "Palitrani qarang: har bir kvadratcha ostida kod bor. Qoidaga aynan shu kod tushadi.": "uz034",
+    "Kod har doim panjara belgisi va oltita belgidan iborat. Bitta belgi ham tushib qolmasligi kerak.": "uz035",
+    "Xuddi telefon raqamiga o'xshaydi: bitta raqam xato bo'lsa, boshqa odamga tushasiz. Kod ham aniq bo'lsa, rang aniq bo'ladi.": "uz036",
+    "Endi siz palitradan rang oling. Sarlavhani binafsha qiling. Binafsha kvadratcha ostidagi kodni topib, maydonga ko'chiring. Panjara belgisi tugmasi pastda bor.": "uz037",
+    "Maydon bo'sh. Binafsha kvadratcha ostidagi kodni ko'chiring.": "uz038",
+    "Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.": "uz039",
+    "Kodda nimadir tushib qoldi. Palitradagi bilan belgima-belgi solishtiring: oltita bo'lishi kerak.": "uz040",
+    "Brauzer buni rang deb tanimadi. Palitradagi kodni ko'chiring.": "uz041",
+    "Rang chiqdi, lekin bu binafsha emas. Aynan binafsha kvadratcha ostidagi kodni oling.": "uz042",
+    "Oz qoldi! Lekin bitta belgi palitradagidan farq qiladi. Kodni belgima-belgi solishtiring.": "uz043",
+    "Palitrada to'rtta kvadratcha bor. Qaysi biri binafsha?": "uz044",
+    "Binafsha oxirgisi. Uning ostidagi kodni panjara belgisi bilan birga ko'chiring.": "uz045",
+    "Panjara tugmasini bosing, keyin 8E44AD deb yozing.": "uz046",
+    "Ajoyib! Sarlavha binafsha bo'ldi. Kodni aniq ko'chirdingiz.": "uz047",
+    "Endi kodlarni tekshiramiz. Har bir qoidaga qarang: [English pronunciation] hex [O'zbekcha tallaffuz] kod to'g'ri yozilganmi yoki buzilganmi?": "uz048",
+    "To'g'ri": "uz049",
+    "Kodning boshiga qarang, keyin belgilarni sanang.": "uz050",
+    "To'g'ri [English pronunciation] hex [O'zbekcha tallaffuz] kod: panjara belgisi va oltita belgi.": "uz051",
+    "Panjara bor, belgilar oltita. Hammasi joyida.": "uz052",
+    "Boshida panjara belgisi yo'q.": "uz053",
+    "Belgilar beshta, bittasi tushib qolgan.": "uz054",
+    "Panjara va oltita belgi. Bu oq rang.": "uz055",
+    "Zo'r! Endi buzilgan kodni darrov ko'rasiz.": "uz056",
+    "Rangni yana bir usulda yozish mumkin. Ekran har bir rangni uchta nurdan yig'adi: qizil, yashil va ko'k. [English pronunciation] rgb [O'zbekcha tallaffuz] da shu uch nurning har biri qancha ekanini son bilan yozamiz. Nol bo'lsa nur yo'q, ikki yuz ellik besh bo'lsa to'liq. Hozir faqat qizil to'liq yonib turibdi.": "uz057",
+    "Qizilni o'chirib, ko'kni to'liq yoqamiz. Sarlavha ko'k bo'ldi.": "uz058",
+    "Endi qizil va yashilni birga yoqamiz. Qiziq, ular qo'shilib sariq rang berdi!": "uz059",
+    "Hamma nur nol bo'lsa, ekran qorong'i, ya'ni qora degani. Hammasi to'liq bo'lsa, oq bo'ladi.": "uz060",
+    "Demak, [English pronunciation] rgb [O'zbekcha tallaffuz] bu qavs ichida uchta son: qizil, yashil va ko'k nur. Har biri noldan ikki yuz ellik beshgacha.": "uz061",
+    "Kodda uchta son bor va ostida uchta polosa. Birinchi son qizil polosa, ikkinchisi yashil, uchinchisi ko'k.": "uz062",
+    "Son nur kuchi: nol bo'lsa nur o'chgan, ikki yuz ellik besh bo'lsa to'liq yongan.": "uz063",
+    "Xuddi uchta chiroqli sahnaga o'xshaydi: qizil, yashil va ko'k chiroqni qancha yoqsangiz, sahna shunday rangga kiradi.": "uz064",
+    "Endi nurni o'zingiz boshqaring. Qizil va ko'k o'chiq. Sarlavha yorqin yashil bo'lishi uchun yashil nurni to'liq yoqing: o'rtadagi bo'sh joyga nur uchun eng katta sonni yozing.": "uz065",
+    "Maydon bo'sh. Yashil nur uchun son yozing.": "uz066",
+    "Bu yerga faqat son kerak, harf va belgilarsiz.": "uz067",
+    "Bunday katta son bo'lmaydi: nur ikki yuz ellik beshdan ko'p yonmaydi.": "uz068",
+    "Yashil yondi, lekin to'liq emas. Polosaga qarang: u oxirigacha to'lsin.": "uz069",
+    "Yashil polosaga qarang. U oxirigacha to'lishi kerak.": "uz070",
+    "To'liq nur. [English pronunciation] rgb [O'zbekcha tallaffuz] dagi eng katta son. U ikki yuz ellik besh.": "uz071",
+    "Maydonga 255 deb yozing.": "uz072",
+    "Ura! Sarlavha yorqin yashil. Siz nurni to'liq yoqdingiz.": "uz073",
+    "Endi kodni o'qiymiz. [English pronunciation] rgb [O'zbekcha tallaffuz] dagi sonlarga qarang va qaysi rang chiqishini tanlang.": "uz074",
+    "Qaysi nur yonib turibdi? Qaysi son ikki yuz ellik besh?": "uz075",
+    "Tartib doim bir xil: qizil, yashil, ko'k. Hammasi nol. qora, hammasi to'liq. oq.": "uz076",
+    "Faqat birinchi nur, qizil, to'liq.": "uz077",
+    "Hamma nur nol, demak qora.": "uz078",
+    "Faqat oxirgi nur, ko'k, to'liq.": "uz079",
+    "Hamma nur to'liq, demak oq.": "uz080",
+    "Barakalla! [English pronunciation] rgb [O'zbekcha tallaffuz] kodni o'qishni bilasiz.": "uz081",
+    "Kod juda aniq narsa. Bitta belgi xato bo'lsa, brauzer rangni tanimaydi va qoidani tashlab yuboradi. Hozir hammasi joyida: sarlavha logotip bilan bir xil. Keling, ataylab buzib ko'ramiz.": "uz082",
+    "Panjara belgisini olib tashlaymiz. Sarlavha qora bo'ldi: brauzer bu oltita belgini rang deb tanimadi.": "uz083",
+    "Panjara qaytdi, lekin bitta belgi tushib qoldi, beshta qoldi. Yana ishlamadi.": "uz084",
+    "Nom bilan ham shunday. gren deb bitta harf kam yozsak, brauzer bunday rangni bilmaydi.": "uz085",
+    "Demak, rang ishlamasa, uchta narsani tekshiramiz: panjara belgisi bormi, belgilar oltitami, nom xatosiz yozilganmi.": "uz086",
+    "Logotip yonidagi yozuvga qarang: Bir xil yoki Boshqacha. Har safar kodda bitta narsa o'zgaradi.": "uz087",
+    "Brauzer tanimagan rangni tashlab yuboradi. Shunda sarlavha oddiy, qora rangda qoladi.": "uz088",
+    "Xuddi manzilga o'xshaydi: uy raqamida bitta raqam tushib qolsa, pochtachi uyni topa olmaydi.": "uz089",
+    "Voy, bu mening kodim. Sarlavha logotip rangida bo'lishi kerak edi, lekin qora chiqdi. Kodni tuzating, keyin Tekshirishni bosing.": "uz090",
+    "Maydon bo'sh. Logotip kodi FA4F28: panjara belgisini va shu kodni yozing.": "uz091",
+    "Hali ham kod oldida panjara belgisi yo'q.": "uz092",
+    "Brauzer buni rang deb tanimadi. Oltita belgini o'zgartirmang, faqat oldiga panjara qo'ying.": "uz093",
+    "Rang ishladi, lekin logotipdagidan boshqacha. Belgilarni o'zgartirmang.": "uz094",
+    "Kodning boshiga qarang. U yerda nimadir yetishmayapti.": "uz095",
+    "[English pronunciation] hex [O'zbekcha tallaffuz] kod har doim panjara belgisi bilan boshlanadi.": "uz096",
+    "Kod boshida panjara belgisi bo'lishi kerak. Namuna kod ostida: uni ko'chirib yozing va Tekshirishni bosing.": "uz097",
+    "Rahmat! Sarlavha yana logotip bilan bir xil. Bitta belgi hammasini hal qildi.": "uz098",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.": "uz099",
+    "Zo'r, birinchi xato topildi! Endi boshqa rang buzildi. Qaysi biri?": "uz100",
+    "Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?": "uz101",
+    "Topdingiz! gren da bitta harf tushib qolgan. To'g'risi [English pronunciation] green [O'zbekcha tallaffuz].": "uz102",
+    "Topdingiz! [English pronunciation] hex [O'zbekcha tallaffuz] kodda beshta belgi bor edi, oltita bo'lishi kerak.": "uz103",
+    "Sahifaga qarang: nima bo'yalmay qoldi?": "uz104",
+    "Abzas oddiy qora qoldi. P qoidasidagi rang nomini harfma-harf o'qing.": "uz105",
+    "Sarlavha qora qoldi. [English pronunciation] H one [O'zbekcha tallaffuz] qoidasidagi [English pronunciation] hex [O'zbekcha tallaffuz] kodning belgilarini sanang.": "uz106",
+    "Xato P qoidasida: gren. O'sha qatorni bosing.": "uz107",
+    "Xato [English pronunciation] H one [O'zbekcha tallaffuz] qoidasida: belgilar beshta. O'sha qatorni bosing.": "uz108",
+    "Super! Ikkala xato ham topildi. Siz ranglarni haqiqiy dizayner kabi tekshiryapsiz.": "uz109",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzas matni ko'k bo'lsin, faqat bu safar [English pronunciation] rgb [O'zbekcha tallaffuz] bilan. Esingizdami: ko'k uchun qizil va yashil nur o'chiq, ko'k esa to'liq. Abzas selektori P.": "uz110",
+    "Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.": "uz111",
+    "Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.": "uz112",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz113",
+    "Abzasni tanlash uchun P selektori kerak.": "uz114",
+    "Matn rangini [English pronunciation] color [O'zbekcha tallaffuz] xususiyati beradi.": "uz115",
+    "Abzas ko'k bo'ldi, lekin bu safar [English pronunciation] rgb [O'zbekcha tallaffuz] bilan yozing: [English pronunciation] rgb [O'zbekcha tallaffuz] va qavs ichida uchta son.": "uz116",
+    "Qiymatni [English pronunciation] rgb [O'zbekcha tallaffuz] bilan yozing: [English pronunciation] rgb [O'zbekcha tallaffuz] so'zi va qavs ichida uchta son.": "uz117",
+    "Brauzer bu [English pronunciation] rgb [O'zbekcha tallaffuz] ni tanimadi. Qavslar va sonlar orasidagi vergullarni tekshiring.": "uz118",
+    "Rang chiqdi, lekin ko'k emas. Ko'k uchun faqat oxirgi son to'liq bo'ladi.": "uz119",
+    "Abzas qaysi selektor bilan tanlanadi? Matn rangi uchun qaysi xususiyat kerak?": "uz120",
+    "Selektor P, xususiyat [English pronunciation] color [O'zbekcha tallaffuz]. [English pronunciation] rgb [O'zbekcha tallaffuz] da qizil nol, yashil nol, ko'k ikki yuz ellik besh.": "uz121",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz122",
+    "Ajoyib! Abzas ko'k bo'ldi. Qoidani to'liq o'zingiz yozdingiz.": "uz123",
+    "Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozing: nom, [English pronunciation] hex [O'zbekcha tallaffuz] yoki [English pronunciation] rgb [O'zbekcha tallaffuz]. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin Tayyorni bosing.": "uz124",
+    "Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.": "uz125",
+    "Qaysi rang sizga yoqadi? Uni istalgan usulda yozing.": "uz126",
+    "Masalan, nom bilan: [English pronunciation] red [O'zbekcha tallaffuz], gold. Yoki [English pronunciation] hex [O'zbekcha tallaffuz]: panjara va oltita belgi.": "uz127",
+    "Masalan, sarlavhaga [English pronunciation] purple [O'zbekcha tallaffuz], fonga esa [English pronunciation] lavender [O'zbekcha tallaffuz] yozing. Keyin Tayyorni bosing.": "uz128",
+    "Voy, qanday chiroyli! Bu sizning o'z ranglaringiz.": "uz129",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz130",
+    "Barakalla!": "uz131",
+    "Gapni bo'laklab o'qing: u rang nomi, [English pronunciation] hex [O'zbekcha tallaffuz] yoki [English pronunciation] rgb [O'zbekcha tallaffuz] haqidami?": "uz132",
+    "Dars esingizdami: nom inglizcha so'z, [English pronunciation] hex [O'zbekcha tallaffuz] panjara va oltita belgi, [English pronunciation] rgb [O'zbekcha tallaffuz] uchta nur: nol o'chiq degani, ikki yuz ellik besh to'liq degani. Gap shunga mos keladimi?": "uz133",
+    "[English pronunciation] red [O'zbekcha tallaffuz] bu rang nomi, brauzer uni taniydi.": "uz134",
+    "To'g'ri: [English pronunciation] red [O'zbekcha tallaffuz] qizil rangning inglizcha nomi.": "uz135",
+    "[English pronunciation] hex [O'zbekcha tallaffuz] kod panjara belgisi bilan boshlanadi.": "uz136",
+    "Shunday: panjara belgisi, keyin oltita belgi.": "uz137",
+    "[English pronunciation] rgb [O'zbekcha tallaffuz] da uchala son nol bo'lsa, rang oq bo'ladi.": "uz138",
+    "Aslida hamma nur o'chiq bo'lsa, qora chiqadi.": "uz139",
+    "Qizil va yashil nur birga yonsa, sariq chiqadi.": "uz140",
+    "Shunday: [English pronunciation] rgb [O'zbekcha tallaffuz] da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.": "uz141",
+    "Hammasi to'g'ri! Siz ranglarni yaxshi bilasiz.": "uz142",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men logotip kodini kichik harflar bilan yozgan edim va rang buziladi deb o'ylagan edim? Qarang: Bir xil!. Men adashibman. [English pronunciation] hex [O'zbekcha tallaffuz] kodda katta yoki kichik harf farqi yo'q, rang o'sha-o'sha.": "uz143",
+    "Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!": "uz144",
+    "Rangni nomi bilan yozish mumkin: [English pronunciation] red [O'zbekcha tallaffuz], [English pronunciation] blue [O'zbekcha tallaffuz], [English pronunciation] green [O'zbekcha tallaffuz].": "uz145",
+    "Aniq rang uchun [English pronunciation] hex [O'zbekcha tallaffuz] kod: panjara belgisi va oltita belgi.": "uz146",
+    "[English pronunciation] rgb [O'zbekcha tallaffuz] esa uchta nur: qizil, yashil va ko'k.": "uz147",
+    "Yana bir usul bor, [English pronunciation] hsl [O'zbekcha tallaffuz]. U bilan keyinroq tanishasiz.": "uz148",
+    "Tabriklayman! Endi siz istalgan rangni yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!": "uz149",
+    "Voy, zo‘r!": "uz150",
+    "Ana! Chiqdi!": "uz151",
+    "Super!": "uz152",
+    "Qoyil!": "uz153",
+    "Ura!": "uz154",
+    "Zo‘r-ku!": "uz155",
+    "Yana bir bor urinib ko‘ring.": "uz156",
+    "Diqqat bilan qarang.": "uz157",
+    "Yaqin qoldingiz. Shoshilmang.": "uz158",
+    "Salom! Bu mening saytim.": "uz159",
+    "Men futbol va shaxmatni yaxshi ko'raman.": "uz160",
+    "Bir xil!": "uz161",
+    "Qaysi nom?": "uz162",
+    "Kod to'g'rimi?": "uz163",
+    "Kod to'g'rimi yoki buzilganmi?": "uz164",
+    "Qaysi rang?": "uz165",
+    "Bu kod qaysi rangni beradi?": "uz166",
+    "To'g'rimi?": "uz167",
+    "To'g'ri yoki noto'g'ri?": "uz168",
+    "Salom, dunyo!": "uz169",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz170",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz171",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz172",
+  },
+  ru: {
+    "Привет! У меня есть логотип, и цвет у него очень красивый. Хочу, чтобы заголовок на сайте был точно такого же цвета. Я попробовал имена цветов: [English pronunciation] orange [Русское произношение], [English pronunciation] tomato [Русское произношение], [English pronunciation] orangered [Русское произношение]. Но смотри, ни один не тот самый. Нажми Превратить.": "ru001",
+    "Вот! Теперь заголовок точно такого же цвета, как логотип.": "ru002",
+    "Вместо имени цвета я написал код цвета. Кодом можно точно задать любой цвет.": "ru003",
+    "Сегодня ты научишься записывать цвет тремя способами: названием, [English pronunciation] hex [Русское произношение]-кодом и через [English pronunciation] rgb [Русское произношение]. Но сначала маленькая загадка. Однажды я записал код логотипа маленькими буквами. По-моему, теперь цвет получится другой или вообще не сработает. Как думаешь? Ответ найдём вместе в конце урока.": "ru004",
+    "Начнём с самого простого способа: названия цвета. В свойство [English pronunciation] color [Русское произношение] пишем название по-английски. Сейчас у заголовка [English pronunciation] red [Русское произношение], то есть красный.": "ru005",
+    "Меняем название на [English pronunciation] blue [Русское произношение]. Браузер знает это слово и красит заголовок в синий.": "ru006",
+    "Добавим впереди light, получится lightblue, светло-синий.": "ru007",
+    "А слово dark делает цвет тёмным: darkblue, тёмно-синий.": "ru008",
+    "Значит, цвет можно записать названием: [English pronunciation] red [Русское произношение], [English pronunciation] blue [Русское произношение], [English pronunciation] green [Русское произношение]. Браузер знает больше ста названий. Только название пишется по-английски и одним словом, без пробелов.": "ru009",
+    "В коде меняется только одно слово, название цвета после [English pronunciation] color [Русское произношение]. Заголовок меняется вместе с ним.": "ru010",
+    "Название, английское. light значит светлый, dark, тёмный. Они пишутся слитно с цветом, одним словом.": "ru011",
+    "Это как коробка карандашей: на каждом написано название цвета. Называешь название, браузер берёт этот карандаш.": "ru012",
+    "Теперь твоя очередь. Сделай заголовок зелёным. Зелёный по-английски, [English pronunciation] green [Русское произношение]. Впиши его в поле и нажми Проверить.": "ru013",
+    "Поле пустое. Впиши название цвета по-английски.": "ru014",
+    "Браузер не знает такого цвета. Напиши название по-английски и без ошибок.": "ru015",
+    "Браузер узнал цвет, но это не зелёный. Зелёный по-английски, [English pronunciation] green [Русское произношение].": "ru016",
+    "Каким должен стать заголовок? Нужно английское название этого цвета.": "ru017",
+    "Зелёный по-английски, слово из пяти букв, начинается на g.": "ru018",
+    "Впиши в поле [English pronunciation] green [Русское произношение] и нажми Проверить.": "ru019",
+    "Здорово! Заголовок стал зелёным. Цвет записан названием.": "ru020",
+    "Теперь наоборот. Я показываю цвет, а ты выбери его название.": "ru021",
+    "Точно!": "ru022",
+    "Посмотри на цвет: какой он, светлый или тёмный?": "ru023",
+    "Вспомни: light, светлый, dark, тёмный.": "ru024",
+    "Это зелёный, по-английски [English pronunciation] green [Русское произношение].": "ru025",
+    "Это светло-синий: впереди light.": "ru026",
+    "Это тёмно-синий: впереди dark.": "ru027",
+    "Молодец! Названия цветов ты знаешь.": "ru028",
+    "Названия удобны, но не у каждого цвета есть название. Вот [English pronunciation] orange [Русское произношение]: не такой, как на логотипе. В программах для рисования есть палитра: под каждым цветом написан его код.": "ru029",
+    "Берём из палитры цвет логотипа и ставим его код в правило. Смотри, заголовок совпал с логотипом!": "ru030",
+    "Другой квадратик, синий. Берём его код, заголовок синий.": "ru031",
+    "Все коды устроены одинаково: сначала решётка, потом шесть знаков. Знаки, цифры и буквы от A до F. Такой код называется [English pronunciation] hex [Русское произношение]-код, то есть точный номер цвета.": "ru032",
+    "Значит, если нужен точный цвет, берём его код из палитры: решётка и шесть знаков. Учить наизусть не нужно, нужно только правильно переписать.": "ru033",
+    "Посмотри на палитру: под каждым квадратиком есть код. В правило попадает именно он.": "ru034",
+    "Код, всегда решётка и шесть знаков. Нельзя потерять ни одного знака.": "ru035",
+    "Как номер телефона: одна неверная цифра, и попадёшь к другому человеку. Точный код, точный цвет.": "ru036",
+    "Теперь возьми цвет из палитры сам. Сделай заголовок фиолетовым. Найди код под фиолетовым квадратиком и перепиши его в поле. Кнопка с решёткой есть внизу.": "ru037",
+    "Поле пустое. Перепиши код под фиолетовым квадратиком.": "ru038",
+    "Перед кодом нет решётки. Без неё браузер не узнаёт цвет.": "ru039",
+    "В коде что-то потерялось. Сверь с палитрой знак за знаком: их должно быть шесть.": "ru040",
+    "Браузер не узнал в этом цвет. Перепиши код из палитры.": "ru041",
+    "Цвет получился, но это не фиолетовый. Возьми код именно под фиолетовым квадратиком.": "ru042",
+    "Почти! Но один знак отличается от палитры. Сверь код знак за знаком.": "ru043",
+    "В палитре четыре квадратика. Какой из них фиолетовый?": "ru044",
+    "Фиолетовый, последний. Перепиши код под ним вместе с решёткой.": "ru045",
+    "Нажми кнопку с решёткой, потом впиши 8E44AD.": "ru046",
+    "Отлично! Заголовок стал фиолетовым. Код переписан точно.": "ru047",
+    "Теперь проверим коды. Посмотри на каждое правило: [English pronunciation] hex [Русское произношение]-код записан верно или сломан?": "ru048",
+    "Верный": "ru049",
+    "Посмотри на начало кода, потом посчитай знаки.": "ru050",
+    "Верный [English pronunciation] hex [Русское произношение]-код, решётка и шесть знаков.": "ru051",
+    "Решётка есть, знаков шесть. Всё на месте.": "ru052",
+    "В начале нет решётки.": "ru053",
+    "Знаков пять, один потерялся.": "ru054",
+    "Решётка и шесть знаков. Это белый.": "ru055",
+    "Здорово! Теперь сломанный код ты видишь сразу.": "ru056",
+    "Цвет можно записать ещё одним способом. Экран собирает каждый цвет из трёх лучей: красного, зелёного и синего. В [English pronunciation] rgb [Русское произношение] мы пишем числом, сколько каждого луча. Ноль, луча нет, двести пятьдесят пять, на полную. Сейчас на полную горит только красный.": "ru057",
+    "Гасим красный и зажигаем синий на полную. Заголовок синий.": "ru058",
+    "Теперь зажжём вместе красный и зелёный. Интересно: вместе они дали жёлтый!": "ru059",
+    "Если все лучи на нуле, экран тёмный, то есть чёрный. А если все на полную, белый.": "ru060",
+    "Значит, [English pronunciation] rgb [Русское произношение], это три числа в скобках: красный, зелёный и синий свет. Каждое, от нуля до двухсот пятидесяти пяти.": "ru061",
+    "В коде три числа, а под ним три полосы. Первое число, красная полоса, второе, зелёная, третье, синяя.": "ru062",
+    "Число, это сила луча: ноль, луч выключен, двести пятьдесят пять, включён на полную.": "ru063",
+    "Это как сцена с тремя прожекторами: красным, зелёным и синим. Как их включишь, такого цвета и будет сцена.": "ru064",
+    "Теперь управляй лучом сам. Красный и синий выключены. Чтобы заголовок стал ярко-зелёным, зажги зелёный луч на полную: в пустое место посередине впиши самое большое число для луча.": "ru065",
+    "Поле пустое. Впиши число для зелёного луча.": "ru066",
+    "Здесь нужно только число, без букв и знаков.": "ru067",
+    "Такого большого числа не бывает: луч не горит сильнее двухсот пятидесяти пяти.": "ru068",
+    "Зелёный горит, но не на полную. Посмотри на полосу: пусть она заполнится до конца.": "ru069",
+    "Посмотри на зелёную полосу. Она должна заполниться до конца.": "ru070",
+    "Полный луч, самое большое число в [English pronunciation] rgb [Русское произношение]. Это двести пятьдесят пять.": "ru071",
+    "Впиши в поле 255.": "ru072",
+    "Ура! Заголовок ярко-зелёный. Луч горит на полную.": "ru073",
+    "Теперь прочитаем код. Посмотри на числа в [English pronunciation] rgb [Русское произношение] и выбери, какой получится цвет.": "ru074",
+    "Какой луч горит? Какое число, двести пятьдесят пять?": "ru075",
+    "Порядок всегда один: красный, зелёный, синий. Все нули, чёрный, все на полную, белый.": "ru076",
+    "Горит только первый луч, красный.": "ru077",
+    "Все лучи на нуле, значит, чёрный.": "ru078",
+    "Горит только последний луч, синий.": "ru079",
+    "Все лучи на полную, значит, белый.": "ru080",
+    "Молодец! Ты умеешь читать [English pronunciation] rgb [Русское произношение]-код.": "ru081",
+    "Код, вещь очень точная. Одна ошибка в знаке, и браузер не узнаёт цвет и выбрасывает правило. Сейчас всё на месте: заголовок совпадает с логотипом. Давай нарочно сломаем.": "ru082",
+    "Убираем решётку. Заголовок стал чёрным: браузер не узнал в шести знаках цвет.": "ru083",
+    "Решётка вернулась, но один знак потерялся, осталось пять. Опять не работает.": "ru084",
+    "С названием так же. Напишем gren без одной буквы, браузер такого цвета не знает.": "ru085",
+    "Значит, если цвет не работает, проверяем три вещи: есть ли решётка, шесть ли знаков, без ошибок ли название.": "ru086",
+    "Смотри на надпись у логотипа: Совпадает или Не тот. Каждый раз в коде меняется что-то одно.": "ru087",
+    "Цвет, который браузер не узнал, он выбрасывает. Тогда заголовок остаётся обычным, чёрным.": "ru088",
+    "Как адрес на письме: пропала одна цифра в номере дома, и почтальон не найдёт дом.": "ru089",
+    "Ой, это мой код. Заголовок должен был быть цвета логотипа, а получился чёрным. Исправь код и нажми Проверить.": "ru090",
+    "Поле пустое. Код логотипа, FA4F28: впиши решётку и этот код.": "ru091",
+    "Перед кодом всё ещё нет решётки.": "ru092",
+    "Браузер не узнал цвет. Шесть знаков не меняй, только поставь перед ними решётку.": "ru093",
+    "Цвет заработал, но не как на логотипе. Знаки не меняй.": "ru094",
+    "Посмотри на начало кода. Там чего-то не хватает.": "ru095",
+    "Hex-код всегда начинается с решётки.": "ru096",
+    "В начале кода должна стоять решётка. Образец под кодом: перепиши его и нажми Проверить.": "ru097",
+    "Спасибо! Заголовок снова совпал с логотипом. Один знак всё решил.": "ru098",
+    "Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.": "ru099",
+    "Класс, первая ошибка найдена! Теперь сломался другой цвет. Какой?": "ru100",
+    "Это правило работает: его цвет виден на странице. Что не покрасилось?": "ru101",
+    "Есть! В gren потерялась буква. Правильно, [English pronunciation] green [Русское произношение].": "ru102",
+    "Есть! В [English pronunciation] hex [Русское произношение]-коде было пять знаков, а нужно шесть.": "ru103",
+    "Посмотри на страницу: что осталось не покрашенным?": "ru104",
+    "Абзац остался обычным, чёрным. Прочитай по буквам название цвета в правиле P.": "ru105",
+    "Заголовок остался чёрным. Посчитай знаки в [English pronunciation] hex [Русское произношение]-коде правила [English pronunciation] H one [Русское произношение].": "ru106",
+    "Ошибка в правиле P: gren. Нажми эту строку.": "ru107",
+    "Ошибка в правиле [English pronunciation] H one [Русское произношение]: пять знаков. Нажми эту строку.": "ru108",
+    "Супер! Обе ошибки найдены. Ты проверяешь цвета как настоящий дизайнер.": "ru109",
+    "Теперь напиши правило целиком сам. Пусть текст абзаца будет синим, только на этот раз через [English pronunciation] rgb [Русское произношение]. Вспомни: для синего красный и зелёный лучи выключены, а синий на полную. Селектор абзаца, P.": "ru110",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru111",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru112",
+    "Между свойством и значением нет двоеточия.": "ru113",
+    "Чтобы выбрать абзац, нужен селектор P.": "ru114",
+    "Цвет текста задаёт свойство [English pronunciation] color [Русское произношение].": "ru115",
+    "Абзац синий, но в этот раз запиши через [English pronunciation] rgb [Русское произношение]: [English pronunciation] rgb [Русское произношение] и три числа в скобках.": "ru116",
+    "Запиши значение через [English pronunciation] rgb [Русское произношение]: слово [English pronunciation] rgb [Русское произношение] и три числа в скобках.": "ru117",
+    "Браузер не узнал этот [English pronunciation] rgb [Русское произношение]. Проверь скобки и запятые между числами.": "ru118",
+    "Цвет получился, но не синий. Для синего на полную только последнее число.": "ru119",
+    "Каким селектором выбирают абзац? Какое свойство нужно для цвета текста?": "ru120",
+    "Селектор P, свойство [English pronunciation] color [Русское произношение]. В [English pronunciation] rgb [Русское произношение] красный ноль, зелёный ноль, синий двести пятьдесят пять.": "ru121",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru122",
+    "Отлично! Абзац синий. Всё правило, целиком твоё.": "ru123",
+    "Теперь выбери цвета для своей страницы. Можно любым способом: название, [English pronunciation] hex [Русское произношение] или [English pronunciation] rgb [Русское произношение]. Впиши один цвет для заголовка и другой для фона. Потом нажми Готово.": "ru124",
+    "Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.": "ru125",
+    "Какой цвет тебе нравится? Запиши его любым способом.": "ru126",
+    "Например, названием: [English pronunciation] red [Русское произношение], gold. Или [English pronunciation] hex [Русское произношение]: решётка и шесть знаков.": "ru127",
+    "Например, впиши [English pronunciation] purple [Русское произношение] для заголовка и [English pronunciation] lavender [Русское произношение] для фона. Потом нажми Готово.": "ru128",
+    "Ого, как красиво! Это твои собственные цвета.": "ru129",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru130",
+    "Прочитай фразу по частям: она про название, [English pronunciation] hex [Русское произношение] или [English pronunciation] rgb [Русское произношение]?": "ru131",
+    "Вспомни урок: название, английское слово, [English pronunciation] hex [Русское произношение], решётка и шесть знаков, [English pronunciation] rgb [Русское произношение], три луча, ноль, выключен, двести пятьдесят пять, на полную. Фраза с этим совпадает?": "ru132",
+    "[English pronunciation] red [Русское произношение], это название цвета, браузер его знает.": "ru133",
+    "Верно: [English pronunciation] red [Русское произношение], английское название красного.": "ru134",
+    "Hex-код начинается с решётки.": "ru135",
+    "Так и есть: решётка, потом шесть знаков.": "ru136",
+    "Если в [English pronunciation] rgb [Русское произношение] все три числа, ноль, цвет будет белым.": "ru137",
+    "На самом деле, если все лучи выключены, получается чёрный.": "ru138",
+    "Если вместе зажечь красный и зелёный луч, выйдет жёлтый.": "ru139",
+    "Так и есть: в [English pronunciation] rgb [Русское произношение] красный и зелёный на полную, синий ноль, получается жёлтый.": "ru140",
+    "Всё верно! Ты отлично разбираешься в цветах.": "ru141",
+    "Вернёмся к загадке. Помнишь, я записал код логотипа маленькими буквами и думал, что цвет сломается? Смотри: Совпадает!. Я ошибся. В [English pronunciation] hex [Русское произношение]-коде неважно, большие буквы или маленькие, цвет тот же самый.": "ru142",
+    "Смотри, это твоя страница в твоих собственных цветах!": "ru143",
+    "Цвет можно записать названием: [English pronunciation] red [Русское произношение], [English pronunciation] blue [Русское произношение], [English pronunciation] green [Русское произношение].": "ru144",
+    "Для точного цвета, [English pronunciation] hex [Русское произношение]-код: решётка и шесть знаков.": "ru145",
+    "А [English pronunciation] rgb [Русское произношение], три луча: красный, зелёный и синий.": "ru146",
+    "Есть ещё один способ, [English pronunciation] hsl [Русское произношение]. С ним познакомишься позже.": "ru147",
+    "Ура! Теперь ты можешь записать любой цвет. На следующем уроке поработаем с фоном. До встречи!": "ru148",
+    "Вау, классно!": "ru149",
+    "Есть! Получилось!": "ru150",
+    "Супер!": "ru151",
+    "Огонь!": "ru152",
+    "Ура!": "ru153",
+    "Вот это да!": "ru154",
+    "Попробуй ещё раз.": "ru155",
+    "Посмотри внимательно.": "ru156",
+    "Уже близко. Не спеши.": "ru157",
+    "Привет! Это мой сайт.": "ru158",
+    "Я люблю футбол и шахматы.": "ru159",
+    "Совпадает!": "ru160",
+    "Какое название?": "ru161",
+    "Код верный?": "ru162",
+    "Код верный или сломан?": "ru163",
+    "Какой цвет?": "ru164",
+    "Какой цвет даст этот код?": "ru165",
+    "Верно или нет?": "ru166",
+    "Привет, мир!": "ru167",
+    "Здесь нужны только слова, без угловых скобок.": "ru168",
+    "Молодец!": "ru169",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru170",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru171",
+  },
+  en: {
+    "Hi! I have a logo, and its color is really nice. I want the heading on my site to be exactly the same color. I tried color names: orange, tomato, orangered. But look, none of them is exactly it. Tap Transform.": "en001",
+    "There! Now the heading is exactly the logo’s color.": "en002",
+    "Instead of a color name I wrote a color code. With a code you can give any color exactly.": "en003",
+    "Today you’ll learn three ways to write a color: by name, with a hex code and with rgb. But first, a little riddle. Once I wrote the logo code in small letters. I think now the color will come out different, or not work at all. What do you think? We’ll find the answer together at the end of the lesson.": "en004",
+    "Let’s start with the easiest way: the color’s name. We write an English name into the color property. Right now the heading has red.": "en005",
+    "We change the name to blue. The browser knows this word and paints the heading blue.": "en006",
+    "Add light in front and we get lightblue, a light blue.": "en007",
+    "And the word dark makes it dark: darkblue.": "en008",
+    "So a color can be written by name: red, blue, green. The browser knows more than a hundred names. The name is just in English and written as one word, without spaces.": "en009",
+    "Only one word changes in the code: the color name after color. The heading changes with it.": "en010",
+    "The name is English. light means pale, dark means deep. They join the color name as one word.": "en011",
+    "It’s like a box of pencils with a color name on each one. Say the name, and the browser takes that pencil.": "en012",
+    "Now it’s your turn. Make the heading green. Type green into the field and tap Check.": "en013",
+    "The field is empty. Type the color name in English.": "en014",
+    "The browser doesn’t know that color. Write the name in English, without typos.": "en015",
+    "The browser knew the color, but it isn’t green. Green is green in English.": "en016",
+    "What color should the heading be? You need that color’s English name.": "en017",
+    "Green in English is a five-letter word starting with g.": "en018",
+    "Type green into the field and tap Check.": "en019",
+    "Great! The heading turned green. You wrote a color by its name.": "en020",
+    "Now the other way round. I show a color, and you pick its name.": "en021",
+    "Right!": "en022",
+    "Look at the color: what is it, light or dark?": "en023",
+    "Remember: light means pale, dark means deep.": "en024",
+    "This is green.": "en025",
+    "This is a light blue: light in front.": "en026",
+    "This is a dark blue: dark in front.": "en027",
+    "Well done! You know the color names.": "en028",
+    "Names are handy, but not every color has a name. Here’s orange: not like the logo. Drawing programs have a palette: each color has its code written under it.": "en029",
+    "We take the logo color from the palette and put its code in the rule. Look, the heading matches the logo exactly!": "en030",
+    "Another square, blue. We take its code, and the heading is blue.": "en031",
+    "All the codes are built the same way: first a hash sign, then six symbols. The symbols are digits and letters A to F. Such a code is called a hex code, that is, the color’s exact number.": "en032",
+    "So when you need an exact color, take its code from the palette: a hash sign and six symbols. No need to learn it by heart, just copy it correctly.": "en033",
+    "Look at the palette: there’s a code under each square. That code goes into the rule.": "en034",
+    "A code is always a hash sign and six symbols. Not a single symbol can be lost.": "en035",
+    "It’s like a phone number: one wrong digit and you reach someone else. An exact code gives an exact color.": "en036",
+    "Now take a color from the palette yourself. Make the heading purple. Find the code under the purple square and copy it into the field. There’s a hash sign button below.": "en037",
+    "The field is empty. Copy the code under the purple square.": "en038",
+    "There’s no hash sign before the code. Without it the browser doesn’t know the color.": "en039",
+    "Something got lost in the code. Compare it with the palette symbol by symbol: there should be six.": "en040",
+    "The browser didn’t recognize this as a color. Copy the code from the palette.": "en041",
+    "You got a color, but not purple. Take the code under the purple square.": "en042",
+    "Almost! But one symbol differs from the palette. Compare the code symbol by symbol.": "en043",
+    "There are four squares in the palette. Which one is purple?": "en044",
+    "Purple is the last one. Copy the code under it, hash sign included.": "en045",
+    "Tap the hash sign button, then type 8E44AD.": "en046",
+    "Great! The heading turned purple. You copied the code exactly.": "en047",
+    "Now let’s check codes. Look at each rule: is the hex code written right, or is it broken?": "en048",
+    "Right": "en049",
+    "Look at the start of the code, then count the symbols.": "en050",
+    "A right hex code is a hash sign and six symbols.": "en051",
+    "There’s a hash sign and six symbols. All good.": "en052",
+    "There’s no hash sign at the start.": "en053",
+    "Only five symbols; one got lost.": "en054",
+    "A hash sign and six symbols. This is white.": "en055",
+    "Great! Now you spot a broken code right away.": "en056",
+    "There’s one more way to write a color. A screen builds every color from three lights: red, green and blue. In rgb we write how much of each light, as a number. Zero means no light, two hundred fifty-five means full. Right now only red is on full.": "en057",
+    "We switch red off and blue on full. The heading is blue.": "en058",
+    "Now let’s turn on red and green together. Interesting: together they make yellow!": "en059",
+    "If every light is at zero, the screen is dark, that is, black. If all are full, it’s white.": "en060",
+    "So rgb is three numbers in brackets: red, green and blue light. Each goes from zero to two hundred fifty-five.": "en061",
+    "The code has three numbers, and there are three bars below. The first number is the red bar, the second green, the third blue.": "en062",
+    "The number is the light’s strength: zero is off, two hundred fifty-five is full on.": "en063",
+    "It’s like a stage with three spotlights, red, green and blue. However you switch them on, that’s the stage’s color.": "en064",
+    "Now you control the light. Red and blue are off. To make the heading bright green, turn green light on full: type the biggest number for a light into the empty spot in the middle.": "en065",
+    "The field is empty. Type a number for green light.": "en066",
+    "Only a number goes here, no letters or signs.": "en067",
+    "No number that big: light can’t go above two hundred fifty-five.": "en068",
+    "Green is on, but not full. Look at the bar: let it fill all the way.": "en069",
+    "Look at the green bar. It should fill all the way.": "en070",
+    "Full light is the biggest number in rgb: two hundred fifty-five.": "en071",
+    "Type 255 into the field.": "en072",
+    "Hooray! The heading is bright green. You turned the light on full.": "en073",
+    "Now let’s read codes. Look at the numbers in rgb and pick which color comes out.": "en074",
+    "Which light is on? Which number is two hundred fifty-five?": "en075",
+    "The order is always red, green, blue. All zero is black, all full is white.": "en076",
+    "Only the first light, red, is on.": "en077",
+    "Every light is zero, so it’s black.": "en078",
+    "Only the last light, blue, is on.": "en079",
+    "Every light is full, so it’s white.": "en080",
+    "Well done! You can read rgb codes.": "en081",
+    "A code is a very exact thing. One wrong symbol and the browser doesn’t know the color and throws the rule away. Right now all is well: the heading matches the logo. Let’s break it on purpose.": "en082",
+    "We remove the hash sign. The heading went black: the browser didn’t see a color in the six symbols.": "en083",
+    "The hash sign is back, but one symbol got lost; five are left. It fails again.": "en084",
+    "Same with names. Write gren with one letter missing, and the browser doesn’t know that color.": "en085",
+    "So when a color doesn’t work, check three things: is there a hash sign, are there six symbols, is the name spelled right.": "en086",
+    "Look at the label by the logo: A match or Different. Each time one thing changes in the code.": "en087",
+    "The browser throws away a color it doesn’t know. Then the heading stays plain black.": "en088",
+    "It’s like an address on a letter: miss one digit of the house number and the mail carrier can’t find the house.": "en089",
+    "Oops, this is my code. The heading should be the logo color, but it came out black. Fix the code and tap Check.": "en090",
+    "The field is empty. The logo code is FA4F28: type the hash sign and this code.": "en091",
+    "There’s still no hash sign before the code.": "en092",
+    "The browser didn’t recognize a color. Don’t change the six symbols, just put a hash sign in front.": "en093",
+    "The color works, but it isn’t the logo’s. Don’t change the symbols.": "en094",
+    "Look at the start of the code. Something is missing there.": "en095",
+    "A hex code always starts with a hash sign.": "en096",
+    "The code must start with a hash sign. The example is under the code: copy it and tap Check.": "en097",
+    "Thanks! The heading matches the logo again. One symbol fixed it all.": "en098",
+    "Now check yourself. There are three rules in the code, but one color doesn’t work. Look at the page and tap the broken rule.": "en099",
+    "Great, the first bug is found! Now another color broke. Which one?": "en100",
+    "This rule works: its color shows on the page. What didn’t get colored?": "en101",
+    "Found it! gren is missing a letter. It should be green.": "en102",
+    "Found it! The hex code had five symbols, but it needs six.": "en103",
+    "Look at the page: what stayed uncolored?": "en104",
+    "The paragraph stayed plain black. Read the color name in the P rule letter by letter.": "en105",
+    "The heading stayed black. Count the symbols in the H one rule’s hex code.": "en106",
+    "The bug is in the P rule: gren. Tap that line.": "en107",
+    "The bug is in the H one rule: five symbols. Tap that line.": "en108",
+    "Super! Both bugs are found. You check colors like a real designer.": "en109",
+    "Now write the whole rule yourself. Make the paragraph text blue, but this time with rgb. Remember: for blue, red and green light are off and blue is full. The paragraph selector is P.": "en110",
+    "Write the rule: first the selector, then the property and value in curly braces.": "en111",
+    "The rule needs curly braces: an opening one and a closing one.": "en112",
+    "There’s no colon between the property and the value.": "en113",
+    "To pick the paragraph you need the P selector.": "en114",
+    "The color property sets the text color.": "en115",
+    "The paragraph is blue, but this time write it with rgb: rgb and three numbers in brackets.": "en116",
+    "Write the value with rgb: the word rgb and three numbers in brackets.": "en117",
+    "The browser didn’t recognize this rgb. Check the brackets and the commas between numbers.": "en118",
+    "You got a color, but not blue. For blue only the last number is full.": "en119",
+    "Which selector picks the paragraph? Which property sets the text color?": "en120",
+    "The selector is P, the property color. In rgb red is zero, green zero, blue two hundred fifty-five.": "en121",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en122",
+    "Great! The paragraph is blue. You wrote the whole rule yourself.": "en123",
+    "Now pick colors for your own page. Any way you like: a name, hex or rgb. Type one color for the heading and another for the background. Then tap Done.": "en124",
+    "If the heading and the background are the same color, the heading disappears. Pick different colors.": "en125",
+    "Which color do you like? Write it any way.": "en126",
+    "For example, a name like red or gold. Or hex: a hash sign and six symbols.": "en127",
+    "For example, type purple for the heading and lavender for the background. Then tap Done.": "en128",
+    "Wow, how pretty! These are your very own colors.": "en129",
+    "The last test. I’ll say something, and you choose: true or false.": "en130",
+    "Exactly!": "en131",
+    "Read the sentence piece by piece: is it about a name, hex or rgb?": "en132",
+    "Remember the lesson: a name is an English word, hex is a hash sign and six symbols, rgb is three lights, zero is off, two hundred fifty-five is full. Does the sentence match that?": "en133",
+    "red is a color name, and the browser knows it.": "en134",
+    "Right: red is the English name for that color.": "en135",
+    "A hex code starts with a hash sign.": "en136",
+    "That’s right: a hash sign, then six symbols.": "en137",
+    "If all three numbers in rgb are zero, the color is white.": "en138",
+    "Actually, with every light off you get black.": "en139",
+    "If red and green light shine together, you get yellow.": "en140",
+    "That’s right: full red and green with zero blue in rgb makes yellow.": "en141",
+    "All correct! You know colors really well.": "en142",
+    "Back to our riddle. Remember, I wrote the logo code in small letters and thought the color would break? Look: A match!. I was wrong. In a hex code big or small letters don’t matter; the color is the same.": "en143",
+    "Look, this is your page in the colors you picked yourself!": "en144",
+    "A color can be written by name: red, blue, green.": "en145",
+    "For an exact color, a hex code: a hash sign and six symbols.": "en146",
+    "And rgb is three lights: red, green and blue.": "en147",
+    "There’s one more way, hsl. You’ll meet it later.": "en148",
+    "Hooray! Now you can write any color. Next time we’ll work with backgrounds. See you!": "en149",
+    "Wow, awesome!": "en150",
+    "Yes! You did it!": "en151",
+    "Super!": "en152",
+    "Brilliant!": "en153",
+    "Hooray!": "en154",
+    "Amazing!": "en155",
+    "Try once more.": "en156",
+    "Take a closer look.": "en157",
+    "You are close. No rush.": "en158",
+    "Hi! This is my site.": "en159",
+    "I love football and chess.": "en160",
+    "A match!": "en161",
+    "Which name?": "en162",
+    "Is the code right?": "en163",
+    "Is the code right or broken?": "en164",
+    "Which color?": "en165",
+    "Which color does this code give?": "en166",
+    "True or false?": "en167",
+    "Hello, world!": "en168",
+    "Only words here, no angle brackets.": "en169",
+    "Well done!": "en170",
+    "Everything in the window lives inside body.": "en171",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en172",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

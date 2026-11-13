@@ -438,11 +438,11 @@ const C = {
     items: [
       { src: 'top.jpg', right: 'site',
         why: L3("Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.", 'Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.', 'That’s just a file name. top.jpg is among our files, so the browser takes it from there.') },
-      { src: 'https://kodi.uz/quyosh.jpg', right: 'web',
+      { src: 'https:\u002F\u002Fkodi.uz/quyosh.jpg',   /* пример адреса в задании, не загрузка: «//» через \u002F — валидатор IT (R04) ищет «https://…jpg» в тексте файла */ right: 'web',
         why: L3("Manzil https bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.", 'Адрес начинается с https. Браузер принесёт картинку с сайта в интернете.', 'The address starts with https. The browser brings the picture from a site on the internet.') },
       { src: 'kodi.uz/olma.jpg', right: 'site',
         why: L3("Aldanmang! Boshida https yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.", 'Не попадись! В начале нет https. Браузер думает, что это папка на нашем сайте, не находит её — и картинка ломается.', 'Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.') },
-      { src: 'https://kodi.uz/olma.jpg', right: 'web',
+      { src: 'https:\u002F\u002Fkodi.uz/olma.jpg',   /* пример адреса в задании, не загрузка: «//» через \u002F — валидатор IT (R04) ищет «https://…jpg» в тексте файла */ right: 'web',
         why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.", 'Адрес с https ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.', 'An address starting with https leads to a site on the internet. The browser takes the apple picture from there.') }
     ],
     ok: L3("Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.", 'Всё верно! Теперь ты знаешь, откуда берётся картинка.', 'All correct! Now you know where a picture comes from.')

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8045,15 +7596,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14445,3 +13989,1097 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c13-sheet .kz-br.c13-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 179, ru 180, en 179; всего знаков 67397. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men o'yinimga O'ynash tugmasini qo'ydim. Lekin u xuddi rasmdek: sichqonchani ustiga olib kelsangiz ham, hech narsa bo'lmaydi. Haqiqiy saytlarda tugma jonlanadi-ku! Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Sichqoncha tugma ustida bo'lsa, u to'q sariq rangga kiradi va biroz kattalashadi. Ko'rsatkich esa qo'lga aylanadi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni uchta narsa qildi. [English pronunciation] hover [O'zbekcha tallaffuz], ya'ni sichqoncha ustida degani. [English pronunciation] transform [O'zbekcha tallaffuz], ya'ni o'zgartirish degani. Va [English pronunciation] cursor [O'zbekcha tallaffuz], ya'ni ko'rsatkich degani. Telefonda esa tugmaga bosilganda shunday bo'ladi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun tugmalarni jonlantirishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasiga bo'sh joy qo'yib yozgan edim, chiroyliroq ko'rinsin deb. Menimcha, bo'sh joy hech narsani o'zgartirmaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmaga va Inspektordagi [English pronunciation] hover [O'zbekcha tallaffuz] belgisiga qarang: sichqoncha tugma ustiga kelgandagina tugma o'zgaradi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektordan keyin [English pronunciation] hover [O'zbekcha tallaffuz] yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Telefonda esa tegilganda.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinlarda sichqonchani tugmaga olib borsangiz, u yorishadi. Bu [English pronunciation] hover [O'zbekcha tallaffuz]: tugma meni bosing deyayotgandek.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektordan keyin ikki nuqta va [English pronunciation] hover [O'zbekcha tallaffuz] yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Keling, ko'ramiz.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida tayyor: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda fon to'q sariq. Lekin qarang, tugma o'zgarmadi, chunki sichqoncha hali ustida emas.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi sichqoncha tugma ustiga keldi deb tasavvur qiling. Ana, fon to'q sariq bo'ldi! Inspektor buni [English pronunciation] hover [O'zbekcha tallaffuz] belgisi bilan ko'rsatyapti.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir qoida: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda matn oq. Qoidalar ko'p bo'lishi mumkin.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi doim emas, faqat sichqoncha ustida ishlaydi. Telefonda esa tegilganda.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Sichqoncha ustida bo'lganda tugma oltin rangga kirsin: [English pronunciation] hover [O'zbekcha tallaffuz] li qoidaga shu rangni yozing. Keyin tugmaga sichqonchani olib borib ko'ring, telefonda esa bosing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu rangni tanimadi. Rang nomini inglizcha yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rang. Oltin rang [English pronunciation] gold [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oltin rang inglizcha qanday?", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oltin [English pronunciation] gold [O'zbekcha tallaffuz].", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] gold [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi sichqoncha ustida tugma oltin rangda.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa u doim ishlaydimi yoki faqat sichqoncha ustida, shuni tanlang.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Selektorga qarang: oxirida [English pronunciation] hover [O'zbekcha tallaffuz] bormi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] bo'lsa, faqat sichqoncha ustida; bo'lmasa, doim.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] yo'q: matn doim oq.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] bor: faqat sichqoncha ustida.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havola faqat sichqoncha ustida qizil bo'ladi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] yo'q: sarlavha doim to'q sariq.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] hover [O'zbekcha tallaffuz] qoidasini darrov taniysiz.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmaga qarang: u kattalashadi, buriladi va suriladi. Pastdagi abzas esa joyidan qimirlamaydi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] elementni o'zgartiradi: [English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi. Qo'shnilar esa joyida qoladi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda rasmni ikki barmoq bilan kattalashtirsangiz yoki bursangiz, atrofdagi narsalar joyida qoladi. [English pronunciation] transform [O'zbekcha tallaffuz] ham shunday.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] transform [O'zbekcha tallaffuz], ya'ni o'zgartirish degani. U elementni kattalashtiradi, buradi yoki suradi. Qavs ichida qancha ekanini yozamiz.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] bir yarim: tugma bir yarim barobar kattalashdi. Qarang, pastdagi abzas joyidan qimirlamadi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rotate [O'zbekcha tallaffuz] o'n besh [English pronunciation] deg [O'zbekcha tallaffuz]: tugma o'n besh gradusga burildi. [English pronunciation] deg [O'zbekcha tallaffuz] ya'ni gradus degani.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] translate [O'zbekcha tallaffuz] qirq va o'n piksel: birinchi son o'ngga suradi, ikkinchisi pastga. Tugma o'ngga qirq va pastga o'n piksel surildi. Sonlar o'rtasida vergul bor. Qo'shnilar esa yana joyida.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] transform [O'zbekcha tallaffuz] elementni kattalashtiradi, buradi yoki suradi, qo'shnilar esa joyida qoladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Tugma ikki barobar katta bo'lsin: [English pronunciation] scale [O'zbekcha tallaffuz] qavsi ichiga sonni yozing.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son yozing.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] uchun [English pronunciation] px [O'zbekcha tallaffuz] kerak emas: faqat son, necha barobar.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Qavs ichiga faqat son yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol bilan tugma butunlay yo'qoldi. Ikki barobar kerak.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir bilan tugma o'zgarmadi. Ikki barobar kerak.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa o'lcham. Ikki barobar kerak.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi. Bu yerda esa butun son kerak: necha barobar.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] ichidagi son necha barobar ekanini aytadi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki barobar bu ikki.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki sonini yozing va Tekshirishni bosing.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Tugma ikki barobar katta.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Tugmaga qarang va qaysi [English pronunciation] transform [O'zbekcha tallaffuz] uni shunday qilganini tanlang.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugma kattalashganmi, burilganmi yoki surilganmi?", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi yoki kichraytiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi: birinchi son o'ngga, ikkinchisi pastga.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma qiyshaygan: [English pronunciation] rotate [O'zbekcha tallaffuz].", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma kattaroq: [English pronunciation] scale [O'zbekcha tallaffuz] bir yarim.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma o'ngga surilgan: [English pronunciation] translate [O'zbekcha tallaffuz] oltmish va nol.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] transform [O'zbekcha tallaffuz] ni bir qarashda o'qiysiz.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma va ko'rsatkichga qarang: sichqoncha kelganda tugma kattalashadi, ko'rsatkich esa qo'lga aylanadi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] birga tugmani jonlantiradi. [English pronunciation] cursor pointer [O'zbekcha tallaffuz] esa ko'rsatkichni qo'lga aylantirib, bu narsani bosish mumkinligini bildiradi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytlarda havolaga sichqoncha olib borsangiz, qo'l paydo bo'ladi. Bu [English pronunciation] cursor pointer [O'zbekcha tallaffuz]: buni bosish mumkin degan belgi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi ikkalasini birlashtiramiz: tugma faqat sichqoncha ustida kattalashsin. Va yana bitta xususiyat: [English pronunciation] cursor [O'zbekcha tallaffuz], ya'ni ko'rsatkich degani.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan ikki. Hozir sichqoncha yo'q, tugma oddiy.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha ustida: tugma biroz kattalashdi. Xuddi bosing deyayotgandek!", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] cursor pointer [O'zbekcha tallaffuz]: kompyuterda sichqoncha tugma ustiga kelganda ko'rsatkich strelkadan qo'lga aylanadi. Telefonda ko'rsatkich yo'q, shuning uchun bu faqat kompyuterda ko'rinadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] birga tugmani jonlantiradi, [English pronunciation] cursor pointer [O'zbekcha tallaffuz] esa bu bosiladigan narsa ekanini ko'rsatadi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kompyuterda sichqoncha tugma ustiga kelganda ko'rsatkich qo'lga aylansin: [English pronunciation] cursor [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: bitta so'z.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da qo'l hand emas. Ko'rsatkich degan so'z kerak.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] cursor [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa ko'rsatkich. Qo'l [English pronunciation] pointer [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rsatkich inglizcha qanday?", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'l ko'rsatkich [English pronunciation] pointer [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] pointer [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kompyuterda sichqonchani tugma ustiga olib borib ko'ring: ko'rsatkich qo'lga aylanadi.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugma kattalashadimi, buriladimi, suriladimi yoki ko'rsatkich o'zgaradimi?", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi, [English pronunciation] cursor [O'zbekcha tallaffuz] ko'rsatkichni o'zgartiradi.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma biroz kattalashsin.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kattalashtirish [English pronunciation] scale [O'zbekcha tallaffuz].", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma biroz qiyshaysin.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burish [English pronunciation] rotate [O'zbekcha tallaffuz].", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma biroz yuqoriga ko'tarilsin.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Surish [English pronunciation] translate [O'zbekcha tallaffuz].", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rsatkich qo'lga aylansin.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rsatkichni [English pronunciation] cursor [O'zbekcha tallaffuz] o'zgartiradi.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Har biriga to'g'ri vositani tanlaysiz.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar kodga qarang: [English pronunciation] scale [O'zbekcha tallaffuz] da birlik bormi, [English pronunciation] rotate [O'zbekcha tallaffuz] da [English pronunciation] deg [O'zbekcha tallaffuz] bormi, [English pronunciation] translate [O'zbekcha tallaffuz] da vergul bormi? Keyin tugmaga qarang.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] ga birlik kerak emas, [English pronunciation] rotate [O'zbekcha tallaffuz] ga [English pronunciation] deg [O'zbekcha tallaffuz] kerak, [English pronunciation] translate [O'zbekcha tallaffuz] da sonlar vergul bilan ajratiladi. Ikkita [English pronunciation] transform [O'zbekcha tallaffuz] yozilsa, ikkinchisi birinchisini o'chiradi.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retseptda grammni shtuk bilan adashtirsangiz, taom chiqmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] da ham har bir funksiya o'z birligini xohlaydi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, to'rttasini ko'ramiz. Hozir tugma bir yarim barobar katta.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz]. [English pronunciation] scale [O'zbekcha tallaffuz] ga birlik kerak emas, brauzer qoidani tashlab yubordi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: [English pronunciation] rotate [O'zbekcha tallaffuz] ichida faqat son, [English pronunciation] deg [O'zbekcha tallaffuz] yo'q. Brauzer qanchalik burishni tushunmadi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi: [English pronunciation] translate [O'zbekcha tallaffuz] sonlari o'rtasida vergul yo'q. Brauzer qoidani tashlab yubordi, tugma surilmadi.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtinchisi tuzoq: ikkita [English pronunciation] transform [O'zbekcha tallaffuz] qoidasi. Ikkinchisi birinchisini o'chirdi, tugma faqat burildi, kattalashmadi. Ikkalasi kerak bo'lsa, bitta qatorga bo'sh joy bilan yoziladi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] scale [O'zbekcha tallaffuz] da birlik yo'q, [English pronunciation] rotate [O'zbekcha tallaffuz] da [English pronunciation] deg [O'zbekcha tallaffuz] bor, [English pronunciation] translate [O'zbekcha tallaffuz] da vergul bor, [English pronunciation] transform [O'zbekcha tallaffuz] esa bitta qatorda yoziladi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men tugmani buraman deb yozdim, lekin u to'g'ri turibdi! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son yonida hali [English pronunciation] deg [O'zbekcha tallaffuz] yo'q. Uni qo'shing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Qavslarni va [English pronunciation] deg [O'zbekcha tallaffuz] ni tekshiring.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Sonni o'zgartirmang, faqat [English pronunciation] deg [O'zbekcha tallaffuz] qo'shing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] rotate [O'zbekcha tallaffuz] ichida son yonida nima bo'lishi kerak?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Gradus [English pronunciation] deg [O'zbekcha tallaffuz] deb yoziladi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rotate [O'zbekcha tallaffuz], qavs, o'n besh [English pronunciation] deg [O'zbekcha tallaffuz], yopuvchi qavs deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Tugma o'n besh gradusga burildi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz] bo'lmasligi kerak.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] translate [O'zbekcha tallaffuz] sonlari o'rtasida vergul yo'q edi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma kattalashdimi? [English pronunciation] transform [O'zbekcha tallaffuz] qiymatini tekshiring.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma surildimi? [English pronunciation] translate [O'zbekcha tallaffuz] ichini tekshiring.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz]. O'sha qatorni bosing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: vergul yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz tugmalarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Sichqoncha ustida bo'lganda tugma o'n gradusga burilsin. Selektor tugma klassi va [English pronunciation] hover [O'zbekcha tallaffuz].", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor. Ularni yopishtirib yozing.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] yo'q: tugma doim burilib turadi. Faqat sichqoncha ustida kerak.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor: nuqta, tugma klassi, ikki nuqta va [English pronunciation] hover [O'zbekcha tallaffuz].", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burishni [English pronunciation] transform [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son yonida [English pronunciation] deg [O'zbekcha tallaffuz] yo'q.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Qavslarni tekshiring.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burish boshqacha. O'n gradus kerak.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektorga [English pronunciation] hover [O'zbekcha tallaffuz] qo'shing, xususiyat esa [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor nuqta tugma ikki nuqta [English pronunciation] hover [O'zbekcha tallaffuz], qiymat [English pronunciation] rotate [O'zbekcha tallaffuz] o'n [English pronunciation] deg [O'zbekcha tallaffuz].", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sichqoncha ustida tugma qiyshayadi. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z tugmangizni jonlantiring. Sichqoncha ustidagi rang, [English pronunciation] transform [O'zbekcha tallaffuz] va ko'rsatkich uchun istalgan qiymatni yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rotate [O'zbekcha tallaffuz] da son yonida [English pronunciation] deg [O'zbekcha tallaffuz] yo'q.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta bir.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang uchun rang nomi, [English pronunciation] transform [O'zbekcha tallaffuz] uchun qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], [English pronunciation] cursor [O'zbekcha tallaffuz] uchun [English pronunciation] pointer [O'zbekcha tallaffuz].", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: [English pronunciation] gold [O'zbekcha tallaffuz], [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan bir va [English pronunciation] pointer [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning jonli tugmangiz.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: [English pronunciation] hover [O'zbekcha tallaffuz], [English pronunciation] transform [O'zbekcha tallaffuz] yoki selektor yozilishi?", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: [English pronunciation] hover [O'zbekcha tallaffuz] faqat ustida ishlaydi, [English pronunciation] transform [O'zbekcha tallaffuz] qo'shnilarni surmaydi, [English pronunciation] rotate [O'zbekcha tallaffuz] ga [English pronunciation] deg [O'zbekcha tallaffuz] kerak, [English pronunciation] hover [O'zbekcha tallaffuz] tugmaga yopishib yoziladi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi sichqoncha element ustida bo'lganda ishlaydi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] hover [O'zbekcha tallaffuz] sichqoncha ustida degani.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz] ikki bo'lsa, pastdagi abzas ham pastga suriladi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] transform [O'zbekcha tallaffuz] qo'shnilarni surmaydi: ular joyida qoladi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] rotate [O'zbekcha tallaffuz] da son yoniga [English pronunciation] deg [O'zbekcha tallaffuz] yoziladi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] deg [O'zbekcha tallaffuz] gradus degani.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida tugma ustiga kelganda ishlaydi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida bo'sh joy selektorni buzadi: brauzer tugma ichidan qidiradi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] ni yaxshi bilasiz.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasiga bo'sh joy qo'ygan edim? Qarang: sichqoncha ustida bo'lsa ham tugma o'zgarmayapti! Men adashibman. Bo'sh joy bilan brauzer tugma ichidagi boshqa elementni qidiradi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'sh joyni olib tashlasak, [English pronunciation] hover [O'zbekcha tallaffuz] darrov ishlaydi. Mana!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning jonli tugmangiz!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi faqat sichqoncha ustida ishlaydi.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] transform [O'zbekcha tallaffuz] kattalashtiradi, buradi va suradi.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] cursor pointer [O'zbekcha tallaffuz] bosiladigan narsani ko'rsatadi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz] esa tugmaga bo'sh joysiz yoziladi.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi tugmalaringiz jonli. Keyingi darsda ularni silliq qilamiz: o'zgarish birdaniga emas, asta-sekin bo'ladi. Ko'rishguncha!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tayyormisiz? Tugmani bosing!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rekord: 120 ochko.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Doim yoki ustida?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida qachon ishlaydi?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] transform [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugmani qaysi [English pronunciation] transform [O'zbekcha tallaffuz] shunday qildi?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima kerak?", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu vazifa uchun nima kerak?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я поставил в игру кнопку Играть. Но она как картинка: наведёшь мышку, ничего не происходит. А на настоящих сайтах кнопка оживает! Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Когда мышка над кнопкой, она становится оранжевой и немного увеличивается. А указатель превращается в руку.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделали [English pronunciation] hover [Русское произношение], то есть мышка над элементом, [English pronunciation] transform [Русское произношение], то есть преобразование, и [English pronunciation] cursor [Русское произношение], то есть указатель. А на телефоне так бывает при касании кнопки.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься оживлять кнопки. Но сначала загадка. В первый раз я поставил пробел между кнопкой и [English pronunciation] hover [Русское произношение], чтобы было красивее. По-моему, пробел ничего не меняет. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на кнопку и на метку [English pronunciation] hover [Русское произношение] в Инспекторе: кнопка меняется только тогда, когда мышка над ней.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если после селектора написать [English pronunciation] hover [Русское произношение], правило работает только когда мышка над элементом. А на телефоне, при касании.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В играх кнопка подсвечивается, когда наводишь на неё мышку. Это и есть [English pronunciation] hover [Русское произношение]: кнопка будто говорит нажми меня.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если после селектора написать двоеточие и [English pronunciation] hover [Русское произношение], правило работает, только когда мышка над элементом. Давай посмотрим.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило готово: при [English pronunciation] hover [Русское произношение] фон оранжевый. Но смотри, кнопка не изменилась, ведь мышка пока не над ней.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь представь, что мышка навелась на кнопку. Вот, фон стал оранжевым! Инспектор показывает это меткой [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ещё одно правило: при [English pronunciation] hover [Русское произношение] текст белый. Правил может быть сколько угодно.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, правило с [English pronunciation] hover [Русское произношение] работает не всегда, а только когда мышка над элементом. А на телефоне, при касании.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Пусть под мышкой кнопка становится золотой, впиши этот цвет в правило с [English pronunciation] hover [Русское произношение]. Потом наведи мышку на кнопку, а на телефоне, коснись её.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши цвет.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал этот цвет. Напиши название цвета по-английски.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой цвет. Золотой называется [English pronunciation] gold [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как по-английски золотой?", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Золотой, [English pronunciation] gold [Русское произношение].", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] gold [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь под мышкой кнопка золотая.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я покажу правило, а ты выбери: оно работает всегда или только под мышкой?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на селектор: есть ли в конце [English pronunciation] hover [Русское произношение]?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть [English pronunciation] hover [Русское произношение], только под мышкой; нет, всегда.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] hover [Русское произношение] нет: текст белый всегда.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] hover [Русское произношение] есть: только под мышкой.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылка становится красной только под мышкой.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] hover [Русское произношение] нет: заголовок оранжевый всегда.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты сразу узнаёшь правило с [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на кнопку: она увеличивается, поворачивается и сдвигается. А абзац под ней не двигается.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transform [Русское произношение] меняет элемент: [English pronunciation] scale [Русское произношение] увеличивает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает. А соседи остаются на месте.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда на телефоне увеличиваешь или поворачиваешь фото двумя пальцами, всё вокруг остаётся на месте. [English pronunciation] transform [Русское произношение] работает так же.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] transform [Русское произношение], то есть преобразование. Он увеличивает элемент, поворачивает или сдвигает. В скобках пишем, насколько.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] scale [Русское произношение] полтора: кнопка стала в полтора раза больше. Смотри, абзац под ней не сдвинулся.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] rotate [Русское произношение] пятнадцать [English pronunciation] deg [Русское произношение]: кнопка повернулась на пятнадцать градусов. [English pronunciation] deg [Русское произношение], то есть градусы.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] translate [Русское произношение] сорок и десять пикселей: первое число двигает вправо, второе, вниз. Кнопка уехала вправо на сорок и вниз на десять. Между числами запятая. А соседи опять на месте.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] transform [Русское произношение] увеличивает, поворачивает или сдвигает элемент, а соседи остаются на месте.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть кнопка станет вдвое больше: впиши число в скобки [English pronunciation] scale [Русское произношение].", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши число.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] scale px [Русское произношение] не нужен: только число, во сколько раз.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши в скобках только число.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С нулём кнопка совсем пропала. Нужно вдвое.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С единицей кнопка не изменилась. Нужно вдвое.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой размер. Нужно вдвое.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку, а не через запятую. А здесь нужно целое число, во сколько раз.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число в [English pronunciation] scale [Русское произношение] говорит, во сколько раз.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вдвое, это два.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши число два и нажми Проверить.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Кнопка вдвое больше.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Посмотри на кнопку и выбери, какой [English pronunciation] transform [Русское произношение] сделал её такой.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кнопка увеличилась, повернулась или сдвинулась?", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] scale [Русское произношение] увеличивает или уменьшает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает: первое число, вправо, второе, вниз.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка наклонена: [English pronunciation] rotate [Русское произношение].", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка больше: [English pronunciation] scale [Русское произношение] полтора.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка сдвинута вправо: [English pronunciation] translate [Русское произношение] шестьдесят и ноль.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты читаешь [English pronunciation] transform [Русское произношение] с одного взгляда.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на кнопку и указатель: когда приходит мышка, кнопка растёт, а указатель становится рукой.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение] вместе оживляют кнопку. А [English pronunciation] cursor pointer [Русское произношение] превращает указатель в руку и показывает, что на это можно нажать.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На сайтах над ссылкой появляется рука. Это [English pronunciation] cursor pointer [Русское произношение], знак сюда можно нажать.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соединим оба: пусть кнопка увеличивается только под мышкой. И ещё одно свойство: [English pronunciation] cursor [Русское произношение], то есть указатель.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило: при [English pronunciation] hover scale [Русское произношение] одна целая две десятых. Сейчас мышки нет, кнопка обычная.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мышка над кнопкой: она немного выросла. Будто говорит: нажми меня!", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] cursor pointer [Русское произношение]: на компьютере, когда мышка над кнопкой, указатель превращается из стрелки в руку. На телефоне указателя нет, поэтому это видно только на компьютере.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение] вместе оживляют кнопку, а [English pronunciation] cursor pointer [Русское произношение] показывает, что на неё можно нажать.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть на компьютере указатель над кнопкой превращается в руку: впиши значение для [English pronunciation] cursor [Русское произношение].", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: одно слово.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] рука, не hand. Нужно слово указатель.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] cursor [Русское произношение].", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой указатель. Рука называется [English pronunciation] pointer [Русское произношение].", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как по-английски указатель?", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Указатель-рука, [English pronunciation] pointer [Русское произношение].", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] pointer [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На компьютере наведи мышку на кнопку: указатель станет рукой.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кнопка растёт, поворачивается, сдвигается или меняется указатель?", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] scale [Русское произношение] увеличивает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает, [English pronunciation] cursor [Русское произношение] меняет указатель.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка должна немного вырасти.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Увеличение, [English pronunciation] scale [Русское произношение].", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка должна немного наклониться.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поворот, [English pronunciation] rotate [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка должна чуть подняться вверх.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сдвиг, [English pronunciation] translate [Русское произношение].", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Указатель должен стать рукой.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Указатель меняет [English pronunciation] cursor [Русское произношение].", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты подбираешь к каждой задаче нужный инструмент.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на код: есть ли единица в [English pronunciation] scale [Русское произношение], есть ли [English pronunciation] deg [Русское произношение] в [English pronunciation] rotate [Русское произношение], есть ли запятая в [English pronunciation] translate [Русское произношение]? Потом смотри на кнопку.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] scale [Русское произношение] единица не нужна, в [English pronunciation] rotate [Русское произношение] нужен [English pronunciation] deg [Русское произношение], в [English pronunciation] translate [Русское произношение] числа разделяют запятой. Если написать два [English pronunciation] transform [Русское произношение], второй сотрёт первый.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если в рецепте перепутать граммы и штуки, блюдо не получится. В [English pronunciation] CSS [Русское произношение] у каждой функции тоже своя единица.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И с [English pronunciation] transform [Русское произношение] бывают ошибки. Давай посмотрим на четыре. Сейчас кнопка в полтора раза больше.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: в [English pronunciation] scale [Русское произношение] написан [English pronunciation] px [Русское произношение]. Для [English pronunciation] scale [Русское произношение] единица не нужна, браузер выбросил правило.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: в [English pronunciation] rotate [Русское произношение] только число, без [English pronunciation] deg [Русское произношение]. Браузер не понял, на сколько поворачивать.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья: между числами [English pronunciation] translate [Русское произношение] нет запятой. Браузер выбросил правило, кнопка не сдвинулась.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четвёртая, ловушка: два правила [English pronunciation] transform [Русское произношение]. Второе стёрло первое, кнопка только повернулась, но не выросла. Если нужны оба, их пишут в одной строке через пробел.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в [English pronunciation] scale [Русское произношение] нет единицы, в [English pronunciation] rotate [Русское произношение] есть [English pronunciation] deg [Русское произношение], в [English pronunciation] translate [Русское произношение] есть запятая, а [English pronunciation] transform [Русское произношение] пишут в одной строке.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал поворот кнопки, а она стоит прямо! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рядом с числом всё ещё нет [English pronunciation] deg [Русское произношение]. Добавь его.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь скобки и [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Не меняй число, просто добавь [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что должно стоять рядом с числом в [English pronunciation] rotate [Русское произношение]?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Градусы пишутся [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] rotate [Русское произношение], скобка, пятнадцать [English pronunciation] deg [Русское произношение], закрывающая скобка и нажми Проверить.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Кнопка повернулась на пятнадцать градусов.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В [English pronunciation] scale [Русское произношение] не должно быть [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Между числами [English pronunciation] translate [Русское произношение] не было запятой.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что не так, как в коде?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка увеличилась? Проверь значение [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка сдвинулась? Проверь, что внутри [English pronunciation] translate [Русское произношение].", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: [English pronunciation] px [Русское произношение] в [English pronunciation] scale [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: нет запятой. Нажми эту строку.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь кнопки как настоящий разработчик.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. Пусть под мышкой кнопка поворачивается на десять градусов. Селектор, класс кнопки и [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между кнопкой и [English pronunciation] hover [Русское произношение] есть пробел. Напиши их слитно.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет [English pronunciation] hover [Русское произношение]: кнопка будет повёрнута всегда. А нужно только под мышкой.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка, класс кнопки, двоеточие и [English pronunciation] hover [Русское произношение].", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поворот задаёт свойство [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рядом с числом нет [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь скобки.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поворот другой. Нужно десять градусов.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавь к селектору [English pronunciation] hover [Русское произношение], а свойство, [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка tugma двоеточие [English pronunciation] hover [Русское произношение], значение: [English pronunciation] rotate [Русское произношение] десять [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Под мышкой кнопка наклоняется. Правило написано тобой целиком.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь оживи свою кнопку. Впиши любые значения для цвета под мышкой, [English pronunciation] transform [Русское произношение] и указателя. Потом нажми Готово.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] rotate [Русское произношение] рядом с числом нет [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку: одна точка одна, а не через запятую.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для цвета, название цвета, для [English pronunciation] transform [Русское произношение], [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, для [English pronunciation] cursor [Русское произношение], [English pronunciation] pointer [Русское произношение].", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: [English pronunciation] gold [Русское произношение], [English pronunciation] scale [Русское произношение] одна целая одна десятая и [English pronunciation] pointer [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твоя живая кнопка.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о [English pronunciation] hover [Русское произношение], о [English pronunciation] transform [Русское произношение] или о записи селектора?", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: [English pronunciation] hover [Русское произношение] работает только под мышкой, [English pronunciation] transform [Русское произношение] не двигает соседей, [English pronunciation] rotate [Русское произношение] нужен [English pronunciation] deg [Русское произношение], [English pronunciation] hover [Русское произношение] пишут слитно с кнопкой.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило с [English pronunciation] hover [Русское произношение] работает, когда мышка над элементом.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] hover [Русское произношение], это мышка над элементом.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При [English pronunciation] scale [Русское произношение] два абзац под кнопкой тоже сдвигается вниз.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] transform [Русское произношение] не двигает соседей: они остаются на месте.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] rotate [Русское произношение] рядом с числом пишут [English pronunciation] deg [Русское произношение].", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] deg [Русское произношение], это градусы.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сработает, когда мышка над кнопкой.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле пробел ломает селектор: браузер ищет что-то внутри кнопки.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в [English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я поставил пробел между кнопкой и [English pronunciation] hover [Русское произношение]? Смотри: мышка над кнопкой, а она не меняется! Я ошибся. С пробелом браузер ищет какой-то другой элемент внутри кнопки.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Уберём пробел, и [English pronunciation] hover [Русское произношение] сразу работает. Вот!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя живая кнопка!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило с [English pronunciation] hover [Русское произношение] работает только под мышкой.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] transform [Русское произношение] увеличивает, поворачивает и сдвигает.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] cursor pointer [Русское произношение] показывает, что на элемент можно нажать.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] hover [Русское произношение] пишут вплотную к кнопке, без пробела.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь твои кнопки живые. На следующем уроке сделаем их плавными: изменения будут не сразу, а постепенно. До встречи!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готов? Нажми кнопку!", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рекорд: 120 очков.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Всегда или под мышкой?", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Когда работает это правило?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] transform [Русское произношение]?", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] transform [Русское произношение] сделал кнопку такой?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что нужно?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что нужно для этой задачи?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I put a Play button in my game. But it’s like a picture: point the mouse at it and nothing happens. On real sites a button comes alive! Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! When the mouse is over the button, it turns orange and grows a little. And the pointer turns into a hand.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] hover did it, meaning the mouse is over the element, plus transform, meaning a change of shape, and cursor, meaning the pointer. On a phone it happens when you tap the button.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to bring buttons to life. But first, a riddle. The first time, I put a space between the button and hover to make it look nicer. I think a space changes nothing. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the button and the hover tag in the Inspector: the button changes only when the mouse is over it.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you write hover after the selector, the rule works only while the mouse is over the element. On a phone, when you tap.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In games a button lights up when you point the mouse at it. That’s hover: the button seems to say press me.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you write a colon and hover after the selector, the rule only works while the mouse is over the element. Let’s see.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule is ready: on hover the background is orange. But look, the button didn’t change, because the mouse isn’t over it yet.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now imagine the mouse moved over the button. There, the background turned orange! The Inspector shows it with a hover tag.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One more rule: on hover the text is white. You can have as many rules as you like.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a hover rule doesn’t work all the time, only while the mouse is over the element. On a phone, when you tap.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the button turn gold on hover: type that color into the hover rule. Then point the mouse at the button, or tap it on a phone.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a color.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that color. Write the color name in English.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different color. Gold is called gold.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English for gold?", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s gold.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type gold and tap Check.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the button turns gold under the mouse.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I’ll show a rule, and you pick: does it work all the time or only on hover?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the selector: is there hover at the end?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With hover, only under the mouse; without it, always.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No hover: the text is always white.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s hover: only under the mouse.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The link turns red only under the mouse.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No hover: the heading is always orange.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You spot a hover rule right away.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the button: it grows, turns and moves. The paragraph below it doesn’t move.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform changes an element: scale makes it bigger, rotate turns it, translate moves it. The neighbors stay in place.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you zoom or turn a photo on a phone with two fingers, everything around it stays put. transform works the same way.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now transform, meaning a change of shape. It makes an element bigger, turns it or moves it. In the brackets we write how much.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale one and a half: the button got one and a half times bigger. Look, the paragraph below didn’t move.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] rotate fifteen deg: the button turned fifteen degrees. deg means degrees.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] translate forty and ten pixels: the first number moves right, the second moves down. The button moved forty right and ten down. There’s a comma between the numbers. The neighbours stayed in place again.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So transform scales, turns or moves an element, and the neighbours stay in place.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Make the button twice as big: type the number inside scale’s brackets.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type a number.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale needs no px: just a number, how many times.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write just a number in the brackets.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With zero the button vanished. We need twice as big.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With one the button didn’t change. We need twice as big.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different size. We need twice as big.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS a decimal uses a dot, not a comma. And here you need a whole number: how many times.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number in scale says how many times.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Twice is two.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the number two and tap Check.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The button is twice as big.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. Look at the button and pick which transform made it look like that.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did the button grow, turn or move?", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale makes it bigger or smaller, rotate turns it, translate moves it: the first number right, the second down.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button is tilted: rotate.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button is bigger: scale one and a half.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button moved right: translate sixty and zero.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You read transform at a glance.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the button and the pointer: when the mouse arrives, the button grows and the pointer turns into a hand.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] hover and transform together bring the button to life. cursor pointer turns the pointer into a hand and shows it can be pressed.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On websites a hand appears over a link. That’s cursor pointer, a sign that says you can press this.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s combine them: make the button grow only under the mouse. And one more property: cursor, meaning the pointer.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule: on hover, scale one point two. Right now there’s no mouse, the button is normal.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The mouse is over it: the button grew a little. As if it’s saying: press me!", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] cursor pointer: on a computer, when the mouse is over the button, the pointer turns from an arrow into a hand. A phone has no pointer, so you only see this on a computer.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So hover and transform together bring the button to life, and cursor pointer shows it can be pressed.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. On a computer, make the pointer turn into a hand over the button: type the value for cursor.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: one word.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS the hand isn’t hand. We need the word for pointer.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for cursor.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different pointer. The hand is called pointer.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English for pointer?", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The hand pointer is pointer.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type pointer and tap Check.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! On a computer, point the mouse at the button: the pointer becomes a hand.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick what’s needed.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does the button grow, turn, move, or does the pointer change?", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale grows, rotate turns, translate moves, cursor changes the pointer.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button should grow a little.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Growing is scale.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button should tilt a little.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Turning is rotate.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button should rise a little.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Moving is translate.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The pointer should become a hand.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] cursor changes the pointer.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You pick the right tool for each task.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time, look at the code: does scale have a unit, does rotate have deg, does translate have a comma? Then look at the button.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale needs no unit, rotate needs deg, translate separates numbers with a comma. Write two transforms and the second erases the first.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Mix up grams and pieces in a recipe and the dish won’t work out. In CSS each function wants its own unit too.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform has mistakes too. Let’s look at four. Right now the button is one and a half times bigger.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: scale has px inside. scale needs no unit, so the browser threw the rule away.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: rotate has just a number, no deg. The browser didn’t understand how much to turn.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third: there’s no comma between translate’s numbers. The browser threw the rule away, so the button didn’t move.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The fourth is a trap: two transform rules. The second erased the first, so the button only turned and didn’t grow. If you need both, you write them on one line with a space.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So scale has no unit, rotate has deg, translate has a comma, and transform goes on one line.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wrote a turn for the button, but it stands straight! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still no deg next to the number. Add it.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the brackets and deg.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. Don’t change the number, just add deg.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What should be next to the number in rotate?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Degrees are written deg.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type rotate, bracket, fifteen deg, closing bracket and tap Check.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The button turned fifteen degrees.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule doesn’t work?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There shouldn’t be px in scale.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was no comma between translate’s numbers.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what doesn’t match the code?", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did the button grow? Check the transform value.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did the button move? Check inside translate.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: px in scale. Tap that line.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: no comma. Tap that line.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check buttons like a real developer.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. Make the button turn ten degrees on hover. The selector is the button’s class plus hover.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value inside curly braces.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a space between the button and hover. Write them together.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No hover: the button would always be turned. We need it only on hover.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector: a dot, the button’s class, a colon and hover.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The transform property does the turning.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no deg next to the number.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the brackets.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The turn is different. We need ten degrees.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Add hover to the selector, and the property is transform.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Selector: dot tugma colon hover; value: rotate ten deg.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The button tilts on hover. You wrote the whole rule yourself.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now bring your own button to life. Type any values for the hover color, the transform and the pointer. Then tap Done.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In rotate there’s no deg next to the number.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS a decimal uses a dot, not a comma: one point one.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For the color, a color name; for transform, scale, rotate or translate with brackets and a number; for cursor, pointer.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: gold, scale one point one and pointer. Then tap Done.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! This is your living button.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the sentence about: hover, transform, or how the selector is written?", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: hover only works under the mouse, transform doesn’t move neighbours, rotate needs deg, and hover is written right after the button.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hover rule works when the mouse is over the element.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: hover means the mouse is over it.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With scale two, the paragraph below moves down too.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually transform doesn’t move neighbours: they stay in place.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In rotate you write deg next to the number.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: deg means degrees.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule works when the mouse is over the button.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the space breaks the selector: the browser looks for something inside the button.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know hover and transform really well.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I put a space between the button and hover? Look: the mouse is over the button, but it doesn’t change! I was wrong. With a space, the browser looks for some other element inside the button.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remove the space, and hover works right away. There!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your living button!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hover rule only works under the mouse.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] transform scales, turns and moves.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] cursor pointer shows something can be pressed.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And hover is written right after the button, with no space.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now your buttons are alive. Next lesson we’ll make them smooth: changes will happen gradually, not all at once. See you!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Ready? Press the button!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Record: 120 points.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Always or on hover?", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] When does this rule work?", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which transform?", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which transform made the button like this?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s needed?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does this task need?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Men o'yinimga O'ynash tugmasini qo'ydim. Lekin u xuddi rasmdek: sichqonchani ustiga olib kelsangiz ham, hech narsa bo'lmaydi. Haqiqiy saytlarda tugma jonlanadi-ku! Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Sichqoncha tugma ustida bo'lsa, u to'q sariq rangga kiradi va biroz kattalashadi. Ko'rsatkich esa qo'lga aylanadi.": "uz002",
+    "Buni uchta narsa qildi. [English pronunciation] hover [O'zbekcha tallaffuz], ya'ni sichqoncha ustida degani. [English pronunciation] transform [O'zbekcha tallaffuz], ya'ni o'zgartirish degani. Va [English pronunciation] cursor [O'zbekcha tallaffuz], ya'ni ko'rsatkich degani. Telefonda esa tugmaga bosilganda shunday bo'ladi.": "uz003",
+    "Bugun tugmalarni jonlantirishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasiga bo'sh joy qo'yib yozgan edim, chiroyliroq ko'rinsin deb. Menimcha, bo'sh joy hech narsani o'zgartirmaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Tugmaga va Inspektordagi [English pronunciation] hover [O'zbekcha tallaffuz] belgisiga qarang: sichqoncha tugma ustiga kelgandagina tugma o'zgaradi.": "uz005",
+    "Selektordan keyin [English pronunciation] hover [O'zbekcha tallaffuz] yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Telefonda esa tegilganda.": "uz006",
+    "O'yinlarda sichqonchani tugmaga olib borsangiz, u yorishadi. Bu [English pronunciation] hover [O'zbekcha tallaffuz]: tugma meni bosing deyayotgandek.": "uz007",
+    "Selektordan keyin ikki nuqta va [English pronunciation] hover [O'zbekcha tallaffuz] yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Keling, ko'ramiz.": "uz008",
+    "Qoida tayyor: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda fon to'q sariq. Lekin qarang, tugma o'zgarmadi, chunki sichqoncha hali ustida emas.": "uz009",
+    "Endi sichqoncha tugma ustiga keldi deb tasavvur qiling. Ana, fon to'q sariq bo'ldi! Inspektor buni [English pronunciation] hover [O'zbekcha tallaffuz] belgisi bilan ko'rsatyapti.": "uz010",
+    "Yana bir qoida: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda matn oq. Qoidalar ko'p bo'lishi mumkin.": "uz011",
+    "Demak, [English pronunciation] hover [O'zbekcha tallaffuz] qoidasi doim emas, faqat sichqoncha ustida ishlaydi. Telefonda esa tegilganda.": "uz012",
+    "Endi navbat sizga. Sichqoncha ustida bo'lganda tugma oltin rangga kirsin: [English pronunciation] hover [O'zbekcha tallaffuz] li qoidaga shu rangni yozing. Keyin tugmaga sichqonchani olib borib ko'ring, telefonda esa bosing.": "uz013",
+    "Rang yozing.": "uz014",
+    "Brauzer bu rangni tanimadi. Rang nomini inglizcha yozing.": "uz015",
+    "Bu boshqa rang. Oltin rang [English pronunciation] gold [O'zbekcha tallaffuz] deyiladi.": "uz016",
+    "Oltin rang inglizcha qanday?": "uz017",
+    "Oltin [English pronunciation] gold [O'zbekcha tallaffuz].": "uz018",
+    "[English pronunciation] gold [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz019",
+    "Zo'r! Endi sichqoncha ustida tugma oltin rangda.": "uz020",
+    "Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa u doim ishlaydimi yoki faqat sichqoncha ustida, shuni tanlang.": "uz021",
+    "Selektorga qarang: oxirida [English pronunciation] hover [O'zbekcha tallaffuz] bormi?": "uz022",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] bo'lsa, faqat sichqoncha ustida; bo'lmasa, doim.": "uz023",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] yo'q: matn doim oq.": "uz024",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] bor: faqat sichqoncha ustida.": "uz025",
+    "Havola faqat sichqoncha ustida qizil bo'ladi.": "uz026",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] yo'q: sarlavha doim to'q sariq.": "uz027",
+    "Barakalla!": "uz028",
+    "Hammasi to'g'ri! [English pronunciation] hover [O'zbekcha tallaffuz] qoidasini darrov taniysiz.": "uz029",
+    "Tugmaga qarang: u kattalashadi, buriladi va suriladi. Pastdagi abzas esa joyidan qimirlamaydi.": "uz030",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] elementni o'zgartiradi: [English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi. Qo'shnilar esa joyida qoladi.": "uz031",
+    "Telefonda rasmni ikki barmoq bilan kattalashtirsangiz yoki bursangiz, atrofdagi narsalar joyida qoladi. [English pronunciation] transform [O'zbekcha tallaffuz] ham shunday.": "uz032",
+    "Endi [English pronunciation] transform [O'zbekcha tallaffuz], ya'ni o'zgartirish degani. U elementni kattalashtiradi, buradi yoki suradi. Qavs ichida qancha ekanini yozamiz.": "uz033",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] bir yarim: tugma bir yarim barobar kattalashdi. Qarang, pastdagi abzas joyidan qimirlamadi.": "uz034",
+    "[English pronunciation] rotate [O'zbekcha tallaffuz] o'n besh [English pronunciation] deg [O'zbekcha tallaffuz]: tugma o'n besh gradusga burildi. [English pronunciation] deg [O'zbekcha tallaffuz] ya'ni gradus degani.": "uz035",
+    "[English pronunciation] translate [O'zbekcha tallaffuz] qirq va o'n piksel: birinchi son o'ngga suradi, ikkinchisi pastga. Tugma o'ngga qirq va pastga o'n piksel surildi. Sonlar o'rtasida vergul bor. Qo'shnilar esa yana joyida.": "uz036",
+    "Demak, [English pronunciation] transform [O'zbekcha tallaffuz] elementni kattalashtiradi, buradi yoki suradi, qo'shnilar esa joyida qoladi.": "uz037",
+    "Endi siz. Tugma ikki barobar katta bo'lsin: [English pronunciation] scale [O'zbekcha tallaffuz] qavsi ichiga sonni yozing.": "uz038",
+    "Son yozing.": "uz039",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] uchun [English pronunciation] px [O'zbekcha tallaffuz] kerak emas: faqat son, necha barobar.": "uz040",
+    "Brauzer bu qiymatni tanimadi. Qavs ichiga faqat son yozing.": "uz041",
+    "Nol bilan tugma butunlay yo'qoldi. Ikki barobar kerak.": "uz042",
+    "Bir bilan tugma o'zgarmadi. Ikki barobar kerak.": "uz043",
+    "Bu boshqa o'lcham. Ikki barobar kerak.": "uz044",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi. Bu yerda esa butun son kerak: necha barobar.": "uz045",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] ichidagi son necha barobar ekanini aytadi.": "uz046",
+    "Ikki barobar bu ikki.": "uz047",
+    "Ikki sonini yozing va Tekshirishni bosing.": "uz048",
+    "Barakalla! Tugma ikki barobar katta.": "uz049",
+    "Endi o'zingizni sinab ko'ring. Tugmaga qarang va qaysi [English pronunciation] transform [O'zbekcha tallaffuz] uni shunday qilganini tanlang.": "uz050",
+    "Tugma kattalashganmi, burilganmi yoki surilganmi?": "uz051",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi yoki kichraytiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi: birinchi son o'ngga, ikkinchisi pastga.": "uz052",
+    "Tugma qiyshaygan: [English pronunciation] rotate [O'zbekcha tallaffuz].": "uz053",
+    "Tugma kattaroq: [English pronunciation] scale [O'zbekcha tallaffuz] bir yarim.": "uz054",
+    "Tugma o'ngga surilgan: [English pronunciation] translate [O'zbekcha tallaffuz] oltmish va nol.": "uz055",
+    "Hammasi to'g'ri! [English pronunciation] transform [O'zbekcha tallaffuz] ni bir qarashda o'qiysiz.": "uz056",
+    "Tugma va ko'rsatkichga qarang: sichqoncha kelganda tugma kattalashadi, ko'rsatkich esa qo'lga aylanadi.": "uz057",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] birga tugmani jonlantiradi. [English pronunciation] cursor pointer [O'zbekcha tallaffuz] esa ko'rsatkichni qo'lga aylantirib, bu narsani bosish mumkinligini bildiradi.": "uz058",
+    "Saytlarda havolaga sichqoncha olib borsangiz, qo'l paydo bo'ladi. Bu [English pronunciation] cursor pointer [O'zbekcha tallaffuz]: buni bosish mumkin degan belgi.": "uz059",
+    "Endi ikkalasini birlashtiramiz: tugma faqat sichqoncha ustida kattalashsin. Va yana bitta xususiyat: [English pronunciation] cursor [O'zbekcha tallaffuz], ya'ni ko'rsatkich degani.": "uz060",
+    "Qoida: [English pronunciation] hover [O'zbekcha tallaffuz] bo'lganda [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan ikki. Hozir sichqoncha yo'q, tugma oddiy.": "uz061",
+    "Sichqoncha ustida: tugma biroz kattalashdi. Xuddi bosing deyayotgandek!": "uz062",
+    "[English pronunciation] cursor pointer [O'zbekcha tallaffuz]: kompyuterda sichqoncha tugma ustiga kelganda ko'rsatkich strelkadan qo'lga aylanadi. Telefonda ko'rsatkich yo'q, shuning uchun bu faqat kompyuterda ko'rinadi.": "uz063",
+    "Demak, [English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] birga tugmani jonlantiradi, [English pronunciation] cursor pointer [O'zbekcha tallaffuz] esa bu bosiladigan narsa ekanini ko'rsatadi.": "uz064",
+    "Endi siz. Kompyuterda sichqoncha tugma ustiga kelganda ko'rsatkich qo'lga aylansin: [English pronunciation] cursor [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz065",
+    "Qiymatni yozing: bitta so'z.": "uz066",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da qo'l hand emas. Ko'rsatkich degan so'z kerak.": "uz067",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] cursor [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz068",
+    "Bu boshqa ko'rsatkich. Qo'l [English pronunciation] pointer [O'zbekcha tallaffuz] deyiladi.": "uz069",
+    "Ko'rsatkich inglizcha qanday?": "uz070",
+    "Qo'l ko'rsatkich [English pronunciation] pointer [O'zbekcha tallaffuz] deyiladi.": "uz071",
+    "[English pronunciation] pointer [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz072",
+    "Ajoyib! Kompyuterda sichqonchani tugma ustiga olib borib ko'ring: ko'rsatkich qo'lga aylanadi.": "uz073",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang.": "uz074",
+    "Tugma kattalashadimi, buriladimi, suriladimi yoki ko'rsatkich o'zgaradimi?": "uz075",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] kattalashtiradi, [English pronunciation] rotate [O'zbekcha tallaffuz] buradi, [English pronunciation] translate [O'zbekcha tallaffuz] suradi, [English pronunciation] cursor [O'zbekcha tallaffuz] ko'rsatkichni o'zgartiradi.": "uz076",
+    "Tugma biroz kattalashsin.": "uz077",
+    "Kattalashtirish [English pronunciation] scale [O'zbekcha tallaffuz].": "uz078",
+    "Tugma biroz qiyshaysin.": "uz079",
+    "Burish [English pronunciation] rotate [O'zbekcha tallaffuz].": "uz080",
+    "Tugma biroz yuqoriga ko'tarilsin.": "uz081",
+    "Surish [English pronunciation] translate [O'zbekcha tallaffuz].": "uz082",
+    "Ko'rsatkich qo'lga aylansin.": "uz083",
+    "Ko'rsatkichni [English pronunciation] cursor [O'zbekcha tallaffuz] o'zgartiradi.": "uz084",
+    "Hammasi to'g'ri! Har biriga to'g'ri vositani tanlaysiz.": "uz085",
+    "Har safar kodga qarang: [English pronunciation] scale [O'zbekcha tallaffuz] da birlik bormi, [English pronunciation] rotate [O'zbekcha tallaffuz] da [English pronunciation] deg [O'zbekcha tallaffuz] bormi, [English pronunciation] translate [O'zbekcha tallaffuz] da vergul bormi? Keyin tugmaga qarang.": "uz086",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] ga birlik kerak emas, [English pronunciation] rotate [O'zbekcha tallaffuz] ga [English pronunciation] deg [O'zbekcha tallaffuz] kerak, [English pronunciation] translate [O'zbekcha tallaffuz] da sonlar vergul bilan ajratiladi. Ikkita [English pronunciation] transform [O'zbekcha tallaffuz] yozilsa, ikkinchisi birinchisini o'chiradi.": "uz087",
+    "Retseptda grammni shtuk bilan adashtirsangiz, taom chiqmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] da ham har bir funksiya o'z birligini xohlaydi.": "uz088",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, to'rttasini ko'ramiz. Hozir tugma bir yarim barobar katta.": "uz089",
+    "Birinchisi: [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz]. [English pronunciation] scale [O'zbekcha tallaffuz] ga birlik kerak emas, brauzer qoidani tashlab yubordi.": "uz090",
+    "Ikkinchisi: [English pronunciation] rotate [O'zbekcha tallaffuz] ichida faqat son, [English pronunciation] deg [O'zbekcha tallaffuz] yo'q. Brauzer qanchalik burishni tushunmadi.": "uz091",
+    "Uchinchisi: [English pronunciation] translate [O'zbekcha tallaffuz] sonlari o'rtasida vergul yo'q. Brauzer qoidani tashlab yubordi, tugma surilmadi.": "uz092",
+    "To'rtinchisi tuzoq: ikkita [English pronunciation] transform [O'zbekcha tallaffuz] qoidasi. Ikkinchisi birinchisini o'chirdi, tugma faqat burildi, kattalashmadi. Ikkalasi kerak bo'lsa, bitta qatorga bo'sh joy bilan yoziladi.": "uz093",
+    "Demak, [English pronunciation] scale [O'zbekcha tallaffuz] da birlik yo'q, [English pronunciation] rotate [O'zbekcha tallaffuz] da [English pronunciation] deg [O'zbekcha tallaffuz] bor, [English pronunciation] translate [O'zbekcha tallaffuz] da vergul bor, [English pronunciation] transform [O'zbekcha tallaffuz] esa bitta qatorda yoziladi.": "uz094",
+    "Voy, men tugmani buraman deb yozdim, lekin u to'g'ri turibdi! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz095",
+    "Qiymatni yozing.": "uz096",
+    "Son yonida hali [English pronunciation] deg [O'zbekcha tallaffuz] yo'q. Uni qo'shing.": "uz097",
+    "Brauzer bu qiymatni tanimadi. Qavslarni va [English pronunciation] deg [O'zbekcha tallaffuz] ni tekshiring.": "uz098",
+    "Bu boshqa qiymat. Sonni o'zgartirmang, faqat [English pronunciation] deg [O'zbekcha tallaffuz] qo'shing.": "uz099",
+    "[English pronunciation] rotate [O'zbekcha tallaffuz] ichida son yonida nima bo'lishi kerak?": "uz100",
+    "Gradus [English pronunciation] deg [O'zbekcha tallaffuz] deb yoziladi.": "uz101",
+    "[English pronunciation] rotate [O'zbekcha tallaffuz], qavs, o'n besh [English pronunciation] deg [O'zbekcha tallaffuz], yopuvchi qavs deb yozing va Tekshirishni bosing.": "uz102",
+    "Ura, ishladi! Tugma o'n besh gradusga burildi.": "uz103",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga qarang va o'sha qoidani bosing.": "uz104",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?": "uz105",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz106",
+    "Topdingiz! [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz] bo'lmasligi kerak.": "uz107",
+    "Topdingiz! [English pronunciation] translate [O'zbekcha tallaffuz] sonlari o'rtasida vergul yo'q edi.": "uz108",
+    "Sahifaga qarang: qaysi narsa kod aytgandek emas?": "uz109",
+    "Tugma kattalashdimi? [English pronunciation] transform [O'zbekcha tallaffuz] qiymatini tekshiring.": "uz110",
+    "Tugma surildimi? [English pronunciation] translate [O'zbekcha tallaffuz] ichini tekshiring.": "uz111",
+    "Xato ikkinchi qoidada: [English pronunciation] scale [O'zbekcha tallaffuz] ichida [English pronunciation] px [O'zbekcha tallaffuz]. O'sha qatorni bosing.": "uz112",
+    "Xato ikkinchi qoidada: vergul yo'q. O'sha qatorni bosing.": "uz113",
+    "Super! Ikkalasi ham topildi. Siz tugmalarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz114",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Sichqoncha ustida bo'lganda tugma o'n gradusga burilsin. Selektor tugma klassi va [English pronunciation] hover [O'zbekcha tallaffuz].": "uz115",
+    "Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.": "uz116",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz117",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz118",
+    "Tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor. Ularni yopishtirib yozing.": "uz119",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] yo'q: tugma doim burilib turadi. Faqat sichqoncha ustida kerak.": "uz120",
+    "Selektor: nuqta, tugma klassi, ikki nuqta va [English pronunciation] hover [O'zbekcha tallaffuz].": "uz121",
+    "Burishni [English pronunciation] transform [O'zbekcha tallaffuz] xususiyati beradi.": "uz122",
+    "Son yonida [English pronunciation] deg [O'zbekcha tallaffuz] yo'q.": "uz123",
+    "Brauzer bu qiymatni tanimadi. Qavslarni tekshiring.": "uz124",
+    "Burish boshqacha. O'n gradus kerak.": "uz125",
+    "Selektorga [English pronunciation] hover [O'zbekcha tallaffuz] qo'shing, xususiyat esa [English pronunciation] transform [O'zbekcha tallaffuz].": "uz126",
+    "Selektor nuqta tugma ikki nuqta [English pronunciation] hover [O'zbekcha tallaffuz], qiymat [English pronunciation] rotate [O'zbekcha tallaffuz] o'n [English pronunciation] deg [O'zbekcha tallaffuz].": "uz127",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz128",
+    "Ajoyib! Sichqoncha ustida tugma qiyshayadi. Qoidani o'zingiz yozdingiz.": "uz129",
+    "Endi o'z tugmangizni jonlantiring. Sichqoncha ustidagi rang, [English pronunciation] transform [O'zbekcha tallaffuz] va ko'rsatkich uchun istalgan qiymatni yozing. Keyin Tayyorni bosing.": "uz130",
+    "[English pronunciation] rotate [O'zbekcha tallaffuz] da son yonida [English pronunciation] deg [O'zbekcha tallaffuz] yo'q.": "uz131",
+    "[English pronunciation] CSS [O'zbekcha tallaffuz] da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta bir.": "uz132",
+    "Har bir maydonga bitta qiymat yozing.": "uz133",
+    "Rang uchun rang nomi, [English pronunciation] transform [O'zbekcha tallaffuz] uchun qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], [English pronunciation] cursor [O'zbekcha tallaffuz] uchun [English pronunciation] pointer [O'zbekcha tallaffuz].": "uz134",
+    "Masalan: [English pronunciation] gold [O'zbekcha tallaffuz], [English pronunciation] scale [O'zbekcha tallaffuz] bir butun o'ndan bir va [English pronunciation] pointer [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz135",
+    "Voy, qanday chiroyli! Bu sizning jonli tugmangiz.": "uz136",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz137",
+    "Gap nima haqida: [English pronunciation] hover [O'zbekcha tallaffuz], [English pronunciation] transform [O'zbekcha tallaffuz] yoki selektor yozilishi?": "uz138",
+    "Esingizdami: [English pronunciation] hover [O'zbekcha tallaffuz] faqat ustida ishlaydi, [English pronunciation] transform [O'zbekcha tallaffuz] qo'shnilarni surmaydi, [English pronunciation] rotate [O'zbekcha tallaffuz] ga [English pronunciation] deg [O'zbekcha tallaffuz] kerak, [English pronunciation] hover [O'zbekcha tallaffuz] tugmaga yopishib yoziladi.": "uz139",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] qoidasi sichqoncha element ustida bo'lganda ishlaydi.": "uz140",
+    "To'g'ri: [English pronunciation] hover [O'zbekcha tallaffuz] sichqoncha ustida degani.": "uz141",
+    "[English pronunciation] scale [O'zbekcha tallaffuz] ikki bo'lsa, pastdagi abzas ham pastga suriladi.": "uz142",
+    "Aslida [English pronunciation] transform [O'zbekcha tallaffuz] qo'shnilarni surmaydi: ular joyida qoladi.": "uz143",
+    "[English pronunciation] rotate [O'zbekcha tallaffuz] da son yoniga [English pronunciation] deg [O'zbekcha tallaffuz] yoziladi.": "uz144",
+    "To'g'ri: [English pronunciation] deg [O'zbekcha tallaffuz] gradus degani.": "uz145",
+    "Bu qoida tugma ustiga kelganda ishlaydi.": "uz146",
+    "Aslida bo'sh joy selektorni buzadi: brauzer tugma ichidan qidiradi.": "uz147",
+    "Hammasi to'g'ri! Siz [English pronunciation] hover [O'zbekcha tallaffuz] va [English pronunciation] transform [O'zbekcha tallaffuz] ni yaxshi bilasiz.": "uz148",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men tugma va [English pronunciation] hover [O'zbekcha tallaffuz] o'rtasiga bo'sh joy qo'ygan edim? Qarang: sichqoncha ustida bo'lsa ham tugma o'zgarmayapti! Men adashibman. Bo'sh joy bilan brauzer tugma ichidagi boshqa elementni qidiradi.": "uz149",
+    "Bo'sh joyni olib tashlasak, [English pronunciation] hover [O'zbekcha tallaffuz] darrov ishlaydi. Mana!": "uz150",
+    "Qarang, bu sizning jonli tugmangiz!": "uz151",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] qoidasi faqat sichqoncha ustida ishlaydi.": "uz152",
+    "[English pronunciation] transform [O'zbekcha tallaffuz] kattalashtiradi, buradi va suradi.": "uz153",
+    "[English pronunciation] cursor pointer [O'zbekcha tallaffuz] bosiladigan narsani ko'rsatadi.": "uz154",
+    "[English pronunciation] hover [O'zbekcha tallaffuz] esa tugmaga bo'sh joysiz yoziladi.": "uz155",
+    "Tabriklayman! Endi tugmalaringiz jonli. Keyingi darsda ularni silliq qilamiz: o'zgarish birdaniga emas, asta-sekin bo'ladi. Ko'rishguncha!": "uz156",
+    "Voy, zo‘r!": "uz157",
+    "Ana! Chiqdi!": "uz158",
+    "Super!": "uz159",
+    "Qoyil!": "uz160",
+    "Ura!": "uz161",
+    "Zo‘r-ku!": "uz162",
+    "Yana bir bor urinib ko‘ring.": "uz163",
+    "Diqqat bilan qarang.": "uz164",
+    "Yaqin qoldingiz. Shoshilmang.": "uz165",
+    "Tayyormisiz? Tugmani bosing!": "uz166",
+    "Rekord: 120 ochko.": "uz167",
+    "Doim yoki ustida?": "uz168",
+    "Bu qoida qachon ishlaydi?": "uz169",
+    "Qaysi [English pronunciation] transform [O'zbekcha tallaffuz]?": "uz170",
+    "Tugmani qaysi [English pronunciation] transform [O'zbekcha tallaffuz] shunday qildi?": "uz171",
+    "Nima kerak?": "uz172",
+    "Bu vazifa uchun nima kerak?": "uz173",
+    "To'g'rimi?": "uz174",
+    "To'g'rimi yoki noto'g'rimi?": "uz175",
+    "Salom, dunyo!": "uz176",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz177",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz178",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz179",
+  },
+  ru: {
+    "Привет! Я поставил в игру кнопку Играть. Но она как картинка: наведёшь мышку, ничего не происходит. А на настоящих сайтах кнопка оживает! Нажми Превратить.": "ru001",
+    "Вот! Когда мышка над кнопкой, она становится оранжевой и немного увеличивается. А указатель превращается в руку.": "ru002",
+    "Это сделали [English pronunciation] hover [Русское произношение], то есть мышка над элементом, [English pronunciation] transform [Русское произношение], то есть преобразование, и [English pronunciation] cursor [Русское произношение], то есть указатель. А на телефоне так бывает при касании кнопки.": "ru003",
+    "Сегодня ты научишься оживлять кнопки. Но сначала загадка. В первый раз я поставил пробел между кнопкой и [English pronunciation] hover [Русское произношение], чтобы было красивее. По-моему, пробел ничего не меняет. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на кнопку и на метку [English pronunciation] hover [Русское произношение] в Инспекторе: кнопка меняется только тогда, когда мышка над ней.": "ru005",
+    "Если после селектора написать [English pronunciation] hover [Русское произношение], правило работает только когда мышка над элементом. А на телефоне, при касании.": "ru006",
+    "В играх кнопка подсвечивается, когда наводишь на неё мышку. Это и есть [English pronunciation] hover [Русское произношение]: кнопка будто говорит нажми меня.": "ru007",
+    "Если после селектора написать двоеточие и [English pronunciation] hover [Русское произношение], правило работает, только когда мышка над элементом. Давай посмотрим.": "ru008",
+    "Правило готово: при [English pronunciation] hover [Русское произношение] фон оранжевый. Но смотри, кнопка не изменилась, ведь мышка пока не над ней.": "ru009",
+    "Теперь представь, что мышка навелась на кнопку. Вот, фон стал оранжевым! Инспектор показывает это меткой [English pronunciation] hover [Русское произношение].": "ru010",
+    "Ещё одно правило: при [English pronunciation] hover [Русское произношение] текст белый. Правил может быть сколько угодно.": "ru011",
+    "Значит, правило с [English pronunciation] hover [Русское произношение] работает не всегда, а только когда мышка над элементом. А на телефоне, при касании.": "ru012",
+    "Теперь твоя очередь. Пусть под мышкой кнопка становится золотой, впиши этот цвет в правило с [English pronunciation] hover [Русское произношение]. Потом наведи мышку на кнопку, а на телефоне, коснись её.": "ru013",
+    "Впиши цвет.": "ru014",
+    "Браузер не узнал этот цвет. Напиши название цвета по-английски.": "ru015",
+    "Это другой цвет. Золотой называется [English pronunciation] gold [Русское произношение].": "ru016",
+    "Как по-английски золотой?": "ru017",
+    "Золотой, [English pronunciation] gold [Русское произношение].": "ru018",
+    "Впиши [English pronunciation] gold [Русское произношение] и нажми Проверить.": "ru019",
+    "Огонь! Теперь под мышкой кнопка золотая.": "ru020",
+    "Теперь проверь себя. Я покажу правило, а ты выбери: оно работает всегда или только под мышкой?": "ru021",
+    "Посмотри на селектор: есть ли в конце [English pronunciation] hover [Русское произношение]?": "ru022",
+    "Есть [English pronunciation] hover [Русское произношение], только под мышкой; нет, всегда.": "ru023",
+    "[English pronunciation] hover [Русское произношение] нет: текст белый всегда.": "ru024",
+    "[English pronunciation] hover [Русское произношение] есть: только под мышкой.": "ru025",
+    "Ссылка становится красной только под мышкой.": "ru026",
+    "[English pronunciation] hover [Русское произношение] нет: заголовок оранжевый всегда.": "ru027",
+    "Точно!": "ru028",
+    "Всё верно! Ты сразу узнаёшь правило с [English pronunciation] hover [Русское произношение].": "ru029",
+    "Посмотри на кнопку: она увеличивается, поворачивается и сдвигается. А абзац под ней не двигается.": "ru030",
+    "[English pronunciation] transform [Русское произношение] меняет элемент: [English pronunciation] scale [Русское произношение] увеличивает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает. А соседи остаются на месте.": "ru031",
+    "Когда на телефоне увеличиваешь или поворачиваешь фото двумя пальцами, всё вокруг остаётся на месте. [English pronunciation] transform [Русское произношение] работает так же.": "ru032",
+    "Теперь [English pronunciation] transform [Русское произношение], то есть преобразование. Он увеличивает элемент, поворачивает или сдвигает. В скобках пишем, насколько.": "ru033",
+    "[English pronunciation] scale [Русское произношение] полтора: кнопка стала в полтора раза больше. Смотри, абзац под ней не сдвинулся.": "ru034",
+    "[English pronunciation] rotate [Русское произношение] пятнадцать [English pronunciation] deg [Русское произношение]: кнопка повернулась на пятнадцать градусов. [English pronunciation] deg [Русское произношение], то есть градусы.": "ru035",
+    "[English pronunciation] translate [Русское произношение] сорок и десять пикселей: первое число двигает вправо, второе, вниз. Кнопка уехала вправо на сорок и вниз на десять. Между числами запятая. А соседи опять на месте.": "ru036",
+    "Значит, [English pronunciation] transform [Русское произношение] увеличивает, поворачивает или сдвигает элемент, а соседи остаются на месте.": "ru037",
+    "Теперь ты. Пусть кнопка станет вдвое больше: впиши число в скобки [English pronunciation] scale [Русское произношение].": "ru038",
+    "Впиши число.": "ru039",
+    "Для [English pronunciation] scale px [Русское произношение] не нужен: только число, во сколько раз.": "ru040",
+    "Браузер не узнал это значение. Напиши в скобках только число.": "ru041",
+    "С нулём кнопка совсем пропала. Нужно вдвое.": "ru042",
+    "С единицей кнопка не изменилась. Нужно вдвое.": "ru043",
+    "Это другой размер. Нужно вдвое.": "ru044",
+    "Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку, а не через запятую. А здесь нужно целое число, во сколько раз.": "ru045",
+    "Число в [English pronunciation] scale [Русское произношение] говорит, во сколько раз.": "ru046",
+    "Вдвое, это два.": "ru047",
+    "Впиши число два и нажми Проверить.": "ru048",
+    "Молодец! Кнопка вдвое больше.": "ru049",
+    "Теперь проверь себя. Посмотри на кнопку и выбери, какой [English pronunciation] transform [Русское произношение] сделал её такой.": "ru050",
+    "Кнопка увеличилась, повернулась или сдвинулась?": "ru051",
+    "[English pronunciation] scale [Русское произношение] увеличивает или уменьшает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает: первое число, вправо, второе, вниз.": "ru052",
+    "Кнопка наклонена: [English pronunciation] rotate [Русское произношение].": "ru053",
+    "Кнопка больше: [English pronunciation] scale [Русское произношение] полтора.": "ru054",
+    "Кнопка сдвинута вправо: [English pronunciation] translate [Русское произношение] шестьдесят и ноль.": "ru055",
+    "Всё верно! Ты читаешь [English pronunciation] transform [Русское произношение] с одного взгляда.": "ru056",
+    "Посмотри на кнопку и указатель: когда приходит мышка, кнопка растёт, а указатель становится рукой.": "ru057",
+    "[English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение] вместе оживляют кнопку. А [English pronunciation] cursor pointer [Русское произношение] превращает указатель в руку и показывает, что на это можно нажать.": "ru058",
+    "На сайтах над ссылкой появляется рука. Это [English pronunciation] cursor pointer [Русское произношение], знак сюда можно нажать.": "ru059",
+    "Теперь соединим оба: пусть кнопка увеличивается только под мышкой. И ещё одно свойство: [English pronunciation] cursor [Русское произношение], то есть указатель.": "ru060",
+    "Правило: при [English pronunciation] hover scale [Русское произношение] одна целая две десятых. Сейчас мышки нет, кнопка обычная.": "ru061",
+    "Мышка над кнопкой: она немного выросла. Будто говорит: нажми меня!": "ru062",
+    "[English pronunciation] cursor pointer [Русское произношение]: на компьютере, когда мышка над кнопкой, указатель превращается из стрелки в руку. На телефоне указателя нет, поэтому это видно только на компьютере.": "ru063",
+    "Значит, [English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение] вместе оживляют кнопку, а [English pronunciation] cursor pointer [Русское произношение] показывает, что на неё можно нажать.": "ru064",
+    "Теперь ты. Пусть на компьютере указатель над кнопкой превращается в руку: впиши значение для [English pronunciation] cursor [Русское произношение].": "ru065",
+    "Впиши значение: одно слово.": "ru066",
+    "В [English pronunciation] CSS [Русское произношение] рука, не hand. Нужно слово указатель.": "ru067",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] cursor [Русское произношение].": "ru068",
+    "Это другой указатель. Рука называется [English pronunciation] pointer [Русское произношение].": "ru069",
+    "Как по-английски указатель?": "ru070",
+    "Указатель-рука, [English pronunciation] pointer [Русское произношение].": "ru071",
+    "Впиши [English pronunciation] pointer [Русское произношение] и нажми Проверить.": "ru072",
+    "Отлично! На компьютере наведи мышку на кнопку: указатель станет рукой.": "ru073",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно.": "ru074",
+    "Кнопка растёт, поворачивается, сдвигается или меняется указатель?": "ru075",
+    "[English pronunciation] scale [Русское произношение] увеличивает, [English pronunciation] rotate [Русское произношение] поворачивает, [English pronunciation] translate [Русское произношение] сдвигает, [English pronunciation] cursor [Русское произношение] меняет указатель.": "ru076",
+    "Кнопка должна немного вырасти.": "ru077",
+    "Увеличение, [English pronunciation] scale [Русское произношение].": "ru078",
+    "Кнопка должна немного наклониться.": "ru079",
+    "Поворот, [English pronunciation] rotate [Русское произношение].": "ru080",
+    "Кнопка должна чуть подняться вверх.": "ru081",
+    "Сдвиг, [English pronunciation] translate [Русское произношение].": "ru082",
+    "Указатель должен стать рукой.": "ru083",
+    "Указатель меняет [English pronunciation] cursor [Русское произношение].": "ru084",
+    "Всё верно! Ты подбираешь к каждой задаче нужный инструмент.": "ru085",
+    "Каждый раз смотри на код: есть ли единица в [English pronunciation] scale [Русское произношение], есть ли [English pronunciation] deg [Русское произношение] в [English pronunciation] rotate [Русское произношение], есть ли запятая в [English pronunciation] translate [Русское произношение]? Потом смотри на кнопку.": "ru086",
+    "В [English pronunciation] scale [Русское произношение] единица не нужна, в [English pronunciation] rotate [Русское произношение] нужен [English pronunciation] deg [Русское произношение], в [English pronunciation] translate [Русское произношение] числа разделяют запятой. Если написать два [English pronunciation] transform [Русское произношение], второй сотрёт первый.": "ru087",
+    "Если в рецепте перепутать граммы и штуки, блюдо не получится. В [English pronunciation] CSS [Русское произношение] у каждой функции тоже своя единица.": "ru088",
+    "И с [English pronunciation] transform [Русское произношение] бывают ошибки. Давай посмотрим на четыре. Сейчас кнопка в полтора раза больше.": "ru089",
+    "Первая: в [English pronunciation] scale [Русское произношение] написан [English pronunciation] px [Русское произношение]. Для [English pronunciation] scale [Русское произношение] единица не нужна, браузер выбросил правило.": "ru090",
+    "Вторая: в [English pronunciation] rotate [Русское произношение] только число, без [English pronunciation] deg [Русское произношение]. Браузер не понял, на сколько поворачивать.": "ru091",
+    "Третья: между числами [English pronunciation] translate [Русское произношение] нет запятой. Браузер выбросил правило, кнопка не сдвинулась.": "ru092",
+    "Четвёртая, ловушка: два правила [English pronunciation] transform [Русское произношение]. Второе стёрло первое, кнопка только повернулась, но не выросла. Если нужны оба, их пишут в одной строке через пробел.": "ru093",
+    "Значит, в [English pronunciation] scale [Русское произношение] нет единицы, в [English pronunciation] rotate [Русское произношение] есть [English pronunciation] deg [Русское произношение], в [English pronunciation] translate [Русское произношение] есть запятая, а [English pronunciation] transform [Русское произношение] пишут в одной строке.": "ru094",
+    "Ой, я написал поворот кнопки, а она стоит прямо! В поле, моё значение. Найди ошибку и исправь.": "ru095",
+    "Впиши значение.": "ru096",
+    "Рядом с числом всё ещё нет [English pronunciation] deg [Русское произношение]. Добавь его.": "ru097",
+    "Браузер не узнал это значение. Проверь скобки и [English pronunciation] deg [Русское произношение].": "ru098",
+    "Это другое значение. Не меняй число, просто добавь [English pronunciation] deg [Русское произношение].": "ru099",
+    "Что должно стоять рядом с числом в [English pronunciation] rotate [Русское произношение]?": "ru100",
+    "Градусы пишутся [English pronunciation] deg [Русское произношение].": "ru101",
+    "Впиши [English pronunciation] rotate [Русское произношение], скобка, пятнадцать [English pronunciation] deg [Русское произношение], закрывающая скобка и нажми Проверить.": "ru102",
+    "Ура, заработало! Кнопка повернулась на пятнадцать градусов.": "ru103",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и нажми это правило.": "ru104",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?": "ru105",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru106",
+    "Есть! В [English pronunciation] scale [Русское произношение] не должно быть [English pronunciation] px [Русское произношение].": "ru107",
+    "Есть! Между числами [English pronunciation] translate [Русское произношение] не было запятой.": "ru108",
+    "Посмотри на страницу: что не так, как в коде?": "ru109",
+    "Кнопка увеличилась? Проверь значение [English pronunciation] transform [Русское произношение].": "ru110",
+    "Кнопка сдвинулась? Проверь, что внутри [English pronunciation] translate [Русское произношение].": "ru111",
+    "Ошибка во втором правиле: [English pronunciation] px [Русское произношение] в [English pronunciation] scale [Русское произношение]. Нажми эту строку.": "ru112",
+    "Ошибка во втором правиле: нет запятой. Нажми эту строку.": "ru113",
+    "Супер! Обе найдены. Ты проверяешь кнопки как настоящий разработчик.": "ru114",
+    "Теперь напиши правило целиком. Пусть под мышкой кнопка поворачивается на десять градусов. Селектор, класс кнопки и [English pronunciation] hover [Русское произношение].": "ru115",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru116",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru117",
+    "Между свойством и значением нет двоеточия.": "ru118",
+    "Между кнопкой и [English pronunciation] hover [Русское произношение] есть пробел. Напиши их слитно.": "ru119",
+    "Нет [English pronunciation] hover [Русское произношение]: кнопка будет повёрнута всегда. А нужно только под мышкой.": "ru120",
+    "Селектор: точка, класс кнопки, двоеточие и [English pronunciation] hover [Русское произношение].": "ru121",
+    "Поворот задаёт свойство [English pronunciation] transform [Русское произношение].": "ru122",
+    "Рядом с числом нет [English pronunciation] deg [Русское произношение].": "ru123",
+    "Браузер не узнал это значение. Проверь скобки.": "ru124",
+    "Поворот другой. Нужно десять градусов.": "ru125",
+    "Добавь к селектору [English pronunciation] hover [Русское произношение], а свойство, [English pronunciation] transform [Русское произношение].": "ru126",
+    "Селектор: точка tugma двоеточие [English pronunciation] hover [Русское произношение], значение: [English pronunciation] rotate [Русское произношение] десять [English pronunciation] deg [Русское произношение].": "ru127",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru128",
+    "Отлично! Под мышкой кнопка наклоняется. Правило написано тобой целиком.": "ru129",
+    "Теперь оживи свою кнопку. Впиши любые значения для цвета под мышкой, [English pronunciation] transform [Русское произношение] и указателя. Потом нажми Готово.": "ru130",
+    "В [English pronunciation] rotate [Русское произношение] рядом с числом нет [English pronunciation] deg [Русское произношение].": "ru131",
+    "Дробь в [English pronunciation] CSS [Русское произношение] пишут через точку: одна точка одна, а не через запятую.": "ru132",
+    "В каждое поле, одно значение.": "ru133",
+    "Для цвета, название цвета, для [English pronunciation] transform [Русское произношение], [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, для [English pronunciation] cursor [Русское произношение], [English pronunciation] pointer [Русское произношение].": "ru134",
+    "Например: [English pronunciation] gold [Русское произношение], [English pronunciation] scale [Русское произношение] одна целая одна десятая и [English pronunciation] pointer [Русское произношение]. Потом нажми Готово.": "ru135",
+    "Ого, как красиво! Это твоя живая кнопка.": "ru136",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru137",
+    "О чём фраза: о [English pronunciation] hover [Русское произношение], о [English pronunciation] transform [Русское произношение] или о записи селектора?": "ru138",
+    "Вспомни: [English pronunciation] hover [Русское произношение] работает только под мышкой, [English pronunciation] transform [Русское произношение] не двигает соседей, [English pronunciation] rotate [Русское произношение] нужен [English pronunciation] deg [Русское произношение], [English pronunciation] hover [Русское произношение] пишут слитно с кнопкой.": "ru139",
+    "Правило с [English pronunciation] hover [Русское произношение] работает, когда мышка над элементом.": "ru140",
+    "Верно: [English pronunciation] hover [Русское произношение], это мышка над элементом.": "ru141",
+    "При [English pronunciation] scale [Русское произношение] два абзац под кнопкой тоже сдвигается вниз.": "ru142",
+    "На самом деле [English pronunciation] transform [Русское произношение] не двигает соседей: они остаются на месте.": "ru143",
+    "В [English pronunciation] rotate [Русское произношение] рядом с числом пишут [English pronunciation] deg [Русское произношение].": "ru144",
+    "Верно: [English pronunciation] deg [Русское произношение], это градусы.": "ru145",
+    "Это правило сработает, когда мышка над кнопкой.": "ru146",
+    "На самом деле пробел ломает селектор: браузер ищет что-то внутри кнопки.": "ru147",
+    "Всё верно! Ты отлично разбираешься в [English pronunciation] hover [Русское произношение] и [English pronunciation] transform [Русское произношение].": "ru148",
+    "Вернёмся к загадке. Помнишь, я поставил пробел между кнопкой и [English pronunciation] hover [Русское произношение]? Смотри: мышка над кнопкой, а она не меняется! Я ошибся. С пробелом браузер ищет какой-то другой элемент внутри кнопки.": "ru149",
+    "Уберём пробел, и [English pronunciation] hover [Русское произношение] сразу работает. Вот!": "ru150",
+    "Смотри, это твоя живая кнопка!": "ru151",
+    "Правило с [English pronunciation] hover [Русское произношение] работает только под мышкой.": "ru152",
+    "[English pronunciation] transform [Русское произношение] увеличивает, поворачивает и сдвигает.": "ru153",
+    "[English pronunciation] cursor pointer [Русское произношение] показывает, что на элемент можно нажать.": "ru154",
+    "А [English pronunciation] hover [Русское произношение] пишут вплотную к кнопке, без пробела.": "ru155",
+    "Ура! Теперь твои кнопки живые. На следующем уроке сделаем их плавными: изменения будут не сразу, а постепенно. До встречи!": "ru156",
+    "Вау, классно!": "ru157",
+    "Есть! Получилось!": "ru158",
+    "Супер!": "ru159",
+    "Огонь!": "ru160",
+    "Ура!": "ru161",
+    "Вот это да!": "ru162",
+    "Попробуй ещё раз.": "ru163",
+    "Посмотри внимательно.": "ru164",
+    "Уже близко. Не спеши.": "ru165",
+    "Готов? Нажми кнопку!": "ru166",
+    "Рекорд: 120 очков.": "ru167",
+    "Всегда или под мышкой?": "ru168",
+    "Когда работает это правило?": "ru169",
+    "Какой [English pronunciation] transform [Русское произношение]?": "ru170",
+    "Какой [English pronunciation] transform [Русское произношение] сделал кнопку такой?": "ru171",
+    "Что нужно?": "ru172",
+    "Что нужно для этой задачи?": "ru173",
+    "Верно или нет?": "ru174",
+    "Верно или неверно?": "ru175",
+    "Привет, мир!": "ru176",
+    "Здесь нужны только слова, без угловых скобок.": "ru177",
+    "Молодец!": "ru178",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru179",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru180",
+  },
+  en: {
+    "Hi! I put a Play button in my game. But it’s like a picture: point the mouse at it and nothing happens. On real sites a button comes alive! Tap Transform.": "en001",
+    "There! When the mouse is over the button, it turns orange and grows a little. And the pointer turns into a hand.": "en002",
+    "hover did it, meaning the mouse is over the element, plus transform, meaning a change of shape, and cursor, meaning the pointer. On a phone it happens when you tap the button.": "en003",
+    "Today you’ll learn to bring buttons to life. But first, a riddle. The first time, I put a space between the button and hover to make it look nicer. I think a space changes nothing. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the button and the hover tag in the Inspector: the button changes only when the mouse is over it.": "en005",
+    "If you write hover after the selector, the rule works only while the mouse is over the element. On a phone, when you tap.": "en006",
+    "In games a button lights up when you point the mouse at it. That’s hover: the button seems to say press me.": "en007",
+    "If you write a colon and hover after the selector, the rule only works while the mouse is over the element. Let’s see.": "en008",
+    "The rule is ready: on hover the background is orange. But look, the button didn’t change, because the mouse isn’t over it yet.": "en009",
+    "Now imagine the mouse moved over the button. There, the background turned orange! The Inspector shows it with a hover tag.": "en010",
+    "One more rule: on hover the text is white. You can have as many rules as you like.": "en011",
+    "So a hover rule doesn’t work all the time, only while the mouse is over the element. On a phone, when you tap.": "en012",
+    "Now it’s your turn. Make the button turn gold on hover: type that color into the hover rule. Then point the mouse at the button, or tap it on a phone.": "en013",
+    "Type a color.": "en014",
+    "The browser didn’t recognize that color. Write the color name in English.": "en015",
+    "That’s a different color. Gold is called gold.": "en016",
+    "What’s the English for gold?": "en017",
+    "It’s gold.": "en018",
+    "Type gold and tap Check.": "en019",
+    "Awesome! Now the button turns gold under the mouse.": "en020",
+    "Now check yourself. I’ll show a rule, and you pick: does it work all the time or only on hover?": "en021",
+    "Look at the selector: is there hover at the end?": "en022",
+    "With hover, only under the mouse; without it, always.": "en023",
+    "No hover: the text is always white.": "en024",
+    "There’s hover: only under the mouse.": "en025",
+    "The link turns red only under the mouse.": "en026",
+    "No hover: the heading is always orange.": "en027",
+    "Exactly!": "en028",
+    "All correct! You spot a hover rule right away.": "en029",
+    "Look at the button: it grows, turns and moves. The paragraph below it doesn’t move.": "en030",
+    "transform changes an element: scale makes it bigger, rotate turns it, translate moves it. The neighbors stay in place.": "en031",
+    "When you zoom or turn a photo on a phone with two fingers, everything around it stays put. transform works the same way.": "en032",
+    "Now transform, meaning a change of shape. It makes an element bigger, turns it or moves it. In the brackets we write how much.": "en033",
+    "scale one and a half: the button got one and a half times bigger. Look, the paragraph below didn’t move.": "en034",
+    "rotate fifteen deg: the button turned fifteen degrees. deg means degrees.": "en035",
+    "translate forty and ten pixels: the first number moves right, the second moves down. The button moved forty right and ten down. There’s a comma between the numbers. The neighbours stayed in place again.": "en036",
+    "So transform scales, turns or moves an element, and the neighbours stay in place.": "en037",
+    "Your turn. Make the button twice as big: type the number inside scale’s brackets.": "en038",
+    "Type a number.": "en039",
+    "scale needs no px: just a number, how many times.": "en040",
+    "The browser didn’t recognize that value. Write just a number in the brackets.": "en041",
+    "With zero the button vanished. We need twice as big.": "en042",
+    "With one the button didn’t change. We need twice as big.": "en043",
+    "That’s a different size. We need twice as big.": "en044",
+    "In CSS a decimal uses a dot, not a comma. And here you need a whole number: how many times.": "en045",
+    "The number in scale says how many times.": "en046",
+    "Twice is two.": "en047",
+    "Type the number two and tap Check.": "en048",
+    "Well done! The button is twice as big.": "en049",
+    "Now check yourself. Look at the button and pick which transform made it look like that.": "en050",
+    "Did the button grow, turn or move?": "en051",
+    "scale makes it bigger or smaller, rotate turns it, translate moves it: the first number right, the second down.": "en052",
+    "The button is tilted: rotate.": "en053",
+    "The button is bigger: scale one and a half.": "en054",
+    "The button moved right: translate sixty and zero.": "en055",
+    "All correct! You read transform at a glance.": "en056",
+    "Look at the button and the pointer: when the mouse arrives, the button grows and the pointer turns into a hand.": "en057",
+    "hover and transform together bring the button to life. cursor pointer turns the pointer into a hand and shows it can be pressed.": "en058",
+    "On websites a hand appears over a link. That’s cursor pointer, a sign that says you can press this.": "en059",
+    "Now let’s combine them: make the button grow only under the mouse. And one more property: cursor, meaning the pointer.": "en060",
+    "The rule: on hover, scale one point two. Right now there’s no mouse, the button is normal.": "en061",
+    "The mouse is over it: the button grew a little. As if it’s saying: press me!": "en062",
+    "cursor pointer: on a computer, when the mouse is over the button, the pointer turns from an arrow into a hand. A phone has no pointer, so you only see this on a computer.": "en063",
+    "So hover and transform together bring the button to life, and cursor pointer shows it can be pressed.": "en064",
+    "Your turn. On a computer, make the pointer turn into a hand over the button: type the value for cursor.": "en065",
+    "Type the value: one word.": "en066",
+    "In CSS the hand isn’t hand. We need the word for pointer.": "en067",
+    "The browser didn’t recognize that word. Check the word for cursor.": "en068",
+    "That’s a different pointer. The hand is called pointer.": "en069",
+    "What’s the English for pointer?": "en070",
+    "The hand pointer is pointer.": "en071",
+    "Type pointer and tap Check.": "en072",
+    "Great! On a computer, point the mouse at the button: the pointer becomes a hand.": "en073",
+    "Now check yourself. I’ll say a task, and you pick what’s needed.": "en074",
+    "Does the button grow, turn, move, or does the pointer change?": "en075",
+    "scale grows, rotate turns, translate moves, cursor changes the pointer.": "en076",
+    "The button should grow a little.": "en077",
+    "Growing is scale.": "en078",
+    "The button should tilt a little.": "en079",
+    "Turning is rotate.": "en080",
+    "The button should rise a little.": "en081",
+    "Moving is translate.": "en082",
+    "The pointer should become a hand.": "en083",
+    "cursor changes the pointer.": "en084",
+    "All correct! You pick the right tool for each task.": "en085",
+    "Each time, look at the code: does scale have a unit, does rotate have deg, does translate have a comma? Then look at the button.": "en086",
+    "scale needs no unit, rotate needs deg, translate separates numbers with a comma. Write two transforms and the second erases the first.": "en087",
+    "Mix up grams and pieces in a recipe and the dish won’t work out. In CSS each function wants its own unit too.": "en088",
+    "transform has mistakes too. Let’s look at four. Right now the button is one and a half times bigger.": "en089",
+    "The first: scale has px inside. scale needs no unit, so the browser threw the rule away.": "en090",
+    "The second: rotate has just a number, no deg. The browser didn’t understand how much to turn.": "en091",
+    "The third: there’s no comma between translate’s numbers. The browser threw the rule away, so the button didn’t move.": "en092",
+    "The fourth is a trap: two transform rules. The second erased the first, so the button only turned and didn’t grow. If you need both, you write them on one line with a space.": "en093",
+    "So scale has no unit, rotate has deg, translate has a comma, and transform goes on one line.": "en094",
+    "Oops, I wrote a turn for the button, but it stands straight! My value is in the field. Find the mistake and fix it.": "en095",
+    "Type the value.": "en096",
+    "There’s still no deg next to the number. Add it.": "en097",
+    "The browser didn’t recognize that value. Check the brackets and deg.": "en098",
+    "That’s a different value. Don’t change the number, just add deg.": "en099",
+    "What should be next to the number in rotate?": "en100",
+    "Degrees are written deg.": "en101",
+    "Type rotate, bracket, fifteen deg, closing bracket and tap Check.": "en102",
+    "Hooray, it works! The button turned fifteen degrees.": "en103",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and tap that rule.": "en104",
+    "Great, the first one is found! Now something else broke. Which rule doesn’t work?": "en105",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en106",
+    "Found it! There shouldn’t be px in scale.": "en107",
+    "Found it! There was no comma between translate’s numbers.": "en108",
+    "Look at the page: what doesn’t match the code?": "en109",
+    "Did the button grow? Check the transform value.": "en110",
+    "Did the button move? Check inside translate.": "en111",
+    "The bug is in the second rule: px in scale. Tap that line.": "en112",
+    "The bug is in the second rule: no comma. Tap that line.": "en113",
+    "Super! Both found. You check buttons like a real developer.": "en114",
+    "Now write the whole rule yourself. Make the button turn ten degrees on hover. The selector is the button’s class plus hover.": "en115",
+    "Write the rule: first the selector, then the property and value inside curly braces.": "en116",
+    "The rule needs curly braces: an opening one and a closing one.": "en117",
+    "There’s no colon between the property and the value.": "en118",
+    "There’s a space between the button and hover. Write them together.": "en119",
+    "No hover: the button would always be turned. We need it only on hover.": "en120",
+    "The selector: a dot, the button’s class, a colon and hover.": "en121",
+    "The transform property does the turning.": "en122",
+    "There’s no deg next to the number.": "en123",
+    "The browser didn’t recognize that value. Check the brackets.": "en124",
+    "The turn is different. We need ten degrees.": "en125",
+    "Add hover to the selector, and the property is transform.": "en126",
+    "Selector: dot tugma colon hover; value: rotate ten deg.": "en127",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en128",
+    "Great! The button tilts on hover. You wrote the whole rule yourself.": "en129",
+    "Now bring your own button to life. Type any values for the hover color, the transform and the pointer. Then tap Done.": "en130",
+    "In rotate there’s no deg next to the number.": "en131",
+    "In CSS a decimal uses a dot, not a comma: one point one.": "en132",
+    "One value in each field.": "en133",
+    "For the color, a color name; for transform, scale, rotate or translate with brackets and a number; for cursor, pointer.": "en134",
+    "For example: gold, scale one point one and pointer. Then tap Done.": "en135",
+    "Wow, how pretty! This is your living button.": "en136",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en137",
+    "What’s the sentence about: hover, transform, or how the selector is written?": "en138",
+    "Remember: hover only works under the mouse, transform doesn’t move neighbours, rotate needs deg, and hover is written right after the button.": "en139",
+    "A hover rule works when the mouse is over the element.": "en140",
+    "Right: hover means the mouse is over it.": "en141",
+    "With scale two, the paragraph below moves down too.": "en142",
+    "Actually transform doesn’t move neighbours: they stay in place.": "en143",
+    "In rotate you write deg next to the number.": "en144",
+    "Right: deg means degrees.": "en145",
+    "This rule works when the mouse is over the button.": "en146",
+    "Actually the space breaks the selector: the browser looks for something inside the button.": "en147",
+    "All correct! You know hover and transform really well.": "en148",
+    "Back to our riddle. Remember, I put a space between the button and hover? Look: the mouse is over the button, but it doesn’t change! I was wrong. With a space, the browser looks for some other element inside the button.": "en149",
+    "Remove the space, and hover works right away. There!": "en150",
+    "Look, this is your living button!": "en151",
+    "A hover rule only works under the mouse.": "en152",
+    "transform scales, turns and moves.": "en153",
+    "cursor pointer shows something can be pressed.": "en154",
+    "And hover is written right after the button, with no space.": "en155",
+    "Hooray! Now your buttons are alive. Next lesson we’ll make them smooth: changes will happen gradually, not all at once. See you!": "en156",
+    "Wow, awesome!": "en157",
+    "Yes! You did it!": "en158",
+    "Super!": "en159",
+    "Brilliant!": "en160",
+    "Hooray!": "en161",
+    "Amazing!": "en162",
+    "Try once more.": "en163",
+    "Take a closer look.": "en164",
+    "You are close. No rush.": "en165",
+    "Ready? Press the button!": "en166",
+    "Record: 120 points.": "en167",
+    "Always or on hover?": "en168",
+    "When does this rule work?": "en169",
+    "Which transform?": "en170",
+    "Which transform made the button like this?": "en171",
+    "What’s needed?": "en172",
+    "What does this task need?": "en173",
+    "True or false?": "en174",
+    "Hello, world!": "en175",
+    "Only words here, no angle brackets.": "en176",
+    "Well done!": "en177",
+    "Everything in the window lives inside body.": "en178",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en179",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8153,15 +7704,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -16684,3 +16228,1477 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .is-kbd .r28 .a1-sheet .a1-send { height: 28px; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 239, ru 246, en 243; всего знаков 71015. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Promptimda beshta qator bor. Oltinchisi yangi: sayt qanday ishlaydi. Men jonli va qiziqarli bo'lsin deb yozdim. Bu oilaviy kafe uchun! Yuborishni bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar ovqat buyurtma qilsin", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda sun'iy intellekt yaratgan sayt chiqadi", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Hamma narsa sakrayapti va aylanyapti. Buyurtma berish tugmasi esa qochib yuribdi, uni bosib bo'lmaydi! Qarang, Taxmin belgilari: jonli degan so'zni sun'iy intellekt o'zicha tushundi.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Menimcha, sayt qancha ko'p harakat qilsa, shuncha jonli va zo'r bo'ladi! Siz nima deb o'ylaysiz? Bugun oltinchi savolni o'rganamiz: sayt qanday ishlaydi?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoriga va sichqoncha ustiga kelgan tugmaga qarang.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hover, ya'ni sichqoncha ustiga kelganda degani. Tugma o'zgarsa, odam uni bosish mumkinligini tushunadi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yin menyusida tanlangan qahramon yorishib, kattalashadi. Siz kimni tanlayotganingizni darrov bilasiz.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oltinchi savol: sayt qanday ishlaydi? Ya'ni odam biror narsa qilganda sayt nima qiladi. Qarang, hozir qator bo'sh. Sichqoncha tugma ustiga keldi, bosdi, lekin hech narsa bo'lmadi. Bu tugmami yoki oddiy yozuvmi?", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar klubga yozilsin", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: tugma ustiga sichqoncha kelganda rangi o'zgarsin. Qarang: sichqoncha keldi, tugma sariq bo'ldi! Endi u meni bosing deyapti.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana qo'shamiz: kattalashsin. Tugma ham rangini o'zgartiradi, ham kattalashadi. Buni payqamaslik qiyin.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar ham javob berishi mumkin: ustiga kelganda ko'tariladi. Odam sichqoncha qayerda turganini doim ko'radi.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, birinchi holat: sichqoncha ustiga kelganda. Ingliz tilida bu [English pronunciation] hover [O'zbekcha tallaffuz] deyiladi. Qatorga yozamiz: qachon, nima va nima bo'ladi.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Pitsa do'koni sayt so'radi. Beshta qator tayyor. Buyurtmani o'qing va Qanday ishlaydi? qatoriga yozing: qachon, nima va nima bo'ladi.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar pitsa buyurtma qilsin", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon? Buyurtmada: sichqoncha ustiga kelganda.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tugmaga ishladi. Buyurtmada esa menyu kartochkasi.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochka nima qilsin? Buyurtmada: kattalashsin.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uch narsa bor: qachon, nima va nima bo'ladi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha ustiga kelganda, menyu kartochkasi kattalashsin.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namunadagidek yozing va Yuborishni bosing.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sichqoncha keldi, kartochka kattalashdi. Mijoz qaysi pitsani tanlayotganini ko'radi!", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Ikki Qanday ishlaydi? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi birida qachon, nima va nima bo'lishi aytilgan?", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Jonli, qiziqarli hech narsani aniq aytmaydi. Qachon? bo'lmasa, harakat ham bo'lmaydi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisida qachon, nima va nima bo'lishi bor.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi aniq: kartochkalar, ustiga kelganda, ko'tariladi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisida qachon? yo'q: tugma doim katta bo'lib qoladi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Jonli ni aniq harakatdan ajratasiz.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugmaga va sichqonchaga qarang: bosilgandan keyin nima chiqadi?", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosilganda, ya'ni sichqoncha bilan bosganda yoki telefonda barmoq tekkanda degani. Sayt javob bersa, odam hammasi ishlaganini biladi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Lift tugmasini bossangiz, u yonadi. Demak, lift sizni eshitdi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi holat: bosilganda. Qarang, hozir Ro'yxatdan o'tish tugmasini bosdi, lekin hech narsa chiqmadi. Yozildimi yoki yo'qmi? Odam bilmaydi va yana-yana bosadi.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar to'garakka yozilsin", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: tugma bosilganda Rahmat xabari chiqsin. Qarang: bosdi va pastda xabar chiqdi! Endi odam yozilganini biladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savollar ham bosilganda ochilishi mumkin. Qarang: savolni bosdi, javobi ochildi. Sahifa toza turadi, javob esa kerak bo'lganda chiqadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, bosilganda sayt javob berishi kerak: xabar chiqsin yoki narsa ochilsin. Shunda odam hammasi ishlaganini biladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kitob do'koni mijozlari tugmani bosib, kitob qo'shildimi yoki yo'qmi, bilmay qolyapti. Buyurtmani o'qing va Qanday ishlaydi? ga yozing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar kitob buyurtma qilsin", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon? Buyurtmada: tugma bosilganda.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu sichqoncha ustiga kelganda ishlaydi. Buyurtmada esa: bosilganda.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosilganda nima bo'lsin? Buyurtmada: xabar chiqsin.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada qachon ham, nima bo'lishi ham bor: bosilganda xabar chiqadi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma bosilganda, Savatga qo'shildi xabari chiqsin.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Bosdi va Savatga qo'shildi chiqdi. Endi mijoz kitob qo'shilganini aniq biladi!", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi qachon? ni topamiz. Men saytda nima bo'lganini aytaman, siz tanlang: bu qachon ishladi?", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Odam nima qildi: sichqonchani olib keldi, bosdi yoki saytni endi ochdi?", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat ustiga keldi: ustiga kelganda. Bosdi: bosilganda. Hech narsa qilmadi: sahifa ochilganda. Kichik ekran: telefonda.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Odam kartochkaga sichqonchani olib keldi, hali bosmadi. Kartochka ko'tarildi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosmadi, faqat ustiga keldi. Bu ustiga kelganda.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Odam Yuborish ni bosdi va Rahmat! chiqdi.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosgandan keyin chiqdi. Bu bosilganda.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytga kirishingiz bilan bloklar birin-ketin paydo bo'ldi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hech narsa bosilmadi, sahifa ochildi xolos. Bu sahifa ochilganda.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichkina ekranda menyu uch chiziqli tugmaga yig'ildi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichkina ekran bu telefon. Demak, telefonda.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savolni bosdingiz va uning javobi ochildi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosdingiz, keyin ochildi. Bu bosilganda.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Har bir harakat qachon ishlashini topasiz.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifa ochilgan paytga qarang: sarlavha va bloklar qanday chiqadi?", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Animatsiya, ya'ni silliq harakat degani. U ko'zni kerakli joyga olib boradi: oldin sarlavha, keyin bloklar, keyin tugma.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Teatrda parda asta ochiladi, birdan emas. Sayt ham shunday ochilsa, yoqimli.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi holat: sahifa ochilganda. Qarang, hozir sayt bir zumda, birdaniga paydo bo'ldi. Hech qanday harakat yo'q.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] yoshlar festivalga kelsin", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: sahifa ochilganda bloklar birin-ketin silliq paydo bo'lsin. Qarang: oldin sarlavha, keyin matn, keyin bloklar. Ko'z o'zi kerakli joyga boradi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha tepadan sirpanib tushsin. U sahnaga chiqqan qo'shiqchidek birinchi bo'lib keladi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Asosiy tugma lipillab tursin. Endi u doim meni bosing deb chaqiradi. Lekin faqat bitta tugma, hammasi emas!", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, sahifa ochilganda ham sayt ishlaydi: bloklar silliq chiqadi, asosiy tugma chaqiradi. Bu animatsiya, ya'ni silliq harakat degani.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Rasm ko'rgazmasi sayt so'radi. Ular sayt ochilganda o'zgacha bo'lishini xohlaydi. Buyurtmani o'qing va Qanday ishlaydi? ga yozing.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar ko'rgazmaga kelsin", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon? Buyurtmada: saytga kirganda, ya'ni sahifa ochilganda degani.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qanday paydo bo'lsin? Buyurtmada: birin-ketin, silliq.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uch narsa bor: saytga kirganda, rasmlar, birin-ketin silliq paydo bo'ladi.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytga kirganda rasmlar birin-ketin silliq paydo bo'lsin.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Rasmlar birin-ketin, silliq chiqdi. Xuddi ko'rgazmada chiroq yonganday!", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynaning kengligiga va saytning menyusiga qarang.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Moslashuvchan sayt, ya'ni telefon ekraniga moslashadigan sayt degani: menyu uch chiziqli tugmaga yig'iladi, kerakli tugma qo'l ostida turadi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kiyim bolaning bo'yiga moslab tikiladi. Sayt ham har bir ekranga mos bo'lsin.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtinchi holat: telefonda. Hozir sayt kompyuterda. Menyu tepada, tugma ustiga kelganda rangini o'zgartiradi. Lekin ko'pchilik saytni telefondan ochadi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar kursga yozilsin", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi shu saytni telefonda ochamiz. Oyna torayib qoldi. Voy, menyu yo'qolib qoldi! Jadval va narxlarga qanday o'tamiz?", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: telefonda menyu uch chiziqli tugmaga yig'ilsin. Qarang: tepada shunday tugma chiqdi. Barmoq bosdi va menyu ochildi!", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozilish tugmasi esa pastda doim tursin. Sahifani qancha pastga tushirsangiz ham, barmoq uni darrov topadi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, telefonda sayt boshqacha ishlaydi: sichqoncha yo'q, ekran tor. Shuning uchun telefonda nima bo'lishini ham yozamiz.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Lager saytida telefonda menyu yo'qolib qolyapti. Buyurtmani o'qing va telefonda nima bo'lishini yozing.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar lagerga yozilsin", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qayerda? Buyurtmada: telefonda.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda nima bo'lsin? Buyurtmada: menyu ☰ tugmasiga yig'ilsin.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uch narsa bor: telefonda, menyu, uch chiziqli tugmaga yig'iladi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda menyu ☰ tugmasiga yig'ilsin.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Telefonda menyu uch chiziqli tugmaga yig'ildi. Bosdi va ochildi. Ota-onalar hammasini topadi!", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men klub sayti uchun tugma kattalashsin deb yozdim. Qarang, tugma doim katta bo'lib qoldi! Sichqoncha keldi, lekin hech narsa o'zgarmadi. Qachon? ni yozmabman. Murabbiy nima deyapti? Qatorimni tuzating.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma hali ham doim katta. Qachon? ni qo'shing: sichqoncha ustiga kelganda.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ustiga kelganda nima bo'lsin? Murabbiy: kattalashsin.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodining qatorida qachon? yo'q.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qo'shing: tugma ustiga sichqoncha kelganda.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi tugma oddiy turadi, sichqoncha kelganda esa kattalashadi. Qachon? juda muhim!", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi detektiv bo'lamiz. Sichqonchaga va saytga qarang. Qaysi Qanday ishlaydi? shunday saytni berdi?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Saytga qarang: sichqoncha nima qildi va sayt nima qildi?", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat ustiga keldi: ustiga kelganda. Bosdi: bosilganda. O'zi chiqdi: sahifa ochilganda. Tor oyna: telefonda.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha bosdi va Rahmat! chiqdi. Bu B.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha kelganda kartochka ko'tarildi, bosmadi ham. Bu A.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hech narsa bosilmadi, bloklar o'zi birin-ketin chiqdi. Bu C.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyna telefondek tor, menyu uch chiziqli tugmada. Bu B.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Saytga qarab qaysi qator ishlaganini topasiz.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kafe saytini tuzatamiz! Mijozlar nima xohlashini aytdi. Mening jonli va qiziqarli qatorim o'rniga aniq harakatlarni yozing.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Jonli va qiziqarli hali turibdi. Mijozlar aytgan aniq harakatlarni yozing.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ustiga kelganda nima bo'lsin? Mijozlar: rangi o'zgarsin.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bosilganda nima bo'lsin? Mijozlar: Rahmat! xabari chiqsin.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijozlar ikki holat aytdi: ustiga kelganda va bosilganda.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Jonli va qiziqarli ni o'chiring. Yozing: tugma ustiga kelganda rangi o'zgarsin, bosilganda Rahmat! xabari chiqsin.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Hech narsa sakramaydi. Sichqoncha kelganda tugma rangini o'zgartiradi, bosganda Rahmat! chiqadi. Mijozlar xursand!", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi to'liq Qanday ishlaydi? ni yozasiz: uchta holat. Sport musobaqasi buyurtmasini o'qing.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar musobaqaga yozilsin", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ustiga kelganda nima bo'lsin? Buyurtmada: tugma kattalashsin.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savol bosilganda nima bo'lsin? Buyurtmada: javob ochilsin.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uchta holat bor: ustiga kelganda, bosilganda va telefonda.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ularni vergul bilan ketma-ket yozing: har birida qachon, nima va nima bo'ladi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Uch holat, uch javob. Sayt sichqonchaga ham, barmoqqa ham, telefonga ham javob beradi!", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingiz! Oltita qatorni yozing. Qanday ishlaydi? ga esa bir yoki ikki holat yozing: qachon, nima va nima bo'ladi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima? qatoriga yozing: qanday sayt yaratasiz?", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Nega? qatorini yozing: sayt nima qilishi kerak?", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ichida nima? qatorini yozing: saytda qanday bloklar?", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rinishi? ga uslub va ranglarni yozing. Masalan: zamonaviy, ko'k va oq.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Qanday ishlaydi? qatorini yozing: qachon, nima va nima bo'ladi?", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oltita savol: nima, nega, kim uchun, ichida nima, ko'rinishi, qanday ishlaydi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qanday ishlaydi? ga bir-ikki holat yozing. Masalan: tugma ustiga kelganda kattalashsin.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Bu sizning olti qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: qachon?, harakatning foydasi yoki jonli so'zi?", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: jonli ni sun'iy intellekt o'zicha tushunadi, qachon? siz harakat bo'lmaydi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Jonli bo'lsin desangiz, sun'iy intellekt aniq nima qilishni biladi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida u o'zicha taxmin qiladi va hammasini sakratib yuborishi mumkin.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaxshi harakat odamga yordam beradi: tugma meni bosing deydi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: harakat kerakli joyni ko'rsatadi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugma kattalashsin desangiz, u faqat sichqoncha kelganda kattalashadi.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon? yo'q, shuning uchun tugma doim katta bo'lib qoladi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda sayt boshqacha ishlashi mumkin, buni ham yozish kerak.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: telefonda sichqoncha yo'q, ekran esa tor.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma narsa sakrab tursa, sayt eng qulay bo'ladi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida ko'z charchaydi va tugmani bosib bo'lmaydi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz saytning harakatini to'g'ri tasvirlaysiz.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Men sayt qancha ko'p harakat qilsa, shuncha zo'r deb o'ylagandim. Lekin hammasi sakrasa, ko'z charchaydi va tugmani bosib bo'lmaydi! Yaxshi harakat yordam beradi: tugma meni bosing deydi, bosganda javob beradi, telefonda menyu topiladi. Men adashibman.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning olti qatorli promptingiz va saytingiz.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nima, nega, kim uchun, ichida nima va ko'rinishi sizga tanish.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qanday ishlaydi? bu qachon, nima va nima bo'ladi: ustiga kelganda, bosilganda, sahifa ochilganda va telefonda.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda yettinchi savol: qanday qoidalar? Ko'rishguncha!", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] maqsad: sayt nima qilsin", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sayt qanday ishlaydi?", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshim aylanib ketdi! Buyurtma tugmasi qochib yuribdi, bosolmadim!", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pitsa do'koni: menyu kartochkasi ustiga sichqoncha kelganda u kattalashsin. Mijoz qaysi pitsani tanlayotganini ko'rsin.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] qachon? nima? nima bo'ladi?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi biri aniqroq?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Qanday ishlaydi? aniqroq?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kitob do'koni: tugma bosilganda Savatga qo'shildi degan xabar chiqsin. Shunda mijoz kitob qo'shilganini biladi.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qachon ishladi?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm ko'rgazmasi: saytga kirganda rasmlar birin-ketin silliq paydo bo'lsin, xuddi ko'rgazmada chiroqlar yonganday.", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Lager: ota-onalar saytni ko'pincha telefondan ochadi. Telefonda menyu ☰ tugmasiga yig'ilsin.", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] qayerda? nima? nima bo'ladi?", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qachon?", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Murabbiy: Tugma doim katta bo'lib turmasin. Faqat sichqoncha ustiga kelganda kattalashsin.", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Qanday ishlaydi? shu saytni berdi?", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hech narsa sakramasin va aylanmasin. Tugma ustiga kelganda rangi o'zgarsin, bosilganda Rahmat! xabari chiqsin.", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'liq Qanday ishlaydi?", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sport musobaqasi: tugma ustiga kelganda kattalashsin; savol bosilganda javob ochilsin; telefonda menyu ☰ tugmasiga yig'ilsin.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima yaratasiz?", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt nima qilishi kerak?", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt kim uchun?", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] saytda qanday bloklar?", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt qanday ko'rinsin?", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozyapti…", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Aniq talablar qanday beriladi?", required: true },
+    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday ishlaydi? qatoriga yozing: qachon, nima va nima bo'ladi?", required: true },
+    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Jonli, qiziqarli har kimga har xil. Aniq yozing: qachon, masalan ustiga kelganda yoki bosilganda, nima va nima bo'ladi.", required: true },
+    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma narsa sakrasa, ko'z charchaydi va tugmani bosib bo'lmaydi. Faqat kerakli harakatni yozing.", required: true },
+    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt bu so'zlardan harakatni tanimadi. Masalan: tugma ustiga kelganda rangi o'zgarsin.", required: true },
+    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon? yo'q, shuning uchun sun'iy intellekt tugmani shunchaki doim shunday qildi. Qachon ishlashini yozing: ustiga kelganda yoki bosilganda.", required: true },
+    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz200", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng kuchli jamoalar bir maydonda!", required: true },
+    { id: "uz201", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi pishgan, issiq va mazali.", required: true },
+    { id: "uz202", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiziqarli mashg'ulotlar va do'stona jamoa.", required: true },
+    { id: "uz203", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi bir joyda: qulay va tez.", required: true },
+    { id: "uz204", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammani kutamiz!", required: true },
+    { id: "uz205", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlaringiz bilan birga o'ynang!", required: true },
+    { id: "uz206", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Noldan boshlab o'rganing.", required: true },
+    { id: "uz207", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unutilmas yoz shu yerda boshlanadi!", required: true },
+    { id: "uz208", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir jamoa, bir maqsad!", required: true },
+    { id: "uz209", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bilasizmi?", required: true },
+    { id: "uz210", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tarix, qoidalar va qiziqarli faktlar.", required: true },
+    { id: "uz211", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz bilan hammasi oson.", required: true },
+    { id: "uz212", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", required: true },
+    { id: "uz213", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savollaringiz bormi? Bizga qo'ng'iroq qiling.", required: true },
+    { id: "uz214", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir necha bosishda buyurtma bering!", required: true },
+    { id: "uz215", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sizni kutamiz! Manzil va vaqt quyida.", required: true },
+    { id: "uz216", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon, qayerda va qanday: hammasi shu yerda.", required: true },
+    { id: "uz217", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Farzandingiz uchun xavfsiz, foydali va qulay.", required: true },
+    { id: "uz218", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.", required: true },
+    { id: "uz219", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dars uchun tayyor reja va materiallar.", required: true },
+    { id: "uz220", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Professional yondashuv va yuqori sifat.", required: true },
+    { id: "uz221", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Savolingiz bormi?", required: true },
+    { id: "uz222", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.", required: true },
+    { id: "uz223", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda zo'r! Yana kelamiz.", required: true },
+    { id: "uz224", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tez va mazali.", required: true },
+    { id: "uz225", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalarim juda xursand.", required: true },
+    { id: "uz226", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlarimga ham aytdim.", required: true },
+    { id: "uz227", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qancha turadi? Narxlar bo'limida.", required: true },
+    { id: "uz228", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qachon ochiq? Har kuni.", required: true },
+    { id: "uz229", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qanday yozilaman? Formani to'ldiring.", required: true },
+    { id: "uz230", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.", required: true },
+    { id: "uz231", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ✅ Rahmat!", required: true },
+    { id: "uz232", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javob: hammasi narxlar bo'limida yozilgan.", required: true },
+    { id: "uz233", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 🎁 Obuna bo'ling!", required: true },
+    { id: "uz234", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] −50% CHEGIRMA!", required: true },
+    { id: "uz235", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun?", required: true },
+    { id: "uz236", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ichida nima?", required: true },
+    { id: "uz237", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rinishi?", required: true },
+    { id: "uz238", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday ishlaydi?", required: true },
+    { id: "uz239", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidalar?", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! В моём промпте пять строк. Шестая, новая: как ведёт себя сайт. Я написал пусть будет живым и интересным. Это для семейного кафе! Нажми Отправить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали еду", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь появится сайт, который сделает ИИ", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого! Всё прыгает и крутится. А кнопка Заказать убегает, её не нажать! Смотри, метки Догадка: слово живой ИИ понял по-своему.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] По-моему, чем больше на сайте движения, тем он живее и круче! А ты как думаешь? Сегодня разберём шестой вопрос: как ведёт себя сайт?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку промпта и на кнопку под мышкой.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Hover, это когда мышь наведена на элемент. Кнопка меняется, и человек понимает, что её можно нажать.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В меню игры выбранный герой подсвечивается и становится больше. Ты сразу видишь, кого выбираешь.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Шестой вопрос: как ведёт себя сайт? То есть что делает сайт, когда человек что-то делает. Смотри, строка пока пустая. Мышь навелась на кнопку, нажала, и ничего. Это кнопка или просто надпись?", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в клуб", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: кнопка меняет цвет при наведении. Смотри: мышь навелась, кнопка стала жёлтой! Теперь она говорит: нажми меня.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим: и увеличивается. Кнопка и цвет меняет, и растёт. Такое трудно не заметить.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточки тоже могут отвечать: при наведении они приподнимаются. Человек всегда видит, где сейчас мышь.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Итак, первый случай, при наведении мыши. По-английски это [English pronunciation] hover [Русское произношение]. В строку пишем: когда, что и что происходит.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пиццерия попросила сайт. Пять строк готовы. Прочитай заказ и напиши в строку Как ведёт себя?: когда, что и что происходит.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали пиццу", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда? В заказе: при наведении мыши.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сработало на кнопке. А в заказе, карточка меню.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что делает карточка? В заказе: увеличивается.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе три вещи: когда, что и что происходит.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При наведении мыши карточка меню увеличивается.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши как в образце и нажми Отправить.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Мышь навелась, карточка выросла. Покупатель видит, какую пиццу выбирает!", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Какое из двух Как ведёт себя? больше поможет ИИ?", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где сказано, когда, что и что происходит?", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Живой, интересный ничего точно не говорят. Без когда? нет и движения.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во втором есть когда, что и что происходит.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый точный: карточки, при наведении, приподнимаются.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первом нет когда?: кнопка просто всегда будет большой.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отличаешь живой от точного поведения.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на кнопку и мышь: что появляется после нажатия?", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При нажатии, то есть когда щёлкают мышью или касаются пальцем на телефоне. Сайт ответил, и человек знает, что всё сработало.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажимаешь кнопку лифта, она загорается. Значит, лифт тебя услышал.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Второй случай, при нажатии. Смотри, сейчас мышь нажала Записаться, но ничего не появилось. Записался или нет? Человек не знает и жмёт снова и снова.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались в кружок", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: при нажатии появляется сообщение Спасибо. Смотри: нажала, и внизу появилось сообщение! Теперь человек знает, что записался.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вопросы тоже могут открываться по нажатию. Смотри: нажала на вопрос, открылся ответ. Страница остаётся чистой, а ответ появляется, когда нужен.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, при нажатии сайт должен отвечать: показать сообщение или что-то открыть. Тогда человек знает, что всё сработало.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Покупатели книжного жмут кнопку и не понимают, добавилась книга или нет. Прочитай заказ и напиши в Как ведёт себя?.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали книги", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда? В заказе: при нажатии на кнопку.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сработает при наведении. А в заказе, при нажатии.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при нажатии? В заказе: появляется сообщение.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе: когда (при нажатии) и что происходит (появляется сообщение).", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При нажатии на кнопку появляется сообщение Добавлено в корзину.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Нажали, и появилось Добавлено в корзину. Теперь покупатель точно знает, что книга добавлена!", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь найдём когда?. Я рассказываю, что случилось на сайте, а ты выбираешь: когда это сработало?", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что сделал человек: навёл мышь, нажал или только открыл сайт?", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Только навёл, при наведении. Нажал, при нажатии. Ничего не делал, при открытии страницы. Маленький экран, на телефоне.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Человек навёл мышь на карточку, но ещё не нажал. Карточка приподнялась.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не нажимал, только навёл. Это при наведении.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Человек нажал Отправить, и появилось Спасибо!.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Появилось после нажатия. Это при нажатии.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как только открыл сайт, блоки появились по очереди.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего не нажимали, страница просто открылась. Это при открытии страницы.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На маленьком экране меню свернулось в кнопку с тремя полосками.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Маленький экран, значит, телефон. Это на телефоне.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ты нажал на вопрос, и открылся ответ.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажал, и открылось. Это при нажатии.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты находишь, когда срабатывает каждое поведение.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на момент открытия страницы: как появляются заголовок и блоки?", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Анимация, это плавное движение. Она ведёт взгляд: сначала заголовок, потом блоки, потом кнопка.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В театре занавес открывается медленно, а не рывком. Если сайт открывается так же, это приятно.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третий случай, при открытии страницы. Смотри, сейчас сайт появляется весь сразу, в одно мгновение. Никакого движения.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы молодёжь пришла на фестиваль", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: при открытии страницы блоки плавно появляются по очереди. Смотри: сначала заголовок, потом текст, потом блоки. Взгляд сам идёт куда нужно.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок выезжает сверху. Он выходит первым, как певец на сцену.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Главная кнопка мигает. Теперь она всё время зовёт: нажми меня. Но только одна кнопка, а не всё подряд!", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, и при открытии страницы сайт работает: блоки появляются плавно, главная кнопка зовёт. Это анимация, плавное движение.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Выставка рисунков попросила сайт. Они хотят, чтобы открытие сайта было особенным. Прочитай заказ и напиши в Как ведёт себя?.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди пришли на выставку", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда? В заказе: при открытии сайта, то есть при открытии страницы.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как появляются? В заказе: плавно, по очереди.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе: когда (при открытии сайта), что (картинки) и как (плавно, по очереди).", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] При открытии страницы картинки плавно появляются по очереди.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Картинки появились по очереди, плавно. Как будто на выставке зажёгся свет!", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на ширину окна и на меню сайта.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адаптивный сайт подстраивается под экран телефона: меню сворачивается в кнопку с тремя полосками, нужная кнопка всегда под рукой.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одежду шьют по росту. Пусть и сайт подходит каждому экрану.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четвёртый случай, на телефоне. Сейчас сайт на компьютере. Меню наверху, кнопка меняет цвет при наведении. Но многие открывают сайт с телефона.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались на курс", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь откроем этот сайт на телефоне. Окно стало узким. Ой, меню пропало! Как попасть в расписание и цены?", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: на телефоне меню сворачивается в кнопку с тремя полосками. Смотри: наверху появилась такая кнопка. Палец нажал, и меню открылось!", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А кнопка записи пусть всегда будет внизу. Как бы далеко ни листал страницу, палец сразу её находит.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, на телефоне сайт ведёт себя иначе: мыши нет, экран узкий. Поэтому пишем и то, что происходит на телефоне.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. На сайте лагеря меню на телефоне пропадает. Прочитай заказ и напиши, что происходит на телефоне.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в лагерь", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Где? В заказе: на телефоне.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит на телефоне? В заказе: меню сворачивается в кнопку ☰.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе: где (на телефоне), что (меню) и что происходит (сворачивается в кнопку).", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На телефоне меню сворачивается в кнопку ☰.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! На телефоне меню свернулось в кнопку с тремя полосками. Нажали, открылось. Родители всё найдут!", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я написал для сайта клуба кнопка увеличивается. Смотри, кнопка просто всё время огромная! Мышь навелась, но ничего не изменилось. Я не написал когда?. Что говорит тренер? Исправь мою строку.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопка всё ещё всегда огромная. Добавь когда?: при наведении мыши.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при наведении? Тренер: кнопка увеличивается.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В строке Коди нет когда?.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавь: при наведении мыши на кнопку.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь кнопка обычная, а при наведении мыши растёт. Когда? очень важно!", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь побудем детективами. Смотри на мышь и на сайт. Какое Как ведёт себя? дало такой сайт?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Смотри на сайт: что сделала мышь и что сделал сайт?", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Только навели, при наведении. Нажали, при нажатии. Появилось само, при открытии страницы. Узкое окно, на телефоне.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мышь нажала, и появилось Спасибо!. Это B.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мышь навелась, карточка приподнялась, даже без нажатия. Это A.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего не нажимали, блоки сами появились по очереди. Это C.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Окно узкое, как телефон, а меню, в кнопке с тремя полосками. Это B.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! По сайту ты находишь, какая строка сработала.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь починим сайт кафе! Посетители сказали, чего хотят. Вместо моего живым и интересным напиши точное поведение.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Живым и интересным всё ещё на месте. Напиши точное поведение, о котором просят посетители.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при наведении? Посетители: кнопка меняет цвет.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при нажатии? Посетители: появляется Спасибо!.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посетители назвали два случая: при наведении и при нажатии.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри живым и интересным. Напиши: кнопка меняет цвет при наведении, при нажатии появляется Спасибо!.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ничего не прыгает. При наведении кнопка меняет цвет, при нажатии появляется Спасибо!. Посетители довольны!", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь полное Как ведёт себя?: три случая. Прочитай заказ спортивных соревнований.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались на соревнования", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при наведении? В заказе: кнопка увеличивается.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что происходит при нажатии на вопрос? В заказе: открывается ответ.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе три случая: при наведении, при нажатии и на телефоне.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши их через запятую: в каждом, когда, что и что происходит.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Три случая, три ответа. Сайт отвечает и мыши, и пальцу, и телефону!", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь твой сайт! Напиши все шесть строк, а в Как ведёт себя?, один-два случая: когда, что и что происходит.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Что?: какой сайт создаёшь?", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Зачем?: что должен сделать сайт?", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши цель: чтобы записывались, заказывали или приходили?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Для кого?: кто будет смотреть сайт?", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не понял, для кого. Напиши возраст или кто они.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Что внутри?: какие блоки на сайте?", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Что внутри? не найдено блоков. Например: фото, цены, контакты.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Как выглядит?: каким будет сайт?", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Как выглядит? напиши стиль и цвета. Например: современный, синий и белый.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Как ведёт себя?: когда, что и что происходит?", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Шесть вопросов: что, зачем, для кого, что внутри, как выглядит, как ведёт себя.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Как ведёт себя? напиши один-два случая. Например: кнопка увеличивается при наведении.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Это твой промпт из шести строк. Дома отправишь его настоящему ИИ.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о когда?, о пользе движения или о слове живой?", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: живой ИИ понимает по-своему, а без когда? поведения нет.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать пусть будет живым, ИИ точно знает, что делать.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле он гадает сам и может заставить прыгать всё подряд.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хорошее движение помогает человеку: кнопка говорит нажми меня.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: движение показывает, куда смотреть.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать кнопка увеличивается, она растёт только при наведении мыши.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет когда?, и кнопка просто всё время большая.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На телефоне сайт может вести себя иначе, и это тоже нужно написать.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: на телефоне нет мыши, а экран узкий.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если всё прыгает, сайт самый удобный.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле глаза устают, а кнопку не нажать.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты правильно описываешь поведение сайта.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Я думал: чем больше движения, тем круче. Но когда прыгает всё, глаза устают, а кнопку не нажать! Хорошее движение помогает: кнопка говорит нажми меня, после нажатия сайт отвечает, на телефоне меню находится. Я ошибся.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой промпт из шести строк и твой сайт.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что, зачем, для кого, что внутри и как выглядит ты уже знаешь.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как ведёт себя?, это когда, что и что происходит: при наведении, при нажатии, при открытии страницы и на телефоне.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, седьмой вопрос: какие правила? До встречи!", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] цель: что сделает сайт", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как ведёт себя сайт?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У меня закружилась голова! Кнопка заказа убегает, я не смог нажать!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиццерия: пусть карточка меню увеличивается при наведении мыши. Пусть покупатель видит, какую пиццу выбирает.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] когда? что? что происходит?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши в Как ведёт себя?", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что точнее?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Как ведёт себя? точнее?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] при нажатии на кнопку появляется сообщение Спасибо, ты записан!", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Книжный магазин: при нажатии на кнопку пусть появляется сообщение Добавлено в корзину. Тогда покупатель знает, что книга добавлена.", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Когда сработало?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выставка рисунков: при открытии сайта картинки плавно появляются по очереди, как будто на выставке зажигается свет.", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Лагерь: родители чаще открывают сайт с телефона. Пусть на телефоне меню сворачивается в кнопку ☰.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] где? что? что происходит?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Когда?", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тренер: Пусть кнопка не будет всё время огромной. Пусть растёт только при наведении мыши.", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Добавь когда?", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Как ведёт себя? дало этот сайт?", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] при нажатии на кнопку появляется сообщение Спасибо!", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пусть ничего не прыгает и не крутится. Кнопка меняет цвет при наведении, а при нажатии появляется сообщение Спасибо!.", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] кнопка меняет цвет при наведении, при нажатии появляется сообщение Спасибо!", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спортивные соревнования: кнопка увеличивается при наведении; при нажатии на вопрос открывается ответ; на телефоне меню сворачивается в кнопку ☰.", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что создаёшь?", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что должен сделать сайт?", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого сайт?", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] какие блоки на сайте?", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] каким будет сайт?", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт нашего футбольного клуба · чтобы ребята записывались · дети 11–13 лет · фото, расписание, контакты · современный, зелёный и белый · кнопка увеличивается при наведении, при нажатии появляется Спасибо!", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отправь свой промпт настоящему ИИ и сделай свой сайт.", required: true },
+    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишет…", required: true },
+    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как дать ИИ точные требования?", required: true },
+    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши в строку Как ведёт себя?: когда, что и что происходит?", required: true },
+    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Живой, интересный каждый понимает по-своему. Напиши точно: когда (например, при наведении или нажатии), что и что происходит.", required: true },
+    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если прыгает всё, глаза устают, а кнопку не нажать. Напиши только нужное движение.", required: true },
+    { id: "ru201", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не узнал по этим словам поведение. Например: кнопка меняет цвет при наведении.", required: true },
+    { id: "ru202", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет когда?, и ИИ просто сделал кнопку такой всегда. Напиши, когда это происходит: при наведении или при нажатии.", required: true },
+    { id: "ru203", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru204", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru205", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru206", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сильнейшие команды на одном поле!", required: true },
+    { id: "ru207", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свежее, горячее и вкусное.", required: true },
+    { id: "ru208", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Интересные занятия и дружная команда.", required: true },
+    { id: "ru209", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё в одном месте: удобно и быстро.", required: true },
+    { id: "ru210", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём всех!", required: true },
+    { id: "ru211", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Играй вместе с друзьями!", required: true },
+    { id: "ru212", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Учись с нуля.", required: true },
+    { id: "ru213", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Незабываемое лето начинается здесь!", required: true },
+    { id: "ru214", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна команда, одна цель!", required: true },
+    { id: "ru215", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А ты знал?", required: true },
+    { id: "ru216", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] История, правила и интересные факты.", required: true },
+    { id: "ru217", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С нами всё просто.", required: true },
+    { id: "ru218", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запишись прямо сейчас: мест немного!", required: true },
+    { id: "ru219", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы? Позвони нам.", required: true },
+    { id: "ru220", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закажи в пару нажатий!", required: true },
+    { id: "ru221", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём тебя! Адрес и время ниже.", required: true },
+    { id: "ru222", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда, где и как: всё здесь.", required: true },
+    { id: "ru223", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Безопасно, полезно и удобно для вашего ребёнка.", required: true },
+    { id: "ru224", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё просто и понятно. Есть вопросы, позвоните.", required: true },
+    { id: "ru225", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готовый план и материалы для урока.", required: true },
+    { id: "ru226", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Профессиональный подход и высокое качество.", required: true },
+    { id: "ru227", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы?", required: true },
+    { id: "ru228", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 📞 +998 90 123 45 67, позвоните, всё объясним.", required: true },
+    { id: "ru229", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень круто! Придём ещё.", required: true },
+    { id: "ru230", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё быстро и вкусно.", required: true },
+    { id: "ru231", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети очень довольны.", required: true },
+    { id: "ru232", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рассказал и друзьям.", required: true },
+    { id: "ru233", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Сколько стоит? Смотри в ценах.", required: true },
+    { id: "ru234", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Когда открыто? Каждый день.", required: true },
+    { id: "ru235", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Как записаться? Заполни форму.", required: true },
+    { id: "ru236", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы работаем с 2015 года и стараемся порадовать каждого гостя.", required: true },
+    { id: "ru237", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ✅ Спасибо!", required: true },
+    { id: "ru238", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ответ: всё написано в разделе цен.", required: true },
+    { id: "ru239", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 🎁 Подпишись!", required: true },
+    { id: "ru240", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] −50% СКИДКА!", required: true },
+    { id: "ru241", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем?", required: true },
+    { id: "ru242", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого?", required: true },
+    { id: "ru243", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что внутри?", required: true },
+    { id: "ru244", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как выглядит?", required: true },
+    { id: "ru245", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как ведёт себя?", required: true },
+    { id: "ru246", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие правила?", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! My prompt has five lines. The sixth is new: how the site behaves. I wrote make it lively and fun. It’s for a family cafe! Tap Send.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order food", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site the AI makes will appear here", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa! Everything is jumping and spinning. And the Order now button runs away, you can’t press it! Look at the Guess labels: the AI understood lively its own way.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] I think the more a site moves, the livelier and cooler it is! What do you think? Today we learn the sixth question: how does the site behave?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the prompt line and at the button under the mouse.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Hover means the mouse is over an element. When the button changes, people understand it can be pressed.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In a game menu the hero you point at lights up and grows. You see at once who you’re picking.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The sixth question: how does the site behave? That is, what the site does when a person does something. Look, the line is empty for now. The mouse went over the button and clicked, and nothing happened. Is it a button or just text?", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the club", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: the button changes colour on hover. Look: the mouse came over and the button turned yellow! Now it says press me.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s add: and grows. The button changes colour and gets bigger. That’s hard to miss.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Cards can respond too: they lift up on hover. People always see where the mouse is.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So, the first case is when the mouse is over something. In English it’s called hover. In the line we write: when, what and what happens.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. A pizza shop asked for a site. Five lines are ready. Read the request and write in the How it behaves? line: when, what and what happens.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order pizza", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When? The request says: when the mouse is over it.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That worked on the button. The request is about the menu cards.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What should the card do? The request says: grow.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has three things: when, what and what happens.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When the mouse is over it, the menu card grows.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write it like the example and tap Send.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The mouse came over and the card grew. Customers see which pizza they’re choosing!", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. Which of the two How it behaves? lines helps the AI more?", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which one says when, what and what happens?", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Lively and fun say nothing precise. Without when? there’s no behaviour.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second has when, what and what happens.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first is precise: cards, on hover, lift up.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first has no when?: the button would just stay big all the time.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tell lively from a precise behaviour.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the button and the mouse: what appears after the click?", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On click means pressing with the mouse or tapping with a finger on a phone. When the site answers, people know it worked.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Press a lift button and it lights up. That means the lift heard you.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second case is on click. Look, the mouse just pressed Sign up, but nothing appeared. Signed up or not? People don’t know, so they press again and again.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the club", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: when pressed, show a thank-you message. Look: a click, and a message popped up at the bottom! Now people know they signed up.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Questions can open on click too. Look: a click on the question, and its answer opened. The page stays tidy, and the answer shows up when it’s needed.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So on click the site should answer: show a message or open something. Then people know it worked.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Book shop customers press the button and can’t tell if the book was added. Read the request and write in How it behaves?.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order books", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When? The request says: when the button is pressed.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That works on hover. The request says: on click.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on click? The request says: show a message.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has: when (on click) and what happens (a message appears).", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When the button is pressed, show the message Added to the cart.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! A click, and Added to the cart appeared. Now customers know for sure the book was added!", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s find the when?. I tell you what happened on the site, and you choose: when did it work?", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What did the person do: move the mouse over, click, or just open the site?", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only moved over: on hover. Pressed: on click. Did nothing: when the page opens. A small screen: on a phone.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Someone moved the mouse over a card but didn’t click. The card lifted up.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No click, just moved over. That’s on hover.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Someone pressed Send and Thank you! appeared.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It appeared after the press. That’s on click.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] As soon as you opened the site, the blocks appeared one by one.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Nothing was pressed, the page just opened. That’s when the page opens.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a small screen the menu folded into a three-line button.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A small screen means a phone. That’s on a phone.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You clicked a question and its answer opened.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You clicked, then it opened. That’s on click.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can tell when each behaviour works.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Watch the moment the page opens: how do the heading and blocks appear?", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Animation means smooth movement. It guides the eyes: first the heading, then the blocks, then the button.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In a theatre the curtain opens slowly, not all at once. When a site opens like that, it feels nice.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third case is when the page opens. Look, right now the site appears all at once, in an instant. No movement at all.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get young people to come to the festival", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: when the page opens, blocks fade in one by one. Look: first the heading, then the text, then the blocks. The eyes go where they should.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The title slides in from the top. It arrives first, like a singer coming on stage.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The main button pulses. Now it keeps calling press me. But only one button, not everything!", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the site works when the page opens too: blocks appear smoothly, and the main button calls. That’s animation, smooth movement.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. An art exhibition asked for a site. They want the site’s opening to be special. Read the request and write in How it behaves?.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to come to the exhibition", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When? The request says: when the site opens, that is, when the page opens.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] How should they appear? The request says: smoothly, one by one.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has: when (the site opens), what (the pictures) and how (smoothly, one by one).", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When the page opens, the pictures fade in one by one.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The pictures appeared one by one, smoothly. Just like the lights coming on at the show!", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the window width and at the site’s menu.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A responsive site adapts to a phone screen: the menu folds into a three-line button, and the key button is always at hand.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Clothes are made to fit. Let a site fit every screen too.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The fourth case is on a phone. Right now the site is on a computer. The menu is at the top, and the button changes colour on hover. But lots of people open sites on a phone.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the course", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now let’s open the site on a phone. The window got narrow. Oops, the menu is gone! How do we get to the schedule and prices?", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: on a phone the menu folds into a three-line button. Look: that button appeared at the top. A finger tapped it, and the menu opened!", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And let the sign-up button always stay at the bottom. However far you scroll, your finger finds it at once.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So on a phone a site behaves differently: there’s no mouse and the screen is narrow. That’s why we also write what happens on a phone.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. On the camp site the menu disappears on a phone. Read the request and write what happens on a phone.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the camp", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where? The request says: on a phone.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on a phone? The request says: the menu collapses into a ☰ button.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has: where (on a phone), what (the menu) and what happens (it folds into a button).", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a phone the menu collapses into a ☰ button.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! On a phone the menu folded into a three-line button. A tap, and it opened. Parents will find everything!", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I wrote the button grows for the club site. Look, the button is just huge all the time! The mouse came over, but nothing changed. I didn’t write when?. What does the coach say? Fix my line.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button is still huge all the time. Add the when?: when the mouse is over it.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on hover? The coach says: it grows.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Kodi’s line has no when?.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Add: when the mouse is over the button.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the button is normal and only grows on hover. The when? really matters!", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Let’s be detectives. Watch the mouse and the site. Which How it behaves? gave this site?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Watch the site: what did the mouse do, and what did the site do?", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only moved over: on hover. Clicked: on click. Appeared by itself: when the page opens. A narrow window: on a phone.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The mouse clicked and Thank you! appeared. That’s B.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The mouse came over and the card lifted, without a click. That’s A.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Nothing was pressed, the blocks appeared one by one by themselves. That’s C.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The window is narrow like a phone, and the menu is in the three-line button. That’s B.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can tell from the site which line did the work.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s fix the cafe site! The customers said what they want. Instead of my lively and fun, write the exact behaviour.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Lively and fun is still there. Write the exact behaviour the customers asked for.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on hover? The customers say: the colour changes.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on click? The customers say: show Thank you!.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The customers named two cases: on hover and on click.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Delete lively and fun. Write: the button changes colour on hover, and when pressed shows Thank you!.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Nothing jumps. On hover the button changes colour, and on click Thank you! appears. The customers are happy!", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the full How it behaves?: three cases. Read the sports contest’s request.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the contest", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens on hover? The request says: the button grows.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What happens when a question is clicked? The request says: its answer opens.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has three cases: on hover, on click and on a phone.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write them one after another with commas: each with when, what and what happens.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Three cases, three answers. The site responds to the mouse, a finger and a phone!", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now your own site! Write all six lines, and in How it behaves? one or two cases: when, what and what happens.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the What? line: what site are you making?", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a topic. Write a specific thing: a club, server, shop or party site.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Why? line: what should the site do?", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the goal: should people sign up, order or come?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Who for? line: who will look at the site?", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI couldn’t tell who. Write their age or who they are.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the What’s inside? line: which blocks?", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No blocks found in What’s inside?. For example: photos, prices, contact.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the How it looks? line: how should it look?", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In How it looks? write a style and colours. For example: modern, blue and white.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the How it behaves? line: when, what and what happens?", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Six questions: what, why, who for, what’s inside, how it looks, how it behaves.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In How it behaves? write one or two cases. For example: the button grows on hover.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! That’s your six-line prompt. At home you’ll send it to a real AI.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now a quick check. I say a sentence, and you choose: true or false?", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s it about: the when?, why movement helps, or the word lively?", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: the AI interprets lively its own way, and without when? there’s no behaviour.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you write make it lively, the AI knows exactly what to do.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually it guesses on its own and might make everything jump.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Good movement helps people: the button says press me.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: movement shows where to look.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you write the button grows, it only grows when the mouse is over it.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no when?, so the button just stays big all the time.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a phone a site can behave differently, and you should write that too.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: a phone has no mouse, and the screen is narrow.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If everything jumps, the site is easiest to use.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the eyes get tired and the button can’t be pressed.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You describe a site’s behaviour the right way.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the riddle. I thought the more movement, the cooler. But when everything jumps, eyes get tired and the button can’t be pressed! Good movement helps: the button says press me, the site answers a click, and the menu is easy to find on a phone. I was wrong.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your six-line prompt and your site.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You already know what, why, who for, what’s inside and how it looks.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] How it behaves? is when, what and what happens: on hover, on click, when the page opens and on a phone.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Homework: copy your prompt and send it to a real AI. Next lesson: the seventh question, what rules? See you!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] the goal: what the site should do", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How does it behave?", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My head is spinning! The order button keeps running away, I couldn’t press it!", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pizza shop: let a menu card grow when the mouse is over it, so customers see which pizza they’re choosing.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] when? what? what happens?", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write in How it behaves?", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which is clearer?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which How it behaves? is clearer?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] when the button is pressed, show the message Thanks, you’re signed up!", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Book shop: when the button is pressed, show the message Added to the cart. Then customers know the book was added.", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] When did it work?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Art exhibition: when the site opens, the pictures fade in one by one, as if the lights were coming on at the show.", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Camp: parents usually open the site on a phone. On a phone, let the menu collapse into a ☰ button.", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] where? what? what happens?", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The coach: The button shouldn’t be huge all the time. It should only grow when the mouse is over it.", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Add the when?", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which How it behaves? gave this site?", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] when the button is pressed, show the message Thank you!", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Nothing should jump or spin. The button changes colour on hover, and when pressed shows the message Thank you!.", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] the button changes colour on hover, and when pressed shows the message Thank you!", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sports contest: the button grows on hover; clicking a question opens its answer; on a phone the menu collapses into a ☰ button.", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what are you making?", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what should the site do?", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who is the site for?", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] which blocks?", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] how should it look?", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our football club site · get kids to sign up · kids aged 11–13 · photos, schedule, contact · modern, green and white · the button grows on hover, and when pressed shows Thank you!", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Send your prompt to a real AI and make your site.", required: true },
+    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Typing…", required: true },
+    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How to give the AI exact requirements?", required: true },
+    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write in the How it behaves? line: when, what and what happens?", required: true },
+    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Lively and fun mean different things to everyone. Be precise: when (for example on hover or on click), what and what happens.", required: true },
+    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If everything jumps, eyes get tired and the button can’t be pressed. Write only the movement that’s needed.", required: true },
+    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI didn’t recognise a behaviour. For example: the button changes colour on hover.", required: true },
+    { id: "en200", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no when?, so the AI simply made the button like that all the time. Write when it happens: on hover or on click.", required: true },
+    { id: "en201", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en202", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en203", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en204", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The strongest teams on one field!", required: true },
+    { id: "en205", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fresh, hot and tasty.", required: true },
+    { id: "en206", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fun sessions and a friendly team.", required: true },
+    { id: "en207", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in one place: quick and easy.", required: true },
+    { id: "en208", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everyone is welcome!", required: true },
+    { id: "en209", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Play with your friends!", required: true },
+    { id: "en210", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Learn from scratch.", required: true },
+    { id: "en211", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An unforgettable summer starts here!", required: true },
+    { id: "en212", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One team, one goal!", required: true },
+    { id: "en213", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did you know?", required: true },
+    { id: "en214", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] History, rules and fun facts.", required: true },
+    { id: "en215", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything is easy with us.", required: true },
+    { id: "en216", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sign up now: places are limited!", required: true },
+    { id: "en217", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Got questions? Give us a call.", required: true },
+    { id: "en218", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Order in just a few taps!", required: true },
+    { id: "en219", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’re waiting for you! Address and time below.", required: true },
+    { id: "en220", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When, where and how: it’s all here.", required: true },
+    { id: "en221", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Safe, useful and convenient for your child.", required: true },
+    { id: "en222", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Simple and clear. Questions? Just give us a call.", required: true },
+    { id: "en223", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A ready plan and materials for your class.", required: true },
+    { id: "en224", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A professional approach and top quality.", required: true },
+    { id: "en225", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Got questions?", required: true },
+    { id: "en226", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 📞 +998 90 123 45 67: call us and we’ll explain everything.", required: true },
+    { id: "en227", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Really great! We’ll be back.", required: true },
+    { id: "en228", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything was quick and tasty.", required: true },
+    { id: "en229", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My kids loved it.", required: true },
+    { id: "en230", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I told my friends too.", required: true },
+    { id: "en231", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How much is it? See prices.", required: true },
+    { id: "en232", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ When are you open? Every day.", required: true },
+    { id: "en233", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How do I sign up? Fill in the form.", required: true },
+    { id: "en234", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’ve been working since 2015 and try to make every visitor happy.", required: true },
+    { id: "en235", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ✅ Thank you!", required: true },
+    { id: "en236", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Answer: it’s all in the prices section.", required: true },
+    { id: "en237", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 🎁 Subscribe!", required: true },
+    { id: "en238", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] −50% OFF!", required: true },
+    { id: "en239", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] For whom?", required: true },
+    { id: "en240", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s inside?", required: true },
+    { id: "en241", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it looks?", required: true },
+    { id: "en242", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it behaves?", required: true },
+    { id: "en243", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What rules?", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Promptimda beshta qator bor. Oltinchisi yangi: sayt qanday ishlaydi. Men jonli va qiziqarli bo'lsin deb yozdim. Bu oilaviy kafe uchun! Yuborishni bosing.": "uz001",
+    "odamlar ovqat buyurtma qilsin": "uz002",
+    "Bu yerda sun'iy intellekt yaratgan sayt chiqadi": "uz003",
+    "Voy! Hamma narsa sakrayapti va aylanyapti. Buyurtma berish tugmasi esa qochib yuribdi, uni bosib bo'lmaydi! Qarang, Taxmin belgilari: jonli degan so'zni sun'iy intellekt o'zicha tushundi.": "uz004",
+    "Menimcha, sayt qancha ko'p harakat qilsa, shuncha jonli va zo'r bo'ladi! Siz nima deb o'ylaysiz? Bugun oltinchi savolni o'rganamiz: sayt qanday ishlaydi?": "uz005",
+    "Prompt qatoriga va sichqoncha ustiga kelgan tugmaga qarang.": "uz006",
+    "Hover, ya'ni sichqoncha ustiga kelganda degani. Tugma o'zgarsa, odam uni bosish mumkinligini tushunadi.": "uz007",
+    "O'yin menyusida tanlangan qahramon yorishib, kattalashadi. Siz kimni tanlayotganingizni darrov bilasiz.": "uz008",
+    "Oltinchi savol: sayt qanday ishlaydi? Ya'ni odam biror narsa qilganda sayt nima qiladi. Qarang, hozir qator bo'sh. Sichqoncha tugma ustiga keldi, bosdi, lekin hech narsa bo'lmadi. Bu tugmami yoki oddiy yozuvmi?": "uz009",
+    "bolalar klubga yozilsin": "uz010",
+    "Yozamiz: tugma ustiga sichqoncha kelganda rangi o'zgarsin. Qarang: sichqoncha keldi, tugma sariq bo'ldi! Endi u meni bosing deyapti.": "uz011",
+    "Yana qo'shamiz: kattalashsin. Tugma ham rangini o'zgartiradi, ham kattalashadi. Buni payqamaslik qiyin.": "uz012",
+    "Kartochkalar ham javob berishi mumkin: ustiga kelganda ko'tariladi. Odam sichqoncha qayerda turganini doim ko'radi.": "uz013",
+    "Demak, birinchi holat: sichqoncha ustiga kelganda. Ingliz tilida bu [English pronunciation] hover [O'zbekcha tallaffuz] deyiladi. Qatorga yozamiz: qachon, nima va nima bo'ladi.": "uz014",
+    "Endi siz. Pitsa do'koni sayt so'radi. Beshta qator tayyor. Buyurtmani o'qing va Qanday ishlaydi? qatoriga yozing: qachon, nima va nima bo'ladi.": "uz015",
+    "odamlar pitsa buyurtma qilsin": "uz016",
+    "Qachon? Buyurtmada: sichqoncha ustiga kelganda.": "uz017",
+    "Bu tugmaga ishladi. Buyurtmada esa menyu kartochkasi.": "uz018",
+    "Kartochka nima qilsin? Buyurtmada: kattalashsin.": "uz019",
+    "Buyurtmada uch narsa bor: qachon, nima va nima bo'ladi.": "uz020",
+    "Sichqoncha ustiga kelganda, menyu kartochkasi kattalashsin.": "uz021",
+    "Namunadagidek yozing va Yuborishni bosing.": "uz022",
+    "Zo'r! Sichqoncha keldi, kartochka kattalashdi. Mijoz qaysi pitsani tanlayotganini ko'radi!": "uz023",
+    "Endi o'zingizni sinab ko'ring. Ikki Qanday ishlaydi? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?": "uz024",
+    "Qaysi birida qachon, nima va nima bo'lishi aytilgan?": "uz025",
+    "Jonli, qiziqarli hech narsani aniq aytmaydi. Qachon? bo'lmasa, harakat ham bo'lmaydi.": "uz026",
+    "Ikkinchisida qachon, nima va nima bo'lishi bor.": "uz027",
+    "Birinchisi aniq: kartochkalar, ustiga kelganda, ko'tariladi.": "uz028",
+    "Birinchisida qachon? yo'q: tugma doim katta bo'lib qoladi.": "uz029",
+    "Barakalla!": "uz030",
+    "Hammasi to'g'ri! Jonli ni aniq harakatdan ajratasiz.": "uz031",
+    "Tugmaga va sichqonchaga qarang: bosilgandan keyin nima chiqadi?": "uz032",
+    "Bosilganda, ya'ni sichqoncha bilan bosganda yoki telefonda barmoq tekkanda degani. Sayt javob bersa, odam hammasi ishlaganini biladi.": "uz033",
+    "Lift tugmasini bossangiz, u yonadi. Demak, lift sizni eshitdi.": "uz034",
+    "Ikkinchi holat: bosilganda. Qarang, hozir Ro'yxatdan o'tish tugmasini bosdi, lekin hech narsa chiqmadi. Yozildimi yoki yo'qmi? Odam bilmaydi va yana-yana bosadi.": "uz035",
+    "o'quvchilar to'garakka yozilsin": "uz036",
+    "Yozamiz: tugma bosilganda Rahmat xabari chiqsin. Qarang: bosdi va pastda xabar chiqdi! Endi odam yozilganini biladi.": "uz037",
+    "Savollar ham bosilganda ochilishi mumkin. Qarang: savolni bosdi, javobi ochildi. Sahifa toza turadi, javob esa kerak bo'lganda chiqadi.": "uz038",
+    "Demak, bosilganda sayt javob berishi kerak: xabar chiqsin yoki narsa ochilsin. Shunda odam hammasi ishlaganini biladi.": "uz039",
+    "Endi siz. Kitob do'koni mijozlari tugmani bosib, kitob qo'shildimi yoki yo'qmi, bilmay qolyapti. Buyurtmani o'qing va Qanday ishlaydi? ga yozing.": "uz040",
+    "odamlar kitob buyurtma qilsin": "uz041",
+    "Qachon? Buyurtmada: tugma bosilganda.": "uz042",
+    "Bu sichqoncha ustiga kelganda ishlaydi. Buyurtmada esa: bosilganda.": "uz043",
+    "Bosilganda nima bo'lsin? Buyurtmada: xabar chiqsin.": "uz044",
+    "Buyurtmada qachon ham, nima bo'lishi ham bor: bosilganda xabar chiqadi.": "uz045",
+    "Tugma bosilganda, Savatga qo'shildi xabari chiqsin.": "uz046",
+    "Ajoyib! Bosdi va Savatga qo'shildi chiqdi. Endi mijoz kitob qo'shilganini aniq biladi!": "uz047",
+    "Endi qachon? ni topamiz. Men saytda nima bo'lganini aytaman, siz tanlang: bu qachon ishladi?": "uz048",
+    "Odam nima qildi: sichqonchani olib keldi, bosdi yoki saytni endi ochdi?": "uz049",
+    "Faqat ustiga keldi: ustiga kelganda. Bosdi: bosilganda. Hech narsa qilmadi: sahifa ochilganda. Kichik ekran: telefonda.": "uz050",
+    "Odam kartochkaga sichqonchani olib keldi, hali bosmadi. Kartochka ko'tarildi.": "uz051",
+    "Bosmadi, faqat ustiga keldi. Bu ustiga kelganda.": "uz052",
+    "Odam Yuborish ni bosdi va Rahmat! chiqdi.": "uz053",
+    "Bosgandan keyin chiqdi. Bu bosilganda.": "uz054",
+    "Saytga kirishingiz bilan bloklar birin-ketin paydo bo'ldi.": "uz055",
+    "Hech narsa bosilmadi, sahifa ochildi xolos. Bu sahifa ochilganda.": "uz056",
+    "Kichkina ekranda menyu uch chiziqli tugmaga yig'ildi.": "uz057",
+    "Kichkina ekran bu telefon. Demak, telefonda.": "uz058",
+    "Savolni bosdingiz va uning javobi ochildi.": "uz059",
+    "Bosdingiz, keyin ochildi. Bu bosilganda.": "uz060",
+    "Zo'r! Har bir harakat qachon ishlashini topasiz.": "uz061",
+    "Sahifa ochilgan paytga qarang: sarlavha va bloklar qanday chiqadi?": "uz062",
+    "Animatsiya, ya'ni silliq harakat degani. U ko'zni kerakli joyga olib boradi: oldin sarlavha, keyin bloklar, keyin tugma.": "uz063",
+    "Teatrda parda asta ochiladi, birdan emas. Sayt ham shunday ochilsa, yoqimli.": "uz064",
+    "Uchinchi holat: sahifa ochilganda. Qarang, hozir sayt bir zumda, birdaniga paydo bo'ldi. Hech qanday harakat yo'q.": "uz065",
+    "yoshlar festivalga kelsin": "uz066",
+    "Yozamiz: sahifa ochilganda bloklar birin-ketin silliq paydo bo'lsin. Qarang: oldin sarlavha, keyin matn, keyin bloklar. Ko'z o'zi kerakli joyga boradi.": "uz067",
+    "Sarlavha tepadan sirpanib tushsin. U sahnaga chiqqan qo'shiqchidek birinchi bo'lib keladi.": "uz068",
+    "Asosiy tugma lipillab tursin. Endi u doim meni bosing deb chaqiradi. Lekin faqat bitta tugma, hammasi emas!": "uz069",
+    "Demak, sahifa ochilganda ham sayt ishlaydi: bloklar silliq chiqadi, asosiy tugma chaqiradi. Bu animatsiya, ya'ni silliq harakat degani.": "uz070",
+    "Endi siz. Rasm ko'rgazmasi sayt so'radi. Ular sayt ochilganda o'zgacha bo'lishini xohlaydi. Buyurtmani o'qing va Qanday ishlaydi? ga yozing.": "uz071",
+    "odamlar ko'rgazmaga kelsin": "uz072",
+    "Qachon? Buyurtmada: saytga kirganda, ya'ni sahifa ochilganda degani.": "uz073",
+    "Qanday paydo bo'lsin? Buyurtmada: birin-ketin, silliq.": "uz074",
+    "Buyurtmada uch narsa bor: saytga kirganda, rasmlar, birin-ketin silliq paydo bo'ladi.": "uz075",
+    "Saytga kirganda rasmlar birin-ketin silliq paydo bo'lsin.": "uz076",
+    "Ajoyib! Rasmlar birin-ketin, silliq chiqdi. Xuddi ko'rgazmada chiroq yonganday!": "uz077",
+    "Oynaning kengligiga va saytning menyusiga qarang.": "uz078",
+    "Moslashuvchan sayt, ya'ni telefon ekraniga moslashadigan sayt degani: menyu uch chiziqli tugmaga yig'iladi, kerakli tugma qo'l ostida turadi.": "uz079",
+    "Kiyim bolaning bo'yiga moslab tikiladi. Sayt ham har bir ekranga mos bo'lsin.": "uz080",
+    "To'rtinchi holat: telefonda. Hozir sayt kompyuterda. Menyu tepada, tugma ustiga kelganda rangini o'zgartiradi. Lekin ko'pchilik saytni telefondan ochadi.": "uz081",
+    "o'quvchilar kursga yozilsin": "uz082",
+    "Endi shu saytni telefonda ochamiz. Oyna torayib qoldi. Voy, menyu yo'qolib qoldi! Jadval va narxlarga qanday o'tamiz?": "uz083",
+    "Yozamiz: telefonda menyu uch chiziqli tugmaga yig'ilsin. Qarang: tepada shunday tugma chiqdi. Barmoq bosdi va menyu ochildi!": "uz084",
+    "Yozilish tugmasi esa pastda doim tursin. Sahifani qancha pastga tushirsangiz ham, barmoq uni darrov topadi.": "uz085",
+    "Demak, telefonda sayt boshqacha ishlaydi: sichqoncha yo'q, ekran tor. Shuning uchun telefonda nima bo'lishini ham yozamiz.": "uz086",
+    "Endi siz. Lager saytida telefonda menyu yo'qolib qolyapti. Buyurtmani o'qing va telefonda nima bo'lishini yozing.": "uz087",
+    "bolalar lagerga yozilsin": "uz088",
+    "Qayerda? Buyurtmada: telefonda.": "uz089",
+    "Telefonda nima bo'lsin? Buyurtmada: menyu ☰ tugmasiga yig'ilsin.": "uz090",
+    "Buyurtmada uch narsa bor: telefonda, menyu, uch chiziqli tugmaga yig'iladi.": "uz091",
+    "Telefonda menyu ☰ tugmasiga yig'ilsin.": "uz092",
+    "Zo'r! Telefonda menyu uch chiziqli tugmaga yig'ildi. Bosdi va ochildi. Ota-onalar hammasini topadi!": "uz093",
+    "Men klub sayti uchun tugma kattalashsin deb yozdim. Qarang, tugma doim katta bo'lib qoldi! Sichqoncha keldi, lekin hech narsa o'zgarmadi. Qachon? ni yozmabman. Murabbiy nima deyapti? Qatorimni tuzating.": "uz094",
+    "Tugma hali ham doim katta. Qachon? ni qo'shing: sichqoncha ustiga kelganda.": "uz095",
+    "Ustiga kelganda nima bo'lsin? Murabbiy: kattalashsin.": "uz096",
+    "Kodining qatorida qachon? yo'q.": "uz097",
+    "Qo'shing: tugma ustiga sichqoncha kelganda.": "uz098",
+    "Zo'r! Endi tugma oddiy turadi, sichqoncha kelganda esa kattalashadi. Qachon? juda muhim!": "uz099",
+    "Endi detektiv bo'lamiz. Sichqonchaga va saytga qarang. Qaysi Qanday ishlaydi? shunday saytni berdi?": "uz100",
+    "Saytga qarang: sichqoncha nima qildi va sayt nima qildi?": "uz101",
+    "Faqat ustiga keldi: ustiga kelganda. Bosdi: bosilganda. O'zi chiqdi: sahifa ochilganda. Tor oyna: telefonda.": "uz102",
+    "Sichqoncha bosdi va Rahmat! chiqdi. Bu B.": "uz103",
+    "Sichqoncha kelganda kartochka ko'tarildi, bosmadi ham. Bu A.": "uz104",
+    "Hech narsa bosilmadi, bloklar o'zi birin-ketin chiqdi. Bu C.": "uz105",
+    "Oyna telefondek tor, menyu uch chiziqli tugmada. Bu B.": "uz106",
+    "Zo'r! Saytga qarab qaysi qator ishlaganini topasiz.": "uz107",
+    "Endi kafe saytini tuzatamiz! Mijozlar nima xohlashini aytdi. Mening jonli va qiziqarli qatorim o'rniga aniq harakatlarni yozing.": "uz108",
+    "Jonli va qiziqarli hali turibdi. Mijozlar aytgan aniq harakatlarni yozing.": "uz109",
+    "Ustiga kelganda nima bo'lsin? Mijozlar: rangi o'zgarsin.": "uz110",
+    "Bosilganda nima bo'lsin? Mijozlar: Rahmat! xabari chiqsin.": "uz111",
+    "Mijozlar ikki holat aytdi: ustiga kelganda va bosilganda.": "uz112",
+    "Jonli va qiziqarli ni o'chiring. Yozing: tugma ustiga kelganda rangi o'zgarsin, bosilganda Rahmat! xabari chiqsin.": "uz113",
+    "Ajoyib! Hech narsa sakramaydi. Sichqoncha kelganda tugma rangini o'zgartiradi, bosganda Rahmat! chiqadi. Mijozlar xursand!": "uz114",
+    "Endi to'liq Qanday ishlaydi? ni yozasiz: uchta holat. Sport musobaqasi buyurtmasini o'qing.": "uz115",
+    "o'quvchilar musobaqaga yozilsin": "uz116",
+    "Ustiga kelganda nima bo'lsin? Buyurtmada: tugma kattalashsin.": "uz117",
+    "Savol bosilganda nima bo'lsin? Buyurtmada: javob ochilsin.": "uz118",
+    "Buyurtmada uchta holat bor: ustiga kelganda, bosilganda va telefonda.": "uz119",
+    "Ularni vergul bilan ketma-ket yozing: har birida qachon, nima va nima bo'ladi.": "uz120",
+    "Barakalla! Uch holat, uch javob. Sayt sichqonchaga ham, barmoqqa ham, telefonga ham javob beradi!": "uz121",
+    "Endi o'z saytingiz! Oltita qatorni yozing. Qanday ishlaydi? ga esa bir yoki ikki holat yozing: qachon, nima va nima bo'ladi.": "uz122",
+    "Nima? qatoriga yozing: qanday sayt yaratasiz?": "uz123",
+    "Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.": "uz124",
+    "Endi Nega? qatorini yozing: sayt nima qilishi kerak?": "uz125",
+    "Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?": "uz126",
+    "Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?": "uz127",
+    "Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.": "uz128",
+    "Endi Ichida nima? qatorini yozing: saytda qanday bloklar?": "uz129",
+    "Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.": "uz130",
+    "Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?": "uz131",
+    "Ko'rinishi? ga uslub va ranglarni yozing. Masalan: zamonaviy, ko'k va oq.": "uz132",
+    "Endi Qanday ishlaydi? qatorini yozing: qachon, nima va nima bo'ladi?": "uz133",
+    "Oltita savol: nima, nega, kim uchun, ichida nima, ko'rinishi, qanday ishlaydi.": "uz134",
+    "Qanday ishlaydi? ga bir-ikki holat yozing. Masalan: tugma ustiga kelganda kattalashsin.": "uz135",
+    "Voy, zo'r! Bu sizning olti qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.": "uz136",
+    "Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?": "uz137",
+    "Gap nima haqida: qachon?, harakatning foydasi yoki jonli so'zi?": "uz138",
+    "Esingizdami: jonli ni sun'iy intellekt o'zicha tushunadi, qachon? siz harakat bo'lmaydi.": "uz139",
+    "Jonli bo'lsin desangiz, sun'iy intellekt aniq nima qilishni biladi.": "uz140",
+    "Aslida u o'zicha taxmin qiladi va hammasini sakratib yuborishi mumkin.": "uz141",
+    "Yaxshi harakat odamga yordam beradi: tugma meni bosing deydi.": "uz142",
+    "To'g'ri: harakat kerakli joyni ko'rsatadi.": "uz143",
+    "Tugma kattalashsin desangiz, u faqat sichqoncha kelganda kattalashadi.": "uz144",
+    "Qachon? yo'q, shuning uchun tugma doim katta bo'lib qoladi.": "uz145",
+    "Telefonda sayt boshqacha ishlashi mumkin, buni ham yozish kerak.": "uz146",
+    "To'g'ri: telefonda sichqoncha yo'q, ekran esa tor.": "uz147",
+    "Hamma narsa sakrab tursa, sayt eng qulay bo'ladi.": "uz148",
+    "Aslida ko'z charchaydi va tugmani bosib bo'lmaydi.": "uz149",
+    "Hammasi to'g'ri! Siz saytning harakatini to'g'ri tasvirlaysiz.": "uz150",
+    "Endi topishmoqqa qaytamiz. Men sayt qancha ko'p harakat qilsa, shuncha zo'r deb o'ylagandim. Lekin hammasi sakrasa, ko'z charchaydi va tugmani bosib bo'lmaydi! Yaxshi harakat yordam beradi: tugma meni bosing deydi, bosganda javob beradi, telefonda menyu topiladi. Men adashibman.": "uz151",
+    "Qarang, bu sizning olti qatorli promptingiz va saytingiz.": "uz152",
+    "Nima, nega, kim uchun, ichida nima va ko'rinishi sizga tanish.": "uz153",
+    "Qanday ishlaydi? bu qachon, nima va nima bo'ladi: ustiga kelganda, bosilganda, sahifa ochilganda va telefonda.": "uz154",
+    "Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda yettinchi savol: qanday qoidalar? Ko'rishguncha!": "uz155",
+    "maqsad: sayt nima qilsin": "uz156",
+    "Voy, zo‘r!": "uz157",
+    "Ana! Chiqdi!": "uz158",
+    "Super!": "uz159",
+    "Qoyil!": "uz160",
+    "Ura!": "uz161",
+    "Zo‘r-ku!": "uz162",
+    "Yana bir bor urinib ko‘ring.": "uz163",
+    "Diqqat bilan qarang.": "uz164",
+    "Yaqin qoldingiz. Shoshilmang.": "uz165",
+    "Sayt qanday ishlaydi?": "uz166",
+    "Boshim aylanib ketdi! Buyurtma tugmasi qochib yuribdi, bosolmadim!": "uz167",
+    "Pitsa do'koni: menyu kartochkasi ustiga sichqoncha kelganda u kattalashsin. Mijoz qaysi pitsani tanlayotganini ko'rsin.": "uz168",
+    "qachon? nima? nima bo'ladi?": "uz169",
+    "Qaysi biri aniqroq?": "uz170",
+    "Qaysi Qanday ishlaydi? aniqroq?": "uz171",
+    "Kitob do'koni: tugma bosilganda Savatga qo'shildi degan xabar chiqsin. Shunda mijoz kitob qo'shilganini biladi.": "uz172",
+    "Qachon ishladi?": "uz173",
+    "Rasm ko'rgazmasi: saytga kirganda rasmlar birin-ketin silliq paydo bo'lsin, xuddi ko'rgazmada chiroqlar yonganday.": "uz174",
+    "Lager: ota-onalar saytni ko'pincha telefondan ochadi. Telefonda menyu ☰ tugmasiga yig'ilsin.": "uz175",
+    "qayerda? nima? nima bo'ladi?": "uz176",
+    "Qachon?": "uz177",
+    "Murabbiy: Tugma doim katta bo'lib turmasin. Faqat sichqoncha ustiga kelganda kattalashsin.": "uz178",
+    "Qaysi Qanday ishlaydi? shu saytni berdi?": "uz179",
+    "Hech narsa sakramasin va aylanmasin. Tugma ustiga kelganda rangi o'zgarsin, bosilganda Rahmat! xabari chiqsin.": "uz180",
+    "To'liq Qanday ishlaydi?": "uz181",
+    "Sport musobaqasi: tugma ustiga kelganda kattalashsin; savol bosilganda javob ochilsin; telefonda menyu ☰ tugmasiga yig'ilsin.": "uz182",
+    "nima yaratasiz?": "uz183",
+    "sayt nima qilishi kerak?": "uz184",
+    "sayt kim uchun?": "uz185",
+    "saytda qanday bloklar?": "uz186",
+    "sayt qanday ko'rinsin?": "uz187",
+    "To'g'rimi?": "uz188",
+    "To'g'rimi yoki noto'g'rimi?": "uz189",
+    "Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.": "uz190",
+    "Yozyapti…": "uz191",
+    "Aniq talablar qanday beriladi?": "uz192",
+    "Qanday ishlaydi? qatoriga yozing: qachon, nima va nima bo'ladi?": "uz193",
+    "Jonli, qiziqarli har kimga har xil. Aniq yozing: qachon, masalan ustiga kelganda yoki bosilganda, nima va nima bo'ladi.": "uz194",
+    "Hamma narsa sakrasa, ko'z charchaydi va tugmani bosib bo'lmaydi. Faqat kerakli harakatni yozing.": "uz195",
+    "Sun'iy intellekt bu so'zlardan harakatni tanimadi. Masalan: tugma ustiga kelganda rangi o'zgarsin.": "uz196",
+    "Qachon? yo'q, shuning uchun sun'iy intellekt tugmani shunchaki doim shunday qildi. Qachon ishlashini yozing: ustiga kelganda yoki bosilganda.": "uz197",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz198",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz199",
+    "Eng kuchli jamoalar bir maydonda!": "uz200",
+    "Yangi pishgan, issiq va mazali.": "uz201",
+    "Qiziqarli mashg'ulotlar va do'stona jamoa.": "uz202",
+    "Hammasi bir joyda: qulay va tez.": "uz203",
+    "Hammani kutamiz!": "uz204",
+    "Do'stlaringiz bilan birga o'ynang!": "uz205",
+    "Noldan boshlab o'rganing.": "uz206",
+    "Unutilmas yoz shu yerda boshlanadi!": "uz207",
+    "Bir jamoa, bir maqsad!": "uz208",
+    "Bilasizmi?": "uz209",
+    "Tarix, qoidalar va qiziqarli faktlar.": "uz210",
+    "Biz bilan hammasi oson.": "uz211",
+    "Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!": "uz212",
+    "Savollaringiz bormi? Bizga qo'ng'iroq qiling.": "uz213",
+    "Bir necha bosishda buyurtma bering!": "uz214",
+    "Sizni kutamiz! Manzil va vaqt quyida.": "uz215",
+    "Qachon, qayerda va qanday: hammasi shu yerda.": "uz216",
+    "Farzandingiz uchun xavfsiz, foydali va qulay.": "uz217",
+    "Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.": "uz218",
+    "Dars uchun tayyor reja va materiallar.": "uz219",
+    "Professional yondashuv va yuqori sifat.": "uz220",
+    "Savolingiz bormi?": "uz221",
+    "📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.": "uz222",
+    "Juda zo'r! Yana kelamiz.": "uz223",
+    "Hammasi tez va mazali.": "uz224",
+    "Bolalarim juda xursand.": "uz225",
+    "Do'stlarimga ham aytdim.": "uz226",
+    "❓ Qancha turadi? Narxlar bo'limida.": "uz227",
+    "❓ Qachon ochiq? Har kuni.": "uz228",
+    "❓ Qanday yozilaman? Formani to'ldiring.": "uz229",
+    "Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.": "uz230",
+    "✅ Rahmat!": "uz231",
+    "Javob: hammasi narxlar bo'limida yozilgan.": "uz232",
+    "🎁 Obuna bo'ling!": "uz233",
+    "−50% CHEGIRMA!": "uz234",
+    "Kim uchun?": "uz235",
+    "Ichida nima?": "uz236",
+    "Ko'rinishi?": "uz237",
+    "Qanday ishlaydi?": "uz238",
+    "Qoidalar?": "uz239",
+  },
+  ru: {
+    "Привет! В моём промпте пять строк. Шестая, новая: как ведёт себя сайт. Я написал пусть будет живым и интересным. Это для семейного кафе! Нажми Отправить.": "ru001",
+    "чтобы люди заказывали еду": "ru002",
+    "Здесь появится сайт, который сделает ИИ": "ru003",
+    "Ого! Всё прыгает и крутится. А кнопка Заказать убегает, её не нажать! Смотри, метки Догадка: слово живой ИИ понял по-своему.": "ru004",
+    "По-моему, чем больше на сайте движения, тем он живее и круче! А ты как думаешь? Сегодня разберём шестой вопрос: как ведёт себя сайт?": "ru005",
+    "Посмотри на строку промпта и на кнопку под мышкой.": "ru006",
+    "Hover, это когда мышь наведена на элемент. Кнопка меняется, и человек понимает, что её можно нажать.": "ru007",
+    "В меню игры выбранный герой подсвечивается и становится больше. Ты сразу видишь, кого выбираешь.": "ru008",
+    "Шестой вопрос: как ведёт себя сайт? То есть что делает сайт, когда человек что-то делает. Смотри, строка пока пустая. Мышь навелась на кнопку, нажала, и ничего. Это кнопка или просто надпись?": "ru009",
+    "чтобы дети записывались в клуб": "ru010",
+    "Пишем: кнопка меняет цвет при наведении. Смотри: мышь навелась, кнопка стала жёлтой! Теперь она говорит: нажми меня.": "ru011",
+    "Добавим: и увеличивается. Кнопка и цвет меняет, и растёт. Такое трудно не заметить.": "ru012",
+    "Карточки тоже могут отвечать: при наведении они приподнимаются. Человек всегда видит, где сейчас мышь.": "ru013",
+    "Итак, первый случай, при наведении мыши. По-английски это [English pronunciation] hover [Русское произношение]. В строку пишем: когда, что и что происходит.": "ru014",
+    "Теперь ты. Пиццерия попросила сайт. Пять строк готовы. Прочитай заказ и напиши в строку Как ведёт себя?: когда, что и что происходит.": "ru015",
+    "чтобы люди заказывали пиццу": "ru016",
+    "Когда? В заказе: при наведении мыши.": "ru017",
+    "Это сработало на кнопке. А в заказе, карточка меню.": "ru018",
+    "Что делает карточка? В заказе: увеличивается.": "ru019",
+    "В заказе три вещи: когда, что и что происходит.": "ru020",
+    "При наведении мыши карточка меню увеличивается.": "ru021",
+    "Напиши как в образце и нажми Отправить.": "ru022",
+    "Огонь! Мышь навелась, карточка выросла. Покупатель видит, какую пиццу выбирает!": "ru023",
+    "Теперь проверь себя. Какое из двух Как ведёт себя? больше поможет ИИ?": "ru024",
+    "Где сказано, когда, что и что происходит?": "ru025",
+    "Живой, интересный ничего точно не говорят. Без когда? нет и движения.": "ru026",
+    "Во втором есть когда, что и что происходит.": "ru027",
+    "Первый точный: карточки, при наведении, приподнимаются.": "ru028",
+    "В первом нет когда?: кнопка просто всегда будет большой.": "ru029",
+    "Точно!": "ru030",
+    "Всё верно! Ты отличаешь живой от точного поведения.": "ru031",
+    "Посмотри на кнопку и мышь: что появляется после нажатия?": "ru032",
+    "При нажатии, то есть когда щёлкают мышью или касаются пальцем на телефоне. Сайт ответил, и человек знает, что всё сработало.": "ru033",
+    "Нажимаешь кнопку лифта, она загорается. Значит, лифт тебя услышал.": "ru034",
+    "Второй случай, при нажатии. Смотри, сейчас мышь нажала Записаться, но ничего не появилось. Записался или нет? Человек не знает и жмёт снова и снова.": "ru035",
+    "чтобы школьники записывались в кружок": "ru036",
+    "Пишем: при нажатии появляется сообщение Спасибо. Смотри: нажала, и внизу появилось сообщение! Теперь человек знает, что записался.": "ru037",
+    "Вопросы тоже могут открываться по нажатию. Смотри: нажала на вопрос, открылся ответ. Страница остаётся чистой, а ответ появляется, когда нужен.": "ru038",
+    "Значит, при нажатии сайт должен отвечать: показать сообщение или что-то открыть. Тогда человек знает, что всё сработало.": "ru039",
+    "Теперь ты. Покупатели книжного жмут кнопку и не понимают, добавилась книга или нет. Прочитай заказ и напиши в Как ведёт себя?.": "ru040",
+    "чтобы люди заказывали книги": "ru041",
+    "Когда? В заказе: при нажатии на кнопку.": "ru042",
+    "Это сработает при наведении. А в заказе, при нажатии.": "ru043",
+    "Что происходит при нажатии? В заказе: появляется сообщение.": "ru044",
+    "В заказе: когда (при нажатии) и что происходит (появляется сообщение).": "ru045",
+    "При нажатии на кнопку появляется сообщение Добавлено в корзину.": "ru046",
+    "Класс! Нажали, и появилось Добавлено в корзину. Теперь покупатель точно знает, что книга добавлена!": "ru047",
+    "Теперь найдём когда?. Я рассказываю, что случилось на сайте, а ты выбираешь: когда это сработало?": "ru048",
+    "Что сделал человек: навёл мышь, нажал или только открыл сайт?": "ru049",
+    "Только навёл, при наведении. Нажал, при нажатии. Ничего не делал, при открытии страницы. Маленький экран, на телефоне.": "ru050",
+    "Человек навёл мышь на карточку, но ещё не нажал. Карточка приподнялась.": "ru051",
+    "Не нажимал, только навёл. Это при наведении.": "ru052",
+    "Человек нажал Отправить, и появилось Спасибо!.": "ru053",
+    "Появилось после нажатия. Это при нажатии.": "ru054",
+    "Как только открыл сайт, блоки появились по очереди.": "ru055",
+    "Ничего не нажимали, страница просто открылась. Это при открытии страницы.": "ru056",
+    "На маленьком экране меню свернулось в кнопку с тремя полосками.": "ru057",
+    "Маленький экран, значит, телефон. Это на телефоне.": "ru058",
+    "Ты нажал на вопрос, и открылся ответ.": "ru059",
+    "Нажал, и открылось. Это при нажатии.": "ru060",
+    "Класс! Ты находишь, когда срабатывает каждое поведение.": "ru061",
+    "Посмотри на момент открытия страницы: как появляются заголовок и блоки?": "ru062",
+    "Анимация, это плавное движение. Она ведёт взгляд: сначала заголовок, потом блоки, потом кнопка.": "ru063",
+    "В театре занавес открывается медленно, а не рывком. Если сайт открывается так же, это приятно.": "ru064",
+    "Третий случай, при открытии страницы. Смотри, сейчас сайт появляется весь сразу, в одно мгновение. Никакого движения.": "ru065",
+    "чтобы молодёжь пришла на фестиваль": "ru066",
+    "Пишем: при открытии страницы блоки плавно появляются по очереди. Смотри: сначала заголовок, потом текст, потом блоки. Взгляд сам идёт куда нужно.": "ru067",
+    "Заголовок выезжает сверху. Он выходит первым, как певец на сцену.": "ru068",
+    "Главная кнопка мигает. Теперь она всё время зовёт: нажми меня. Но только одна кнопка, а не всё подряд!": "ru069",
+    "Значит, и при открытии страницы сайт работает: блоки появляются плавно, главная кнопка зовёт. Это анимация, плавное движение.": "ru070",
+    "Теперь ты. Выставка рисунков попросила сайт. Они хотят, чтобы открытие сайта было особенным. Прочитай заказ и напиши в Как ведёт себя?.": "ru071",
+    "чтобы люди пришли на выставку": "ru072",
+    "Когда? В заказе: при открытии сайта, то есть при открытии страницы.": "ru073",
+    "Как появляются? В заказе: плавно, по очереди.": "ru074",
+    "В заказе: когда (при открытии сайта), что (картинки) и как (плавно, по очереди).": "ru075",
+    "При открытии страницы картинки плавно появляются по очереди.": "ru076",
+    "Класс! Картинки появились по очереди, плавно. Как будто на выставке зажёгся свет!": "ru077",
+    "Посмотри на ширину окна и на меню сайта.": "ru078",
+    "Адаптивный сайт подстраивается под экран телефона: меню сворачивается в кнопку с тремя полосками, нужная кнопка всегда под рукой.": "ru079",
+    "Одежду шьют по росту. Пусть и сайт подходит каждому экрану.": "ru080",
+    "Четвёртый случай, на телефоне. Сейчас сайт на компьютере. Меню наверху, кнопка меняет цвет при наведении. Но многие открывают сайт с телефона.": "ru081",
+    "чтобы школьники записывались на курс": "ru082",
+    "Теперь откроем этот сайт на телефоне. Окно стало узким. Ой, меню пропало! Как попасть в расписание и цены?": "ru083",
+    "Пишем: на телефоне меню сворачивается в кнопку с тремя полосками. Смотри: наверху появилась такая кнопка. Палец нажал, и меню открылось!": "ru084",
+    "А кнопка записи пусть всегда будет внизу. Как бы далеко ни листал страницу, палец сразу её находит.": "ru085",
+    "Значит, на телефоне сайт ведёт себя иначе: мыши нет, экран узкий. Поэтому пишем и то, что происходит на телефоне.": "ru086",
+    "Теперь ты. На сайте лагеря меню на телефоне пропадает. Прочитай заказ и напиши, что происходит на телефоне.": "ru087",
+    "чтобы дети записывались в лагерь": "ru088",
+    "Где? В заказе: на телефоне.": "ru089",
+    "Что происходит на телефоне? В заказе: меню сворачивается в кнопку ☰.": "ru090",
+    "В заказе: где (на телефоне), что (меню) и что происходит (сворачивается в кнопку).": "ru091",
+    "На телефоне меню сворачивается в кнопку ☰.": "ru092",
+    "Огонь! На телефоне меню свернулось в кнопку с тремя полосками. Нажали, открылось. Родители всё найдут!": "ru093",
+    "Я написал для сайта клуба кнопка увеличивается. Смотри, кнопка просто всё время огромная! Мышь навелась, но ничего не изменилось. Я не написал когда?. Что говорит тренер? Исправь мою строку.": "ru094",
+    "Кнопка всё ещё всегда огромная. Добавь когда?: при наведении мыши.": "ru095",
+    "Что происходит при наведении? Тренер: кнопка увеличивается.": "ru096",
+    "В строке Коди нет когда?.": "ru097",
+    "Добавь: при наведении мыши на кнопку.": "ru098",
+    "Огонь! Теперь кнопка обычная, а при наведении мыши растёт. Когда? очень важно!": "ru099",
+    "Теперь побудем детективами. Смотри на мышь и на сайт. Какое Как ведёт себя? дало такой сайт?": "ru100",
+    "Смотри на сайт: что сделала мышь и что сделал сайт?": "ru101",
+    "Только навели, при наведении. Нажали, при нажатии. Появилось само, при открытии страницы. Узкое окно, на телефоне.": "ru102",
+    "Мышь нажала, и появилось Спасибо!. Это B.": "ru103",
+    "Мышь навелась, карточка приподнялась, даже без нажатия. Это A.": "ru104",
+    "Ничего не нажимали, блоки сами появились по очереди. Это C.": "ru105",
+    "Окно узкое, как телефон, а меню, в кнопке с тремя полосками. Это B.": "ru106",
+    "Класс! По сайту ты находишь, какая строка сработала.": "ru107",
+    "Теперь починим сайт кафе! Посетители сказали, чего хотят. Вместо моего живым и интересным напиши точное поведение.": "ru108",
+    "Живым и интересным всё ещё на месте. Напиши точное поведение, о котором просят посетители.": "ru109",
+    "Что происходит при наведении? Посетители: кнопка меняет цвет.": "ru110",
+    "Что происходит при нажатии? Посетители: появляется Спасибо!.": "ru111",
+    "Посетители назвали два случая: при наведении и при нажатии.": "ru112",
+    "Сотри живым и интересным. Напиши: кнопка меняет цвет при наведении, при нажатии появляется Спасибо!.": "ru113",
+    "Класс! Ничего не прыгает. При наведении кнопка меняет цвет, при нажатии появляется Спасибо!. Посетители довольны!": "ru114",
+    "Теперь полное Как ведёт себя?: три случая. Прочитай заказ спортивных соревнований.": "ru115",
+    "чтобы школьники записывались на соревнования": "ru116",
+    "Что происходит при наведении? В заказе: кнопка увеличивается.": "ru117",
+    "Что происходит при нажатии на вопрос? В заказе: открывается ответ.": "ru118",
+    "В заказе три случая: при наведении, при нажатии и на телефоне.": "ru119",
+    "Напиши их через запятую: в каждом, когда, что и что происходит.": "ru120",
+    "Молодец! Три случая, три ответа. Сайт отвечает и мыши, и пальцу, и телефону!": "ru121",
+    "А теперь твой сайт! Напиши все шесть строк, а в Как ведёт себя?, один-два случая: когда, что и что происходит.": "ru122",
+    "Напиши строку Что?: какой сайт создаёшь?": "ru123",
+    "Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.": "ru124",
+    "Теперь напиши строку Зачем?: что должен сделать сайт?": "ru125",
+    "Напиши цель: чтобы записывались, заказывали или приходили?": "ru126",
+    "Теперь напиши строку Для кого?: кто будет смотреть сайт?": "ru127",
+    "ИИ не понял, для кого. Напиши возраст или кто они.": "ru128",
+    "Теперь напиши строку Что внутри?: какие блоки на сайте?": "ru129",
+    "В Что внутри? не найдено блоков. Например: фото, цены, контакты.": "ru130",
+    "Теперь напиши строку Как выглядит?: каким будет сайт?": "ru131",
+    "В Как выглядит? напиши стиль и цвета. Например: современный, синий и белый.": "ru132",
+    "Теперь напиши строку Как ведёт себя?: когда, что и что происходит?": "ru133",
+    "Шесть вопросов: что, зачем, для кого, что внутри, как выглядит, как ведёт себя.": "ru134",
+    "В Как ведёт себя? напиши один-два случая. Например: кнопка увеличивается при наведении.": "ru135",
+    "Ого, классно! Это твой промпт из шести строк. Дома отправишь его настоящему ИИ.": "ru136",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?": "ru137",
+    "О чём фраза: о когда?, о пользе движения или о слове живой?": "ru138",
+    "Вспомни: живой ИИ понимает по-своему, а без когда? поведения нет.": "ru139",
+    "Если написать пусть будет живым, ИИ точно знает, что делать.": "ru140",
+    "На самом деле он гадает сам и может заставить прыгать всё подряд.": "ru141",
+    "Хорошее движение помогает человеку: кнопка говорит нажми меня.": "ru142",
+    "Верно: движение показывает, куда смотреть.": "ru143",
+    "Если написать кнопка увеличивается, она растёт только при наведении мыши.": "ru144",
+    "Нет когда?, и кнопка просто всё время большая.": "ru145",
+    "На телефоне сайт может вести себя иначе, и это тоже нужно написать.": "ru146",
+    "Верно: на телефоне нет мыши, а экран узкий.": "ru147",
+    "Если всё прыгает, сайт самый удобный.": "ru148",
+    "На самом деле глаза устают, а кнопку не нажать.": "ru149",
+    "Всё верно! Ты правильно описываешь поведение сайта.": "ru150",
+    "Вернёмся к загадке. Я думал: чем больше движения, тем круче. Но когда прыгает всё, глаза устают, а кнопку не нажать! Хорошее движение помогает: кнопка говорит нажми меня, после нажатия сайт отвечает, на телефоне меню находится. Я ошибся.": "ru151",
+    "Смотри, это твой промпт из шести строк и твой сайт.": "ru152",
+    "Что, зачем, для кого, что внутри и как выглядит ты уже знаешь.": "ru153",
+    "Как ведёт себя?, это когда, что и что происходит: при наведении, при нажатии, при открытии страницы и на телефоне.": "ru154",
+    "Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, седьмой вопрос: какие правила? До встречи!": "ru155",
+    "цель: что сделает сайт": "ru156",
+    "Вау, классно!": "ru157",
+    "Есть! Получилось!": "ru158",
+    "Супер!": "ru159",
+    "Огонь!": "ru160",
+    "Ура!": "ru161",
+    "Вот это да!": "ru162",
+    "Попробуй ещё раз.": "ru163",
+    "Посмотри внимательно.": "ru164",
+    "Уже близко. Не спеши.": "ru165",
+    "Как ведёт себя сайт?": "ru166",
+    "У меня закружилась голова! Кнопка заказа убегает, я не смог нажать!": "ru167",
+    "Пиццерия: пусть карточка меню увеличивается при наведении мыши. Пусть покупатель видит, какую пиццу выбирает.": "ru168",
+    "когда? что? что происходит?": "ru169",
+    "Напиши в Как ведёт себя?": "ru170",
+    "Что точнее?": "ru171",
+    "Какое Как ведёт себя? точнее?": "ru172",
+    "при нажатии на кнопку появляется сообщение Спасибо, ты записан!": "ru173",
+    "Книжный магазин: при нажатии на кнопку пусть появляется сообщение Добавлено в корзину. Тогда покупатель знает, что книга добавлена.": "ru174",
+    "Когда сработало?": "ru175",
+    "Выставка рисунков: при открытии сайта картинки плавно появляются по очереди, как будто на выставке зажигается свет.": "ru176",
+    "Лагерь: родители чаще открывают сайт с телефона. Пусть на телефоне меню сворачивается в кнопку ☰.": "ru177",
+    "где? что? что происходит?": "ru178",
+    "Когда?": "ru179",
+    "Тренер: Пусть кнопка не будет всё время огромной. Пусть растёт только при наведении мыши.": "ru180",
+    "Добавь когда?": "ru181",
+    "Какое Как ведёт себя? дало этот сайт?": "ru182",
+    "при нажатии на кнопку появляется сообщение Спасибо!": "ru183",
+    "Пусть ничего не прыгает и не крутится. Кнопка меняет цвет при наведении, а при нажатии появляется сообщение Спасибо!.": "ru184",
+    "кнопка меняет цвет при наведении, при нажатии появляется сообщение Спасибо!": "ru185",
+    "Спортивные соревнования: кнопка увеличивается при наведении; при нажатии на вопрос открывается ответ; на телефоне меню сворачивается в кнопку ☰.": "ru186",
+    "что создаёшь?": "ru187",
+    "что должен сделать сайт?": "ru188",
+    "для кого сайт?": "ru189",
+    "какие блоки на сайте?": "ru190",
+    "каким будет сайт?": "ru191",
+    "Сайт нашего футбольного клуба · чтобы ребята записывались · дети 11–13 лет · фото, расписание, контакты · современный, зелёный и белый · кнопка увеличивается при наведении, при нажатии появляется Спасибо!": "ru192",
+    "Верно или нет?": "ru193",
+    "Верно или неверно?": "ru194",
+    "Отправь свой промпт настоящему ИИ и сделай свой сайт.": "ru195",
+    "Пишет…": "ru196",
+    "Как дать ИИ точные требования?": "ru197",
+    "Напиши в строку Как ведёт себя?: когда, что и что происходит?": "ru198",
+    "Живой, интересный каждый понимает по-своему. Напиши точно: когда (например, при наведении или нажатии), что и что происходит.": "ru199",
+    "Если прыгает всё, глаза устают, а кнопку не нажать. Напиши только нужное движение.": "ru200",
+    "ИИ не узнал по этим словам поведение. Например: кнопка меняет цвет при наведении.": "ru201",
+    "Нет когда?, и ИИ просто сделал кнопку такой всегда. Напиши, когда это происходит: при наведении или при нажатии.": "ru202",
+    "Молодец!": "ru203",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru204",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru205",
+    "Сильнейшие команды на одном поле!": "ru206",
+    "Свежее, горячее и вкусное.": "ru207",
+    "Интересные занятия и дружная команда.": "ru208",
+    "Всё в одном месте: удобно и быстро.": "ru209",
+    "Ждём всех!": "ru210",
+    "Играй вместе с друзьями!": "ru211",
+    "Учись с нуля.": "ru212",
+    "Незабываемое лето начинается здесь!": "ru213",
+    "Одна команда, одна цель!": "ru214",
+    "А ты знал?": "ru215",
+    "История, правила и интересные факты.": "ru216",
+    "С нами всё просто.": "ru217",
+    "Запишись прямо сейчас: мест немного!": "ru218",
+    "Есть вопросы? Позвони нам.": "ru219",
+    "Закажи в пару нажатий!": "ru220",
+    "Ждём тебя! Адрес и время ниже.": "ru221",
+    "Когда, где и как: всё здесь.": "ru222",
+    "Безопасно, полезно и удобно для вашего ребёнка.": "ru223",
+    "Всё просто и понятно. Есть вопросы, позвоните.": "ru224",
+    "Готовый план и материалы для урока.": "ru225",
+    "Профессиональный подход и высокое качество.": "ru226",
+    "Есть вопросы?": "ru227",
+    "📞 +998 90 123 45 67, позвоните, всё объясним.": "ru228",
+    "Очень круто! Придём ещё.": "ru229",
+    "Всё быстро и вкусно.": "ru230",
+    "Дети очень довольны.": "ru231",
+    "Рассказал и друзьям.": "ru232",
+    "❓ Сколько стоит? Смотри в ценах.": "ru233",
+    "❓ Когда открыто? Каждый день.": "ru234",
+    "❓ Как записаться? Заполни форму.": "ru235",
+    "Мы работаем с 2015 года и стараемся порадовать каждого гостя.": "ru236",
+    "✅ Спасибо!": "ru237",
+    "Ответ: всё написано в разделе цен.": "ru238",
+    "🎁 Подпишись!": "ru239",
+    "−50% СКИДКА!": "ru240",
+    "Зачем?": "ru241",
+    "Для кого?": "ru242",
+    "Что внутри?": "ru243",
+    "Как выглядит?": "ru244",
+    "Как ведёт себя?": "ru245",
+    "Какие правила?": "ru246",
+  },
+  en: {
+    "Hi! My prompt has five lines. The sixth is new: how the site behaves. I wrote make it lively and fun. It’s for a family cafe! Tap Send.": "en001",
+    "get people to order food": "en002",
+    "The site the AI makes will appear here": "en003",
+    "Whoa! Everything is jumping and spinning. And the Order now button runs away, you can’t press it! Look at the Guess labels: the AI understood lively its own way.": "en004",
+    "I think the more a site moves, the livelier and cooler it is! What do you think? Today we learn the sixth question: how does the site behave?": "en005",
+    "Look at the prompt line and at the button under the mouse.": "en006",
+    "Hover means the mouse is over an element. When the button changes, people understand it can be pressed.": "en007",
+    "In a game menu the hero you point at lights up and grows. You see at once who you’re picking.": "en008",
+    "The sixth question: how does the site behave? That is, what the site does when a person does something. Look, the line is empty for now. The mouse went over the button and clicked, and nothing happened. Is it a button or just text?": "en009",
+    "get kids to sign up for the club": "en010",
+    "We write: the button changes colour on hover. Look: the mouse came over and the button turned yellow! Now it says press me.": "en011",
+    "Let’s add: and grows. The button changes colour and gets bigger. That’s hard to miss.": "en012",
+    "Cards can respond too: they lift up on hover. People always see where the mouse is.": "en013",
+    "So, the first case is when the mouse is over something. In English it’s called hover. In the line we write: when, what and what happens.": "en014",
+    "Your turn. A pizza shop asked for a site. Five lines are ready. Read the request and write in the How it behaves? line: when, what and what happens.": "en015",
+    "get people to order pizza": "en016",
+    "When? The request says: when the mouse is over it.": "en017",
+    "That worked on the button. The request is about the menu cards.": "en018",
+    "What should the card do? The request says: grow.": "en019",
+    "The request has three things: when, what and what happens.": "en020",
+    "When the mouse is over it, the menu card grows.": "en021",
+    "Write it like the example and tap Send.": "en022",
+    "Awesome! The mouse came over and the card grew. Customers see which pizza they’re choosing!": "en023",
+    "Now check yourself. Which of the two How it behaves? lines helps the AI more?": "en024",
+    "Which one says when, what and what happens?": "en025",
+    "Lively and fun say nothing precise. Without when? there’s no behaviour.": "en026",
+    "The second has when, what and what happens.": "en027",
+    "The first is precise: cards, on hover, lift up.": "en028",
+    "The first has no when?: the button would just stay big all the time.": "en029",
+    "Exactly!": "en030",
+    "All correct! You can tell lively from a precise behaviour.": "en031",
+    "Look at the button and the mouse: what appears after the click?": "en032",
+    "On click means pressing with the mouse or tapping with a finger on a phone. When the site answers, people know it worked.": "en033",
+    "Press a lift button and it lights up. That means the lift heard you.": "en034",
+    "The second case is on click. Look, the mouse just pressed Sign up, but nothing appeared. Signed up or not? People don’t know, so they press again and again.": "en035",
+    "get students to sign up for the club": "en036",
+    "We write: when pressed, show a thank-you message. Look: a click, and a message popped up at the bottom! Now people know they signed up.": "en037",
+    "Questions can open on click too. Look: a click on the question, and its answer opened. The page stays tidy, and the answer shows up when it’s needed.": "en038",
+    "So on click the site should answer: show a message or open something. Then people know it worked.": "en039",
+    "Your turn. Book shop customers press the button and can’t tell if the book was added. Read the request and write in How it behaves?.": "en040",
+    "get people to order books": "en041",
+    "When? The request says: when the button is pressed.": "en042",
+    "That works on hover. The request says: on click.": "en043",
+    "What happens on click? The request says: show a message.": "en044",
+    "The request has: when (on click) and what happens (a message appears).": "en045",
+    "When the button is pressed, show the message Added to the cart.": "en046",
+    "Great! A click, and Added to the cart appeared. Now customers know for sure the book was added!": "en047",
+    "Now let’s find the when?. I tell you what happened on the site, and you choose: when did it work?": "en048",
+    "What did the person do: move the mouse over, click, or just open the site?": "en049",
+    "Only moved over: on hover. Pressed: on click. Did nothing: when the page opens. A small screen: on a phone.": "en050",
+    "Someone moved the mouse over a card but didn’t click. The card lifted up.": "en051",
+    "No click, just moved over. That’s on hover.": "en052",
+    "Someone pressed Send and Thank you! appeared.": "en053",
+    "It appeared after the press. That’s on click.": "en054",
+    "As soon as you opened the site, the blocks appeared one by one.": "en055",
+    "Nothing was pressed, the page just opened. That’s when the page opens.": "en056",
+    "On a small screen the menu folded into a three-line button.": "en057",
+    "A small screen means a phone. That’s on a phone.": "en058",
+    "You clicked a question and its answer opened.": "en059",
+    "You clicked, then it opened. That’s on click.": "en060",
+    "Great! You can tell when each behaviour works.": "en061",
+    "Watch the moment the page opens: how do the heading and blocks appear?": "en062",
+    "Animation means smooth movement. It guides the eyes: first the heading, then the blocks, then the button.": "en063",
+    "In a theatre the curtain opens slowly, not all at once. When a site opens like that, it feels nice.": "en064",
+    "The third case is when the page opens. Look, right now the site appears all at once, in an instant. No movement at all.": "en065",
+    "get young people to come to the festival": "en066",
+    "We write: when the page opens, blocks fade in one by one. Look: first the heading, then the text, then the blocks. The eyes go where they should.": "en067",
+    "The title slides in from the top. It arrives first, like a singer coming on stage.": "en068",
+    "The main button pulses. Now it keeps calling press me. But only one button, not everything!": "en069",
+    "So the site works when the page opens too: blocks appear smoothly, and the main button calls. That’s animation, smooth movement.": "en070",
+    "Your turn. An art exhibition asked for a site. They want the site’s opening to be special. Read the request and write in How it behaves?.": "en071",
+    "get people to come to the exhibition": "en072",
+    "When? The request says: when the site opens, that is, when the page opens.": "en073",
+    "How should they appear? The request says: smoothly, one by one.": "en074",
+    "The request has: when (the site opens), what (the pictures) and how (smoothly, one by one).": "en075",
+    "When the page opens, the pictures fade in one by one.": "en076",
+    "Great! The pictures appeared one by one, smoothly. Just like the lights coming on at the show!": "en077",
+    "Look at the window width and at the site’s menu.": "en078",
+    "A responsive site adapts to a phone screen: the menu folds into a three-line button, and the key button is always at hand.": "en079",
+    "Clothes are made to fit. Let a site fit every screen too.": "en080",
+    "The fourth case is on a phone. Right now the site is on a computer. The menu is at the top, and the button changes colour on hover. But lots of people open sites on a phone.": "en081",
+    "get students to sign up for the course": "en082",
+    "Now let’s open the site on a phone. The window got narrow. Oops, the menu is gone! How do we get to the schedule and prices?": "en083",
+    "We write: on a phone the menu folds into a three-line button. Look: that button appeared at the top. A finger tapped it, and the menu opened!": "en084",
+    "And let the sign-up button always stay at the bottom. However far you scroll, your finger finds it at once.": "en085",
+    "So on a phone a site behaves differently: there’s no mouse and the screen is narrow. That’s why we also write what happens on a phone.": "en086",
+    "Your turn. On the camp site the menu disappears on a phone. Read the request and write what happens on a phone.": "en087",
+    "get kids to sign up for the camp": "en088",
+    "Where? The request says: on a phone.": "en089",
+    "What happens on a phone? The request says: the menu collapses into a ☰ button.": "en090",
+    "The request has: where (on a phone), what (the menu) and what happens (it folds into a button).": "en091",
+    "On a phone the menu collapses into a ☰ button.": "en092",
+    "Awesome! On a phone the menu folded into a three-line button. A tap, and it opened. Parents will find everything!": "en093",
+    "I wrote the button grows for the club site. Look, the button is just huge all the time! The mouse came over, but nothing changed. I didn’t write when?. What does the coach say? Fix my line.": "en094",
+    "The button is still huge all the time. Add the when?: when the mouse is over it.": "en095",
+    "What happens on hover? The coach says: it grows.": "en096",
+    "Kodi’s line has no when?.": "en097",
+    "Add: when the mouse is over the button.": "en098",
+    "Awesome! Now the button is normal and only grows on hover. The when? really matters!": "en099",
+    "Let’s be detectives. Watch the mouse and the site. Which How it behaves? gave this site?": "en100",
+    "Watch the site: what did the mouse do, and what did the site do?": "en101",
+    "Only moved over: on hover. Clicked: on click. Appeared by itself: when the page opens. A narrow window: on a phone.": "en102",
+    "The mouse clicked and Thank you! appeared. That’s B.": "en103",
+    "The mouse came over and the card lifted, without a click. That’s A.": "en104",
+    "Nothing was pressed, the blocks appeared one by one by themselves. That’s C.": "en105",
+    "The window is narrow like a phone, and the menu is in the three-line button. That’s B.": "en106",
+    "Great! You can tell from the site which line did the work.": "en107",
+    "Now let’s fix the cafe site! The customers said what they want. Instead of my lively and fun, write the exact behaviour.": "en108",
+    "Lively and fun is still there. Write the exact behaviour the customers asked for.": "en109",
+    "What happens on hover? The customers say: the colour changes.": "en110",
+    "What happens on click? The customers say: show Thank you!.": "en111",
+    "The customers named two cases: on hover and on click.": "en112",
+    "Delete lively and fun. Write: the button changes colour on hover, and when pressed shows Thank you!.": "en113",
+    "Great! Nothing jumps. On hover the button changes colour, and on click Thank you! appears. The customers are happy!": "en114",
+    "Now write the full How it behaves?: three cases. Read the sports contest’s request.": "en115",
+    "get students to sign up for the contest": "en116",
+    "What happens on hover? The request says: the button grows.": "en117",
+    "What happens when a question is clicked? The request says: its answer opens.": "en118",
+    "The request has three cases: on hover, on click and on a phone.": "en119",
+    "Write them one after another with commas: each with when, what and what happens.": "en120",
+    "Well done! Three cases, three answers. The site responds to the mouse, a finger and a phone!": "en121",
+    "Now your own site! Write all six lines, and in How it behaves? one or two cases: when, what and what happens.": "en122",
+    "Write the What? line: what site are you making?": "en123",
+    "That’s just a topic. Write a specific thing: a club, server, shop or party site.": "en124",
+    "Now write the Why? line: what should the site do?": "en125",
+    "Write the goal: should people sign up, order or come?": "en126",
+    "Now write the Who for? line: who will look at the site?": "en127",
+    "The AI couldn’t tell who. Write their age or who they are.": "en128",
+    "Now write the What’s inside? line: which blocks?": "en129",
+    "No blocks found in What’s inside?. For example: photos, prices, contact.": "en130",
+    "Now write the How it looks? line: how should it look?": "en131",
+    "In How it looks? write a style and colours. For example: modern, blue and white.": "en132",
+    "Now write the How it behaves? line: when, what and what happens?": "en133",
+    "Six questions: what, why, who for, what’s inside, how it looks, how it behaves.": "en134",
+    "In How it behaves? write one or two cases. For example: the button grows on hover.": "en135",
+    "Wow, great! That’s your six-line prompt. At home you’ll send it to a real AI.": "en136",
+    "Now a quick check. I say a sentence, and you choose: true or false?": "en137",
+    "What’s it about: the when?, why movement helps, or the word lively?": "en138",
+    "Remember: the AI interprets lively its own way, and without when? there’s no behaviour.": "en139",
+    "If you write make it lively, the AI knows exactly what to do.": "en140",
+    "Actually it guesses on its own and might make everything jump.": "en141",
+    "Good movement helps people: the button says press me.": "en142",
+    "Right: movement shows where to look.": "en143",
+    "If you write the button grows, it only grows when the mouse is over it.": "en144",
+    "There’s no when?, so the button just stays big all the time.": "en145",
+    "On a phone a site can behave differently, and you should write that too.": "en146",
+    "Right: a phone has no mouse, and the screen is narrow.": "en147",
+    "If everything jumps, the site is easiest to use.": "en148",
+    "Actually the eyes get tired and the button can’t be pressed.": "en149",
+    "All correct! You describe a site’s behaviour the right way.": "en150",
+    "Back to the riddle. I thought the more movement, the cooler. But when everything jumps, eyes get tired and the button can’t be pressed! Good movement helps: the button says press me, the site answers a click, and the menu is easy to find on a phone. I was wrong.": "en151",
+    "Look, this is your six-line prompt and your site.": "en152",
+    "You already know what, why, who for, what’s inside and how it looks.": "en153",
+    "How it behaves? is when, what and what happens: on hover, on click, when the page opens and on a phone.": "en154",
+    "Homework: copy your prompt and send it to a real AI. Next lesson: the seventh question, what rules? See you!": "en155",
+    "the goal: what the site should do": "en156",
+    "Wow, awesome!": "en157",
+    "Yes! You did it!": "en158",
+    "Super!": "en159",
+    "Brilliant!": "en160",
+    "Hooray!": "en161",
+    "Amazing!": "en162",
+    "Try once more.": "en163",
+    "Take a closer look.": "en164",
+    "You are close. No rush.": "en165",
+    "How does it behave?": "en166",
+    "My head is spinning! The order button keeps running away, I couldn’t press it!": "en167",
+    "Pizza shop: let a menu card grow when the mouse is over it, so customers see which pizza they’re choosing.": "en168",
+    "when? what? what happens?": "en169",
+    "Write in How it behaves?": "en170",
+    "Which is clearer?": "en171",
+    "Which How it behaves? is clearer?": "en172",
+    "when the button is pressed, show the message Thanks, you’re signed up!": "en173",
+    "Book shop: when the button is pressed, show the message Added to the cart. Then customers know the book was added.": "en174",
+    "When did it work?": "en175",
+    "Art exhibition: when the site opens, the pictures fade in one by one, as if the lights were coming on at the show.": "en176",
+    "Camp: parents usually open the site on a phone. On a phone, let the menu collapse into a ☰ button.": "en177",
+    "where? what? what happens?": "en178",
+    "The coach: The button shouldn’t be huge all the time. It should only grow when the mouse is over it.": "en179",
+    "Add the when?": "en180",
+    "Which How it behaves? gave this site?": "en181",
+    "when the button is pressed, show the message Thank you!": "en182",
+    "Nothing should jump or spin. The button changes colour on hover, and when pressed shows the message Thank you!.": "en183",
+    "the button changes colour on hover, and when pressed shows the message Thank you!": "en184",
+    "Sports contest: the button grows on hover; clicking a question opens its answer; on a phone the menu collapses into a ☰ button.": "en185",
+    "what are you making?": "en186",
+    "what should the site do?": "en187",
+    "who is the site for?": "en188",
+    "which blocks?": "en189",
+    "how should it look?": "en190",
+    "Our football club site · get kids to sign up · kids aged 11–13 · photos, schedule, contact · modern, green and white · the button grows on hover, and when pressed shows Thank you!": "en191",
+    "True or false?": "en192",
+    "Send your prompt to a real AI and make your site.": "en193",
+    "Typing…": "en194",
+    "How to give the AI exact requirements?": "en195",
+    "Write in the How it behaves? line: when, what and what happens?": "en196",
+    "Lively and fun mean different things to everyone. Be precise: when (for example on hover or on click), what and what happens.": "en197",
+    "If everything jumps, eyes get tired and the button can’t be pressed. Write only the movement that’s needed.": "en198",
+    "The AI didn’t recognise a behaviour. For example: the button changes colour on hover.": "en199",
+    "There’s no when?, so the AI simply made the button like that all the time. Write when it happens: on hover or on click.": "en200",
+    "Well done!": "en201",
+    "Everything in the window lives inside body.": "en202",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en203",
+    "The strongest teams on one field!": "en204",
+    "Fresh, hot and tasty.": "en205",
+    "Fun sessions and a friendly team.": "en206",
+    "Everything in one place: quick and easy.": "en207",
+    "Everyone is welcome!": "en208",
+    "Play with your friends!": "en209",
+    "Learn from scratch.": "en210",
+    "An unforgettable summer starts here!": "en211",
+    "One team, one goal!": "en212",
+    "Did you know?": "en213",
+    "History, rules and fun facts.": "en214",
+    "Everything is easy with us.": "en215",
+    "Sign up now: places are limited!": "en216",
+    "Got questions? Give us a call.": "en217",
+    "Order in just a few taps!": "en218",
+    "We’re waiting for you! Address and time below.": "en219",
+    "When, where and how: it’s all here.": "en220",
+    "Safe, useful and convenient for your child.": "en221",
+    "Simple and clear. Questions? Just give us a call.": "en222",
+    "A ready plan and materials for your class.": "en223",
+    "A professional approach and top quality.": "en224",
+    "Got questions?": "en225",
+    "📞 +998 90 123 45 67: call us and we’ll explain everything.": "en226",
+    "Really great! We’ll be back.": "en227",
+    "Everything was quick and tasty.": "en228",
+    "My kids loved it.": "en229",
+    "I told my friends too.": "en230",
+    "❓ How much is it? See prices.": "en231",
+    "❓ When are you open? Every day.": "en232",
+    "❓ How do I sign up? Fill in the form.": "en233",
+    "We’ve been working since 2015 and try to make every visitor happy.": "en234",
+    "✅ Thank you!": "en235",
+    "Answer: it’s all in the prices section.": "en236",
+    "🎁 Subscribe!": "en237",
+    "−50% OFF!": "en238",
+    "For whom?": "en239",
+    "What’s inside?": "en240",
+    "How it looks?": "en241",
+    "How it behaves?": "en242",
+    "What rules?": "en243",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

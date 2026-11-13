@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8159,15 +7710,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -16708,3 +16252,1443 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .is-kbd .r28 .a1-sheet .a1-q { padding: 0 6px; font-size: 9.5px; line-height: 1.35; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 238, ru 238, en 235; всего знаков 65156. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Promptimda oltita qator bor. Yettinchisi yangi: qoidalar. Men hammasi tushunarli deb yozdim. Bu gul do'koni uchun! Yuborishni bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar bizga qo'ng'iroq qilsin", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda sun'iy intellekt yaratgan sayt chiqadi", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Sun'iy intellekt o'zicha obuna oynasini, katta chegirmani va chatni qo'shibdi. Telefon raqamini ham o'zi to'qib chiqaribdi! Qarang, Taxmin belgilari.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Menimcha, sun'iy intellekt nima mumkin, nima mumkin emasligini o'zi biladi. Bu hammaga tushunarli-ku! Siz nima deb o'ylaysiz? Bugun yettinchi savol: qanday qoidalar?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidalar qatoriga va sayt burchaklaridagi qo'shimchalarga qarang.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mumkin emas, ya'ni saytda bo'lmasligi kerak bo'lgan narsa degani. Aytilmasa, sun'iy intellekt uni o'zicha qo'shishi mumkin.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oshpazga yong'oq solmang deysiz. Aytmasangiz, u bilmaydi va solib yuboradi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qism: mumkin emas. Qarang, qoidalar qatori bo'sh. Sun'iy intellekt o'zicha obuna oynasi, chegirma va chat qo'shdi. Mijoz esa ularni so'ramagan edi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar to'garakka yozilsin", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: reklama oynasi bo'lmasin. Qarang, pastdagi obuna oynasi yo'qoldi!", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirma ham bo'lmasin. Qizil chegirma yozuvi ketdi. Endi sayt yolg'on va'da bermaydi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Va chat bo'lmasin. Burchakdagi chat tugmasi ham yo'qoldi. Sayt toza qoldi.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, mumkin emas ga saytda bo'lmasligi kerak narsalarni aniq nomlaymiz. Har birini alohida.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Suzish klubi nima bo'lmasligini aytdi. Mijozning gapini o'qing va Qoidalar? qatoriga yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar klubga yozilsin", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reklama oynasi hali turibdi. Mijoz: reklama oynasi bo'lmasin.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirma hali turibdi. Mijoz: chegirma bo'lmasin.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz ikki narsani taqiqladi.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reklama oynasi va chegirma bo'lmasin.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namunadagidek yozing va Yuborishni bosing.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Oyna ham, chegirma ham yo'q. Sayt mijoz xohlaganidek!", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Ikki qoidadan qaysi biri sun'iy intellektga aniqroq?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi birida aniq narsa nomlangan: oyna, chegirma, chat yoki telefon?", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha, tushunarli, yaxshi hech narsani aniq aytmaydi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisida aniq narsa bor: chegirma. Ortiqcha nimaligini sun'iy intellekt bilmaydi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi aniq: reklama oynasi bo'lmaydi.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tushunarli faqat sizga tushunarli. Sun'iy intellektga aniq yozing.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz aniq qoidani noaniqdan ajratasiz.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidalar qatoriga va sayt banneri ostidagi qatorga qarang.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Majburiy, ya'ni saytda albatta bo'lishi kerak narsa degani. Aniq ma'lumotni o'zingiz yozasiz, sun'iy intellekt uni bilmaydi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stingizga sovg'a yuborsangiz, manzilni aniq yozasiz. Qayerdadir desangiz, sovg'a yetib bormaydi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi qism: majburiy. Qarang, ortiqcha narsalar yo'q, lekin telefon raqamini sun'iy intellekt o'zi to'qib chiqardi. Mijozlar boshqa odamga qo'ng'iroq qiladi!", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: majburiy, telefon va kafening haqiqiy raqami. Qarang, banner ostida to'g'ri raqam chiqdi, Taxmin yo'qoldi!", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzilni ham qo'shamiz. Endi mehmonlar kafeni oson topadi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi. Mijozlar u yerda ham yozishi mumkin.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, majburiy ga saytda albatta bo'lishi kerak narsani yozamiz. Raqam va manzilni esa aniq, o'zimiz yozamiz.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Robot kursi o'z telefoni va manzilini aytdi. Ularni Qoidalar? qatoriga majburiy qilib yozing.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar kursga yozilsin", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon raqami yo'q yoki boshqa. Mijozning raqamini aniq yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil yo'q yoki boshqa. Mijoz: Yunusobod 12.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz ikki narsani aytdi: telefon va manzil.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Majburiy so'zidan keyin telefon raqamini va manzilni ko'chirib yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Banner ostida haqiqiy raqam va manzil. Endi o'quvchilar to'g'ri joyga qo'ng'iroq qiladi!", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Mijozlar o'z so'zlari bilan gapiradi. Men mijozning gapini aytaman, siz tanlang: bu majburiymi yoki mumkin emasmi?", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Mijoz bu narsani saytda ko'rishni xohlaydimi yoki yo'qmi?", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Albatta, kerak bu majburiy. Kerak emas, bo'lmasin bu mumkin emas.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzilimiz albatta ko'rinib tursin.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Albatta bu majburiy.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizga chat kerak emas, javob berishga vaqtimiz yo'q.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kerak emas bu mumkin emas.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telegramimizga tugma qo'yinglar.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz tugmani so'rayapti: majburiy.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hech qanday chegirma va aksiya yozmang.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozmang bu mumkin emas.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijozlarni har xil oynalar bilan bezovta qilmang.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynalar bo'lmasin: mumkin emas.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Mijozning gapidan qoidani topasiz.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidalar qatoriga, saytdagi tugmalarga va bloklar soniga qarang.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegara, ya'ni nechta bo'lishi mumkinligi degani: faqat bitta tugma yoki ko'pi bilan uchta blok.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Futbol maydonida bir jamoada faqat o'n bir o'yinchi bo'ladi. Bu ham chegara.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi qism: chegaralar. Qarang, saytda tugmalar ko'p va bloklar ham beshta. O'quvchi qaysi tugmani bosishni bilmay qoladi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar to'garakka yozilsin", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: faqat bitta tugma bo'lsin. Qarang, menyudagi va pastdagi tugmalar ketdi. Endi bitta asosiy tugma qoldi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Va ko'pi bilan uchta blok. Sayt qisqa va tushunarli bo'ldi: rasmlar, jadval va narxlar.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, qoidaga chegarani ham yozish mumkin: nechta tugma, nechta blok. Shunda sayt keraksiz narsalar bilan to'lib ketmaydi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Ko'rgazma sayti juda uzun bo'lib ketdi. Mijozning chegaralarini Qoidalar? qatoriga yozing.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar ko'rgazmaga kelsin", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bloklar hali ko'p. Mijoz: ko'pi bilan 2 ta blok.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalar hali ko'p. Mijoz: faqat bitta tugma.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz ikki chegara aytdi: bloklar soni va tugmalar soni.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'pi bilan 2 ta blok, faqat bitta tugma.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Ikki blok va bitta tugma. Sayt qisqa, mehmon darrov tushunadi!", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz xabariga va qoidalar qatoriga qarang: xabardagi har bir istak qatorga o'tadi.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz buyurtmasi, ya'ni mijoz o'z so'zlari bilan yozgan xabari degani. Undan majburiy va mumkin emas narsalarni topamiz.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'konga ro'yxat bilan borasiz: nima olish kerak, nima kerak emas. Qoidalar ham shunday ro'yxat.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtinchi qism: mijoz buyurtmasi. Mijozlar qoidani qator qilib yozmaydi, oddiy gapiradi. Qarang, ingliz tili kursi xabar yubordi. Undan qoidalarni topamiz.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xabarda telefon bor. Bu majburiy. Qatorga ko'chiramiz va sayt to'g'ri raqamni oladi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Manzil ham bor. Uni ham majburiy qilib yozamiz.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirma yozmang va oynalar chiqmasin bu mumkin emas. Qarang, chegirma va oyna ketdi. Xabardagi hamma istak bajarildi!", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, mijoz xabarini o'qiymiz va undan qoidalarni topamiz: nima majburiy, nima mumkin emas. Hech birini tashlab ketmaymiz.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Lager direktori xabar yubordi. Xabardan hamma qoidalarni topib, Qoidalar? qatoriga yozing.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar lagerga yozilsin", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon raqami yo'q yoki boshqa. Direktorning raqamini aniq yozing.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirma hali turibdi. Direktor: chegirma kerak emas.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chat hali turibdi. Direktor: chat kerak emas.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalar hali ko'p. Direktor: faqat bitta tugma.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xabarda to'rt narsa bor: raqam, chegirma, chat va tugmalar soni.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqam majburiy. Chegirma va chat mumkin emas. Faqat bitta tugma.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Raqam to'g'ri, chegirma va chat yo'q, bitta tugma. Direktor xursand!", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men klub sayti uchun majburiy: telefon raqami deb yozdim. Lekin raqamning o'zini yozmabman! Sun'iy intellekt raqamni o'zi to'qib chiqardi. Murabbiy nima deyapti? Qatorimni tuzating.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqam hali to'qib chiqarilgan. Murabbiyning raqamini aniq yozing.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodining qatorida raqamning o'zi yo'q.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon so'zidan keyin murabbiyning raqamini yozing.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi saytda murabbiyning haqiqiy raqami. Aniq ma'lumotni sun'iy intellekt o'zi bilmaydi, uni siz yozasiz!", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi detektiv bo'lamiz. Saytga qarang: qaysi qoidalar shunday saytni berdi?", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Saytda nima bor va nima yo'q: oyna, chegirma, chat, raqam?", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bor narsa majburiy yoki aytilmagan. Yo'q narsa mumkin emas qilib yozilgan.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyna bor, chegirma va chat esa yo'q. Bu B.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha narsa yo'q, haqiqiy raqam va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi bor. Bu C.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt qisqa: ikkita blok va bitta tugma, ortiqcha narsa yo'q. Bu A.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Saytga qarab qaysi qoidalar yozilganini topasiz.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi gul do'konini tuzatamiz! Mijoz nima xohlashini aytdi. Mening hammasi tushunarli qatorim o'rniga aniq qoidalarni yozing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tushunarli hali turibdi. Mijoz aytgan aniq qoidalarni yozing.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Obuna oynasi hali turibdi. Mijoz: oyna bo'lmasin.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqam yo'q yoki boshqa. Mijozning raqamini aniq yozing.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijoz uch narsa aytdi: chegirma, oyna va telefon.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tushunarli ni o'chiring. Chegirma va obuna oynasi bo'lmasin, telefon raqami majburiy.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Chegirma va oyna yo'q, raqam haqiqiy. Mijoz endi xursand!", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi to'liq qoidalarni yozasiz: majburiy, mumkin emas va chegara. Gitara kursi xabarini o'qing.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon raqami yo'q yoki boshqa. Kursning raqamini aniq yozing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi yo'q. Kurs: [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi albatta bo'lsin.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chat yoki chegirma hali turibdi. Kurs: ular bo'lmasin.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bloklar hali ko'p. Kurs: ko'pi bilan 3 ta blok.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xabarda uch xil qoida bor: majburiy, mumkin emas va chegara.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ularni vergul bilan ketma-ket yozing.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Hamma qoida bajarildi: raqam, [English pronunciation] Telegram [O'zbekcha tallaffuz], ortiqcha narsa yo'q, uchta blok!", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingiz! Yettita qatorni yozing. Qoidalar? ga esa nima majburiy va nima mumkin emasligini yozing.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima? qatoriga yozing: qanday sayt yaratasiz?", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Nega? qatorini yozing: sayt nima qilishi kerak?", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ichida nima? qatorini yozing: saytda qanday bloklar?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rinishi? ga uslub va ranglarni yozing. Masalan: zamonaviy, ko'k va oq.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Qanday ishlaydi? qatorini yozing: qachon, nima va nima bo'ladi?", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qanday ishlaydi? ga aniq holat yozing. Masalan: tugma ustiga kelganda kattalashsin.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Qoidalar? qatorini yozing: nima majburiy va nima mumkin emas?", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yettita savol: nima, nega, kim uchun, ichida nima, ko'rinishi, qanday ishlaydi, qoidalar.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidalar? ga bitta majburiy va bitta mumkin emas narsa yozing.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Bu sizning yetti qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: majburiy, mumkin emas yoki tushunarli so'zi?", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: sun'iy intellekt mijozni tanimaydi, aniq ma'lumotni siz yozasiz.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tushunarli desangiz, sun'iy intellekt mijozning qoidalarini biladi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida u mijozni tanimaydi va o'zicha qo'shadi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mumkin emas qatoriga saytda bo'lmasligi kerak narsalarni yozamiz.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: masalan, chegirma yoki reklama oynasi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon raqamini yozmasangiz, sun'iy intellekt uni o'zi to'qib chiqarishi mumkin.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: aniq ma'lumotni o'zingiz yozing.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ortiqcha narsa bo'lmasin bu aniq qoida.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida nima ortiqcha ekanini sun'iy intellekt bilmaydi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mijozning xabaridan qoidalarni topib, promptga yozamiz.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: har bir istak qoidaga aylanadi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz qoidalarni aniq yozasiz.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Men sun'iy intellekt nima mumkin emasligini o'zi biladi deb o'ylagandim. Lekin u mijozni tanimaydi! Chegirma yo'qligini, haqiqiy telefon raqamini, oyna kerak emasligini faqat siz bilasiz. Shuning uchun qoidalarni aniq yozamiz. Men adashibman.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning yetti qatorli promptingiz va saytingiz.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldingi oltita savol sizga tanish.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidalar? bu majburiy, mumkin emas va chegaralar. Ularni mijozning xabaridan topamiz.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda sun'iy intellekt natijasini qanday yaxshilashni o'rganamiz. Ko'rishguncha!", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] maqsad: sayt nima qilsin", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz chegirma bermaymiz! Bu obuna oynasi nima? Telefon raqami ham bizniki emas!", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suzish klubi: Saytda reklama oynasi ham, chegirma ham bo'lmasin. Bizda chegirma yo'q.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima bo'lmasin?", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi biri aniqroq?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qoida aniqroq?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Robot kursi: Telefonimiz +998 90 777 88 99, manzilimiz Yunusobod 12. Ular saytda albatta bo'lsin.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima majburiy?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Majburiy yoki mumkin emas?", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Majburiymi yoki mumkin emasmi?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm ko'rgazmasi: Sayt juda uzun. Ko'pi bilan 2 ta blok bo'lsin va faqat bitta tugma.", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] qanday chegaralar?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Sayt kerak. Telefonimiz +998 99 111 22 33, manzil Sergeli 7. Chegirma yozmang, bizda yo'q. Har xil oynalar ham chiqmasin.", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqamimiz +998 95 200 30 40, uni albatta yozing. Chegirma ham, chat ham kerak emas. Saytda faqat bitta tugma bo'lsin.", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] majburiy? mumkin emas?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizning raqam +998 93 777 12 12. Saytda boshqa raqam yozilmasin!", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Qoidalar? shu saytni berdi?", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Gul do'koni: Chegirma ham, obuna oynasi ham bo'lmasin. Telefonimiz +998 97 300 40 50 albatta bo'lsin.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Gitara kursi: Telefon +998 91 600 70 80 va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi albatta bo'lsin. Chat va chegirma bo'lmasin. Ko'pi bilan 3 ta blok.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima yaratasiz?", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt nima qilishi kerak?", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt kim uchun?", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] saytda qanday bloklar?", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt qanday ko'rinsin?", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima bo'ladi?", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozyapti…", required: true },
+    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Natijani qanday yaxshilaymiz?", required: true },
+    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidalar? qatoriga yozing: nima majburiy va nima mumkin emas?", required: true },
+    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu so'zlar sun'iy intellektga hech narsa demaydi. Aniq yozing: nima majburiy va nima mumkin emas.", required: true },
+    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt bu so'zlardan qoidani tanimadi. Masalan: chegirma bo'lmasin, telefon raqami albatta bo'lsin.", required: true },
+    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng kuchli jamoalar bir maydonda!", required: true },
+    { id: "uz200", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi pishgan, issiq va mazali.", required: true },
+    { id: "uz201", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiziqarli mashg'ulotlar va do'stona jamoa.", required: true },
+    { id: "uz202", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi bir joyda: qulay va tez.", required: true },
+    { id: "uz203", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammani kutamiz!", required: true },
+    { id: "uz204", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlaringiz bilan birga o'ynang!", required: true },
+    { id: "uz205", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Noldan boshlab o'rganing.", required: true },
+    { id: "uz206", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unutilmas yoz shu yerda boshlanadi!", required: true },
+    { id: "uz207", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir jamoa, bir maqsad!", required: true },
+    { id: "uz208", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bilasizmi?", required: true },
+    { id: "uz209", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tarix, qoidalar va qiziqarli faktlar.", required: true },
+    { id: "uz210", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz bilan hammasi oson.", required: true },
+    { id: "uz211", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", required: true },
+    { id: "uz212", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savollaringiz bormi? Bizga qo'ng'iroq qiling.", required: true },
+    { id: "uz213", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir necha bosishda buyurtma bering!", required: true },
+    { id: "uz214", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sizni kutamiz! Manzil va vaqt quyida.", required: true },
+    { id: "uz215", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon, qayerda va qanday: hammasi shu yerda.", required: true },
+    { id: "uz216", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Farzandingiz uchun xavfsiz, foydali va qulay.", required: true },
+    { id: "uz217", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.", required: true },
+    { id: "uz218", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dars uchun tayyor reja va materiallar.", required: true },
+    { id: "uz219", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Professional yondashuv va yuqori sifat.", required: true },
+    { id: "uz220", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Savolingiz bormi?", required: true },
+    { id: "uz221", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.", required: true },
+    { id: "uz222", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda zo'r! Yana kelamiz.", required: true },
+    { id: "uz223", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tez va mazali.", required: true },
+    { id: "uz224", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalarim juda xursand.", required: true },
+    { id: "uz225", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlarimga ham aytdim.", required: true },
+    { id: "uz226", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qancha turadi? Narxlar bo'limida.", required: true },
+    { id: "uz227", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qachon ochiq? Har kuni.", required: true },
+    { id: "uz228", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qanday yozilaman? Formani to'ldiring.", required: true },
+    { id: "uz229", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.", required: true },
+    { id: "uz230", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ✅ Rahmat!", required: true },
+    { id: "uz231", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javob: hammasi narxlar bo'limida yozilgan.", required: true },
+    { id: "uz232", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 🎁 Obuna bo'ling!", required: true },
+    { id: "uz233", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] −50% CHEGIRMA!", required: true },
+    { id: "uz234", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun?", required: true },
+    { id: "uz235", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ichida nima?", required: true },
+    { id: "uz236", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rinishi?", required: true },
+    { id: "uz237", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday ishlaydi?", required: true },
+    { id: "uz238", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidalar?", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! В моём промпте шесть строк. Седьмая, новая: правила. Я написал и так всё понятно. Это для цветочного магазина! Нажми Отправить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди нам звонили", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь появится сайт, который сделает ИИ", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого! ИИ сам добавил окно подписки, огромную скидку и чат. И номер телефона тоже выдумал! Смотри, метки Догадка.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] По-моему, ИИ сам знает, что можно и что нельзя. Это же всем понятно! А ты как думаешь? Сегодня, седьмой вопрос: какие правила?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку правил и на добавки по углам сайта.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нельзя, это то, чего на сайте быть не должно. Если не сказать, ИИ может добавить это сам.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Повару говоришь: без орехов. Не скажешь, он не узнает и положит.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая часть, нельзя. Смотри, строка правил пустая. ИИ сам добавил окно подписки, скидку и чат. А клиент их не просил.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в кружок", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: без рекламного окна. Смотри, окно подписки внизу исчезло!", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И без скидок. Красная надпись про скидку ушла. Теперь сайт не обещает неправду.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И без чата. Кнопка чата в углу тоже пропала. Сайт стал чистым.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в нельзя точно называем то, чего не должно быть на сайте. Каждую вещь отдельно.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Клуб плавания сказал, чего быть не должно. Прочитай слова клиента и напиши в строку Какие правила?.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в клуб", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рекламное окно ещё на месте. Клиент: без рекламного окна.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скидка ещё на месте. Клиент: без скидок.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клиент запретил две вещи.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без рекламного окна и скидок.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши как в образце и нажми Отправить.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Ни окна, ни скидки. Сайт такой, как хотел клиент!", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Какое из двух правил понятнее ИИ?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где названа конкретная вещь: окно, скидка, чат или телефон?", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Лишнее, понятно, хорошо ничего точно не говорят.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во втором названа вещь, скидка. Что такое лишнее, ИИ не знает.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первое точное: рекламного окна не будет.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё понятно понятно только тебе. ИИ нужно написать точно.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отличаешь точное правило от размытого.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку правил и на строку под баннером сайта.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обязательно, то, что на сайте должно быть всегда. Точные данные пишешь ты сам: ИИ их не знает.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отправляешь другу подарок, пишешь точный адрес. Скажешь где-нибудь, подарок не дойдёт.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая часть, обязательно. Смотри, лишнего уже нет, но номер телефона ИИ выдумал сам. Клиенты будут звонить чужому человеку!", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: обязательно, телефон и настоящий номер кафе. Смотри, под баннером появился правильный номер, Догадка исчезла!", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим и адрес. Теперь гости легко найдут кафе.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И кнопку [English pronunciation] Telegram [Русское произношение]. Клиенты смогут писать и туда.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в обязательно пишем то, что на сайте должно быть всегда. А номер и адрес, точно, своими руками.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Курс роботов назвал свой телефон и адрес. Напиши их в строку Какие правила? как обязательные.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались на курс", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номера нет или он другой. Напиши номер клиента точно.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Адреса нет или он другой. Клиент: Юнусабад 12.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клиент назвал две вещи: телефон и адрес.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После обязательно перепиши номер телефона и адрес.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Под баннером настоящий номер и адрес. Теперь ученики позвонят куда нужно!", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Клиенты говорят своими словами. Я говорю фразу клиента, а ты выбираешь: это обязательно или нельзя?", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Клиент хочет видеть это на сайте или нет?", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обязательно, нужно, это обязательно. Не надо, чтобы не было, это нельзя.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наш адрес обязательно должен быть виден.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обязательно, значит обязательно.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чат нам не нужен, нам некогда отвечать.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не нужен, значит нельзя.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поставьте кнопку на наш [English pronunciation] Telegram [Русское произношение].", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клиент просит кнопку: обязательно.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не пишите никаких скидок и акций.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не пишите, значит нельзя.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не беспокойте клиентов всякими окнами.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Окон быть не должно: нельзя.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты находишь правило в словах клиента.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку правил, на кнопки сайта и на число блоков.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ограничение, это сколько чего может быть: только одна кнопка или не больше трёх блоков.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На футбольном поле в одной команде только одиннадцать игроков. Это тоже ограничение.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья часть, ограничения. Смотри, на сайте много кнопок и целых пять блоков. Ученик не знает, какую кнопку нажать.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались в кружок", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: только одна кнопка. Смотри, кнопки в меню и внизу ушли. Осталась одна главная.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И не больше трёх блоков. Сайт стал коротким и понятным: фото, расписание и цены.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в правило можно написать и ограничение: сколько кнопок, сколько блоков. Тогда сайт не завалят ненужным.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Сайт выставки получился слишком длинным. Напиши ограничения клиента в строку Какие правила?.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди пришли на выставку", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Блоков ещё много. Клиент: не больше 2 блоков.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопок ещё много. Клиент: только одна кнопка.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клиент назвал два ограничения: число блоков и число кнопок.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не больше 2 блоков, только одна кнопка.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Два блока и одна кнопка. Сайт короткий, гость сразу всё понимает!", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на сообщение клиента и строку правил: каждое желание из сообщения переходит в строку.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заказ клиента, это его сообщение своими словами. В нём ищем, что обязательно и что нельзя.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В магазин идёшь со списком: что купить и что не надо. Правила, такой же список.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четвёртая часть, заказ клиента. Клиенты не пишут правила строчкой, они просто говорят. Смотри, курс английского прислал сообщение. Найдём в нём правила.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В сообщении есть телефон. Это обязательно. Переносим в строку, и сайт получает правильный номер.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть и адрес. Его тоже пишем как обязательный.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скидок не пишите и чтобы окон не было, это нельзя. Смотри, скидка и окно ушли. Все пожелания из сообщения выполнены!", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, читаем сообщение клиента и находим в нём правила: что обязательно и что нельзя. Ничего не теряем.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Директор лагеря прислал сообщение. Найди в нём все правила и напиши их в строку Какие правила?.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в лагерь", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номера нет или он другой. Напиши номер директора точно.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скидка ещё на месте. Директор: скидки не нужны.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чат ещё на месте. Директор: чат не нужен.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопок ещё много. Директор: только одна кнопка.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В сообщении четыре вещи: номер, скидка, чат и число кнопок.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номер, обязательно. Скидка и чат, нельзя. Только одна кнопка.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Номер правильный, ни скидки, ни чата, одна кнопка. Директор доволен!", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я написал для сайта клуба обязательно: номер телефона. Но сам номер не написал! ИИ выдумал его сам. Что говорит тренер? Исправь мою строку.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номер всё ещё выдуманный. Напиши номер тренера точно.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В строке Коди нет самого номера.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После слова телефон напиши номер тренера.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь на сайте настоящий номер тренера. Точные данные ИИ сам не знает, их пишешь ты!", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь побудем детективами. Посмотри на сайт: какие правила дали такой сайт?", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что на сайте есть и чего нет: окно, скидка, чат, номер?", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что есть, обязательно или не запрещено. Чего нет, записано как нельзя.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Окно есть, а скидки и чата нет. Это B.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Лишнего нет, есть настоящий номер и кнопка [English pronunciation] Telegram [Русское произношение]. Это C.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт короткий: два блока и одна кнопка, ничего лишнего. Это A.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! По сайту ты находишь, какие правила были написаны.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь починим цветочный магазин! Клиент сказал, чего хочет. Вместо моего и так всё понятно напиши точные правила.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И так всё понятно ещё на месте. Напиши точные правила, которые назвал клиент.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Окно подписки ещё на месте. Клиент: без окна.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клиент назвал три вещи: скидку, окно и телефон.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри и так всё понятно. Без скидок и окна подписки, номер телефона, обязательно.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ни скидки, ни окна, номер настоящий. Теперь клиент доволен!", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь полные правила: обязательно, нельзя и ограничение. Прочитай сообщение курса гитары.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Номера нет или он другой. Напиши номер курса точно.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет кнопки [English pronunciation] Telegram [Русское произношение]. Курс: кнопка [English pronunciation] Telegram [Русское произношение] обязательно.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чат или скидка ещё на месте. Курс: их быть не должно.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Блоков ещё много. Курс: не больше 3 блоков.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В сообщении три вида правил: обязательно, нельзя и ограничение.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши их через запятую.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Все правила выполнены: номер, [English pronunciation] Telegram [Русское произношение], ничего лишнего, три блока!", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь твой сайт! Напиши все семь строк, а в Какие правила?, что обязательно и что нельзя.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Что?: какой сайт создаёшь?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Зачем?: что должен сделать сайт?", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши цель: чтобы записывались, заказывали или приходили?", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Для кого?: кто будет смотреть сайт?", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не понял, для кого. Напиши возраст или кто они.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Что внутри?: какие блоки на сайте?", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Что внутри? не найдено блоков. Например: фото, цены, контакты.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Как выглядит?: каким будет сайт?", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Как выглядит? напиши стиль и цвета. Например: современный, синий и белый.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Как ведёт себя?: когда, что и что происходит?", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Как ведёт себя? напиши точный случай. Например: кнопка увеличивается при наведении.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Какие правила?: что обязательно и что нельзя?", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Семь вопросов: что, зачем, для кого, что внутри, как выглядит, как ведёт себя, какие правила.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Какие правила? напиши одну обязательную вещь и одну запретную.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Это твой промпт из семи строк. Дома отправишь его настоящему ИИ.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: об обязательно, нельзя или о слове понятно?", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: ИИ не знает клиента, точные данные пишешь ты.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если написать и так всё понятно, ИИ узнает правила клиента.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле он не знает клиента и добавляет своё.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В нельзя пишем то, чего на сайте быть не должно.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: например, скидку или рекламное окно.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если не написать номер телефона, ИИ может его выдумать.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: точные данные пиши сам.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего лишнего, это точное правило.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле ИИ не знает, что для тебя лишнее.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правила находим в сообщении клиента и пишем в промпт.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: каждое пожелание становится правилом.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты пишешь правила точно.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Я думал, ИИ сам знает, что нельзя. Но он не знает клиента! Что скидок нет, какой настоящий номер, что окно не нужно, знаешь только ты. Поэтому правила пишем точно. Я ошибся.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой промпт из семи строк и твой сайт.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первые шесть вопросов ты уже знаешь.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Какие правила?, это обязательно, нельзя и ограничения. Их находим в сообщении клиента.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке научимся улучшать результат ИИ. До встречи!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] цель: что сделает сайт", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы не даём скидок! Что это за окно подписки? И номер телефона не наш!", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Клуб плавания: На сайте не должно быть ни рекламного окна, ни скидок. У нас скидок нет.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] чего быть не должно?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что точнее?", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое правило точнее?", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Курс роботов: Наш телефон +998 90 777 88 99, адрес, Юнусабад 12. Они обязательно должны быть на сайте.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что обязательно?", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Обязательно или нельзя?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выставка рисунков: Сайт слишком длинный. Не больше 2 блоков и только одна кнопка.", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] какие ограничения?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здравствуйте! Нужен сайт. Наш телефон +998 99 111 22 33, адрес Сергели 7. Скидок не пишите, у нас их нет. И чтобы никаких окон не выскакивало.", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наш номер +998 95 200 30 40, обязательно напишите его. Скидки и чат не нужны. На сайте только одна кнопка.", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] обязательно? нельзя?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наш номер +998 93 777 12 12. Другого номера на сайте быть не должно!", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие правила дали этот сайт?", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цветочный магазин: Ни скидок, ни окна подписки. Наш телефон +998 97 300 40 50, обязательно.", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Курс гитары: Телефон +998 91 600 70 80 и кнопка [English pronunciation] Telegram [Русское произношение], обязательно. Без чата и скидок. Не больше 3 блоков.", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что создаёшь?", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что должен сделать сайт?", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого сайт?", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] какие блоки на сайте?", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] каким будет сайт?", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что происходит?", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отправь свой промпт настоящему ИИ и сделай свой сайт.", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишет…", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как улучшить результат ИИ?", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши в строку Какие правила?: что обязательно и что нельзя?", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Эти слова ничего не говорят ИИ. Напиши точно: что обязательно и что нельзя.", required: true },
+    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не узнал по этим словам правило. Например: без скидок, телефон обязательно.", required: true },
+    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сильнейшие команды на одном поле!", required: true },
+    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свежее, горячее и вкусное.", required: true },
+    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Интересные занятия и дружная команда.", required: true },
+    { id: "ru201", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё в одном месте: удобно и быстро.", required: true },
+    { id: "ru202", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём всех!", required: true },
+    { id: "ru203", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Играй вместе с друзьями!", required: true },
+    { id: "ru204", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Учись с нуля.", required: true },
+    { id: "ru205", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Незабываемое лето начинается здесь!", required: true },
+    { id: "ru206", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна команда, одна цель!", required: true },
+    { id: "ru207", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А ты знал?", required: true },
+    { id: "ru208", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] История, правила и интересные факты.", required: true },
+    { id: "ru209", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С нами всё просто.", required: true },
+    { id: "ru210", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запишись прямо сейчас: мест немного!", required: true },
+    { id: "ru211", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы? Позвони нам.", required: true },
+    { id: "ru212", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закажи в пару нажатий!", required: true },
+    { id: "ru213", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём тебя! Адрес и время ниже.", required: true },
+    { id: "ru214", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда, где и как: всё здесь.", required: true },
+    { id: "ru215", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Безопасно, полезно и удобно для вашего ребёнка.", required: true },
+    { id: "ru216", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё просто и понятно. Есть вопросы, позвоните.", required: true },
+    { id: "ru217", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готовый план и материалы для урока.", required: true },
+    { id: "ru218", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Профессиональный подход и высокое качество.", required: true },
+    { id: "ru219", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы?", required: true },
+    { id: "ru220", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 📞 +998 90 123 45 67, позвоните, всё объясним.", required: true },
+    { id: "ru221", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень круто! Придём ещё.", required: true },
+    { id: "ru222", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё быстро и вкусно.", required: true },
+    { id: "ru223", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети очень довольны.", required: true },
+    { id: "ru224", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рассказал и друзьям.", required: true },
+    { id: "ru225", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Сколько стоит? Смотри в ценах.", required: true },
+    { id: "ru226", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Когда открыто? Каждый день.", required: true },
+    { id: "ru227", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Как записаться? Заполни форму.", required: true },
+    { id: "ru228", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы работаем с 2015 года и стараемся порадовать каждого гостя.", required: true },
+    { id: "ru229", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ✅ Спасибо!", required: true },
+    { id: "ru230", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ответ: всё написано в разделе цен.", required: true },
+    { id: "ru231", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 🎁 Подпишись!", required: true },
+    { id: "ru232", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] −50% СКИДКА!", required: true },
+    { id: "ru233", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем?", required: true },
+    { id: "ru234", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого?", required: true },
+    { id: "ru235", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что внутри?", required: true },
+    { id: "ru236", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как выглядит?", required: true },
+    { id: "ru237", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как ведёт себя?", required: true },
+    { id: "ru238", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие правила?", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! My prompt has six lines. The seventh is new: rules. I wrote it’s all obvious. It’s for a flower shop! Tap Send.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to call us", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site the AI makes will appear here", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa! The AI added a subscribe window, a huge discount and a chat by itself. It even made up the phone number! Look at the Guess labels.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] I think the AI knows by itself what is allowed and what isn’t. Everyone knows that! What do you think? Today: the seventh question, what rules?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the rules line and at the extras in the site’s corners.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not allowed means things that must not be on the site. If you don’t say so, the AI may add them itself.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You tell a cook no nuts. If you don’t, they won’t know and will add them.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first part: not allowed. Look, the rules line is empty. The AI added a subscribe window, a discount and a chat by itself. The client never asked for them.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the club", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: no pop-up window. Look, the subscribe window at the bottom is gone!", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No discount either. The red discount sign is gone. Now the site doesn’t promise anything untrue.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And no chat. The chat button in the corner is gone too. The site is clean.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So under not allowed we name exactly what must not be on the site. Each thing separately.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The swimming club said what must not be there. Read the client’s words and write in the What rules? line.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The pop-up window is still there. The client says: no pop-up window.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The discount is still there. The client says: no discount.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client banned two things.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No pop-up window and no discount.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write it like the example and tap Send.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! No window, no discount. The site is just what the client wanted!", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. Which of the two rules is clearer for the AI?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which one names a real thing: a window, discount, chat or phone?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Extra, obvious and good say nothing precise.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second names a real thing: a discount. The AI doesn’t know what extra means.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first is precise: no pop-up window.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s all obvious is only obvious to you. Tell the AI precisely.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tell a precise rule from a vague one.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the rules line and at the row under the site’s banner.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Must have means things that have to be on the site. You write the exact details yourself: the AI doesn’t know them.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you send a friend a gift, you write the exact address. Say somewhere, and the gift won’t arrive.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second part: must have. Look, there are no extras now, but the AI made up the phone number. Customers will call a stranger!", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: must have, the phone and the cafe’s real number. Look, the right number appeared under the banner, and the Guess is gone!", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s add the address too. Now guests will easily find the cafe.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And a Telegram button. Customers can message there too.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So under must have we write what has to be on the site. And the number and address we write exactly, ourselves.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The robot course gave its phone and address. Write them in the What rules? line as must-haves.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the course", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The number is missing or different. Write the client’s number exactly.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The address is missing or different. The client says: Yunusobod 12.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client named two things: the phone and the address.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After must copy the phone number and the address.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The real number and address are under the banner. Now students will call the right place!", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Clients speak in their own words. I say what a client said, and you choose: is it a must or not allowed?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does the client want this on the site or not?", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Definitely, we need means must. Don’t need, no means not allowed.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our address must be visible.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Must means must have.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We don’t need a chat, we have no time to answer.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t need means not allowed.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put a button to our Telegram.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client asks for the button: must have.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t write any discounts or sales.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t write means not allowed.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t bother customers with pop-up windows.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No windows: not allowed.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You find the rule in what the client says.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the rules line, at the site’s buttons and at how many blocks there are.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A limit says how many of something there can be: only one button or no more than three blocks.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a football pitch a team has only eleven players. That’s a limit too.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third part: limits. Look, the site has lots of buttons and five blocks. A student won’t know which button to press.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the club", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: only one button. Look, the buttons in the menu and at the bottom are gone. One main button is left.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And at most three blocks. The site got short and clear: photos, schedule and prices.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a rule can also be a limit: how many buttons, how many blocks. Then the site doesn’t fill up with things nobody needs.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The exhibition site got too long. Write the client’s limits in the What rules? line.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to come to the exhibition", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Still too many blocks. The client says: at most 2 blocks.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Still too many buttons. The client says: only one button.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client named two limits: the number of blocks and of buttons.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At most 2 blocks, only one button.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Two blocks and one button. The site is short, and visitors get it at once!", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the client’s message and the rules line: every wish in the message goes into the line.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client’s order is their message in their own words. In it we find the must-haves and the not-alloweds.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You go shopping with a list: what to buy and what not to. Rules are a list like that.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The fourth part: the client’s order. Clients don’t write rules as a line, they just talk. Look, an English course sent a message. Let’s find the rules in it.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The message has a phone number. That’s a must. We copy it into the line, and the site gets the right number.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an address too. We write it as a must as well.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t write discounts and no pop-up windows are not allowed. Look, the discount and the window are gone. Every wish in the message is done!", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So we read the client’s message and find the rules in it: what’s a must and what’s not allowed. We don’t skip any.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The camp director sent a message. Find all the rules in it and write them in the What rules? line.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the camp", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The number is missing or different. Write the director’s number exactly.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The discount is still there. The director says: no discount.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The chat is still there. The director says: no chat.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Still too many buttons. The director says: only one button.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The message has four things: the number, the discount, the chat and the number of buttons.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is a must. The discount and chat are not allowed. Only one button.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The right number, no discount or chat, one button. The director is happy!", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I wrote must: phone number for the club site. But I didn’t write the number itself! The AI made it up. What does the coach say? Fix my line.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is still made up. Write the coach’s number exactly.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Kodi’s line doesn’t have the number itself.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the word phone, write the coach’s number.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the site has the coach’s real number. The AI can’t know exact details, you write them!", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Let’s be detectives. Look at the site: which rules gave this site?", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s on the site and what isn’t: a window, discount, chat, number?", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What’s there was a must or wasn’t banned. What’s missing was written as not allowed.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The window is there, but no discount or chat. That’s B.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No extras, and there’s a real number and a Telegram button. That’s C.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site is short: two blocks and one button, no extras. That’s A.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can tell from a site which rules were written.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s fix the flower shop! The client said what they want. Instead of my it’s all obvious, write exact rules.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s all obvious is still there. Write the exact rules the client named.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The subscribe window is still there. The client says: no window.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The client named three things: the discount, the window and the phone.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Delete it’s all obvious. No discount or subscribe window, the phone number is a must.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! No discount, no window, and the number is real. The client is happy now!", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the full rules: must have, not allowed and a limit. Read the guitar course’s message.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The number is missing or different. Write the course’s number exactly.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no Telegram button. The course says: a Telegram button is a must.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The chat or the discount is still there. The course says: no chat, no discount.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Still too many blocks. The course says: at most 3 blocks.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The message has three kinds of rules: must, not allowed and a limit.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write them one after another with commas.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Every rule is followed: the number, Telegram, no extras, three blocks!", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now your own site! Write all seven lines, and in What rules? what is a must and what is not allowed.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the What? line: what site are you making?", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a topic. Write a specific thing: a club, server, shop or party site.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Why? line: what should the site do?", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the goal: should people sign up, order or come?", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Who for? line: who will look at the site?", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI couldn’t tell who. Write their age or who they are.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the What’s inside? line: which blocks?", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No blocks found in What’s inside?. For example: photos, prices, contact.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the How it looks? line: how should it look?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In How it looks? write a style and colours. For example: modern, blue and white.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the How it behaves? line: when, what and what happens?", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In How it behaves? write an exact case. For example: the button grows on hover.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the What rules? line: what is a must and what is not allowed?", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Seven questions: what, why, who for, what’s inside, how it looks, how it behaves, what rules.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In What rules? write one must-have and one not-allowed.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! That’s your seven-line prompt. At home you’ll send it to a real AI.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now a quick check. I say a sentence, and you choose: true or false?", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s it about: must, not allowed, or the word obvious?", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: the AI doesn’t know the client, you write the exact details.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you write it’s all obvious, the AI knows the client’s rules.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually it doesn’t know the client and adds its own things.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Under not allowed we write what must not be on the site.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: for example a discount or a pop-up window.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you don’t write the phone number, the AI may make it up.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: write the exact details yourself.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Nothing extra is a precise rule.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the AI doesn’t know what’s extra for you.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We find the rules in the client’s message and write them in the prompt.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: every wish becomes a rule.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You write rules precisely.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the riddle. I thought the AI knows by itself what isn’t allowed. But it doesn’t know the client! That there are no discounts, the real phone number, that no window is wanted, only you know that. So we write rules precisely. I was wrong.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your seven-line prompt and your site.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You already know the first six questions.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What rules? is must have, not allowed and limits. We find them in the client’s message.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Homework: copy your prompt and send it to a real AI. Next lesson we’ll learn how to improve the AI’s result. See you!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] the goal: what the site should do", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We don’t give discounts! What’s this subscribe window? And that’s not our phone number!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Swimming club: No pop-up window and no discount on the site. We don’t do discounts.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what must not be there?", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which is clearer?", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which rule is clearer?", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Robot course: Our phone is +998 90 777 88 99, our address is Yunusobod 12. They must be on the site.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what is a must?", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Must or not allowed?", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Art exhibition: The site is too long. At most 2 blocks and only one button.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] which limits?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello! We need a site. Our phone is +998 99 111 22 33, address Sergeli 7. Don’t write discounts, we don’t have any. And no pop-up windows, please.", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our number is +998 95 200 30 40, be sure to write it. We don’t need a discount or a chat. Only one button on the site.", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] must? not allowed?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our number is +998 93 777 12 12. No other number on the site!", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which What rules? gave this site?", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Flower shop: No discount and no subscribe window. Our phone +998 97 300 40 50 is a must.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Guitar course: The phone +998 91 600 70 80 and a Telegram button are a must. No chat and no discount. At most 3 blocks.", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what are you making?", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what should the site do?", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who is the site for?", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] which blocks?", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] how should it look?", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what happens?", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Send your prompt to a real AI and make your site.", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Typing…", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How to improve the AI’s result?", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write in the What rules? line: what is a must and what is not allowed?", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Those words tell the AI nothing. Be precise: what is a must and what is not allowed.", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI didn’t recognise a rule. For example: no discount, the phone number is a must.", required: true },
+    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The strongest teams on one field!", required: true },
+    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fresh, hot and tasty.", required: true },
+    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fun sessions and a friendly team.", required: true },
+    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in one place: quick and easy.", required: true },
+    { id: "en200", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everyone is welcome!", required: true },
+    { id: "en201", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Play with your friends!", required: true },
+    { id: "en202", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Learn from scratch.", required: true },
+    { id: "en203", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An unforgettable summer starts here!", required: true },
+    { id: "en204", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One team, one goal!", required: true },
+    { id: "en205", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did you know?", required: true },
+    { id: "en206", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] History, rules and fun facts.", required: true },
+    { id: "en207", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything is easy with us.", required: true },
+    { id: "en208", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sign up now: places are limited!", required: true },
+    { id: "en209", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Got questions? Give us a call.", required: true },
+    { id: "en210", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Order in just a few taps!", required: true },
+    { id: "en211", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’re waiting for you! Address and time below.", required: true },
+    { id: "en212", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When, where and how: it’s all here.", required: true },
+    { id: "en213", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Safe, useful and convenient for your child.", required: true },
+    { id: "en214", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Simple and clear. Questions? Just give us a call.", required: true },
+    { id: "en215", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A ready plan and materials for your class.", required: true },
+    { id: "en216", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A professional approach and top quality.", required: true },
+    { id: "en217", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Got questions?", required: true },
+    { id: "en218", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 📞 +998 90 123 45 67: call us and we’ll explain everything.", required: true },
+    { id: "en219", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Really great! We’ll be back.", required: true },
+    { id: "en220", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything was quick and tasty.", required: true },
+    { id: "en221", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My kids loved it.", required: true },
+    { id: "en222", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I told my friends too.", required: true },
+    { id: "en223", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How much is it? See prices.", required: true },
+    { id: "en224", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ When are you open? Every day.", required: true },
+    { id: "en225", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How do I sign up? Fill in the form.", required: true },
+    { id: "en226", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’ve been working since 2015 and try to make every visitor happy.", required: true },
+    { id: "en227", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ✅ Thank you!", required: true },
+    { id: "en228", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Answer: it’s all in the prices section.", required: true },
+    { id: "en229", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 🎁 Subscribe!", required: true },
+    { id: "en230", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] −50% OFF!", required: true },
+    { id: "en231", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] For whom?", required: true },
+    { id: "en232", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s inside?", required: true },
+    { id: "en233", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it looks?", required: true },
+    { id: "en234", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it behaves?", required: true },
+    { id: "en235", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What rules?", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Promptimda oltita qator bor. Yettinchisi yangi: qoidalar. Men hammasi tushunarli deb yozdim. Bu gul do'koni uchun! Yuborishni bosing.": "uz001",
+    "odamlar bizga qo'ng'iroq qilsin": "uz002",
+    "Bu yerda sun'iy intellekt yaratgan sayt chiqadi": "uz003",
+    "Voy! Sun'iy intellekt o'zicha obuna oynasini, katta chegirmani va chatni qo'shibdi. Telefon raqamini ham o'zi to'qib chiqaribdi! Qarang, Taxmin belgilari.": "uz004",
+    "Menimcha, sun'iy intellekt nima mumkin, nima mumkin emasligini o'zi biladi. Bu hammaga tushunarli-ku! Siz nima deb o'ylaysiz? Bugun yettinchi savol: qanday qoidalar?": "uz005",
+    "Qoidalar qatoriga va sayt burchaklaridagi qo'shimchalarga qarang.": "uz006",
+    "Mumkin emas, ya'ni saytda bo'lmasligi kerak bo'lgan narsa degani. Aytilmasa, sun'iy intellekt uni o'zicha qo'shishi mumkin.": "uz007",
+    "Oshpazga yong'oq solmang deysiz. Aytmasangiz, u bilmaydi va solib yuboradi.": "uz008",
+    "Birinchi qism: mumkin emas. Qarang, qoidalar qatori bo'sh. Sun'iy intellekt o'zicha obuna oynasi, chegirma va chat qo'shdi. Mijoz esa ularni so'ramagan edi.": "uz009",
+    "bolalar to'garakka yozilsin": "uz010",
+    "Yozamiz: reklama oynasi bo'lmasin. Qarang, pastdagi obuna oynasi yo'qoldi!": "uz011",
+    "Chegirma ham bo'lmasin. Qizil chegirma yozuvi ketdi. Endi sayt yolg'on va'da bermaydi.": "uz012",
+    "Va chat bo'lmasin. Burchakdagi chat tugmasi ham yo'qoldi. Sayt toza qoldi.": "uz013",
+    "Demak, mumkin emas ga saytda bo'lmasligi kerak narsalarni aniq nomlaymiz. Har birini alohida.": "uz014",
+    "Endi siz. Suzish klubi nima bo'lmasligini aytdi. Mijozning gapini o'qing va Qoidalar? qatoriga yozing.": "uz015",
+    "bolalar klubga yozilsin": "uz016",
+    "Reklama oynasi hali turibdi. Mijoz: reklama oynasi bo'lmasin.": "uz017",
+    "Chegirma hali turibdi. Mijoz: chegirma bo'lmasin.": "uz018",
+    "Mijoz ikki narsani taqiqladi.": "uz019",
+    "Reklama oynasi va chegirma bo'lmasin.": "uz020",
+    "Namunadagidek yozing va Yuborishni bosing.": "uz021",
+    "Zo'r! Oyna ham, chegirma ham yo'q. Sayt mijoz xohlaganidek!": "uz022",
+    "Endi o'zingizni sinab ko'ring. Ikki qoidadan qaysi biri sun'iy intellektga aniqroq?": "uz023",
+    "Qaysi birida aniq narsa nomlangan: oyna, chegirma, chat yoki telefon?": "uz024",
+    "Ortiqcha, tushunarli, yaxshi hech narsani aniq aytmaydi.": "uz025",
+    "Ikkinchisida aniq narsa bor: chegirma. Ortiqcha nimaligini sun'iy intellekt bilmaydi.": "uz026",
+    "Birinchisi aniq: reklama oynasi bo'lmaydi.": "uz027",
+    "Hammasi tushunarli faqat sizga tushunarli. Sun'iy intellektga aniq yozing.": "uz028",
+    "Barakalla!": "uz029",
+    "Hammasi to'g'ri! Siz aniq qoidani noaniqdan ajratasiz.": "uz030",
+    "Qoidalar qatoriga va sayt banneri ostidagi qatorga qarang.": "uz031",
+    "Majburiy, ya'ni saytda albatta bo'lishi kerak narsa degani. Aniq ma'lumotni o'zingiz yozasiz, sun'iy intellekt uni bilmaydi.": "uz032",
+    "Do'stingizga sovg'a yuborsangiz, manzilni aniq yozasiz. Qayerdadir desangiz, sovg'a yetib bormaydi.": "uz033",
+    "Ikkinchi qism: majburiy. Qarang, ortiqcha narsalar yo'q, lekin telefon raqamini sun'iy intellekt o'zi to'qib chiqardi. Mijozlar boshqa odamga qo'ng'iroq qiladi!": "uz034",
+    "Yozamiz: majburiy, telefon va kafening haqiqiy raqami. Qarang, banner ostida to'g'ri raqam chiqdi, Taxmin yo'qoldi!": "uz035",
+    "Manzilni ham qo'shamiz. Endi mehmonlar kafeni oson topadi.": "uz036",
+    "Va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi. Mijozlar u yerda ham yozishi mumkin.": "uz037",
+    "Demak, majburiy ga saytda albatta bo'lishi kerak narsani yozamiz. Raqam va manzilni esa aniq, o'zimiz yozamiz.": "uz038",
+    "Endi siz. Robot kursi o'z telefoni va manzilini aytdi. Ularni Qoidalar? qatoriga majburiy qilib yozing.": "uz039",
+    "o'quvchilar kursga yozilsin": "uz040",
+    "Telefon raqami yo'q yoki boshqa. Mijozning raqamini aniq yozing.": "uz041",
+    "Manzil yo'q yoki boshqa. Mijoz: Yunusobod 12.": "uz042",
+    "Mijoz ikki narsani aytdi: telefon va manzil.": "uz043",
+    "Majburiy so'zidan keyin telefon raqamini va manzilni ko'chirib yozing.": "uz044",
+    "Ajoyib! Banner ostida haqiqiy raqam va manzil. Endi o'quvchilar to'g'ri joyga qo'ng'iroq qiladi!": "uz045",
+    "Mijozlar o'z so'zlari bilan gapiradi. Men mijozning gapini aytaman, siz tanlang: bu majburiymi yoki mumkin emasmi?": "uz046",
+    "Mijoz bu narsani saytda ko'rishni xohlaydimi yoki yo'qmi?": "uz047",
+    "Albatta, kerak bu majburiy. Kerak emas, bo'lmasin bu mumkin emas.": "uz048",
+    "Manzilimiz albatta ko'rinib tursin.": "uz049",
+    "Albatta bu majburiy.": "uz050",
+    "Bizga chat kerak emas, javob berishga vaqtimiz yo'q.": "uz051",
+    "Kerak emas bu mumkin emas.": "uz052",
+    "Telegramimizga tugma qo'yinglar.": "uz053",
+    "Mijoz tugmani so'rayapti: majburiy.": "uz054",
+    "Hech qanday chegirma va aksiya yozmang.": "uz055",
+    "Yozmang bu mumkin emas.": "uz056",
+    "Mijozlarni har xil oynalar bilan bezovta qilmang.": "uz057",
+    "Oynalar bo'lmasin: mumkin emas.": "uz058",
+    "Zo'r! Mijozning gapidan qoidani topasiz.": "uz059",
+    "Qoidalar qatoriga, saytdagi tugmalarga va bloklar soniga qarang.": "uz060",
+    "Chegara, ya'ni nechta bo'lishi mumkinligi degani: faqat bitta tugma yoki ko'pi bilan uchta blok.": "uz061",
+    "Futbol maydonida bir jamoada faqat o'n bir o'yinchi bo'ladi. Bu ham chegara.": "uz062",
+    "Uchinchi qism: chegaralar. Qarang, saytda tugmalar ko'p va bloklar ham beshta. O'quvchi qaysi tugmani bosishni bilmay qoladi.": "uz063",
+    "o'quvchilar to'garakka yozilsin": "uz064",
+    "Yozamiz: faqat bitta tugma bo'lsin. Qarang, menyudagi va pastdagi tugmalar ketdi. Endi bitta asosiy tugma qoldi.": "uz065",
+    "Va ko'pi bilan uchta blok. Sayt qisqa va tushunarli bo'ldi: rasmlar, jadval va narxlar.": "uz066",
+    "Demak, qoidaga chegarani ham yozish mumkin: nechta tugma, nechta blok. Shunda sayt keraksiz narsalar bilan to'lib ketmaydi.": "uz067",
+    "Endi siz. Ko'rgazma sayti juda uzun bo'lib ketdi. Mijozning chegaralarini Qoidalar? qatoriga yozing.": "uz068",
+    "odamlar ko'rgazmaga kelsin": "uz069",
+    "Bloklar hali ko'p. Mijoz: ko'pi bilan 2 ta blok.": "uz070",
+    "Tugmalar hali ko'p. Mijoz: faqat bitta tugma.": "uz071",
+    "Mijoz ikki chegara aytdi: bloklar soni va tugmalar soni.": "uz072",
+    "Ko'pi bilan 2 ta blok, faqat bitta tugma.": "uz073",
+    "Zo'r! Ikki blok va bitta tugma. Sayt qisqa, mehmon darrov tushunadi!": "uz074",
+    "Mijoz xabariga va qoidalar qatoriga qarang: xabardagi har bir istak qatorga o'tadi.": "uz075",
+    "Mijoz buyurtmasi, ya'ni mijoz o'z so'zlari bilan yozgan xabari degani. Undan majburiy va mumkin emas narsalarni topamiz.": "uz076",
+    "Do'konga ro'yxat bilan borasiz: nima olish kerak, nima kerak emas. Qoidalar ham shunday ro'yxat.": "uz077",
+    "To'rtinchi qism: mijoz buyurtmasi. Mijozlar qoidani qator qilib yozmaydi, oddiy gapiradi. Qarang, ingliz tili kursi xabar yubordi. Undan qoidalarni topamiz.": "uz078",
+    "Xabarda telefon bor. Bu majburiy. Qatorga ko'chiramiz va sayt to'g'ri raqamni oladi.": "uz079",
+    "Manzil ham bor. Uni ham majburiy qilib yozamiz.": "uz080",
+    "Chegirma yozmang va oynalar chiqmasin bu mumkin emas. Qarang, chegirma va oyna ketdi. Xabardagi hamma istak bajarildi!": "uz081",
+    "Demak, mijoz xabarini o'qiymiz va undan qoidalarni topamiz: nima majburiy, nima mumkin emas. Hech birini tashlab ketmaymiz.": "uz082",
+    "Endi siz. Lager direktori xabar yubordi. Xabardan hamma qoidalarni topib, Qoidalar? qatoriga yozing.": "uz083",
+    "bolalar lagerga yozilsin": "uz084",
+    "Telefon raqami yo'q yoki boshqa. Direktorning raqamini aniq yozing.": "uz085",
+    "Chegirma hali turibdi. Direktor: chegirma kerak emas.": "uz086",
+    "Chat hali turibdi. Direktor: chat kerak emas.": "uz087",
+    "Tugmalar hali ko'p. Direktor: faqat bitta tugma.": "uz088",
+    "Xabarda to'rt narsa bor: raqam, chegirma, chat va tugmalar soni.": "uz089",
+    "Raqam majburiy. Chegirma va chat mumkin emas. Faqat bitta tugma.": "uz090",
+    "Barakalla! Raqam to'g'ri, chegirma va chat yo'q, bitta tugma. Direktor xursand!": "uz091",
+    "Men klub sayti uchun majburiy: telefon raqami deb yozdim. Lekin raqamning o'zini yozmabman! Sun'iy intellekt raqamni o'zi to'qib chiqardi. Murabbiy nima deyapti? Qatorimni tuzating.": "uz092",
+    "Raqam hali to'qib chiqarilgan. Murabbiyning raqamini aniq yozing.": "uz093",
+    "Kodining qatorida raqamning o'zi yo'q.": "uz094",
+    "Telefon so'zidan keyin murabbiyning raqamini yozing.": "uz095",
+    "Zo'r! Endi saytda murabbiyning haqiqiy raqami. Aniq ma'lumotni sun'iy intellekt o'zi bilmaydi, uni siz yozasiz!": "uz096",
+    "Endi detektiv bo'lamiz. Saytga qarang: qaysi qoidalar shunday saytni berdi?": "uz097",
+    "Saytda nima bor va nima yo'q: oyna, chegirma, chat, raqam?": "uz098",
+    "Bor narsa majburiy yoki aytilmagan. Yo'q narsa mumkin emas qilib yozilgan.": "uz099",
+    "Oyna bor, chegirma va chat esa yo'q. Bu B.": "uz100",
+    "Ortiqcha narsa yo'q, haqiqiy raqam va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi bor. Bu C.": "uz101",
+    "Sayt qisqa: ikkita blok va bitta tugma, ortiqcha narsa yo'q. Bu A.": "uz102",
+    "Zo'r! Saytga qarab qaysi qoidalar yozilganini topasiz.": "uz103",
+    "Endi gul do'konini tuzatamiz! Mijoz nima xohlashini aytdi. Mening hammasi tushunarli qatorim o'rniga aniq qoidalarni yozing.": "uz104",
+    "Hammasi tushunarli hali turibdi. Mijoz aytgan aniq qoidalarni yozing.": "uz105",
+    "Obuna oynasi hali turibdi. Mijoz: oyna bo'lmasin.": "uz106",
+    "Raqam yo'q yoki boshqa. Mijozning raqamini aniq yozing.": "uz107",
+    "Mijoz uch narsa aytdi: chegirma, oyna va telefon.": "uz108",
+    "Hammasi tushunarli ni o'chiring. Chegirma va obuna oynasi bo'lmasin, telefon raqami majburiy.": "uz109",
+    "Ajoyib! Chegirma va oyna yo'q, raqam haqiqiy. Mijoz endi xursand!": "uz110",
+    "Endi to'liq qoidalarni yozasiz: majburiy, mumkin emas va chegara. Gitara kursi xabarini o'qing.": "uz111",
+    "Telefon raqami yo'q yoki boshqa. Kursning raqamini aniq yozing.": "uz112",
+    "[English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi yo'q. Kurs: [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi albatta bo'lsin.": "uz113",
+    "Chat yoki chegirma hali turibdi. Kurs: ular bo'lmasin.": "uz114",
+    "Bloklar hali ko'p. Kurs: ko'pi bilan 3 ta blok.": "uz115",
+    "Xabarda uch xil qoida bor: majburiy, mumkin emas va chegara.": "uz116",
+    "Ularni vergul bilan ketma-ket yozing.": "uz117",
+    "Barakalla! Hamma qoida bajarildi: raqam, [English pronunciation] Telegram [O'zbekcha tallaffuz], ortiqcha narsa yo'q, uchta blok!": "uz118",
+    "Endi o'z saytingiz! Yettita qatorni yozing. Qoidalar? ga esa nima majburiy va nima mumkin emasligini yozing.": "uz119",
+    "Nima? qatoriga yozing: qanday sayt yaratasiz?": "uz120",
+    "Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.": "uz121",
+    "Endi Nega? qatorini yozing: sayt nima qilishi kerak?": "uz122",
+    "Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?": "uz123",
+    "Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?": "uz124",
+    "Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.": "uz125",
+    "Endi Ichida nima? qatorini yozing: saytda qanday bloklar?": "uz126",
+    "Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.": "uz127",
+    "Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?": "uz128",
+    "Ko'rinishi? ga uslub va ranglarni yozing. Masalan: zamonaviy, ko'k va oq.": "uz129",
+    "Endi Qanday ishlaydi? qatorini yozing: qachon, nima va nima bo'ladi?": "uz130",
+    "Qanday ishlaydi? ga aniq holat yozing. Masalan: tugma ustiga kelganda kattalashsin.": "uz131",
+    "Endi Qoidalar? qatorini yozing: nima majburiy va nima mumkin emas?": "uz132",
+    "Yettita savol: nima, nega, kim uchun, ichida nima, ko'rinishi, qanday ishlaydi, qoidalar.": "uz133",
+    "Qoidalar? ga bitta majburiy va bitta mumkin emas narsa yozing.": "uz134",
+    "Voy, zo'r! Bu sizning yetti qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.": "uz135",
+    "Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?": "uz136",
+    "Gap nima haqida: majburiy, mumkin emas yoki tushunarli so'zi?": "uz137",
+    "Esingizdami: sun'iy intellekt mijozni tanimaydi, aniq ma'lumotni siz yozasiz.": "uz138",
+    "Hammasi tushunarli desangiz, sun'iy intellekt mijozning qoidalarini biladi.": "uz139",
+    "Aslida u mijozni tanimaydi va o'zicha qo'shadi.": "uz140",
+    "Mumkin emas qatoriga saytda bo'lmasligi kerak narsalarni yozamiz.": "uz141",
+    "To'g'ri: masalan, chegirma yoki reklama oynasi.": "uz142",
+    "Telefon raqamini yozmasangiz, sun'iy intellekt uni o'zi to'qib chiqarishi mumkin.": "uz143",
+    "To'g'ri: aniq ma'lumotni o'zingiz yozing.": "uz144",
+    "Ortiqcha narsa bo'lmasin bu aniq qoida.": "uz145",
+    "Aslida nima ortiqcha ekanini sun'iy intellekt bilmaydi.": "uz146",
+    "Mijozning xabaridan qoidalarni topib, promptga yozamiz.": "uz147",
+    "To'g'ri: har bir istak qoidaga aylanadi.": "uz148",
+    "Hammasi to'g'ri! Siz qoidalarni aniq yozasiz.": "uz149",
+    "Endi topishmoqqa qaytamiz. Men sun'iy intellekt nima mumkin emasligini o'zi biladi deb o'ylagandim. Lekin u mijozni tanimaydi! Chegirma yo'qligini, haqiqiy telefon raqamini, oyna kerak emasligini faqat siz bilasiz. Shuning uchun qoidalarni aniq yozamiz. Men adashibman.": "uz150",
+    "Qarang, bu sizning yetti qatorli promptingiz va saytingiz.": "uz151",
+    "Oldingi oltita savol sizga tanish.": "uz152",
+    "Qoidalar? bu majburiy, mumkin emas va chegaralar. Ularni mijozning xabaridan topamiz.": "uz153",
+    "Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda sun'iy intellekt natijasini qanday yaxshilashni o'rganamiz. Ko'rishguncha!": "uz154",
+    "maqsad: sayt nima qilsin": "uz155",
+    "Voy, zo‘r!": "uz156",
+    "Ana! Chiqdi!": "uz157",
+    "Super!": "uz158",
+    "Qoyil!": "uz159",
+    "Ura!": "uz160",
+    "Zo‘r-ku!": "uz161",
+    "Yana bir bor urinib ko‘ring.": "uz162",
+    "Diqqat bilan qarang.": "uz163",
+    "Yaqin qoldingiz. Shoshilmang.": "uz164",
+    "Biz chegirma bermaymiz! Bu obuna oynasi nima? Telefon raqami ham bizniki emas!": "uz165",
+    "Suzish klubi: Saytda reklama oynasi ham, chegirma ham bo'lmasin. Bizda chegirma yo'q.": "uz166",
+    "nima bo'lmasin?": "uz167",
+    "Qaysi biri aniqroq?": "uz168",
+    "Qaysi qoida aniqroq?": "uz169",
+    "Robot kursi: Telefonimiz +998 90 777 88 99, manzilimiz Yunusobod 12. Ular saytda albatta bo'lsin.": "uz170",
+    "nima majburiy?": "uz171",
+    "Majburiy yoki mumkin emas?": "uz172",
+    "Majburiymi yoki mumkin emasmi?": "uz173",
+    "Rasm ko'rgazmasi: Sayt juda uzun. Ko'pi bilan 2 ta blok bo'lsin va faqat bitta tugma.": "uz174",
+    "qanday chegaralar?": "uz175",
+    "Salom! Sayt kerak. Telefonimiz +998 99 111 22 33, manzil Sergeli 7. Chegirma yozmang, bizda yo'q. Har xil oynalar ham chiqmasin.": "uz176",
+    "Raqamimiz +998 95 200 30 40, uni albatta yozing. Chegirma ham, chat ham kerak emas. Saytda faqat bitta tugma bo'lsin.": "uz177",
+    "majburiy? mumkin emas?": "uz178",
+    "Bizning raqam +998 93 777 12 12. Saytda boshqa raqam yozilmasin!": "uz179",
+    "Qaysi Qoidalar? shu saytni berdi?": "uz180",
+    "Gul do'koni: Chegirma ham, obuna oynasi ham bo'lmasin. Telefonimiz +998 97 300 40 50 albatta bo'lsin.": "uz181",
+    "Gitara kursi: Telefon +998 91 600 70 80 va [English pronunciation] Telegram [O'zbekcha tallaffuz] tugmasi albatta bo'lsin. Chat va chegirma bo'lmasin. Ko'pi bilan 3 ta blok.": "uz182",
+    "nima yaratasiz?": "uz183",
+    "sayt nima qilishi kerak?": "uz184",
+    "sayt kim uchun?": "uz185",
+    "saytda qanday bloklar?": "uz186",
+    "sayt qanday ko'rinsin?": "uz187",
+    "nima bo'ladi?": "uz188",
+    "To'g'rimi?": "uz189",
+    "To'g'rimi yoki noto'g'rimi?": "uz190",
+    "Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.": "uz191",
+    "Yozyapti…": "uz192",
+    "Natijani qanday yaxshilaymiz?": "uz193",
+    "Qoidalar? qatoriga yozing: nima majburiy va nima mumkin emas?": "uz194",
+    "Bu so'zlar sun'iy intellektga hech narsa demaydi. Aniq yozing: nima majburiy va nima mumkin emas.": "uz195",
+    "Sun'iy intellekt bu so'zlardan qoidani tanimadi. Masalan: chegirma bo'lmasin, telefon raqami albatta bo'lsin.": "uz196",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz197",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz198",
+    "Eng kuchli jamoalar bir maydonda!": "uz199",
+    "Yangi pishgan, issiq va mazali.": "uz200",
+    "Qiziqarli mashg'ulotlar va do'stona jamoa.": "uz201",
+    "Hammasi bir joyda: qulay va tez.": "uz202",
+    "Hammani kutamiz!": "uz203",
+    "Do'stlaringiz bilan birga o'ynang!": "uz204",
+    "Noldan boshlab o'rganing.": "uz205",
+    "Unutilmas yoz shu yerda boshlanadi!": "uz206",
+    "Bir jamoa, bir maqsad!": "uz207",
+    "Bilasizmi?": "uz208",
+    "Tarix, qoidalar va qiziqarli faktlar.": "uz209",
+    "Biz bilan hammasi oson.": "uz210",
+    "Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!": "uz211",
+    "Savollaringiz bormi? Bizga qo'ng'iroq qiling.": "uz212",
+    "Bir necha bosishda buyurtma bering!": "uz213",
+    "Sizni kutamiz! Manzil va vaqt quyida.": "uz214",
+    "Qachon, qayerda va qanday: hammasi shu yerda.": "uz215",
+    "Farzandingiz uchun xavfsiz, foydali va qulay.": "uz216",
+    "Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.": "uz217",
+    "Dars uchun tayyor reja va materiallar.": "uz218",
+    "Professional yondashuv va yuqori sifat.": "uz219",
+    "Savolingiz bormi?": "uz220",
+    "📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.": "uz221",
+    "Juda zo'r! Yana kelamiz.": "uz222",
+    "Hammasi tez va mazali.": "uz223",
+    "Bolalarim juda xursand.": "uz224",
+    "Do'stlarimga ham aytdim.": "uz225",
+    "❓ Qancha turadi? Narxlar bo'limida.": "uz226",
+    "❓ Qachon ochiq? Har kuni.": "uz227",
+    "❓ Qanday yozilaman? Formani to'ldiring.": "uz228",
+    "Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.": "uz229",
+    "✅ Rahmat!": "uz230",
+    "Javob: hammasi narxlar bo'limida yozilgan.": "uz231",
+    "🎁 Obuna bo'ling!": "uz232",
+    "−50% CHEGIRMA!": "uz233",
+    "Kim uchun?": "uz234",
+    "Ichida nima?": "uz235",
+    "Ko'rinishi?": "uz236",
+    "Qanday ishlaydi?": "uz237",
+    "Qoidalar?": "uz238",
+  },
+  ru: {
+    "Привет! В моём промпте шесть строк. Седьмая, новая: правила. Я написал и так всё понятно. Это для цветочного магазина! Нажми Отправить.": "ru001",
+    "чтобы люди нам звонили": "ru002",
+    "Здесь появится сайт, который сделает ИИ": "ru003",
+    "Ого! ИИ сам добавил окно подписки, огромную скидку и чат. И номер телефона тоже выдумал! Смотри, метки Догадка.": "ru004",
+    "По-моему, ИИ сам знает, что можно и что нельзя. Это же всем понятно! А ты как думаешь? Сегодня, седьмой вопрос: какие правила?": "ru005",
+    "Посмотри на строку правил и на добавки по углам сайта.": "ru006",
+    "Нельзя, это то, чего на сайте быть не должно. Если не сказать, ИИ может добавить это сам.": "ru007",
+    "Повару говоришь: без орехов. Не скажешь, он не узнает и положит.": "ru008",
+    "Первая часть, нельзя. Смотри, строка правил пустая. ИИ сам добавил окно подписки, скидку и чат. А клиент их не просил.": "ru009",
+    "чтобы дети записывались в кружок": "ru010",
+    "Пишем: без рекламного окна. Смотри, окно подписки внизу исчезло!": "ru011",
+    "И без скидок. Красная надпись про скидку ушла. Теперь сайт не обещает неправду.": "ru012",
+    "И без чата. Кнопка чата в углу тоже пропала. Сайт стал чистым.": "ru013",
+    "Значит, в нельзя точно называем то, чего не должно быть на сайте. Каждую вещь отдельно.": "ru014",
+    "Теперь ты. Клуб плавания сказал, чего быть не должно. Прочитай слова клиента и напиши в строку Какие правила?.": "ru015",
+    "чтобы дети записывались в клуб": "ru016",
+    "Рекламное окно ещё на месте. Клиент: без рекламного окна.": "ru017",
+    "Скидка ещё на месте. Клиент: без скидок.": "ru018",
+    "Клиент запретил две вещи.": "ru019",
+    "Без рекламного окна и скидок.": "ru020",
+    "Напиши как в образце и нажми Отправить.": "ru021",
+    "Огонь! Ни окна, ни скидки. Сайт такой, как хотел клиент!": "ru022",
+    "Теперь проверь себя. Какое из двух правил понятнее ИИ?": "ru023",
+    "Где названа конкретная вещь: окно, скидка, чат или телефон?": "ru024",
+    "Лишнее, понятно, хорошо ничего точно не говорят.": "ru025",
+    "Во втором названа вещь, скидка. Что такое лишнее, ИИ не знает.": "ru026",
+    "Первое точное: рекламного окна не будет.": "ru027",
+    "Всё понятно понятно только тебе. ИИ нужно написать точно.": "ru028",
+    "Точно!": "ru029",
+    "Всё верно! Ты отличаешь точное правило от размытого.": "ru030",
+    "Посмотри на строку правил и на строку под баннером сайта.": "ru031",
+    "Обязательно, то, что на сайте должно быть всегда. Точные данные пишешь ты сам: ИИ их не знает.": "ru032",
+    "Отправляешь другу подарок, пишешь точный адрес. Скажешь где-нибудь, подарок не дойдёт.": "ru033",
+    "Вторая часть, обязательно. Смотри, лишнего уже нет, но номер телефона ИИ выдумал сам. Клиенты будут звонить чужому человеку!": "ru034",
+    "Пишем: обязательно, телефон и настоящий номер кафе. Смотри, под баннером появился правильный номер, Догадка исчезла!": "ru035",
+    "Добавим и адрес. Теперь гости легко найдут кафе.": "ru036",
+    "И кнопку [English pronunciation] Telegram [Русское произношение]. Клиенты смогут писать и туда.": "ru037",
+    "Значит, в обязательно пишем то, что на сайте должно быть всегда. А номер и адрес, точно, своими руками.": "ru038",
+    "Теперь ты. Курс роботов назвал свой телефон и адрес. Напиши их в строку Какие правила? как обязательные.": "ru039",
+    "чтобы школьники записывались на курс": "ru040",
+    "Номера нет или он другой. Напиши номер клиента точно.": "ru041",
+    "Адреса нет или он другой. Клиент: Юнусабад 12.": "ru042",
+    "Клиент назвал две вещи: телефон и адрес.": "ru043",
+    "После обязательно перепиши номер телефона и адрес.": "ru044",
+    "Класс! Под баннером настоящий номер и адрес. Теперь ученики позвонят куда нужно!": "ru045",
+    "Клиенты говорят своими словами. Я говорю фразу клиента, а ты выбираешь: это обязательно или нельзя?": "ru046",
+    "Клиент хочет видеть это на сайте или нет?": "ru047",
+    "Обязательно, нужно, это обязательно. Не надо, чтобы не было, это нельзя.": "ru048",
+    "Наш адрес обязательно должен быть виден.": "ru049",
+    "Обязательно, значит обязательно.": "ru050",
+    "Чат нам не нужен, нам некогда отвечать.": "ru051",
+    "Не нужен, значит нельзя.": "ru052",
+    "Поставьте кнопку на наш [English pronunciation] Telegram [Русское произношение].": "ru053",
+    "Клиент просит кнопку: обязательно.": "ru054",
+    "Не пишите никаких скидок и акций.": "ru055",
+    "Не пишите, значит нельзя.": "ru056",
+    "Не беспокойте клиентов всякими окнами.": "ru057",
+    "Окон быть не должно: нельзя.": "ru058",
+    "Класс! Ты находишь правило в словах клиента.": "ru059",
+    "Посмотри на строку правил, на кнопки сайта и на число блоков.": "ru060",
+    "Ограничение, это сколько чего может быть: только одна кнопка или не больше трёх блоков.": "ru061",
+    "На футбольном поле в одной команде только одиннадцать игроков. Это тоже ограничение.": "ru062",
+    "Третья часть, ограничения. Смотри, на сайте много кнопок и целых пять блоков. Ученик не знает, какую кнопку нажать.": "ru063",
+    "чтобы школьники записывались в кружок": "ru064",
+    "Пишем: только одна кнопка. Смотри, кнопки в меню и внизу ушли. Осталась одна главная.": "ru065",
+    "И не больше трёх блоков. Сайт стал коротким и понятным: фото, расписание и цены.": "ru066",
+    "Значит, в правило можно написать и ограничение: сколько кнопок, сколько блоков. Тогда сайт не завалят ненужным.": "ru067",
+    "Теперь ты. Сайт выставки получился слишком длинным. Напиши ограничения клиента в строку Какие правила?.": "ru068",
+    "чтобы люди пришли на выставку": "ru069",
+    "Блоков ещё много. Клиент: не больше 2 блоков.": "ru070",
+    "Кнопок ещё много. Клиент: только одна кнопка.": "ru071",
+    "Клиент назвал два ограничения: число блоков и число кнопок.": "ru072",
+    "Не больше 2 блоков, только одна кнопка.": "ru073",
+    "Огонь! Два блока и одна кнопка. Сайт короткий, гость сразу всё понимает!": "ru074",
+    "Посмотри на сообщение клиента и строку правил: каждое желание из сообщения переходит в строку.": "ru075",
+    "Заказ клиента, это его сообщение своими словами. В нём ищем, что обязательно и что нельзя.": "ru076",
+    "В магазин идёшь со списком: что купить и что не надо. Правила, такой же список.": "ru077",
+    "Четвёртая часть, заказ клиента. Клиенты не пишут правила строчкой, они просто говорят. Смотри, курс английского прислал сообщение. Найдём в нём правила.": "ru078",
+    "В сообщении есть телефон. Это обязательно. Переносим в строку, и сайт получает правильный номер.": "ru079",
+    "Есть и адрес. Его тоже пишем как обязательный.": "ru080",
+    "Скидок не пишите и чтобы окон не было, это нельзя. Смотри, скидка и окно ушли. Все пожелания из сообщения выполнены!": "ru081",
+    "Значит, читаем сообщение клиента и находим в нём правила: что обязательно и что нельзя. Ничего не теряем.": "ru082",
+    "Теперь ты. Директор лагеря прислал сообщение. Найди в нём все правила и напиши их в строку Какие правила?.": "ru083",
+    "чтобы дети записывались в лагерь": "ru084",
+    "Номера нет или он другой. Напиши номер директора точно.": "ru085",
+    "Скидка ещё на месте. Директор: скидки не нужны.": "ru086",
+    "Чат ещё на месте. Директор: чат не нужен.": "ru087",
+    "Кнопок ещё много. Директор: только одна кнопка.": "ru088",
+    "В сообщении четыре вещи: номер, скидка, чат и число кнопок.": "ru089",
+    "Номер, обязательно. Скидка и чат, нельзя. Только одна кнопка.": "ru090",
+    "Молодец! Номер правильный, ни скидки, ни чата, одна кнопка. Директор доволен!": "ru091",
+    "Я написал для сайта клуба обязательно: номер телефона. Но сам номер не написал! ИИ выдумал его сам. Что говорит тренер? Исправь мою строку.": "ru092",
+    "Номер всё ещё выдуманный. Напиши номер тренера точно.": "ru093",
+    "В строке Коди нет самого номера.": "ru094",
+    "После слова телефон напиши номер тренера.": "ru095",
+    "Огонь! Теперь на сайте настоящий номер тренера. Точные данные ИИ сам не знает, их пишешь ты!": "ru096",
+    "Теперь побудем детективами. Посмотри на сайт: какие правила дали такой сайт?": "ru097",
+    "Что на сайте есть и чего нет: окно, скидка, чат, номер?": "ru098",
+    "Что есть, обязательно или не запрещено. Чего нет, записано как нельзя.": "ru099",
+    "Окно есть, а скидки и чата нет. Это B.": "ru100",
+    "Лишнего нет, есть настоящий номер и кнопка [English pronunciation] Telegram [Русское произношение]. Это C.": "ru101",
+    "Сайт короткий: два блока и одна кнопка, ничего лишнего. Это A.": "ru102",
+    "Класс! По сайту ты находишь, какие правила были написаны.": "ru103",
+    "Теперь починим цветочный магазин! Клиент сказал, чего хочет. Вместо моего и так всё понятно напиши точные правила.": "ru104",
+    "И так всё понятно ещё на месте. Напиши точные правила, которые назвал клиент.": "ru105",
+    "Окно подписки ещё на месте. Клиент: без окна.": "ru106",
+    "Клиент назвал три вещи: скидку, окно и телефон.": "ru107",
+    "Сотри и так всё понятно. Без скидок и окна подписки, номер телефона, обязательно.": "ru108",
+    "Класс! Ни скидки, ни окна, номер настоящий. Теперь клиент доволен!": "ru109",
+    "Теперь полные правила: обязательно, нельзя и ограничение. Прочитай сообщение курса гитары.": "ru110",
+    "Номера нет или он другой. Напиши номер курса точно.": "ru111",
+    "Нет кнопки [English pronunciation] Telegram [Русское произношение]. Курс: кнопка [English pronunciation] Telegram [Русское произношение] обязательно.": "ru112",
+    "Чат или скидка ещё на месте. Курс: их быть не должно.": "ru113",
+    "Блоков ещё много. Курс: не больше 3 блоков.": "ru114",
+    "В сообщении три вида правил: обязательно, нельзя и ограничение.": "ru115",
+    "Напиши их через запятую.": "ru116",
+    "Молодец! Все правила выполнены: номер, [English pronunciation] Telegram [Русское произношение], ничего лишнего, три блока!": "ru117",
+    "А теперь твой сайт! Напиши все семь строк, а в Какие правила?, что обязательно и что нельзя.": "ru118",
+    "Напиши строку Что?: какой сайт создаёшь?": "ru119",
+    "Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.": "ru120",
+    "Теперь напиши строку Зачем?: что должен сделать сайт?": "ru121",
+    "Напиши цель: чтобы записывались, заказывали или приходили?": "ru122",
+    "Теперь напиши строку Для кого?: кто будет смотреть сайт?": "ru123",
+    "ИИ не понял, для кого. Напиши возраст или кто они.": "ru124",
+    "Теперь напиши строку Что внутри?: какие блоки на сайте?": "ru125",
+    "В Что внутри? не найдено блоков. Например: фото, цены, контакты.": "ru126",
+    "Теперь напиши строку Как выглядит?: каким будет сайт?": "ru127",
+    "В Как выглядит? напиши стиль и цвета. Например: современный, синий и белый.": "ru128",
+    "Теперь напиши строку Как ведёт себя?: когда, что и что происходит?": "ru129",
+    "В Как ведёт себя? напиши точный случай. Например: кнопка увеличивается при наведении.": "ru130",
+    "Теперь напиши строку Какие правила?: что обязательно и что нельзя?": "ru131",
+    "Семь вопросов: что, зачем, для кого, что внутри, как выглядит, как ведёт себя, какие правила.": "ru132",
+    "В Какие правила? напиши одну обязательную вещь и одну запретную.": "ru133",
+    "Ого, классно! Это твой промпт из семи строк. Дома отправишь его настоящему ИИ.": "ru134",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?": "ru135",
+    "О чём фраза: об обязательно, нельзя или о слове понятно?": "ru136",
+    "Вспомни: ИИ не знает клиента, точные данные пишешь ты.": "ru137",
+    "Если написать и так всё понятно, ИИ узнает правила клиента.": "ru138",
+    "На самом деле он не знает клиента и добавляет своё.": "ru139",
+    "В нельзя пишем то, чего на сайте быть не должно.": "ru140",
+    "Верно: например, скидку или рекламное окно.": "ru141",
+    "Если не написать номер телефона, ИИ может его выдумать.": "ru142",
+    "Верно: точные данные пиши сам.": "ru143",
+    "Ничего лишнего, это точное правило.": "ru144",
+    "На самом деле ИИ не знает, что для тебя лишнее.": "ru145",
+    "Правила находим в сообщении клиента и пишем в промпт.": "ru146",
+    "Верно: каждое пожелание становится правилом.": "ru147",
+    "Всё верно! Ты пишешь правила точно.": "ru148",
+    "Вернёмся к загадке. Я думал, ИИ сам знает, что нельзя. Но он не знает клиента! Что скидок нет, какой настоящий номер, что окно не нужно, знаешь только ты. Поэтому правила пишем точно. Я ошибся.": "ru149",
+    "Смотри, это твой промпт из семи строк и твой сайт.": "ru150",
+    "Первые шесть вопросов ты уже знаешь.": "ru151",
+    "Какие правила?, это обязательно, нельзя и ограничения. Их находим в сообщении клиента.": "ru152",
+    "Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке научимся улучшать результат ИИ. До встречи!": "ru153",
+    "цель: что сделает сайт": "ru154",
+    "Вау, классно!": "ru155",
+    "Есть! Получилось!": "ru156",
+    "Супер!": "ru157",
+    "Огонь!": "ru158",
+    "Ура!": "ru159",
+    "Вот это да!": "ru160",
+    "Попробуй ещё раз.": "ru161",
+    "Посмотри внимательно.": "ru162",
+    "Уже близко. Не спеши.": "ru163",
+    "Мы не даём скидок! Что это за окно подписки? И номер телефона не наш!": "ru164",
+    "Клуб плавания: На сайте не должно быть ни рекламного окна, ни скидок. У нас скидок нет.": "ru165",
+    "чего быть не должно?": "ru166",
+    "Что точнее?": "ru167",
+    "Какое правило точнее?": "ru168",
+    "Курс роботов: Наш телефон +998 90 777 88 99, адрес, Юнусабад 12. Они обязательно должны быть на сайте.": "ru169",
+    "что обязательно?": "ru170",
+    "Обязательно или нельзя?": "ru171",
+    "Выставка рисунков: Сайт слишком длинный. Не больше 2 блоков и только одна кнопка.": "ru172",
+    "какие ограничения?": "ru173",
+    "Здравствуйте! Нужен сайт. Наш телефон +998 99 111 22 33, адрес Сергели 7. Скидок не пишите, у нас их нет. И чтобы никаких окон не выскакивало.": "ru174",
+    "Наш номер +998 95 200 30 40, обязательно напишите его. Скидки и чат не нужны. На сайте только одна кнопка.": "ru175",
+    "обязательно? нельзя?": "ru176",
+    "Наш номер +998 93 777 12 12. Другого номера на сайте быть не должно!": "ru177",
+    "Какие правила дали этот сайт?": "ru178",
+    "Цветочный магазин: Ни скидок, ни окна подписки. Наш телефон +998 97 300 40 50, обязательно.": "ru179",
+    "Курс гитары: Телефон +998 91 600 70 80 и кнопка [English pronunciation] Telegram [Русское произношение], обязательно. Без чата и скидок. Не больше 3 блоков.": "ru180",
+    "что создаёшь?": "ru181",
+    "что должен сделать сайт?": "ru182",
+    "для кого сайт?": "ru183",
+    "какие блоки на сайте?": "ru184",
+    "каким будет сайт?": "ru185",
+    "что происходит?": "ru186",
+    "Верно или нет?": "ru187",
+    "Верно или неверно?": "ru188",
+    "Отправь свой промпт настоящему ИИ и сделай свой сайт.": "ru189",
+    "Пишет…": "ru190",
+    "Как улучшить результат ИИ?": "ru191",
+    "Напиши в строку Какие правила?: что обязательно и что нельзя?": "ru192",
+    "Эти слова ничего не говорят ИИ. Напиши точно: что обязательно и что нельзя.": "ru193",
+    "ИИ не узнал по этим словам правило. Например: без скидок, телефон обязательно.": "ru194",
+    "Молодец!": "ru195",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru196",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru197",
+    "Сильнейшие команды на одном поле!": "ru198",
+    "Свежее, горячее и вкусное.": "ru199",
+    "Интересные занятия и дружная команда.": "ru200",
+    "Всё в одном месте: удобно и быстро.": "ru201",
+    "Ждём всех!": "ru202",
+    "Играй вместе с друзьями!": "ru203",
+    "Учись с нуля.": "ru204",
+    "Незабываемое лето начинается здесь!": "ru205",
+    "Одна команда, одна цель!": "ru206",
+    "А ты знал?": "ru207",
+    "История, правила и интересные факты.": "ru208",
+    "С нами всё просто.": "ru209",
+    "Запишись прямо сейчас: мест немного!": "ru210",
+    "Есть вопросы? Позвони нам.": "ru211",
+    "Закажи в пару нажатий!": "ru212",
+    "Ждём тебя! Адрес и время ниже.": "ru213",
+    "Когда, где и как: всё здесь.": "ru214",
+    "Безопасно, полезно и удобно для вашего ребёнка.": "ru215",
+    "Всё просто и понятно. Есть вопросы, позвоните.": "ru216",
+    "Готовый план и материалы для урока.": "ru217",
+    "Профессиональный подход и высокое качество.": "ru218",
+    "Есть вопросы?": "ru219",
+    "📞 +998 90 123 45 67, позвоните, всё объясним.": "ru220",
+    "Очень круто! Придём ещё.": "ru221",
+    "Всё быстро и вкусно.": "ru222",
+    "Дети очень довольны.": "ru223",
+    "Рассказал и друзьям.": "ru224",
+    "❓ Сколько стоит? Смотри в ценах.": "ru225",
+    "❓ Когда открыто? Каждый день.": "ru226",
+    "❓ Как записаться? Заполни форму.": "ru227",
+    "Мы работаем с 2015 года и стараемся порадовать каждого гостя.": "ru228",
+    "✅ Спасибо!": "ru229",
+    "Ответ: всё написано в разделе цен.": "ru230",
+    "🎁 Подпишись!": "ru231",
+    "−50% СКИДКА!": "ru232",
+    "Зачем?": "ru233",
+    "Для кого?": "ru234",
+    "Что внутри?": "ru235",
+    "Как выглядит?": "ru236",
+    "Как ведёт себя?": "ru237",
+    "Какие правила?": "ru238",
+  },
+  en: {
+    "Hi! My prompt has six lines. The seventh is new: rules. I wrote it’s all obvious. It’s for a flower shop! Tap Send.": "en001",
+    "get people to call us": "en002",
+    "The site the AI makes will appear here": "en003",
+    "Whoa! The AI added a subscribe window, a huge discount and a chat by itself. It even made up the phone number! Look at the Guess labels.": "en004",
+    "I think the AI knows by itself what is allowed and what isn’t. Everyone knows that! What do you think? Today: the seventh question, what rules?": "en005",
+    "Look at the rules line and at the extras in the site’s corners.": "en006",
+    "Not allowed means things that must not be on the site. If you don’t say so, the AI may add them itself.": "en007",
+    "You tell a cook no nuts. If you don’t, they won’t know and will add them.": "en008",
+    "The first part: not allowed. Look, the rules line is empty. The AI added a subscribe window, a discount and a chat by itself. The client never asked for them.": "en009",
+    "get kids to sign up for the club": "en010",
+    "We write: no pop-up window. Look, the subscribe window at the bottom is gone!": "en011",
+    "No discount either. The red discount sign is gone. Now the site doesn’t promise anything untrue.": "en012",
+    "And no chat. The chat button in the corner is gone too. The site is clean.": "en013",
+    "So under not allowed we name exactly what must not be on the site. Each thing separately.": "en014",
+    "Your turn. The swimming club said what must not be there. Read the client’s words and write in the What rules? line.": "en015",
+    "The pop-up window is still there. The client says: no pop-up window.": "en016",
+    "The discount is still there. The client says: no discount.": "en017",
+    "The client banned two things.": "en018",
+    "No pop-up window and no discount.": "en019",
+    "Write it like the example and tap Send.": "en020",
+    "Awesome! No window, no discount. The site is just what the client wanted!": "en021",
+    "Now check yourself. Which of the two rules is clearer for the AI?": "en022",
+    "Which one names a real thing: a window, discount, chat or phone?": "en023",
+    "Extra, obvious and good say nothing precise.": "en024",
+    "The second names a real thing: a discount. The AI doesn’t know what extra means.": "en025",
+    "The first is precise: no pop-up window.": "en026",
+    "It’s all obvious is only obvious to you. Tell the AI precisely.": "en027",
+    "Exactly!": "en028",
+    "All correct! You can tell a precise rule from a vague one.": "en029",
+    "Look at the rules line and at the row under the site’s banner.": "en030",
+    "Must have means things that have to be on the site. You write the exact details yourself: the AI doesn’t know them.": "en031",
+    "When you send a friend a gift, you write the exact address. Say somewhere, and the gift won’t arrive.": "en032",
+    "The second part: must have. Look, there are no extras now, but the AI made up the phone number. Customers will call a stranger!": "en033",
+    "We write: must have, the phone and the cafe’s real number. Look, the right number appeared under the banner, and the Guess is gone!": "en034",
+    "Let’s add the address too. Now guests will easily find the cafe.": "en035",
+    "And a Telegram button. Customers can message there too.": "en036",
+    "So under must have we write what has to be on the site. And the number and address we write exactly, ourselves.": "en037",
+    "Your turn. The robot course gave its phone and address. Write them in the What rules? line as must-haves.": "en038",
+    "get students to sign up for the course": "en039",
+    "The number is missing or different. Write the client’s number exactly.": "en040",
+    "The address is missing or different. The client says: Yunusobod 12.": "en041",
+    "The client named two things: the phone and the address.": "en042",
+    "After must copy the phone number and the address.": "en043",
+    "Great! The real number and address are under the banner. Now students will call the right place!": "en044",
+    "Clients speak in their own words. I say what a client said, and you choose: is it a must or not allowed?": "en045",
+    "Does the client want this on the site or not?": "en046",
+    "Definitely, we need means must. Don’t need, no means not allowed.": "en047",
+    "Our address must be visible.": "en048",
+    "Must means must have.": "en049",
+    "We don’t need a chat, we have no time to answer.": "en050",
+    "Don’t need means not allowed.": "en051",
+    "Put a button to our Telegram.": "en052",
+    "The client asks for the button: must have.": "en053",
+    "Don’t write any discounts or sales.": "en054",
+    "Don’t write means not allowed.": "en055",
+    "Don’t bother customers with pop-up windows.": "en056",
+    "No windows: not allowed.": "en057",
+    "Great! You find the rule in what the client says.": "en058",
+    "Look at the rules line, at the site’s buttons and at how many blocks there are.": "en059",
+    "A limit says how many of something there can be: only one button or no more than three blocks.": "en060",
+    "On a football pitch a team has only eleven players. That’s a limit too.": "en061",
+    "The third part: limits. Look, the site has lots of buttons and five blocks. A student won’t know which button to press.": "en062",
+    "get students to sign up for the club": "en063",
+    "We write: only one button. Look, the buttons in the menu and at the bottom are gone. One main button is left.": "en064",
+    "And at most three blocks. The site got short and clear: photos, schedule and prices.": "en065",
+    "So a rule can also be a limit: how many buttons, how many blocks. Then the site doesn’t fill up with things nobody needs.": "en066",
+    "Your turn. The exhibition site got too long. Write the client’s limits in the What rules? line.": "en067",
+    "get people to come to the exhibition": "en068",
+    "Still too many blocks. The client says: at most 2 blocks.": "en069",
+    "Still too many buttons. The client says: only one button.": "en070",
+    "The client named two limits: the number of blocks and of buttons.": "en071",
+    "At most 2 blocks, only one button.": "en072",
+    "Awesome! Two blocks and one button. The site is short, and visitors get it at once!": "en073",
+    "Look at the client’s message and the rules line: every wish in the message goes into the line.": "en074",
+    "The client’s order is their message in their own words. In it we find the must-haves and the not-alloweds.": "en075",
+    "You go shopping with a list: what to buy and what not to. Rules are a list like that.": "en076",
+    "The fourth part: the client’s order. Clients don’t write rules as a line, they just talk. Look, an English course sent a message. Let’s find the rules in it.": "en077",
+    "The message has a phone number. That’s a must. We copy it into the line, and the site gets the right number.": "en078",
+    "There’s an address too. We write it as a must as well.": "en079",
+    "Don’t write discounts and no pop-up windows are not allowed. Look, the discount and the window are gone. Every wish in the message is done!": "en080",
+    "So we read the client’s message and find the rules in it: what’s a must and what’s not allowed. We don’t skip any.": "en081",
+    "Your turn. The camp director sent a message. Find all the rules in it and write them in the What rules? line.": "en082",
+    "get kids to sign up for the camp": "en083",
+    "The number is missing or different. Write the director’s number exactly.": "en084",
+    "The discount is still there. The director says: no discount.": "en085",
+    "The chat is still there. The director says: no chat.": "en086",
+    "Still too many buttons. The director says: only one button.": "en087",
+    "The message has four things: the number, the discount, the chat and the number of buttons.": "en088",
+    "The number is a must. The discount and chat are not allowed. Only one button.": "en089",
+    "Well done! The right number, no discount or chat, one button. The director is happy!": "en090",
+    "I wrote must: phone number for the club site. But I didn’t write the number itself! The AI made it up. What does the coach say? Fix my line.": "en091",
+    "The number is still made up. Write the coach’s number exactly.": "en092",
+    "Kodi’s line doesn’t have the number itself.": "en093",
+    "After the word phone, write the coach’s number.": "en094",
+    "Awesome! Now the site has the coach’s real number. The AI can’t know exact details, you write them!": "en095",
+    "Let’s be detectives. Look at the site: which rules gave this site?": "en096",
+    "What’s on the site and what isn’t: a window, discount, chat, number?": "en097",
+    "What’s there was a must or wasn’t banned. What’s missing was written as not allowed.": "en098",
+    "The window is there, but no discount or chat. That’s B.": "en099",
+    "No extras, and there’s a real number and a Telegram button. That’s C.": "en100",
+    "The site is short: two blocks and one button, no extras. That’s A.": "en101",
+    "Great! You can tell from a site which rules were written.": "en102",
+    "Now let’s fix the flower shop! The client said what they want. Instead of my it’s all obvious, write exact rules.": "en103",
+    "It’s all obvious is still there. Write the exact rules the client named.": "en104",
+    "The subscribe window is still there. The client says: no window.": "en105",
+    "The client named three things: the discount, the window and the phone.": "en106",
+    "Delete it’s all obvious. No discount or subscribe window, the phone number is a must.": "en107",
+    "Great! No discount, no window, and the number is real. The client is happy now!": "en108",
+    "Now write the full rules: must have, not allowed and a limit. Read the guitar course’s message.": "en109",
+    "The number is missing or different. Write the course’s number exactly.": "en110",
+    "There’s no Telegram button. The course says: a Telegram button is a must.": "en111",
+    "The chat or the discount is still there. The course says: no chat, no discount.": "en112",
+    "Still too many blocks. The course says: at most 3 blocks.": "en113",
+    "The message has three kinds of rules: must, not allowed and a limit.": "en114",
+    "Write them one after another with commas.": "en115",
+    "Well done! Every rule is followed: the number, Telegram, no extras, three blocks!": "en116",
+    "Now your own site! Write all seven lines, and in What rules? what is a must and what is not allowed.": "en117",
+    "Write the What? line: what site are you making?": "en118",
+    "That’s just a topic. Write a specific thing: a club, server, shop or party site.": "en119",
+    "Now write the Why? line: what should the site do?": "en120",
+    "Write the goal: should people sign up, order or come?": "en121",
+    "Now write the Who for? line: who will look at the site?": "en122",
+    "The AI couldn’t tell who. Write their age or who they are.": "en123",
+    "Now write the What’s inside? line: which blocks?": "en124",
+    "No blocks found in What’s inside?. For example: photos, prices, contact.": "en125",
+    "Now write the How it looks? line: how should it look?": "en126",
+    "In How it looks? write a style and colours. For example: modern, blue and white.": "en127",
+    "Now write the How it behaves? line: when, what and what happens?": "en128",
+    "In How it behaves? write an exact case. For example: the button grows on hover.": "en129",
+    "Now write the What rules? line: what is a must and what is not allowed?": "en130",
+    "Seven questions: what, why, who for, what’s inside, how it looks, how it behaves, what rules.": "en131",
+    "In What rules? write one must-have and one not-allowed.": "en132",
+    "Wow, great! That’s your seven-line prompt. At home you’ll send it to a real AI.": "en133",
+    "Now a quick check. I say a sentence, and you choose: true or false?": "en134",
+    "What’s it about: must, not allowed, or the word obvious?": "en135",
+    "Remember: the AI doesn’t know the client, you write the exact details.": "en136",
+    "If you write it’s all obvious, the AI knows the client’s rules.": "en137",
+    "Actually it doesn’t know the client and adds its own things.": "en138",
+    "Under not allowed we write what must not be on the site.": "en139",
+    "Right: for example a discount or a pop-up window.": "en140",
+    "If you don’t write the phone number, the AI may make it up.": "en141",
+    "Right: write the exact details yourself.": "en142",
+    "Nothing extra is a precise rule.": "en143",
+    "Actually the AI doesn’t know what’s extra for you.": "en144",
+    "We find the rules in the client’s message and write them in the prompt.": "en145",
+    "Right: every wish becomes a rule.": "en146",
+    "All correct! You write rules precisely.": "en147",
+    "Back to the riddle. I thought the AI knows by itself what isn’t allowed. But it doesn’t know the client! That there are no discounts, the real phone number, that no window is wanted, only you know that. So we write rules precisely. I was wrong.": "en148",
+    "Look, this is your seven-line prompt and your site.": "en149",
+    "You already know the first six questions.": "en150",
+    "What rules? is must have, not allowed and limits. We find them in the client’s message.": "en151",
+    "Homework: copy your prompt and send it to a real AI. Next lesson we’ll learn how to improve the AI’s result. See you!": "en152",
+    "the goal: what the site should do": "en153",
+    "Wow, awesome!": "en154",
+    "Yes! You did it!": "en155",
+    "Super!": "en156",
+    "Brilliant!": "en157",
+    "Hooray!": "en158",
+    "Amazing!": "en159",
+    "Try once more.": "en160",
+    "Take a closer look.": "en161",
+    "You are close. No rush.": "en162",
+    "We don’t give discounts! What’s this subscribe window? And that’s not our phone number!": "en163",
+    "Swimming club: No pop-up window and no discount on the site. We don’t do discounts.": "en164",
+    "what must not be there?": "en165",
+    "Which is clearer?": "en166",
+    "Which rule is clearer?": "en167",
+    "Robot course: Our phone is +998 90 777 88 99, our address is Yunusobod 12. They must be on the site.": "en168",
+    "what is a must?": "en169",
+    "Must or not allowed?": "en170",
+    "Art exhibition: The site is too long. At most 2 blocks and only one button.": "en171",
+    "which limits?": "en172",
+    "Hello! We need a site. Our phone is +998 99 111 22 33, address Sergeli 7. Don’t write discounts, we don’t have any. And no pop-up windows, please.": "en173",
+    "Our number is +998 95 200 30 40, be sure to write it. We don’t need a discount or a chat. Only one button on the site.": "en174",
+    "must? not allowed?": "en175",
+    "Our number is +998 93 777 12 12. No other number on the site!": "en176",
+    "Which What rules? gave this site?": "en177",
+    "Flower shop: No discount and no subscribe window. Our phone +998 97 300 40 50 is a must.": "en178",
+    "Guitar course: The phone +998 91 600 70 80 and a Telegram button are a must. No chat and no discount. At most 3 blocks.": "en179",
+    "what are you making?": "en180",
+    "what should the site do?": "en181",
+    "who is the site for?": "en182",
+    "which blocks?": "en183",
+    "how should it look?": "en184",
+    "what happens?": "en185",
+    "True or false?": "en186",
+    "Send your prompt to a real AI and make your site.": "en187",
+    "Typing…": "en188",
+    "How to improve the AI’s result?": "en189",
+    "Write in the What rules? line: what is a must and what is not allowed?": "en190",
+    "Those words tell the AI nothing. Be precise: what is a must and what is not allowed.": "en191",
+    "The AI didn’t recognise a rule. For example: no discount, the phone number is a must.": "en192",
+    "Well done!": "en193",
+    "Everything in the window lives inside body.": "en194",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en195",
+    "The strongest teams on one field!": "en196",
+    "Fresh, hot and tasty.": "en197",
+    "Fun sessions and a friendly team.": "en198",
+    "Everything in one place: quick and easy.": "en199",
+    "Everyone is welcome!": "en200",
+    "Play with your friends!": "en201",
+    "Learn from scratch.": "en202",
+    "An unforgettable summer starts here!": "en203",
+    "One team, one goal!": "en204",
+    "Did you know?": "en205",
+    "History, rules and fun facts.": "en206",
+    "Everything is easy with us.": "en207",
+    "Sign up now: places are limited!": "en208",
+    "Got questions? Give us a call.": "en209",
+    "Order in just a few taps!": "en210",
+    "We’re waiting for you! Address and time below.": "en211",
+    "When, where and how: it’s all here.": "en212",
+    "Safe, useful and convenient for your child.": "en213",
+    "Simple and clear. Questions? Just give us a call.": "en214",
+    "A ready plan and materials for your class.": "en215",
+    "A professional approach and top quality.": "en216",
+    "Got questions?": "en217",
+    "📞 +998 90 123 45 67: call us and we’ll explain everything.": "en218",
+    "Really great! We’ll be back.": "en219",
+    "Everything was quick and tasty.": "en220",
+    "My kids loved it.": "en221",
+    "I told my friends too.": "en222",
+    "❓ How much is it? See prices.": "en223",
+    "❓ When are you open? Every day.": "en224",
+    "❓ How do I sign up? Fill in the form.": "en225",
+    "We’ve been working since 2015 and try to make every visitor happy.": "en226",
+    "✅ Thank you!": "en227",
+    "Answer: it’s all in the prices section.": "en228",
+    "🎁 Subscribe!": "en229",
+    "−50% OFF!": "en230",
+    "For whom?": "en231",
+    "What’s inside?": "en232",
+    "How it looks?": "en233",
+    "How it behaves?": "en234",
+    "What rules?": "en235",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

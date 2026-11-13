@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8112,15 +7663,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -16595,3 +16139,1373 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .a1-fin .kz-roles { gap: 3px; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 224, ru 227, en 225; всего знаков 59774. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Promptimda endi to'rtta qator bor: nima, nega, kim uchun va ichida nima. Beshinchisiga chiroyli bo'lsin deb yozdim. Bu kibersport turniri uchun! Yuborishni bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'yinchilar ro'yxatdan o'tsin", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda sun'iy intellekt yaratgan sayt chiqadi", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Sayt chiroyli chiqdi, lekin pushti va yumshoq, xuddi gul do'koniga o'xshaydi. Qarang, Taxmin belgilari: sun'iy intellekt chiroylini o'zicha tanladi. O'yinchilar esa qorong'i va neon kibersport dizaynini kutgan edi.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Menimcha, chiroyli desam, hamma bir xil narsani tushunadi. Chiroyli bu chiroyli-da! Siz nima deb o'ylaysiz? Bugun beshinchi savolni o'rganamiz: sayt qanday ko'rinadi?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoriga va saytning ranglari, burchaklari, sarlavhasiga qarang.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub, ya'ni saytning kayfiyati degani. Bitta so'z butun dizaynni o'zgartiradi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'yga, sportga va uyda yurish uchun har xil kiyinasiz. Sayt ham kayfiyatiga qarab kiyinadi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Beshinchi savol: sayt qanday ko'rinadi? Birinchi narsa uslub, ya'ni saytning kayfiyati degani. Qarang, hozir qator bo'sh, shuning uchun sun'iy intellekt dizaynni o'zicha tanladi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] kitobxonlar klubga yozilsin", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozamiz: zamonaviy. Qarang: silliq gradient, yumaloq kartochkalar va yengil soyalar chiqdi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi minimalist. Hamma narsa oq va toza bo'ldi, ortiqcha bezak yo'q.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Quvnoq va yorqin desak, rang-barang gradient, bayramona shrift va o'yinchoqdek kartochkalar chiqadi.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, Ko'rinishi? qatoriga avval saytning kayfiyatini yozamiz: zamonaviy, minimalist, quvnoq yoki boshqa.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Bog'cha bayrami sayt so'radi. To'rtta qator tayyor. Buyurtmani o'qing va Ko'rinishi? qatoriga saytning kayfiyatini yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ota-onalar bayramga kelsin", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu uslub bayramga unchalik mos emas. Buyurtmada qanday kayfiyat so'ralgan?", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada sayt qanday tuyulishi kerakligi yozilgan.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kulgili va rang-barang bu quvnoq va yorqin uslub.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namunadagidek yozing va Yuborishni bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Rang-barang gradient, bayramona shrift, quvnoq kartochkalar. Bu haqiqiy bayram sayti!", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Ikki Ko'rinishi? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi birida kayfiyat, rang yoki shakl aniq aytilgan?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiroyli, zo'r, yaxshi hech narsani aniq aytmaydi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisida kayfiyat ham, rang ham bor.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi aniq: uslub va ikki rang.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisida kayfiyat, ranglar va burchaklar bor.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Chiroyli ni aniq tavsifdan ajratasiz.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Prompt qatoridagi ranglarga va saytning tepasi, tugmasiga qarang.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi rang asosiy, ya'ni sayt shu rangda bo'ladi degani. Ikkinchisi tugmalarga ketadi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Futbol jamoasining formasi o'z ranglarida bo'ladi. Sayt ham o'z ranglarida bo'lsin.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslubdan keyin ranglar. Qarang, hozir faqat zamonaviy yozilgan, ranglarni sun'iy intellekt o'zi tanladi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] bolalar klubga yozilsin", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'k va oq deb yozamiz. Sayt darhol ko'k bo'ldi: ko'k birinchi yozilgan, demak u asosiy rang.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizil va sariq desak, tepasi qizil, tugmalari esa sariq bo'ladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qora va oltin: jiddiy va qimmatbaho ko'rinish. Ranglar saytning xarakterini o'zgartiradi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, ranglarni ham yozamiz. Birinchi rang asosiy bo'ladi, ikkinchisi tugmalarga ketadi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Pitsa do'koni o'z ranglarini aytdi. Ko'rinishi? qatoriga uslub va shu ranglarni yozing.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar pitsa buyurtma qilsin", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ranglar yozilmagan. Buyurtmada qaysi ranglar bor?", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa ranglar. Do'kon qizil va yashilni so'radi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ranglar bor, lekin asosiysi qizil bo'lsin: uni birinchi yozing.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada ikki rang aytilgan.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslubni, keyin qizil va yashilni yozing. Qizil birinchi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sayt qizil, tugmalari yashil. Pitsa do'konining o'z ranglari!", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub sayt kimga va nimaga ekaniga mos bo'lishi kerak. Men sayt aytaman, siz unga mos uslubni tanlang.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kim uchun va qanday tadbir ekaniga qarang.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichkintoylar uchun quvnoq, rasmiy narsa uchun jiddiy, o'yinchilar uchun neon, buvi va bobolar uchun sokin.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yetti yoshli bolalar uchun bayram", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kichkintoylarga quvnoq va yorqin uslub mos.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maktab olimpiadasining rasmiy sahifasi", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasmiy sahifaga jiddiy uslub kerak.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kibersport turniri", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinchilarga qorong'i neon uslub yoqadi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buvijonning shirinliklari", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Iliq va uydagidek: sokin uslub.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eski o'yinlar muzeyi", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eski o'yinlarga piksel va retro uslub mos.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Har bir saytga mos uslubni topasiz.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalarning burchaklariga, soyalariga va harflarga qarang.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchak, soya va shrift, ya'ni harflarning ko'rinishi degani, saytning mayda, lekin muhim qismlari.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir xil ko'ylakning tugmalari va choki boshqa bo'lsa, u butunlay boshqacha ko'rinadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi mayda narsalar: kartochkalar burchagi, soyalar va shrift. Ular ham saytni butunlay o'zgartiradi. Qarang, hozir faqat zamonaviy.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar kursga yozilsin", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yumaloq burchaklar: kartochkalar va tugmalar yumshoq, do'stona bo'ldi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Katta soyalar qo'shamiz. Kartochkalar sahifadan ko'tarilib turgandek bo'ldi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi aksincha: to'g'ri burchaklar, soyasiz va kod shrifti. Robotlarga mos, texnik ko'rinish chiqdi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, Ko'rinishi? ga burchaklar, soyalar va shriftni ham yozish mumkin. Bular saytning xarakterini aniqlaydi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Buvijonning shirinliklar oshxonasi sayt so'radi. Buyurtmani o'qing va Ko'rinishi? qatoriga kayfiyat, shrift va ranglarni yozing.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] odamlar shirinlik buyurtma qilsin", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shrift qanday? Buyurtmada harflar qo'lyozmadek bo'lsin deyilgan.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ranglar qani? Buyurtmada jigarrang va oltin.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada uch narsa bor: kayfiyat, harflar va ranglar.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Iliq, qo'lyozma shrift, jigarrang va oltin.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Harflar qo'lyozmadek, ranglar jigarrang va oltin. Xuddi buvijonning uyidagidek iliq sayt!", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kibersport turnirini tuzatamiz! O'yinchilar qanday dizayn xohlashini aytdi. Mening chiroyli bo'lsin o'rniga aniq Ko'rinishi? ni yozing.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub qani? O'yinchilar neon yoki qorong'i uslubni so'radi.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang yozilmagan. O'yinchilar yashil neonni so'radi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinchilar uch narsani aytdi: fon, chiroq rangi va shrift.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qorong'i, neon, yashil, kod shrifti.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Qorong'i fon, yashil neon va kod shrifti. Endi bu haqiqiy kibersport sayti!", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men klub sayti uchun sariq, qizil va oq deb yozdim. Qarang, sayt sariq bo'lib qoldi! Sun'iy intellekt birinchi rangni asosiy qildi. Murabbiy nima deyapti? Ranglar tartibini tuzating.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt hali qizil emas. Asosiy rangni birinchi yozing.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizil yo'qoldi. Murabbiy aytgan ranglarni yozing.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sun'iy intellekt qaysi rangni asosiy qiladi: birinchisini yoki oxirgisini?", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qizilni birinchi yozing, keyin sariq va oq.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi sayt qizil, sariq esa faqat tugmalarda. Asosiy rang birinchi yoziladi!", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi detektiv bo'lamiz. Saytga qarab topamiz: qaysi Ko'rinishi? shu dizaynni berdi va bu qanday uslub?", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytning foni, ranglari, burchaklari va harflariga qarang.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qorong'i va yorqin chiroq bu neon. Oq va toza bu minimalist. Rang-barang va kulgili bu quvnoq.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt oq va toza, rangi yashil. Bu B.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qorong'i fon va yonib turgan chiziqlar: bu neon.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qalin qora chiziqlar va piksel shrift: retro. Rangi to'q sariq. Bu A.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang-barang gradient va o'yinchoqdek kartochkalar: quvnoq uslub.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Saytga qarab uning uslubini va ranglarini o'qiysiz.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men olimpiada sayti uchun chiroyli va zo'r bo'lsin deb yozdim. Sun'iy intellekt yana pushti sayt qildi! Direktor nima deyapti? Mening qatorimni tuzating.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'quvchilar olimpiadaga yozilsin", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiroyli va zo'r hali turibdi. Direktor aytgan uslub va ranglarni yozing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub qani? Direktor jiddiy uslubni so'radi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang qani? Direktor to'q ko'k va oqni so'radi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Direktor uch narsani aytdi: uslub, ranglar va shrift.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiroyli va zo'r ni o'chiring va jiddiy, to'q ko'k va oq deb yozing.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Pushti ketdi: jiddiy, ko'k va oq, klassik harflar. Endi bu haqiqiy rasmiy sahifa!", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi to'liq Ko'rinishi? ni yozasiz: uslub, ranglar, burchaklar va soyalar. Musiqa festivali buyurtmasini o'qing.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] yoshlar festivalga kelsin", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub qani? Buyurtmada zamonaviy deyilgan.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ranglar qani? Buyurtmada binafsha va pushti.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchaklarni yozing: buyurtmada yumaloq burchaklar.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Soyalarni yozing: buyurtmada katta soyalar.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buyurtmada to'rt narsa bor: uslub, ranglar, burchaklar va soyalar.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ularni vergul bilan ketma-ket yozing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Zamonaviy, binafsha va pushti, yumaloq va soyali. Festivalga mos sayt!", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingiz! Beshta qatorni yozing. Ko'rinishi? ga esa saytingizga mos uslub va ranglarni yozing.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima? qatoriga yozing: qanday sayt yaratasiz?", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Nega? qatorini yozing: sayt nima qilishi kerak?", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ichida nima? qatorini yozing: saytda qanday bloklar?", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Beshta savol: nima, nega, kim uchun, ichida nima, ko'rinishi.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rinishi? ga uslub va bir-ikki rang yozing.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Bu sizning besh qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: uslub, rang yoki chiroyli so'zi?", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: chiroyli ni sun'iy intellekt o'zicha tushunadi, birinchi rang esa asosiy bo'ladi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiroyli degan so'z sun'iy intellektga aniq dizaynni aytadi.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida u o'zicha taxmin qiladi. Uslub va ranglarni aniq yozing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi yozilgan rang saytning asosiy rangi bo'ladi.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: ikkinchisi tugmalarga ketadi.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uslub, ranglar, burchaklar va shrift saytning ko'rinishini belgilaydi.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: ularning hammasini Ko'rinishi? ga yozish mumkin.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kibersport turniri uchun sokin pushti uslub eng yaxshisi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida o'yinchilarga qorong'i neon uslub mos.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rinishi? yozilmasa, dizaynni sun'iy intellekt o'zi tanlaydi.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: va u siz xohlagandek bo'lmasligi mumkin.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz dizaynni to'g'ri tasvirlaysiz.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Men chiroyli desam, hamma bir xil tushunadi deb o'ylagandim. Lekin menga chiroyli neon, buvijonga chiroyli iliq jigarrang, kichkintoylarga chiroyli rang-barang! Sun'iy intellekt esa pushtini tanladi. Chiroyli har kimga har xil. Men adashibman.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning besh qatorli promptingiz va saytingiz.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nima, nega, kim uchun va ichida nima sizga tanish.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'rinishi? bu uslub, ranglar, burchaklar, soyalar va shrift. Birinchi rang asosiy.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda oltinchi savol: sayt qanday ishlaydi? Ko'rishguncha!", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] maqsad: sayt nima qilsin", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sayt qanday ko'rinadi?", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu gul do'konimi? Kibersport qorong'i va neon bo'lishi kerak!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bog'cha bayrami sayti: kichkintoylar uchun, xuddi bayramdek kulgili va rang-barang tuyulsin.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt qanday ko'rinsin?", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi biri aniqroq?", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Ko'rinishi? aniqroq?", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pitsa do'konining ranglari: qizil va yashil, xuddi Italiya bayrog'idek.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi uslub mos?", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buvijonning shirinliklari: iliq va uydagidek. Harflar qo'lyozmadek bo'lsin, ranglar jigarrang va oltin.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinchilar so'raydi: Qorong'i fon, yashil neon chiroqlar va kompyuter shrifti bo'lsin!", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Klub murabbiyi: Bizning rangimiz qizil, sariq esa faqat ozgina, oq esa fonda.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi Ko'rinishi? shu saytni berdi?", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qanday uslub?", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Direktor: Bu olimpiadaning rasmiy sahifasi: jiddiy, to'q ko'k va oq, klassik shrift.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yoshlar musiqa festivali: zamonaviy, binafsha va pushti, yumaloq burchaklar va katta soyalar.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] nima yaratasiz?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt nima qilishi kerak?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] sayt kim uchun?", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] saytda qanday bloklar?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozyapti…", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sayt qanday ishlaydi?", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rinishi? qatoriga yozing: sayt qanday ko'rinsin?", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiroyli har kimga har xil. Aniq yozing: kayfiyati, ranglari, burchaklari, shrifti.", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sun'iy intellekt bu so'zlardan dizaynni tanimadi. Masalan: quvnoq, sokin, minimalist, zamonaviy, qizil va oq.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eng kuchli jamoalar bir maydonda!", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi pishgan, issiq va mazali.", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiziqarli mashg'ulotlar va do'stona jamoa.", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi bir joyda: qulay va tez.", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammani kutamiz!", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlaringiz bilan birga o'ynang!", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Noldan boshlab o'rganing.", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unutilmas yoz shu yerda boshlanadi!", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir jamoa, bir maqsad!", required: true },
+    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bilasizmi?", required: true },
+    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tarix, qoidalar va qiziqarli faktlar.", required: true },
+    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz bilan hammasi oson.", required: true },
+    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", required: true },
+    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Savollaringiz bormi? Bizga qo'ng'iroq qiling.", required: true },
+    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir necha bosishda buyurtma bering!", required: true },
+    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sizni kutamiz! Manzil va vaqt quyida.", required: true },
+    { id: "uz200", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon, qayerda va qanday: hammasi shu yerda.", required: true },
+    { id: "uz201", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Farzandingiz uchun xavfsiz, foydali va qulay.", required: true },
+    { id: "uz202", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.", required: true },
+    { id: "uz203", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dars uchun tayyor reja va materiallar.", required: true },
+    { id: "uz204", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Professional yondashuv va yuqori sifat.", required: true },
+    { id: "uz205", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Savolingiz bormi?", required: true },
+    { id: "uz206", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.", required: true },
+    { id: "uz207", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda zo'r! Yana kelamiz.", required: true },
+    { id: "uz208", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi tez va mazali.", required: true },
+    { id: "uz209", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bolalarim juda xursand.", required: true },
+    { id: "uz210", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stlarimga ham aytdim.", required: true },
+    { id: "uz211", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qancha turadi? Narxlar bo'limida.", required: true },
+    { id: "uz212", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qachon ochiq? Har kuni.", required: true },
+    { id: "uz213", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ❓ Qanday yozilaman? Formani to'ldiring.", required: true },
+    { id: "uz214", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.", required: true },
+    { id: "uz215", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] ✅ Rahmat!", required: true },
+    { id: "uz216", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javob: hammasi narxlar bo'limida yozilgan.", required: true },
+    { id: "uz217", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 🎁 Obuna bo'ling!", required: true },
+    { id: "uz218", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] −50% CHEGIRMA!", required: true },
+    { id: "uz219", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kim uchun?", required: true },
+    { id: "uz220", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ichida nima?", required: true },
+    { id: "uz221", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ko'rinishi?", required: true },
+    { id: "uz222", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qanday ishlaydi?", required: true },
+    { id: "uz223", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qoidalar?", required: true },
+    { id: "uz224", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! В моём промпте уже четыре строки: что, зачем, для кого и что внутри. В пятую я написал пусть будет красиво. Это для киберспортивного турнира! Нажми Отправить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы игроки записывались", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь появится сайт, который сделает ИИ", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого! Сайт красивый, но розовый и нежный, как цветочный магазин. Смотри, метки Догадка: ИИ сам решил, что такое красиво. А игроки ждали тёмный неоновый киберспортивный дизайн.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] По-моему, если сказать красиво, все поймут одно и то же. Красиво, оно и есть красиво! А ты как думаешь? Сегодня разберём пятый вопрос: как выглядит сайт?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на строку промпта и на цвета, углы и заголовок сайта.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Стиль, это настроение сайта. Одно слово меняет весь дизайн.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На праздник, на спорт и дома ты одеваешься по-разному. Сайт тоже одевается под настроение.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятый вопрос: как выглядит сайт? Первое, стиль, то есть настроение сайта. Смотри, строка пока пустая, и ИИ выбрал дизайн сам.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы читатели записывались в клуб", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: современный. Смотри: плавный градиент, скруглённые карточки и мягкие тени.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь минимализм. Всё стало белым и чистым, ничего лишнего.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А весёлый и яркий, это разноцветный градиент, праздничный шрифт и карточки как игрушки.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в строку Как выглядит? сначала пишем настроение сайта: современный, минимализм, весёлый или другое.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Детский сад попросил сайт праздника. Четыре строки готовы. Прочитай заказ и напиши в строку Как выглядит? настроение сайта.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы родители пришли на праздник", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Этот стиль не очень подходит празднику. Какое настроение просят в заказе?", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе сказано, каким сайт должен ощущаться.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Весёлый и разноцветный, это стиль весёлый и яркий.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши как в образце и нажми Отправить.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Разноцветный градиент, праздничный шрифт, весёлые карточки. Настоящий сайт праздника!", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Какое из двух Как выглядит? больше поможет ИИ?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где точно названы настроение, цвета или форма?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Красиво, круто, хорошо ничего точно не говорят.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во втором есть и настроение, и цвет.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый точный: стиль и два цвета.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во втором, настроение, цвета и углы.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отличаешь красиво от точного описания.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на цвета в строке промпта и на верх и кнопку сайта.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый цвет, главный, то есть сайт будет в этом цвете. Второй уходит на кнопки.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У футбольной команды форма своих цветов. Пусть и сайт будет в своих цветах.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После стиля, цвета. Смотри, сейчас написано только современный, цвета ИИ выбрал сам.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы дети записывались в клуб", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишем: синий и белый. Сайт сразу стал синим: синий написан первым, значит, он главный.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скажем красный и жёлтый, верх станет красным, а кнопки жёлтыми.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чёрный и золотой, солидно и дорого. Цвета меняют характер сайта.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, цвета тоже пишем. Первый цвет, главный, второй, для кнопок.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пиццерия назвала свои цвета. Напиши в строку Как выглядит? стиль и эти цвета.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали пиццу", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Цвета не написаны. Какие цвета в заказе?", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другие цвета. Пиццерия просила красный и зелёный.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвета есть, но главным пусть будет красный: напиши его первым.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе названы два цвета.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши стиль, потом красный и зелёный. Красный первым.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Сайт красный, кнопки зелёные. Фирменные цвета пиццерии!", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Стиль должен подходить сайту: для кого он и о чём. Я называю сайт, а ты выбираешь подходящий стиль.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, для кого это и что за событие.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Малышам, весёлый, официальному, строгий, игрокам, неон, бабушкам и дедушкам, спокойный.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Праздник для семилетних детей", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Малышам подходит весёлый и яркий стиль.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Официальная страница школьной олимпиады", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Официальной странице нужен строгий стиль.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Киберспортивный турнир", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Игрокам нравится тёмный неон.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Бабушкины сладости", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тепло и по-домашнему: спокойный стиль.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Музей старых игр", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Старым играм подходит пиксельный ретро-стиль.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты подбираешь стиль под каждый сайт.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на углы и тени карточек и на буквы.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Углы, тени и шрифт, то есть вид букв, мелкие, но важные детали сайта.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна и та же рубашка с другими пуговицами и швами выглядит совсем иначе.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь детали: углы карточек, тени и шрифт. Они тоже сильно меняют сайт. Смотри, сейчас только современный.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы школьники записывались на курс", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скруглённые углы: карточки и кнопки стали мягкими и дружелюбными.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим большие тени. Карточки будто приподнялись над страницей.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь наоборот: острые углы, без теней и шрифт как в коде. Получился технический вид, как раз для роботов.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в Как выглядит? можно писать и углы, и тени, и шрифт. Они задают характер сайта.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Бабушкина кондитерская попросила сайт. Прочитай заказ и напиши в строку Как выглядит? настроение, шрифт и цвета.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы люди заказывали сладости", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А шрифт? В заказе сказано: буквы как написанные от руки.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А цвета? В заказе, коричневый и золотой.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе три вещи: настроение, буквы и цвета.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тёплый, рукописный шрифт, коричневый и золотой.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Буквы как от руки, цвета коричневый и золотой. Тёплый сайт, как бабушкин дом!", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь починим киберспортивный турнир! Игроки сказали, какой дизайн хотят. Вместо моего пусть будет красиво напиши точное Как выглядит?.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А стиль? Игроки просили неон или тёмный стиль.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет не написан. Игроки просили зелёный неон.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Игроки назвали три вещи: фон, цвет подсветки и шрифт.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тёмный, неон, зелёный, шрифт как в коде.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, круто! Тёмный фон, зелёный неон и шрифт как в коде. Теперь это настоящий киберспорт!", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я написал для сайта клуба жёлтый, красный и белый. Смотри, сайт стал жёлтым! ИИ сделал главным первый цвет. Что говорит тренер? Исправь порядок цветов.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт ещё не красный. Напиши главный цвет первым.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Красный пропал. Напиши цвета, которые назвал тренер.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой цвет ИИ делает главным: первый или последний?", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши красный первым, потом жёлтый и белый.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь сайт красный, а жёлтый, только на кнопках. Главный цвет пишут первым!", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь побудем детективами. По сайту найдём: какое Как выглядит? дало этот дизайн и что это за стиль?", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на фон, цвета, углы и буквы сайта.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тёмный фон и светящиеся линии, неон. Белое и чистое, минимализм. Разноцветное и смешное, весёлый.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт белый и чистый, цвет зелёный. Это B.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тёмный фон и светящиеся линии, это неон.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Толстые чёрные рамки и пиксельный шрифт, ретро. Цвет оранжевый. Это A.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Разноцветный градиент и карточки-игрушки: весёлый стиль.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты читаешь стиль и цвета сайта по его виду.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал для сайта олимпиады пусть будет красиво и круто. ИИ опять сделал розовый сайт! Что говорит директор? Исправь мою строку.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы ученики записывались на олимпиаду", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Красиво и круто ещё на месте. Напиши стиль и цвета, которые назвал директор.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А стиль? Директор просил строгий.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А цвета? Директор просил синий и белый.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Директор назвал три вещи: стиль, цвета и шрифт.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри красиво и круто и напиши: строгий, синий и белый.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Розовый ушёл: строго, синий и белый, классические буквы. Настоящая официальная страница!", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь полное Как выглядит?: стиль, цвета, углы и тени. Прочитай заказ музыкального фестиваля.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] чтобы молодёжь пришла на фестиваль", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А стиль? В заказе, современный.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А цвета? В заказе, фиолетовый и розовый.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши углы: в заказе скруглённые.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши тени: в заказе большие тени.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В заказе четыре вещи: стиль, цвета, углы и тени.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши их через запятую по порядку.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Современный, фиолетово-розовый, скруглённый, с тенями. Сайт как раз для фестиваля!", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь твой сайт! Напиши все пять строк, а в Как выглядит?, подходящие твоему сайту стиль и цвета.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши строку Что?: какой сайт создаёшь?", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Зачем?: что должен сделать сайт?", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши цель: чтобы записывались, заказывали или приходили?", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Для кого?: кто будет смотреть сайт?", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не понял, для кого. Напиши возраст или кто они.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Что внутри?: какие блоки на сайте?", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь напиши строку Как выглядит?: каким будет сайт?", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пять вопросов: что, зачем, для кого, что внутри, как выглядит.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Как выглядит? напиши стиль и один-два цвета.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Это твой промпт из пяти строк. Дома отправишь его настоящему ИИ.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о стиле, цвете или слове красиво?", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: красиво ИИ понимает по-своему, а первый цвет становится главным.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слово красиво говорит ИИ точный дизайн.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле он гадает сам. Пиши стиль и цвета точно.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первый написанный цвет становится главным цветом сайта.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: второй уходит на кнопки.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Стиль, цвета, углы и шрифт задают вид сайта.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: всё это можно написать в Как выглядит?.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для киберспортивного турнира лучше всего спокойный розовый стиль.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле игрокам подходит тёмный неон.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если не написать Как выглядит?, дизайн ИИ выберет сам.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: и он может оказаться не таким, как ты хотел.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты правильно описываешь дизайн.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Я думал, что красиво все понимают одинаково. Но мне красиво, неон, бабушке, тёплый коричневый, малышам, разноцветное! А ИИ выбрал розовый. Красиво у каждого своё. Я ошибся.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой промпт из пяти строк и твой сайт.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что, зачем, для кого и что внутри ты уже знаешь.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как выглядит?, это стиль, цвета, углы, тени и шрифт. Первый цвет, главный.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, шестой вопрос: как сайт ведёт себя? До встречи!", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] цель: что сделает сайт", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как выглядит сайт?", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это что, цветочный магазин? Киберспорт должен быть тёмным и неоновым!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сайт праздника в детском саду: для малышей, пусть ощущается весёлым и разноцветным, как праздник.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] каким будет сайт?", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши настроение в Как выглядит?", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что точнее?", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Как выглядит? точнее?", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвета пиццерии: красный и зелёный, как на флаге Италии.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой стиль подходит?", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Бабушкины сладости: тепло и по-домашнему. Буквы, как написанные от руки, цвета, коричневый и золотой.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Игроки просят: Тёмный фон, зелёный неон и компьютерный шрифт!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тренер клуба: Наш цвет, красный, жёлтого совсем чуть-чуть, белый, для фона.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое Как выглядит? дало этот сайт?", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой это стиль?", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Директор: Это официальная страница олимпиады: строгий стиль, синий и белый, классический шрифт.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодёжный музыкальный фестиваль: современный, фиолетовый и розовый, скруглённые углы и большие тени.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что создаёшь?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] что должен сделать сайт?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] для кого сайт?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] какие блоки на сайте?", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отправь свой промпт настоящему ИИ и сделай свой сайт.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пишет…", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как сайт должен вести себя?", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Напиши в строку Как выглядит?: каким должен быть сайт?", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Красиво у каждого своё. Опиши точно: настроение, цвета, углы, шрифт.", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ИИ не узнал по этим словам дизайн. Например: весёлый, спокойный, минимализм, современный, красный и белый.", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сильнейшие команды на одном поле!", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свежее, горячее и вкусное.", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Интересные занятия и дружная команда.", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё в одном месте: удобно и быстро.", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём всех!", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Играй вместе с друзьями!", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Учись с нуля.", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Незабываемое лето начинается здесь!", required: true },
+    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одна команда, одна цель!", required: true },
+    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А ты знал?", required: true },
+    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] История, правила и интересные факты.", required: true },
+    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С нами всё просто.", required: true },
+    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запишись прямо сейчас: мест немного!", required: true },
+    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы? Позвони нам.", required: true },
+    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закажи в пару нажатий!", required: true },
+    { id: "ru201", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ждём тебя! Адрес и время ниже.", required: true },
+    { id: "ru202", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда, где и как: всё здесь.", required: true },
+    { id: "ru203", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Безопасно, полезно и удобно для вашего ребёнка.", required: true },
+    { id: "ru204", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё просто и понятно. Есть вопросы, позвоните.", required: true },
+    { id: "ru205", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Готовый план и материалы для урока.", required: true },
+    { id: "ru206", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Профессиональный подход и высокое качество.", required: true },
+    { id: "ru207", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть вопросы?", required: true },
+    { id: "ru208", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 📞 +998 90 123 45 67, позвоните, всё объясним.", required: true },
+    { id: "ru209", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Очень круто! Придём ещё.", required: true },
+    { id: "ru210", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё быстро и вкусно.", required: true },
+    { id: "ru211", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Дети очень довольны.", required: true },
+    { id: "ru212", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рассказал и друзьям.", required: true },
+    { id: "ru213", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Сколько стоит? Смотри в ценах.", required: true },
+    { id: "ru214", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Когда открыто? Каждый день.", required: true },
+    { id: "ru215", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ❓ Как записаться? Заполни форму.", required: true },
+    { id: "ru216", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы работаем с 2015 года и стараемся порадовать каждого гостя.", required: true },
+    { id: "ru217", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] ✅ Спасибо!", required: true },
+    { id: "ru218", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ответ: всё написано в разделе цен.", required: true },
+    { id: "ru219", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 🎁 Подпишись!", required: true },
+    { id: "ru220", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] −50% СКИДКА!", required: true },
+    { id: "ru221", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем?", required: true },
+    { id: "ru222", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Для кого?", required: true },
+    { id: "ru223", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что внутри?", required: true },
+    { id: "ru224", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как выглядит?", required: true },
+    { id: "ru225", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как ведёт себя?", required: true },
+    { id: "ru226", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие правила?", required: true },
+    { id: "ru227", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Что внутри? не найдено блоков. Например: фото, цены, контакты.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! My prompt now has four lines: what, why, who for and what’s inside. In the fifth I wrote make it pretty. It’s for an esports tournament! Tap Send.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get players to sign up", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site the AI makes will appear here", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! The site is pretty, but pink and soft, like a flower shop. Look at the Guess labels: the AI decided by itself what pretty means. The players expected a dark neon esports design.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] I think if I say pretty, everyone understands the same thing. Pretty is pretty! What do you think? Today we learn the fifth question: how does the site look?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the prompt line and at the site’s colours, corners and heading.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Style is the site’s mood. One word changes the whole design.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You dress differently for a party, for sport and for home. A site dresses for its mood too.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The fifth question: how does the site look? The first thing is style, that is, the site’s mood. Look, the line is empty for now, so the AI chose the design itself.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get readers to join the club", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write: modern. Look: a smooth gradient, rounded cards and soft shadows.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now minimal. Everything became white and clean, nothing extra.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And playful and bright gives a colourful gradient, a party font and toy-like cards.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So in the How it looks? line we first write the site’s mood: modern, minimal, playful or another.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. A kindergarten asked for a party site. Four lines are ready. Read the request and write the site’s mood in the How it looks? line.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get parents to come to the party", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That style doesn’t quite suit a party. What mood does the request ask for?", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request says how the site should feel.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fun and colourful is the playful, bright style.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write it like the example and tap Send.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! A colourful gradient, a party font, playful cards. A real party site!", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. Which of the two How it looks? lines helps the AI more?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which one names the mood, colours or shape?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pretty, cool, good say nothing precise.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second has both a mood and a colour.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first is precise: a style and two colours.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second has the mood, colours and corners.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can tell pretty from a precise description.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the colours in the prompt line and at the site’s top and button.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first colour is the main one, that is, the site is in that colour. The second goes to the buttons.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A football team’s kit has its own colours. Let the site have its own colours too.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the style come the colours. Look, right now it only says modern, so the AI chose the colours itself.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get kids to sign up for the club", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We write blue and white. The site turned blue at once: blue comes first, so it’s the main colour.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Say red and yellow, and the top turns red while the buttons turn yellow.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Black and gold looks serious and premium. Colours change a site’s character.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So we write the colours too. The first is the main colour, the second goes to the buttons.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The pizza shop named its colours. Write a style and those colours in the How it looks? line.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order pizza", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] No colours yet. Which colours are in the request?", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Those are other colours. The shop asked for red and green.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The colours are there, but red should be the main one: write it first.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request names two colours.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write a style, then red and green. Red first.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The site is red with green buttons. The shop’s own colours!", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The style should fit the site: who it’s for and what it’s about. I name a site, and you pick the style that fits.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at who it’s for and what kind of event it is.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Little kids: playful. Official stuff: serious. Gamers: neon. Grandparents: calm.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A party for seven-year-olds", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A playful, bright style suits little kids.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The official school olympiad page", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An official page needs a serious style.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An esports tournament", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Gamers love a dark neon style.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Grandma’s sweets", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Warm and homely: a calm style.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A museum of old games", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Old games suit a pixel retro style.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You find the right style for every site.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the cards’ corners and shadows and at the letters.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Corners, shadows and the font, that is, how the letters look, are small but important details.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The same shirt with different buttons and stitching looks completely different.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the details: card corners, shadows and the font. They change a site a lot too. Look, right now it’s just modern.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the course", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Rounded corners: the cards and buttons became soft and friendly.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s add big shadows. The cards seem to lift off the page.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the opposite: square corners, no shadows and a code font. A technical look, just right for robots.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So in How it looks? you can also write corners, shadows and the font. They set the site’s character.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Grandma’s sweet kitchen asked for a site. Read the request and write the mood, font and colours in the How it looks? line.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get people to order sweets", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What about the font? The request says letters that look handwritten.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where are the colours? The request says brown and gold.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has three things: mood, letters and colours.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Warm, handwritten font, brown and gold.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Handwritten letters in brown and gold. A site as warm as grandma’s house!", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s fix the esports tournament! The players said what design they want. Instead of my make it pretty, write a precise How it looks?.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What about the style? The players asked for neon or dark.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No colour yet. The players asked for green neon.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The players named three things: the background, the light colour and the font.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Dark, neon, green, a code font.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! A dark background, green neon and a code font. Now that’s a real esports site!", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I wrote yellow, red and white for the club site. Look, the site turned yellow! The AI made the first colour the main one. What does the coach say? Fix the colour order.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site isn’t red yet. Write the main colour first.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Red is gone. Write the colours the coach named.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which colour does the AI make the main one: the first or the last?", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write red first, then yellow and white.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the site is red, and yellow is only on the buttons. The main colour goes first!", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s be detectives. From the site we’ll work out which How it looks? gave this design and what style it is.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the site’s background, colours, corners and letters.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Dark with glowing lines is neon. White and clean is minimal. Colourful and funny is playful.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site is white and clean, and green. That’s B.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A dark background and glowing lines: that’s neon.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Thick black outlines and a pixel font: retro. The colour is orange. That’s A.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A colourful gradient and toy-like cards: the playful style.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can read a site’s style and colours just by looking.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, for the olympiad site I wrote make it pretty and cool. The AI made a pink site again! What does the principal say? Fix my line.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get students to sign up for the olympiad", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pretty and cool is still there. Write the style and colours the principal named.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What about the style? The principal asked for serious.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where are the colours? The principal asked for blue and white.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The principal named three things: the style, colours and font.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Delete pretty and cool and write: serious, blue and white.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The pink is gone: serious, blue and white, classic letters. A real official page!", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the full How it looks?: style, colours, corners and shadows. Read the music festival’s request.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] get young people to come to the festival", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What about the style? The request says modern.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where are the colours? The request says purple and pink.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the corners: the request says rounded.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the shadows: the request says big shadows.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The request has four things: style, colours, corners and shadows.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write them one after another, separated by commas.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Modern, purple and pink, rounded and with shadows. A site made for a festival!", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now your own site! Write all five lines, and in How it looks? the style and colours that suit your site.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the What? line: what site are you making?", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s just a topic. Write a specific thing: a club, server, shop or party site.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Why? line: what should the site do?", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the goal: should people sign up, order or come?", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the Who for? line: who will look at the site?", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI couldn’t tell who. Write their age or who they are.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the What’s inside? line: which blocks?", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now write the How it looks? line: how should it look?", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Five questions: what, why, who for, what’s inside, how it looks.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In How it looks? write a style and one or two colours.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! That’s your five-line prompt. At home you’ll send it to a real AI.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now a quick check. I say a sentence, and you choose: true or false?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s it about: style, colour or the word pretty?", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: the AI interprets pretty its own way, and the first colour becomes the main one.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word pretty tells the AI an exact design.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually it guesses on its own. Write the style and colours precisely.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first colour written becomes the site’s main colour.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: the second goes to the buttons.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Style, colours, corners and the font set how a site looks.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: you can write all of them in How it looks?.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A calm pink style is best for an esports tournament.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually gamers suit a dark neon style.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you don’t write How it looks?, the AI picks the design itself.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: and it might not be what you wanted.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You describe design the right way.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the riddle. I thought everyone understands pretty the same way. But to me pretty is neon, to grandma it’s warm brown, to little kids it’s colourful! And the AI picked pink. Pretty is different for everyone. I was wrong.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your five-line prompt and your site.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You already know what, why, who for and what’s inside.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] How it looks? is the style, colours, corners, shadows and font. The first colour is the main one.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Homework: copy your prompt and send it to a real AI. Next lesson: the sixth question, how should the site behave? See you!", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] the goal: what the site should do", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How does it look?", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Is this a flower shop? Esports should be dark and neon!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A kindergarten party site: for little ones, it should feel fun and colourful, like a party.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] how should it look?", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write the mood in How it looks?", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which is clearer?", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which How it looks? is clearer?", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The pizza shop’s colours: red and green, like the Italian flag.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which style fits?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Grandma’s sweets: warm and homely. Letters that look handwritten, colours brown and gold.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The players ask: A dark background, green neon lights and a computer font!", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The club coach: Our colour is red, just a bit of yellow, and white for the background.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which How it looks? gave this site?", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What style is this?", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The principal: This is the official olympiad page: serious, blue and white, a classic font.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A youth music festival: modern, purple and pink, rounded corners and big shadows.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what are you making?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] what should the site do?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] who is the site for?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] which blocks?", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Send your prompt to a real AI and make your site.", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Typing…", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How should the site behave?", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Write in the How it looks? line: how should the site look?", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pretty means something different to everyone. Be precise: mood, colours, corners, font.", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The AI didn’t recognise a design. For example: playful, calm, minimal, modern, red and white.", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The strongest teams on one field!", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fresh, hot and tasty.", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fun sessions and a friendly team.", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in one place: quick and easy.", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everyone is welcome!", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Play with your friends!", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Learn from scratch.", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An unforgettable summer starts here!", required: true },
+    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One team, one goal!", required: true },
+    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Did you know?", required: true },
+    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] History, rules and fun facts.", required: true },
+    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything is easy with us.", required: true },
+    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sign up now: places are limited!", required: true },
+    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Got questions? Give us a call.", required: true },
+    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Order in just a few taps!", required: true },
+    { id: "en200", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’re waiting for you! Address and time below.", required: true },
+    { id: "en201", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When, where and how: it’s all here.", required: true },
+    { id: "en202", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Safe, useful and convenient for your child.", required: true },
+    { id: "en203", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Simple and clear. Questions? Just give us a call.", required: true },
+    { id: "en204", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A ready plan and materials for your class.", required: true },
+    { id: "en205", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A professional approach and top quality.", required: true },
+    { id: "en206", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Got questions?", required: true },
+    { id: "en207", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 📞 +998 90 123 45 67: call us and we’ll explain everything.", required: true },
+    { id: "en208", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Really great! We’ll be back.", required: true },
+    { id: "en209", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything was quick and tasty.", required: true },
+    { id: "en210", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My kids loved it.", required: true },
+    { id: "en211", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I told my friends too.", required: true },
+    { id: "en212", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How much is it? See prices.", required: true },
+    { id: "en213", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ When are you open? Every day.", required: true },
+    { id: "en214", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ❓ How do I sign up? Fill in the form.", required: true },
+    { id: "en215", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We’ve been working since 2015 and try to make every visitor happy.", required: true },
+    { id: "en216", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ✅ Thank you!", required: true },
+    { id: "en217", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Answer: it’s all in the prices section.", required: true },
+    { id: "en218", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 🎁 Subscribe!", required: true },
+    { id: "en219", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] −50% OFF!", required: true },
+    { id: "en220", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] For whom?", required: true },
+    { id: "en221", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s inside?", required: true },
+    { id: "en222", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it looks?", required: true },
+    { id: "en223", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How it behaves?", required: true },
+    { id: "en224", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What rules?", required: true },
+    { id: "en225", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No blocks found in What’s inside?. For example: photos, prices, contact.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Promptimda endi to'rtta qator bor: nima, nega, kim uchun va ichida nima. Beshinchisiga chiroyli bo'lsin deb yozdim. Bu kibersport turniri uchun! Yuborishni bosing.": "uz001",
+    "o'yinchilar ro'yxatdan o'tsin": "uz002",
+    "Bu yerda sun'iy intellekt yaratgan sayt chiqadi": "uz003",
+    "Voy! Sayt chiroyli chiqdi, lekin pushti va yumshoq, xuddi gul do'koniga o'xshaydi. Qarang, Taxmin belgilari: sun'iy intellekt chiroylini o'zicha tanladi. O'yinchilar esa qorong'i va neon kibersport dizaynini kutgan edi.": "uz004",
+    "Menimcha, chiroyli desam, hamma bir xil narsani tushunadi. Chiroyli bu chiroyli-da! Siz nima deb o'ylaysiz? Bugun beshinchi savolni o'rganamiz: sayt qanday ko'rinadi?": "uz005",
+    "Prompt qatoriga va saytning ranglari, burchaklari, sarlavhasiga qarang.": "uz006",
+    "Uslub, ya'ni saytning kayfiyati degani. Bitta so'z butun dizaynni o'zgartiradi.": "uz007",
+    "To'yga, sportga va uyda yurish uchun har xil kiyinasiz. Sayt ham kayfiyatiga qarab kiyinadi.": "uz008",
+    "Beshinchi savol: sayt qanday ko'rinadi? Birinchi narsa uslub, ya'ni saytning kayfiyati degani. Qarang, hozir qator bo'sh, shuning uchun sun'iy intellekt dizaynni o'zicha tanladi.": "uz009",
+    "kitobxonlar klubga yozilsin": "uz010",
+    "Yozamiz: zamonaviy. Qarang: silliq gradient, yumaloq kartochkalar va yengil soyalar chiqdi.": "uz011",
+    "Endi minimalist. Hamma narsa oq va toza bo'ldi, ortiqcha bezak yo'q.": "uz012",
+    "Quvnoq va yorqin desak, rang-barang gradient, bayramona shrift va o'yinchoqdek kartochkalar chiqadi.": "uz013",
+    "Demak, Ko'rinishi? qatoriga avval saytning kayfiyatini yozamiz: zamonaviy, minimalist, quvnoq yoki boshqa.": "uz014",
+    "Endi siz. Bog'cha bayrami sayt so'radi. To'rtta qator tayyor. Buyurtmani o'qing va Ko'rinishi? qatoriga saytning kayfiyatini yozing.": "uz015",
+    "ota-onalar bayramga kelsin": "uz016",
+    "Bu uslub bayramga unchalik mos emas. Buyurtmada qanday kayfiyat so'ralgan?": "uz017",
+    "Buyurtmada sayt qanday tuyulishi kerakligi yozilgan.": "uz018",
+    "Kulgili va rang-barang bu quvnoq va yorqin uslub.": "uz019",
+    "Namunadagidek yozing va Yuborishni bosing.": "uz020",
+    "Zo'r! Rang-barang gradient, bayramona shrift, quvnoq kartochkalar. Bu haqiqiy bayram sayti!": "uz021",
+    "Endi o'zingizni sinab ko'ring. Ikki Ko'rinishi? dan qaysi biri sun'iy intellektga ko'proq yordam beradi?": "uz022",
+    "Qaysi birida kayfiyat, rang yoki shakl aniq aytilgan?": "uz023",
+    "Chiroyli, zo'r, yaxshi hech narsani aniq aytmaydi.": "uz024",
+    "Ikkinchisida kayfiyat ham, rang ham bor.": "uz025",
+    "Birinchisi aniq: uslub va ikki rang.": "uz026",
+    "Ikkinchisida kayfiyat, ranglar va burchaklar bor.": "uz027",
+    "Barakalla!": "uz028",
+    "Hammasi to'g'ri! Chiroyli ni aniq tavsifdan ajratasiz.": "uz029",
+    "Prompt qatoridagi ranglarga va saytning tepasi, tugmasiga qarang.": "uz030",
+    "Birinchi rang asosiy, ya'ni sayt shu rangda bo'ladi degani. Ikkinchisi tugmalarga ketadi.": "uz031",
+    "Futbol jamoasining formasi o'z ranglarida bo'ladi. Sayt ham o'z ranglarida bo'lsin.": "uz032",
+    "Uslubdan keyin ranglar. Qarang, hozir faqat zamonaviy yozilgan, ranglarni sun'iy intellekt o'zi tanladi.": "uz033",
+    "bolalar klubga yozilsin": "uz034",
+    "Ko'k va oq deb yozamiz. Sayt darhol ko'k bo'ldi: ko'k birinchi yozilgan, demak u asosiy rang.": "uz035",
+    "Qizil va sariq desak, tepasi qizil, tugmalari esa sariq bo'ladi.": "uz036",
+    "Qora va oltin: jiddiy va qimmatbaho ko'rinish. Ranglar saytning xarakterini o'zgartiradi.": "uz037",
+    "Demak, ranglarni ham yozamiz. Birinchi rang asosiy bo'ladi, ikkinchisi tugmalarga ketadi.": "uz038",
+    "Endi siz. Pitsa do'koni o'z ranglarini aytdi. Ko'rinishi? qatoriga uslub va shu ranglarni yozing.": "uz039",
+    "odamlar pitsa buyurtma qilsin": "uz040",
+    "Ranglar yozilmagan. Buyurtmada qaysi ranglar bor?": "uz041",
+    "Bu boshqa ranglar. Do'kon qizil va yashilni so'radi.": "uz042",
+    "Ranglar bor, lekin asosiysi qizil bo'lsin: uni birinchi yozing.": "uz043",
+    "Buyurtmada ikki rang aytilgan.": "uz044",
+    "Uslubni, keyin qizil va yashilni yozing. Qizil birinchi.": "uz045",
+    "Ajoyib! Sayt qizil, tugmalari yashil. Pitsa do'konining o'z ranglari!": "uz046",
+    "Uslub sayt kimga va nimaga ekaniga mos bo'lishi kerak. Men sayt aytaman, siz unga mos uslubni tanlang.": "uz047",
+    "Kim uchun va qanday tadbir ekaniga qarang.": "uz048",
+    "Kichkintoylar uchun quvnoq, rasmiy narsa uchun jiddiy, o'yinchilar uchun neon, buvi va bobolar uchun sokin.": "uz049",
+    "Yetti yoshli bolalar uchun bayram": "uz050",
+    "Kichkintoylarga quvnoq va yorqin uslub mos.": "uz051",
+    "Maktab olimpiadasining rasmiy sahifasi": "uz052",
+    "Rasmiy sahifaga jiddiy uslub kerak.": "uz053",
+    "Kibersport turniri": "uz054",
+    "O'yinchilarga qorong'i neon uslub yoqadi.": "uz055",
+    "Buvijonning shirinliklari": "uz056",
+    "Iliq va uydagidek: sokin uslub.": "uz057",
+    "Eski o'yinlar muzeyi": "uz058",
+    "Eski o'yinlarga piksel va retro uslub mos.": "uz059",
+    "Zo'r! Har bir saytga mos uslubni topasiz.": "uz060",
+    "Kartochkalarning burchaklariga, soyalariga va harflarga qarang.": "uz061",
+    "Burchak, soya va shrift, ya'ni harflarning ko'rinishi degani, saytning mayda, lekin muhim qismlari.": "uz062",
+    "Bir xil ko'ylakning tugmalari va choki boshqa bo'lsa, u butunlay boshqacha ko'rinadi.": "uz063",
+    "Endi mayda narsalar: kartochkalar burchagi, soyalar va shrift. Ular ham saytni butunlay o'zgartiradi. Qarang, hozir faqat zamonaviy.": "uz064",
+    "o'quvchilar kursga yozilsin": "uz065",
+    "Yumaloq burchaklar: kartochkalar va tugmalar yumshoq, do'stona bo'ldi.": "uz066",
+    "Katta soyalar qo'shamiz. Kartochkalar sahifadan ko'tarilib turgandek bo'ldi.": "uz067",
+    "Endi aksincha: to'g'ri burchaklar, soyasiz va kod shrifti. Robotlarga mos, texnik ko'rinish chiqdi.": "uz068",
+    "Demak, Ko'rinishi? ga burchaklar, soyalar va shriftni ham yozish mumkin. Bular saytning xarakterini aniqlaydi.": "uz069",
+    "Endi siz. Buvijonning shirinliklar oshxonasi sayt so'radi. Buyurtmani o'qing va Ko'rinishi? qatoriga kayfiyat, shrift va ranglarni yozing.": "uz070",
+    "odamlar shirinlik buyurtma qilsin": "uz071",
+    "Shrift qanday? Buyurtmada harflar qo'lyozmadek bo'lsin deyilgan.": "uz072",
+    "Ranglar qani? Buyurtmada jigarrang va oltin.": "uz073",
+    "Buyurtmada uch narsa bor: kayfiyat, harflar va ranglar.": "uz074",
+    "Iliq, qo'lyozma shrift, jigarrang va oltin.": "uz075",
+    "Zo'r! Harflar qo'lyozmadek, ranglar jigarrang va oltin. Xuddi buvijonning uyidagidek iliq sayt!": "uz076",
+    "Endi kibersport turnirini tuzatamiz! O'yinchilar qanday dizayn xohlashini aytdi. Mening chiroyli bo'lsin o'rniga aniq Ko'rinishi? ni yozing.": "uz077",
+    "Uslub qani? O'yinchilar neon yoki qorong'i uslubni so'radi.": "uz078",
+    "Rang yozilmagan. O'yinchilar yashil neonni so'radi.": "uz079",
+    "O'yinchilar uch narsani aytdi: fon, chiroq rangi va shrift.": "uz080",
+    "Qorong'i, neon, yashil, kod shrifti.": "uz081",
+    "Voy, zo'r! Qorong'i fon, yashil neon va kod shrifti. Endi bu haqiqiy kibersport sayti!": "uz082",
+    "Men klub sayti uchun sariq, qizil va oq deb yozdim. Qarang, sayt sariq bo'lib qoldi! Sun'iy intellekt birinchi rangni asosiy qildi. Murabbiy nima deyapti? Ranglar tartibini tuzating.": "uz083",
+    "Sayt hali qizil emas. Asosiy rangni birinchi yozing.": "uz084",
+    "Qizil yo'qoldi. Murabbiy aytgan ranglarni yozing.": "uz085",
+    "Sun'iy intellekt qaysi rangni asosiy qiladi: birinchisini yoki oxirgisini?": "uz086",
+    "Qizilni birinchi yozing, keyin sariq va oq.": "uz087",
+    "Zo'r! Endi sayt qizil, sariq esa faqat tugmalarda. Asosiy rang birinchi yoziladi!": "uz088",
+    "Endi detektiv bo'lamiz. Saytga qarab topamiz: qaysi Ko'rinishi? shu dizaynni berdi va bu qanday uslub?": "uz089",
+    "Saytning foni, ranglari, burchaklari va harflariga qarang.": "uz090",
+    "Qorong'i va yorqin chiroq bu neon. Oq va toza bu minimalist. Rang-barang va kulgili bu quvnoq.": "uz091",
+    "Sayt oq va toza, rangi yashil. Bu B.": "uz092",
+    "Qorong'i fon va yonib turgan chiziqlar: bu neon.": "uz093",
+    "Qalin qora chiziqlar va piksel shrift: retro. Rangi to'q sariq. Bu A.": "uz094",
+    "Rang-barang gradient va o'yinchoqdek kartochkalar: quvnoq uslub.": "uz095",
+    "Zo'r! Saytga qarab uning uslubini va ranglarini o'qiysiz.": "uz096",
+    "Voy, men olimpiada sayti uchun chiroyli va zo'r bo'lsin deb yozdim. Sun'iy intellekt yana pushti sayt qildi! Direktor nima deyapti? Mening qatorimni tuzating.": "uz097",
+    "o'quvchilar olimpiadaga yozilsin": "uz098",
+    "Chiroyli va zo'r hali turibdi. Direktor aytgan uslub va ranglarni yozing.": "uz099",
+    "Uslub qani? Direktor jiddiy uslubni so'radi.": "uz100",
+    "Rang qani? Direktor to'q ko'k va oqni so'radi.": "uz101",
+    "Direktor uch narsani aytdi: uslub, ranglar va shrift.": "uz102",
+    "Chiroyli va zo'r ni o'chiring va jiddiy, to'q ko'k va oq deb yozing.": "uz103",
+    "Ajoyib! Pushti ketdi: jiddiy, ko'k va oq, klassik harflar. Endi bu haqiqiy rasmiy sahifa!": "uz104",
+    "Endi to'liq Ko'rinishi? ni yozasiz: uslub, ranglar, burchaklar va soyalar. Musiqa festivali buyurtmasini o'qing.": "uz105",
+    "yoshlar festivalga kelsin": "uz106",
+    "Uslub qani? Buyurtmada zamonaviy deyilgan.": "uz107",
+    "Ranglar qani? Buyurtmada binafsha va pushti.": "uz108",
+    "Burchaklarni yozing: buyurtmada yumaloq burchaklar.": "uz109",
+    "Soyalarni yozing: buyurtmada katta soyalar.": "uz110",
+    "Buyurtmada to'rt narsa bor: uslub, ranglar, burchaklar va soyalar.": "uz111",
+    "Ularni vergul bilan ketma-ket yozing.": "uz112",
+    "Barakalla! Zamonaviy, binafsha va pushti, yumaloq va soyali. Festivalga mos sayt!": "uz113",
+    "Endi o'z saytingiz! Beshta qatorni yozing. Ko'rinishi? ga esa saytingizga mos uslub va ranglarni yozing.": "uz114",
+    "Nima? qatoriga yozing: qanday sayt yaratasiz?": "uz115",
+    "Bu faqat mavzu. Aniq narsani yozing: klub, server, do'kon yoki bayram sayti.": "uz116",
+    "Endi Nega? qatorini yozing: sayt nima qilishi kerak?": "uz117",
+    "Maqsadni yozing: odamlar yozilsinmi, buyurtma qilsinmi, kelsinmi?": "uz118",
+    "Endi Kim uchun? qatorini yozing: saytni kimlar ko'radi?": "uz119",
+    "Sun'iy intellekt kimligini tushunmadi. Yoshini yoki kimligini yozing.": "uz120",
+    "Endi Ichida nima? qatorini yozing: saytda qanday bloklar?": "uz121",
+    "Endi Ko'rinishi? qatorini yozing: sayt qanday ko'rinsin?": "uz122",
+    "Beshta savol: nima, nega, kim uchun, ichida nima, ko'rinishi.": "uz123",
+    "Ko'rinishi? ga uslub va bir-ikki rang yozing.": "uz124",
+    "Voy, zo'r! Bu sizning besh qatorli promptingiz. Uyga vazifada uni haqiqiy sun'iy intellektga yuborasiz.": "uz125",
+    "Endi tezkor tekshiruv. Men gap aytaman, siz tanlang: to'g'rimi yoki noto'g'rimi?": "uz126",
+    "Gap nima haqida: uslub, rang yoki chiroyli so'zi?": "uz127",
+    "Esingizdami: chiroyli ni sun'iy intellekt o'zicha tushunadi, birinchi rang esa asosiy bo'ladi.": "uz128",
+    "Chiroyli degan so'z sun'iy intellektga aniq dizaynni aytadi.": "uz129",
+    "Aslida u o'zicha taxmin qiladi. Uslub va ranglarni aniq yozing.": "uz130",
+    "Birinchi yozilgan rang saytning asosiy rangi bo'ladi.": "uz131",
+    "To'g'ri: ikkinchisi tugmalarga ketadi.": "uz132",
+    "Uslub, ranglar, burchaklar va shrift saytning ko'rinishini belgilaydi.": "uz133",
+    "To'g'ri: ularning hammasini Ko'rinishi? ga yozish mumkin.": "uz134",
+    "Kibersport turniri uchun sokin pushti uslub eng yaxshisi.": "uz135",
+    "Aslida o'yinchilarga qorong'i neon uslub mos.": "uz136",
+    "Ko'rinishi? yozilmasa, dizaynni sun'iy intellekt o'zi tanlaydi.": "uz137",
+    "To'g'ri: va u siz xohlagandek bo'lmasligi mumkin.": "uz138",
+    "Hammasi to'g'ri! Siz dizaynni to'g'ri tasvirlaysiz.": "uz139",
+    "Endi topishmoqqa qaytamiz. Men chiroyli desam, hamma bir xil tushunadi deb o'ylagandim. Lekin menga chiroyli neon, buvijonga chiroyli iliq jigarrang, kichkintoylarga chiroyli rang-barang! Sun'iy intellekt esa pushtini tanladi. Chiroyli har kimga har xil. Men adashibman.": "uz140",
+    "Qarang, bu sizning besh qatorli promptingiz va saytingiz.": "uz141",
+    "Nima, nega, kim uchun va ichida nima sizga tanish.": "uz142",
+    "Ko'rinishi? bu uslub, ranglar, burchaklar, soyalar va shrift. Birinchi rang asosiy.": "uz143",
+    "Uyga vazifa: promptingizni nusxalab, haqiqiy sun'iy intellektga yuboring. Keyingi darsda oltinchi savol: sayt qanday ishlaydi? Ko'rishguncha!": "uz144",
+    "maqsad: sayt nima qilsin": "uz145",
+    "Voy, zo‘r!": "uz146",
+    "Ana! Chiqdi!": "uz147",
+    "Super!": "uz148",
+    "Qoyil!": "uz149",
+    "Ura!": "uz150",
+    "Zo‘r-ku!": "uz151",
+    "Yana bir bor urinib ko‘ring.": "uz152",
+    "Diqqat bilan qarang.": "uz153",
+    "Yaqin qoldingiz. Shoshilmang.": "uz154",
+    "Sayt qanday ko'rinadi?": "uz155",
+    "Bu gul do'konimi? Kibersport qorong'i va neon bo'lishi kerak!": "uz156",
+    "Bog'cha bayrami sayti: kichkintoylar uchun, xuddi bayramdek kulgili va rang-barang tuyulsin.": "uz157",
+    "sayt qanday ko'rinsin?": "uz158",
+    "Qaysi biri aniqroq?": "uz159",
+    "Qaysi Ko'rinishi? aniqroq?": "uz160",
+    "Pitsa do'konining ranglari: qizil va yashil, xuddi Italiya bayrog'idek.": "uz161",
+    "Qaysi uslub mos?": "uz162",
+    "Buvijonning shirinliklari: iliq va uydagidek. Harflar qo'lyozmadek bo'lsin, ranglar jigarrang va oltin.": "uz163",
+    "O'yinchilar so'raydi: Qorong'i fon, yashil neon chiroqlar va kompyuter shrifti bo'lsin!": "uz164",
+    "Klub murabbiyi: Bizning rangimiz qizil, sariq esa faqat ozgina, oq esa fonda.": "uz165",
+    "Qaysi Ko'rinishi? shu saytni berdi?": "uz166",
+    "Bu qanday uslub?": "uz167",
+    "Direktor: Bu olimpiadaning rasmiy sahifasi: jiddiy, to'q ko'k va oq, klassik shrift.": "uz168",
+    "Yoshlar musiqa festivali: zamonaviy, binafsha va pushti, yumaloq burchaklar va katta soyalar.": "uz169",
+    "nima yaratasiz?": "uz170",
+    "sayt nima qilishi kerak?": "uz171",
+    "sayt kim uchun?": "uz172",
+    "saytda qanday bloklar?": "uz173",
+    "To'g'rimi?": "uz174",
+    "To'g'rimi yoki noto'g'rimi?": "uz175",
+    "Promptingizni haqiqiy sun'iy intellektga yuboring va saytingizni yarating.": "uz176",
+    "Yozyapti…": "uz177",
+    "Sayt qanday ishlaydi?": "uz178",
+    "Ko'rinishi? qatoriga yozing: sayt qanday ko'rinsin?": "uz179",
+    "Chiroyli har kimga har xil. Aniq yozing: kayfiyati, ranglari, burchaklari, shrifti.": "uz180",
+    "Sun'iy intellekt bu so'zlardan dizaynni tanimadi. Masalan: quvnoq, sokin, minimalist, zamonaviy, qizil va oq.": "uz181",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz182",
+    "Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz183",
+    "Eng kuchli jamoalar bir maydonda!": "uz184",
+    "Yangi pishgan, issiq va mazali.": "uz185",
+    "Qiziqarli mashg'ulotlar va do'stona jamoa.": "uz186",
+    "Hammasi bir joyda: qulay va tez.": "uz187",
+    "Hammani kutamiz!": "uz188",
+    "Do'stlaringiz bilan birga o'ynang!": "uz189",
+    "Noldan boshlab o'rganing.": "uz190",
+    "Unutilmas yoz shu yerda boshlanadi!": "uz191",
+    "Bir jamoa, bir maqsad!": "uz192",
+    "Bilasizmi?": "uz193",
+    "Tarix, qoidalar va qiziqarli faktlar.": "uz194",
+    "Biz bilan hammasi oson.": "uz195",
+    "Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!": "uz196",
+    "Savollaringiz bormi? Bizga qo'ng'iroq qiling.": "uz197",
+    "Bir necha bosishda buyurtma bering!": "uz198",
+    "Sizni kutamiz! Manzil va vaqt quyida.": "uz199",
+    "Qachon, qayerda va qanday: hammasi shu yerda.": "uz200",
+    "Farzandingiz uchun xavfsiz, foydali va qulay.": "uz201",
+    "Hammasi oddiy va tushunarli. Savol bo'lsa, qo'ng'iroq qiling.": "uz202",
+    "Dars uchun tayyor reja va materiallar.": "uz203",
+    "Professional yondashuv va yuqori sifat.": "uz204",
+    "Savolingiz bormi?": "uz205",
+    "📞 +998 90 123 45 67: qo'ng'iroq qiling, hammasini tushuntiramiz.": "uz206",
+    "Juda zo'r! Yana kelamiz.": "uz207",
+    "Hammasi tez va mazali.": "uz208",
+    "Bolalarim juda xursand.": "uz209",
+    "Do'stlarimga ham aytdim.": "uz210",
+    "❓ Qancha turadi? Narxlar bo'limida.": "uz211",
+    "❓ Qachon ochiq? Har kuni.": "uz212",
+    "❓ Qanday yozilaman? Formani to'ldiring.": "uz213",
+    "Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.": "uz214",
+    "✅ Rahmat!": "uz215",
+    "Javob: hammasi narxlar bo'limida yozilgan.": "uz216",
+    "🎁 Obuna bo'ling!": "uz217",
+    "−50% CHEGIRMA!": "uz218",
+    "Kim uchun?": "uz219",
+    "Ichida nima?": "uz220",
+    "Ko'rinishi?": "uz221",
+    "Qanday ishlaydi?": "uz222",
+    "Qoidalar?": "uz223",
+    "Ichida nima? da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.": "uz224",
+  },
+  ru: {
+    "Привет! В моём промпте уже четыре строки: что, зачем, для кого и что внутри. В пятую я написал пусть будет красиво. Это для киберспортивного турнира! Нажми Отправить.": "ru001",
+    "чтобы игроки записывались": "ru002",
+    "Здесь появится сайт, который сделает ИИ": "ru003",
+    "Ого! Сайт красивый, но розовый и нежный, как цветочный магазин. Смотри, метки Догадка: ИИ сам решил, что такое красиво. А игроки ждали тёмный неоновый киберспортивный дизайн.": "ru004",
+    "По-моему, если сказать красиво, все поймут одно и то же. Красиво, оно и есть красиво! А ты как думаешь? Сегодня разберём пятый вопрос: как выглядит сайт?": "ru005",
+    "Посмотри на строку промпта и на цвета, углы и заголовок сайта.": "ru006",
+    "Стиль, это настроение сайта. Одно слово меняет весь дизайн.": "ru007",
+    "На праздник, на спорт и дома ты одеваешься по-разному. Сайт тоже одевается под настроение.": "ru008",
+    "Пятый вопрос: как выглядит сайт? Первое, стиль, то есть настроение сайта. Смотри, строка пока пустая, и ИИ выбрал дизайн сам.": "ru009",
+    "чтобы читатели записывались в клуб": "ru010",
+    "Пишем: современный. Смотри: плавный градиент, скруглённые карточки и мягкие тени.": "ru011",
+    "Теперь минимализм. Всё стало белым и чистым, ничего лишнего.": "ru012",
+    "А весёлый и яркий, это разноцветный градиент, праздничный шрифт и карточки как игрушки.": "ru013",
+    "Значит, в строку Как выглядит? сначала пишем настроение сайта: современный, минимализм, весёлый или другое.": "ru014",
+    "Теперь ты. Детский сад попросил сайт праздника. Четыре строки готовы. Прочитай заказ и напиши в строку Как выглядит? настроение сайта.": "ru015",
+    "чтобы родители пришли на праздник": "ru016",
+    "Этот стиль не очень подходит празднику. Какое настроение просят в заказе?": "ru017",
+    "В заказе сказано, каким сайт должен ощущаться.": "ru018",
+    "Весёлый и разноцветный, это стиль весёлый и яркий.": "ru019",
+    "Напиши как в образце и нажми Отправить.": "ru020",
+    "Огонь! Разноцветный градиент, праздничный шрифт, весёлые карточки. Настоящий сайт праздника!": "ru021",
+    "Теперь проверь себя. Какое из двух Как выглядит? больше поможет ИИ?": "ru022",
+    "Где точно названы настроение, цвета или форма?": "ru023",
+    "Красиво, круто, хорошо ничего точно не говорят.": "ru024",
+    "Во втором есть и настроение, и цвет.": "ru025",
+    "Первый точный: стиль и два цвета.": "ru026",
+    "Во втором, настроение, цвета и углы.": "ru027",
+    "Точно!": "ru028",
+    "Всё верно! Ты отличаешь красиво от точного описания.": "ru029",
+    "Посмотри на цвета в строке промпта и на верх и кнопку сайта.": "ru030",
+    "Первый цвет, главный, то есть сайт будет в этом цвете. Второй уходит на кнопки.": "ru031",
+    "У футбольной команды форма своих цветов. Пусть и сайт будет в своих цветах.": "ru032",
+    "После стиля, цвета. Смотри, сейчас написано только современный, цвета ИИ выбрал сам.": "ru033",
+    "чтобы дети записывались в клуб": "ru034",
+    "Пишем: синий и белый. Сайт сразу стал синим: синий написан первым, значит, он главный.": "ru035",
+    "Скажем красный и жёлтый, верх станет красным, а кнопки жёлтыми.": "ru036",
+    "Чёрный и золотой, солидно и дорого. Цвета меняют характер сайта.": "ru037",
+    "Значит, цвета тоже пишем. Первый цвет, главный, второй, для кнопок.": "ru038",
+    "Теперь ты. Пиццерия назвала свои цвета. Напиши в строку Как выглядит? стиль и эти цвета.": "ru039",
+    "чтобы люди заказывали пиццу": "ru040",
+    "Цвета не написаны. Какие цвета в заказе?": "ru041",
+    "Это другие цвета. Пиццерия просила красный и зелёный.": "ru042",
+    "Цвета есть, но главным пусть будет красный: напиши его первым.": "ru043",
+    "В заказе названы два цвета.": "ru044",
+    "Напиши стиль, потом красный и зелёный. Красный первым.": "ru045",
+    "Класс! Сайт красный, кнопки зелёные. Фирменные цвета пиццерии!": "ru046",
+    "Стиль должен подходить сайту: для кого он и о чём. Я называю сайт, а ты выбираешь подходящий стиль.": "ru047",
+    "Смотри, для кого это и что за событие.": "ru048",
+    "Малышам, весёлый, официальному, строгий, игрокам, неон, бабушкам и дедушкам, спокойный.": "ru049",
+    "Праздник для семилетних детей": "ru050",
+    "Малышам подходит весёлый и яркий стиль.": "ru051",
+    "Официальная страница школьной олимпиады": "ru052",
+    "Официальной странице нужен строгий стиль.": "ru053",
+    "Киберспортивный турнир": "ru054",
+    "Игрокам нравится тёмный неон.": "ru055",
+    "Бабушкины сладости": "ru056",
+    "Тепло и по-домашнему: спокойный стиль.": "ru057",
+    "Музей старых игр": "ru058",
+    "Старым играм подходит пиксельный ретро-стиль.": "ru059",
+    "Класс! Ты подбираешь стиль под каждый сайт.": "ru060",
+    "Посмотри на углы и тени карточек и на буквы.": "ru061",
+    "Углы, тени и шрифт, то есть вид букв, мелкие, но важные детали сайта.": "ru062",
+    "Одна и та же рубашка с другими пуговицами и швами выглядит совсем иначе.": "ru063",
+    "Теперь детали: углы карточек, тени и шрифт. Они тоже сильно меняют сайт. Смотри, сейчас только современный.": "ru064",
+    "чтобы школьники записывались на курс": "ru065",
+    "Скруглённые углы: карточки и кнопки стали мягкими и дружелюбными.": "ru066",
+    "Добавим большие тени. Карточки будто приподнялись над страницей.": "ru067",
+    "А теперь наоборот: острые углы, без теней и шрифт как в коде. Получился технический вид, как раз для роботов.": "ru068",
+    "Значит, в Как выглядит? можно писать и углы, и тени, и шрифт. Они задают характер сайта.": "ru069",
+    "Теперь ты. Бабушкина кондитерская попросила сайт. Прочитай заказ и напиши в строку Как выглядит? настроение, шрифт и цвета.": "ru070",
+    "чтобы люди заказывали сладости": "ru071",
+    "А шрифт? В заказе сказано: буквы как написанные от руки.": "ru072",
+    "А цвета? В заказе, коричневый и золотой.": "ru073",
+    "В заказе три вещи: настроение, буквы и цвета.": "ru074",
+    "Тёплый, рукописный шрифт, коричневый и золотой.": "ru075",
+    "Огонь! Буквы как от руки, цвета коричневый и золотой. Тёплый сайт, как бабушкин дом!": "ru076",
+    "Теперь починим киберспортивный турнир! Игроки сказали, какой дизайн хотят. Вместо моего пусть будет красиво напиши точное Как выглядит?.": "ru077",
+    "А стиль? Игроки просили неон или тёмный стиль.": "ru078",
+    "Цвет не написан. Игроки просили зелёный неон.": "ru079",
+    "Игроки назвали три вещи: фон, цвет подсветки и шрифт.": "ru080",
+    "Тёмный, неон, зелёный, шрифт как в коде.": "ru081",
+    "Ого, круто! Тёмный фон, зелёный неон и шрифт как в коде. Теперь это настоящий киберспорт!": "ru082",
+    "Я написал для сайта клуба жёлтый, красный и белый. Смотри, сайт стал жёлтым! ИИ сделал главным первый цвет. Что говорит тренер? Исправь порядок цветов.": "ru083",
+    "Сайт ещё не красный. Напиши главный цвет первым.": "ru084",
+    "Красный пропал. Напиши цвета, которые назвал тренер.": "ru085",
+    "Какой цвет ИИ делает главным: первый или последний?": "ru086",
+    "Напиши красный первым, потом жёлтый и белый.": "ru087",
+    "Огонь! Теперь сайт красный, а жёлтый, только на кнопках. Главный цвет пишут первым!": "ru088",
+    "Теперь побудем детективами. По сайту найдём: какое Как выглядит? дало этот дизайн и что это за стиль?": "ru089",
+    "Посмотри на фон, цвета, углы и буквы сайта.": "ru090",
+    "Тёмный фон и светящиеся линии, неон. Белое и чистое, минимализм. Разноцветное и смешное, весёлый.": "ru091",
+    "Сайт белый и чистый, цвет зелёный. Это B.": "ru092",
+    "Тёмный фон и светящиеся линии, это неон.": "ru093",
+    "Толстые чёрные рамки и пиксельный шрифт, ретро. Цвет оранжевый. Это A.": "ru094",
+    "Разноцветный градиент и карточки-игрушки: весёлый стиль.": "ru095",
+    "Класс! Ты читаешь стиль и цвета сайта по его виду.": "ru096",
+    "Ой, я написал для сайта олимпиады пусть будет красиво и круто. ИИ опять сделал розовый сайт! Что говорит директор? Исправь мою строку.": "ru097",
+    "чтобы ученики записывались на олимпиаду": "ru098",
+    "Красиво и круто ещё на месте. Напиши стиль и цвета, которые назвал директор.": "ru099",
+    "А стиль? Директор просил строгий.": "ru100",
+    "А цвета? Директор просил синий и белый.": "ru101",
+    "Директор назвал три вещи: стиль, цвета и шрифт.": "ru102",
+    "Сотри красиво и круто и напиши: строгий, синий и белый.": "ru103",
+    "Класс! Розовый ушёл: строго, синий и белый, классические буквы. Настоящая официальная страница!": "ru104",
+    "Теперь полное Как выглядит?: стиль, цвета, углы и тени. Прочитай заказ музыкального фестиваля.": "ru105",
+    "чтобы молодёжь пришла на фестиваль": "ru106",
+    "А стиль? В заказе, современный.": "ru107",
+    "А цвета? В заказе, фиолетовый и розовый.": "ru108",
+    "Напиши углы: в заказе скруглённые.": "ru109",
+    "Напиши тени: в заказе большие тени.": "ru110",
+    "В заказе четыре вещи: стиль, цвета, углы и тени.": "ru111",
+    "Напиши их через запятую по порядку.": "ru112",
+    "Молодец! Современный, фиолетово-розовый, скруглённый, с тенями. Сайт как раз для фестиваля!": "ru113",
+    "А теперь твой сайт! Напиши все пять строк, а в Как выглядит?, подходящие твоему сайту стиль и цвета.": "ru114",
+    "Напиши строку Что?: какой сайт создаёшь?": "ru115",
+    "Это только тема. Напиши конкретную вещь: сайт клуба, сервера, магазина или праздника.": "ru116",
+    "Теперь напиши строку Зачем?: что должен сделать сайт?": "ru117",
+    "Напиши цель: чтобы записывались, заказывали или приходили?": "ru118",
+    "Теперь напиши строку Для кого?: кто будет смотреть сайт?": "ru119",
+    "ИИ не понял, для кого. Напиши возраст или кто они.": "ru120",
+    "Теперь напиши строку Что внутри?: какие блоки на сайте?": "ru121",
+    "Теперь напиши строку Как выглядит?: каким будет сайт?": "ru122",
+    "Пять вопросов: что, зачем, для кого, что внутри, как выглядит.": "ru123",
+    "В Как выглядит? напиши стиль и один-два цвета.": "ru124",
+    "Ого, классно! Это твой промпт из пяти строк. Дома отправишь его настоящему ИИ.": "ru125",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбираешь: верно или неверно?": "ru126",
+    "О чём фраза: о стиле, цвете или слове красиво?": "ru127",
+    "Вспомни: красиво ИИ понимает по-своему, а первый цвет становится главным.": "ru128",
+    "Слово красиво говорит ИИ точный дизайн.": "ru129",
+    "На самом деле он гадает сам. Пиши стиль и цвета точно.": "ru130",
+    "Первый написанный цвет становится главным цветом сайта.": "ru131",
+    "Верно: второй уходит на кнопки.": "ru132",
+    "Стиль, цвета, углы и шрифт задают вид сайта.": "ru133",
+    "Верно: всё это можно написать в Как выглядит?.": "ru134",
+    "Для киберспортивного турнира лучше всего спокойный розовый стиль.": "ru135",
+    "На самом деле игрокам подходит тёмный неон.": "ru136",
+    "Если не написать Как выглядит?, дизайн ИИ выберет сам.": "ru137",
+    "Верно: и он может оказаться не таким, как ты хотел.": "ru138",
+    "Всё верно! Ты правильно описываешь дизайн.": "ru139",
+    "Вернёмся к загадке. Я думал, что красиво все понимают одинаково. Но мне красиво, неон, бабушке, тёплый коричневый, малышам, разноцветное! А ИИ выбрал розовый. Красиво у каждого своё. Я ошибся.": "ru140",
+    "Смотри, это твой промпт из пяти строк и твой сайт.": "ru141",
+    "Что, зачем, для кого и что внутри ты уже знаешь.": "ru142",
+    "Как выглядит?, это стиль, цвета, углы, тени и шрифт. Первый цвет, главный.": "ru143",
+    "Домашнее задание: скопируй свой промпт и отправь настоящему ИИ. На следующем уроке, шестой вопрос: как сайт ведёт себя? До встречи!": "ru144",
+    "цель: что сделает сайт": "ru145",
+    "Вау, классно!": "ru146",
+    "Есть! Получилось!": "ru147",
+    "Супер!": "ru148",
+    "Огонь!": "ru149",
+    "Ура!": "ru150",
+    "Вот это да!": "ru151",
+    "Попробуй ещё раз.": "ru152",
+    "Посмотри внимательно.": "ru153",
+    "Уже близко. Не спеши.": "ru154",
+    "Как выглядит сайт?": "ru155",
+    "Это что, цветочный магазин? Киберспорт должен быть тёмным и неоновым!": "ru156",
+    "Сайт праздника в детском саду: для малышей, пусть ощущается весёлым и разноцветным, как праздник.": "ru157",
+    "каким будет сайт?": "ru158",
+    "Напиши настроение в Как выглядит?": "ru159",
+    "Что точнее?": "ru160",
+    "Какое Как выглядит? точнее?": "ru161",
+    "Цвета пиццерии: красный и зелёный, как на флаге Италии.": "ru162",
+    "Какой стиль подходит?": "ru163",
+    "Бабушкины сладости: тепло и по-домашнему. Буквы, как написанные от руки, цвета, коричневый и золотой.": "ru164",
+    "Игроки просят: Тёмный фон, зелёный неон и компьютерный шрифт!": "ru165",
+    "Тренер клуба: Наш цвет, красный, жёлтого совсем чуть-чуть, белый, для фона.": "ru166",
+    "Какое Как выглядит? дало этот сайт?": "ru167",
+    "Какой это стиль?": "ru168",
+    "Директор: Это официальная страница олимпиады: строгий стиль, синий и белый, классический шрифт.": "ru169",
+    "Молодёжный музыкальный фестиваль: современный, фиолетовый и розовый, скруглённые углы и большие тени.": "ru170",
+    "что создаёшь?": "ru171",
+    "что должен сделать сайт?": "ru172",
+    "для кого сайт?": "ru173",
+    "какие блоки на сайте?": "ru174",
+    "Верно или нет?": "ru175",
+    "Верно или неверно?": "ru176",
+    "Отправь свой промпт настоящему ИИ и сделай свой сайт.": "ru177",
+    "Пишет…": "ru178",
+    "Как сайт должен вести себя?": "ru179",
+    "Напиши в строку Как выглядит?: каким должен быть сайт?": "ru180",
+    "Красиво у каждого своё. Опиши точно: настроение, цвета, углы, шрифт.": "ru181",
+    "ИИ не узнал по этим словам дизайн. Например: весёлый, спокойный, минимализм, современный, красный и белый.": "ru182",
+    "Молодец!": "ru183",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru184",
+    "Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru185",
+    "Сильнейшие команды на одном поле!": "ru186",
+    "Свежее, горячее и вкусное.": "ru187",
+    "Интересные занятия и дружная команда.": "ru188",
+    "Всё в одном месте: удобно и быстро.": "ru189",
+    "Ждём всех!": "ru190",
+    "Играй вместе с друзьями!": "ru191",
+    "Учись с нуля.": "ru192",
+    "Незабываемое лето начинается здесь!": "ru193",
+    "Одна команда, одна цель!": "ru194",
+    "А ты знал?": "ru195",
+    "История, правила и интересные факты.": "ru196",
+    "С нами всё просто.": "ru197",
+    "Запишись прямо сейчас: мест немного!": "ru198",
+    "Есть вопросы? Позвони нам.": "ru199",
+    "Закажи в пару нажатий!": "ru200",
+    "Ждём тебя! Адрес и время ниже.": "ru201",
+    "Когда, где и как: всё здесь.": "ru202",
+    "Безопасно, полезно и удобно для вашего ребёнка.": "ru203",
+    "Всё просто и понятно. Есть вопросы, позвоните.": "ru204",
+    "Готовый план и материалы для урока.": "ru205",
+    "Профессиональный подход и высокое качество.": "ru206",
+    "Есть вопросы?": "ru207",
+    "📞 +998 90 123 45 67, позвоните, всё объясним.": "ru208",
+    "Очень круто! Придём ещё.": "ru209",
+    "Всё быстро и вкусно.": "ru210",
+    "Дети очень довольны.": "ru211",
+    "Рассказал и друзьям.": "ru212",
+    "❓ Сколько стоит? Смотри в ценах.": "ru213",
+    "❓ Когда открыто? Каждый день.": "ru214",
+    "❓ Как записаться? Заполни форму.": "ru215",
+    "Мы работаем с 2015 года и стараемся порадовать каждого гостя.": "ru216",
+    "✅ Спасибо!": "ru217",
+    "Ответ: всё написано в разделе цен.": "ru218",
+    "🎁 Подпишись!": "ru219",
+    "−50% СКИДКА!": "ru220",
+    "Зачем?": "ru221",
+    "Для кого?": "ru222",
+    "Что внутри?": "ru223",
+    "Как выглядит?": "ru224",
+    "Как ведёт себя?": "ru225",
+    "Какие правила?": "ru226",
+    "В Что внутри? не найдено блоков. Например: фото, цены, контакты.": "ru227",
+  },
+  en: {
+    "Hi! My prompt now has four lines: what, why, who for and what’s inside. In the fifth I wrote make it pretty. It’s for an esports tournament! Tap Send.": "en001",
+    "get players to sign up": "en002",
+    "The site the AI makes will appear here": "en003",
+    "Wow! The site is pretty, but pink and soft, like a flower shop. Look at the Guess labels: the AI decided by itself what pretty means. The players expected a dark neon esports design.": "en004",
+    "I think if I say pretty, everyone understands the same thing. Pretty is pretty! What do you think? Today we learn the fifth question: how does the site look?": "en005",
+    "Look at the prompt line and at the site’s colours, corners and heading.": "en006",
+    "Style is the site’s mood. One word changes the whole design.": "en007",
+    "You dress differently for a party, for sport and for home. A site dresses for its mood too.": "en008",
+    "The fifth question: how does the site look? The first thing is style, that is, the site’s mood. Look, the line is empty for now, so the AI chose the design itself.": "en009",
+    "get readers to join the club": "en010",
+    "We write: modern. Look: a smooth gradient, rounded cards and soft shadows.": "en011",
+    "Now minimal. Everything became white and clean, nothing extra.": "en012",
+    "And playful and bright gives a colourful gradient, a party font and toy-like cards.": "en013",
+    "So in the How it looks? line we first write the site’s mood: modern, minimal, playful or another.": "en014",
+    "Your turn. A kindergarten asked for a party site. Four lines are ready. Read the request and write the site’s mood in the How it looks? line.": "en015",
+    "get parents to come to the party": "en016",
+    "That style doesn’t quite suit a party. What mood does the request ask for?": "en017",
+    "The request says how the site should feel.": "en018",
+    "Fun and colourful is the playful, bright style.": "en019",
+    "Write it like the example and tap Send.": "en020",
+    "Awesome! A colourful gradient, a party font, playful cards. A real party site!": "en021",
+    "Now check yourself. Which of the two How it looks? lines helps the AI more?": "en022",
+    "Which one names the mood, colours or shape?": "en023",
+    "Pretty, cool, good say nothing precise.": "en024",
+    "The second has both a mood and a colour.": "en025",
+    "The first is precise: a style and two colours.": "en026",
+    "The second has the mood, colours and corners.": "en027",
+    "Exactly!": "en028",
+    "All correct! You can tell pretty from a precise description.": "en029",
+    "Look at the colours in the prompt line and at the site’s top and button.": "en030",
+    "The first colour is the main one, that is, the site is in that colour. The second goes to the buttons.": "en031",
+    "A football team’s kit has its own colours. Let the site have its own colours too.": "en032",
+    "After the style come the colours. Look, right now it only says modern, so the AI chose the colours itself.": "en033",
+    "get kids to sign up for the club": "en034",
+    "We write blue and white. The site turned blue at once: blue comes first, so it’s the main colour.": "en035",
+    "Say red and yellow, and the top turns red while the buttons turn yellow.": "en036",
+    "Black and gold looks serious and premium. Colours change a site’s character.": "en037",
+    "So we write the colours too. The first is the main colour, the second goes to the buttons.": "en038",
+    "Your turn. The pizza shop named its colours. Write a style and those colours in the How it looks? line.": "en039",
+    "get people to order pizza": "en040",
+    "No colours yet. Which colours are in the request?": "en041",
+    "Those are other colours. The shop asked for red and green.": "en042",
+    "The colours are there, but red should be the main one: write it first.": "en043",
+    "The request names two colours.": "en044",
+    "Write a style, then red and green. Red first.": "en045",
+    "Great! The site is red with green buttons. The shop’s own colours!": "en046",
+    "The style should fit the site: who it’s for and what it’s about. I name a site, and you pick the style that fits.": "en047",
+    "Look at who it’s for and what kind of event it is.": "en048",
+    "Little kids: playful. Official stuff: serious. Gamers: neon. Grandparents: calm.": "en049",
+    "A party for seven-year-olds": "en050",
+    "A playful, bright style suits little kids.": "en051",
+    "The official school olympiad page": "en052",
+    "An official page needs a serious style.": "en053",
+    "An esports tournament": "en054",
+    "Gamers love a dark neon style.": "en055",
+    "Grandma’s sweets": "en056",
+    "Warm and homely: a calm style.": "en057",
+    "A museum of old games": "en058",
+    "Old games suit a pixel retro style.": "en059",
+    "Great! You find the right style for every site.": "en060",
+    "Look at the cards’ corners and shadows and at the letters.": "en061",
+    "Corners, shadows and the font, that is, how the letters look, are small but important details.": "en062",
+    "The same shirt with different buttons and stitching looks completely different.": "en063",
+    "Now the details: card corners, shadows and the font. They change a site a lot too. Look, right now it’s just modern.": "en064",
+    "get students to sign up for the course": "en065",
+    "Rounded corners: the cards and buttons became soft and friendly.": "en066",
+    "Let’s add big shadows. The cards seem to lift off the page.": "en067",
+    "Now the opposite: square corners, no shadows and a code font. A technical look, just right for robots.": "en068",
+    "So in How it looks? you can also write corners, shadows and the font. They set the site’s character.": "en069",
+    "Your turn. Grandma’s sweet kitchen asked for a site. Read the request and write the mood, font and colours in the How it looks? line.": "en070",
+    "get people to order sweets": "en071",
+    "What about the font? The request says letters that look handwritten.": "en072",
+    "Where are the colours? The request says brown and gold.": "en073",
+    "The request has three things: mood, letters and colours.": "en074",
+    "Warm, handwritten font, brown and gold.": "en075",
+    "Awesome! Handwritten letters in brown and gold. A site as warm as grandma’s house!": "en076",
+    "Now let’s fix the esports tournament! The players said what design they want. Instead of my make it pretty, write a precise How it looks?.": "en077",
+    "What about the style? The players asked for neon or dark.": "en078",
+    "No colour yet. The players asked for green neon.": "en079",
+    "The players named three things: the background, the light colour and the font.": "en080",
+    "Dark, neon, green, a code font.": "en081",
+    "Wow, great! A dark background, green neon and a code font. Now that’s a real esports site!": "en082",
+    "I wrote yellow, red and white for the club site. Look, the site turned yellow! The AI made the first colour the main one. What does the coach say? Fix the colour order.": "en083",
+    "The site isn’t red yet. Write the main colour first.": "en084",
+    "Red is gone. Write the colours the coach named.": "en085",
+    "Which colour does the AI make the main one: the first or the last?": "en086",
+    "Write red first, then yellow and white.": "en087",
+    "Awesome! Now the site is red, and yellow is only on the buttons. The main colour goes first!": "en088",
+    "Let’s be detectives. From the site we’ll work out which How it looks? gave this design and what style it is.": "en089",
+    "Look at the site’s background, colours, corners and letters.": "en090",
+    "Dark with glowing lines is neon. White and clean is minimal. Colourful and funny is playful.": "en091",
+    "The site is white and clean, and green. That’s B.": "en092",
+    "A dark background and glowing lines: that’s neon.": "en093",
+    "Thick black outlines and a pixel font: retro. The colour is orange. That’s A.": "en094",
+    "A colourful gradient and toy-like cards: the playful style.": "en095",
+    "Great! You can read a site’s style and colours just by looking.": "en096",
+    "Oops, for the olympiad site I wrote make it pretty and cool. The AI made a pink site again! What does the principal say? Fix my line.": "en097",
+    "get students to sign up for the olympiad": "en098",
+    "Pretty and cool is still there. Write the style and colours the principal named.": "en099",
+    "What about the style? The principal asked for serious.": "en100",
+    "Where are the colours? The principal asked for blue and white.": "en101",
+    "The principal named three things: the style, colours and font.": "en102",
+    "Delete pretty and cool and write: serious, blue and white.": "en103",
+    "Great! The pink is gone: serious, blue and white, classic letters. A real official page!": "en104",
+    "Now write the full How it looks?: style, colours, corners and shadows. Read the music festival’s request.": "en105",
+    "get young people to come to the festival": "en106",
+    "What about the style? The request says modern.": "en107",
+    "Where are the colours? The request says purple and pink.": "en108",
+    "Write the corners: the request says rounded.": "en109",
+    "Write the shadows: the request says big shadows.": "en110",
+    "The request has four things: style, colours, corners and shadows.": "en111",
+    "Write them one after another, separated by commas.": "en112",
+    "Well done! Modern, purple and pink, rounded and with shadows. A site made for a festival!": "en113",
+    "Now your own site! Write all five lines, and in How it looks? the style and colours that suit your site.": "en114",
+    "Write the What? line: what site are you making?": "en115",
+    "That’s just a topic. Write a specific thing: a club, server, shop or party site.": "en116",
+    "Now write the Why? line: what should the site do?": "en117",
+    "Write the goal: should people sign up, order or come?": "en118",
+    "Now write the Who for? line: who will look at the site?": "en119",
+    "The AI couldn’t tell who. Write their age or who they are.": "en120",
+    "Now write the What’s inside? line: which blocks?": "en121",
+    "Now write the How it looks? line: how should it look?": "en122",
+    "Five questions: what, why, who for, what’s inside, how it looks.": "en123",
+    "In How it looks? write a style and one or two colours.": "en124",
+    "Wow, great! That’s your five-line prompt. At home you’ll send it to a real AI.": "en125",
+    "Now a quick check. I say a sentence, and you choose: true or false?": "en126",
+    "What’s it about: style, colour or the word pretty?": "en127",
+    "Remember: the AI interprets pretty its own way, and the first colour becomes the main one.": "en128",
+    "The word pretty tells the AI an exact design.": "en129",
+    "Actually it guesses on its own. Write the style and colours precisely.": "en130",
+    "The first colour written becomes the site’s main colour.": "en131",
+    "Right: the second goes to the buttons.": "en132",
+    "Style, colours, corners and the font set how a site looks.": "en133",
+    "Right: you can write all of them in How it looks?.": "en134",
+    "A calm pink style is best for an esports tournament.": "en135",
+    "Actually gamers suit a dark neon style.": "en136",
+    "If you don’t write How it looks?, the AI picks the design itself.": "en137",
+    "Right: and it might not be what you wanted.": "en138",
+    "All correct! You describe design the right way.": "en139",
+    "Back to the riddle. I thought everyone understands pretty the same way. But to me pretty is neon, to grandma it’s warm brown, to little kids it’s colourful! And the AI picked pink. Pretty is different for everyone. I was wrong.": "en140",
+    "Look, this is your five-line prompt and your site.": "en141",
+    "You already know what, why, who for and what’s inside.": "en142",
+    "How it looks? is the style, colours, corners, shadows and font. The first colour is the main one.": "en143",
+    "Homework: copy your prompt and send it to a real AI. Next lesson: the sixth question, how should the site behave? See you!": "en144",
+    "the goal: what the site should do": "en145",
+    "Wow, awesome!": "en146",
+    "Yes! You did it!": "en147",
+    "Super!": "en148",
+    "Brilliant!": "en149",
+    "Hooray!": "en150",
+    "Amazing!": "en151",
+    "Try once more.": "en152",
+    "Take a closer look.": "en153",
+    "You are close. No rush.": "en154",
+    "How does it look?": "en155",
+    "Is this a flower shop? Esports should be dark and neon!": "en156",
+    "A kindergarten party site: for little ones, it should feel fun and colourful, like a party.": "en157",
+    "how should it look?": "en158",
+    "Write the mood in How it looks?": "en159",
+    "Which is clearer?": "en160",
+    "Which How it looks? is clearer?": "en161",
+    "The pizza shop’s colours: red and green, like the Italian flag.": "en162",
+    "Which style fits?": "en163",
+    "Grandma’s sweets: warm and homely. Letters that look handwritten, colours brown and gold.": "en164",
+    "The players ask: A dark background, green neon lights and a computer font!": "en165",
+    "The club coach: Our colour is red, just a bit of yellow, and white for the background.": "en166",
+    "Which How it looks? gave this site?": "en167",
+    "What style is this?": "en168",
+    "The principal: This is the official olympiad page: serious, blue and white, a classic font.": "en169",
+    "A youth music festival: modern, purple and pink, rounded corners and big shadows.": "en170",
+    "what are you making?": "en171",
+    "what should the site do?": "en172",
+    "who is the site for?": "en173",
+    "which blocks?": "en174",
+    "True or false?": "en175",
+    "Send your prompt to a real AI and make your site.": "en176",
+    "Typing…": "en177",
+    "How should the site behave?": "en178",
+    "Write in the How it looks? line: how should the site look?": "en179",
+    "Pretty means something different to everyone. Be precise: mood, colours, corners, font.": "en180",
+    "The AI didn’t recognise a design. For example: playful, calm, minimal, modern, red and white.": "en181",
+    "Well done!": "en182",
+    "Everything in the window lives inside body.": "en183",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en184",
+    "The strongest teams on one field!": "en185",
+    "Fresh, hot and tasty.": "en186",
+    "Fun sessions and a friendly team.": "en187",
+    "Everything in one place: quick and easy.": "en188",
+    "Everyone is welcome!": "en189",
+    "Play with your friends!": "en190",
+    "Learn from scratch.": "en191",
+    "An unforgettable summer starts here!": "en192",
+    "One team, one goal!": "en193",
+    "Did you know?": "en194",
+    "History, rules and fun facts.": "en195",
+    "Everything is easy with us.": "en196",
+    "Sign up now: places are limited!": "en197",
+    "Got questions? Give us a call.": "en198",
+    "Order in just a few taps!": "en199",
+    "We’re waiting for you! Address and time below.": "en200",
+    "When, where and how: it’s all here.": "en201",
+    "Safe, useful and convenient for your child.": "en202",
+    "Simple and clear. Questions? Just give us a call.": "en203",
+    "A ready plan and materials for your class.": "en204",
+    "A professional approach and top quality.": "en205",
+    "Got questions?": "en206",
+    "📞 +998 90 123 45 67: call us and we’ll explain everything.": "en207",
+    "Really great! We’ll be back.": "en208",
+    "Everything was quick and tasty.": "en209",
+    "My kids loved it.": "en210",
+    "I told my friends too.": "en211",
+    "❓ How much is it? See prices.": "en212",
+    "❓ When are you open? Every day.": "en213",
+    "❓ How do I sign up? Fill in the form.": "en214",
+    "We’ve been working since 2015 and try to make every visitor happy.": "en215",
+    "✅ Thank you!": "en216",
+    "Answer: it’s all in the prices section.": "en217",
+    "🎁 Subscribe!": "en218",
+    "−50% OFF!": "en219",
+    "For whom?": "en220",
+    "What’s inside?": "en221",
+    "How it looks?": "en222",
+    "How it behaves?": "en223",
+    "What rules?": "en224",
+    "No blocks found in What’s inside?. For example: photos, prices, contact.": "en225",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

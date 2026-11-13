@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8052,15 +7603,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14203,3 +13747,1063 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c9-sheet .kz-scene .kz-br.c9-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c9-sheet .kz-scene .kz-br.c9-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 174, ru 174, en 173; всего знаков 70589. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men saytimga menyu qildim: uchta havola. Ularni bir xil kenglikdagi chiroyli tugmalar qilmoqchiman. Lekin qarang: ular kichkina va har xil. Inspektor ham buni ko'rsatyapti. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Havolalar bir xil kenglikdagi tugmalarga aylandi va yonma-yon turibdi.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni [English pronunciation] display [O'zbekcha tallaffuz] xususiyati qildi, ya'ni element sahifada o'zini qanday tutishi degani. Uning qiymati [English pronunciation] inline-block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun elementlar sahifada qanday turishini o'rganasiz. Lekin oldin topishmoq. Men tugmalarni teng qilish uchun havolalarga faqat [English pronunciation] width [O'zbekcha tallaffuz] bir yuz yigirma piksel beraman. Menimcha, shuning o'zi yetadi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektorda [English pronunciation] div [O'zbekcha tallaffuz] va [English pronunciation] span tag [O'zbekcha tallaffuz]-lariga qarang: [English pronunciation] div [O'zbekcha tallaffuz] butun qatorni egallaydi, [English pronunciation] span [O'zbekcha tallaffuz] esa faqat matn kengligida.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Blok elementlar bir-birining ostida turadi, eni kichik bo'lsa ham. Qator elementlari esa yonma-yon turadi, xuddi matndagi so'zlardek.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Javondagi qutilar ustma-ust turadi, gapdagi so'zlar esa yonma-yon. [English pronunciation] div [O'zbekcha tallaffuz] quti kabi, [English pronunciation] span [O'zbekcha tallaffuz] esa so'z kabi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu sahifada ikkita yangi [English pronunciation] tag [O'zbekcha tallaffuz] bor. [English pronunciation] div [O'zbekcha tallaffuz], ya'ni bo'sh quti degani: uning ichiga istalgan narsani solish mumkin. [English pronunciation] span [O'zbekcha tallaffuz] esa matn bo'lagi. Qarang: [English pronunciation] div tag [O'zbekcha tallaffuz]-lari butun qatorni egallab, biri ostida biri turibdi. Ular [English pronunciation] block [O'zbekcha tallaffuz] elementlar. [English pronunciation] span tag [O'zbekcha tallaffuz]-lari esa faqat matnicha joy oladi va yonma-yon turadi. Ular [English pronunciation] inline [O'zbekcha tallaffuz] elementlar.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz ellik piksel beramiz. Qarang, [English pronunciation] div [O'zbekcha tallaffuz] torroq bo'ldi, lekin baribir o'z qatorida turibdi: ikkinchisi yoniga chiqmadi. [English pronunciation] block [O'zbekcha tallaffuz] element doim yangi qatordan boshlanadi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] block [O'zbekcha tallaffuz] elementlar ustma-ust turadi: [English pronunciation] div [O'zbekcha tallaffuz], P abzasi va [English pronunciation] H one [O'zbekcha tallaffuz] sarlavhasi shunday. [English pronunciation] inline [O'zbekcha tallaffuz] elementlar esa matndagi so'zlar kabi yonma-yon turadi: [English pronunciation] span [O'zbekcha tallaffuz] va a havolasi shunday.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. olma va nok yonma-yon turibdi. Ular ham quti kabi har biri o'z qatorida tursin: [English pronunciation] span [O'zbekcha tallaffuz] uchun [English pronunciation] display [O'zbekcha tallaffuz] qiymatini yozing.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: bitta so'z.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] ularni yonma-yon qoldiradi. Bu yerda quti kabi bitta so'z kerak.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline [O'zbekcha tallaffuz] bilan ular hozirgidek yonma-yon qoladi. Har biri yangi qatorda bo'lishi kerak.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan ham ular yonma-yon qoladi. Quti kabi kerak.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] bilan ular umuman yo'qoldi. Ko'rinib tursin, faqat har biri o'z qatorida.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Quti kabi bo'lishi kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi elementlar har doim yangi qatordan boshlanadi?", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] div [O'zbekcha tallaffuz] kabi bo'lsin: u [English pronunciation] block [O'zbekcha tallaffuz] element.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi olma va nok har biri o'z qatorida, quti kabi.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Men [English pronunciation] tag [O'zbekcha tallaffuz] ko'rsataman, siz esa u odatda qanday turishini tanlang: [English pronunciation] block [O'zbekcha tallaffuz] mi yoki [English pronunciation] inline [O'zbekcha tallaffuz] mi?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslang: abzas va sarlavha butun qatorni egallaydi, havola va [English pronunciation] span [O'zbekcha tallaffuz] esa matn ichida turadi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas va sarlavhalar butun qatorni egallaydi. [English pronunciation] span [O'zbekcha tallaffuz] va havola esa matn ichida turadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas butun qatorni egallaydi: [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havola matn ichida turadi: [English pronunciation] inline [O'zbekcha tallaffuz].", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha butun qatorni egallaydi: [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] span [O'zbekcha tallaffuz] matn bo'lagi: [English pronunciation] inline [O'zbekcha tallaffuz].", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] tag [O'zbekcha tallaffuz]-larni [English pronunciation] block [O'zbekcha tallaffuz] va [English pronunciation] inline [O'zbekcha tallaffuz] ga ajratasiz.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] qiymatiga va elementlar joylashuviga qarang: qiymat o'zgarsa, ular yonma-yon yoki ustma-ust bo'ladi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] element qanday turishini aytadi: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] bo'lsa umuman ko'rinmaydi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kitoblarni javonga tik qo'yish yoki ustma-ust taxlash mumkin. [English pronunciation] display [O'zbekcha tallaffuz] ham elementlarni qanday joylashtirishni tanlaydi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Elementning odatdagi xulqini [English pronunciation] display [O'zbekcha tallaffuz] xususiyati bilan o'zgartirish mumkin. Qiymatlari: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] none [O'zbekcha tallaffuz]. Keling, ko'ramiz.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] display inline [O'zbekcha tallaffuz]. Qarang: qutilar endi matn kabi yonma-yon, olma va nok bilan bir qatorda.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] span tag [O'zbekcha tallaffuz]-iga esa [English pronunciation] display block [O'zbekcha tallaffuz]. Endi olma va nok har biri o'z qatorida, quti kabi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgisi [English pronunciation] none [O'zbekcha tallaffuz]. [English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] display none [O'zbekcha tallaffuz] bersak, qutilar butunlay yo'qoladi, joyi ham qolmaydi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] display [O'zbekcha tallaffuz] element qanday turishini aytadi: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] esa umuman ko'rinmaydi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Abzas hozircha kerak emas, uni sahifadan yashiring: P uchun [English pronunciation] display [O'zbekcha tallaffuz] qiymatini yozing.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] uchun bunday so'z yo'q. Yashirish uchun boshqa so'z kerak: inglizcha hech narsa.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ikki so'z emas. Yashirish uchun bitta qisqa so'z kerak.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas hali ko'rinib turibdi. Yashirish so'zi kerak.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat elementni umuman ko'rsatmaydi?", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu so'z inglizcha hech narsa degani.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Abzas yashirindi, sahifada joyi ham qolmadi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men sahifani ko'rsataman, siz esa uni qaysi qoida shunday qilganini tanlang.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qutilar va mevalarga qarang: kim ustma-ust, kim yonma-yon, kim yo'q?", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] esa yo'qotadi.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Olma va nok har biri o'z qatorida: [English pronunciation] span block [O'zbekcha tallaffuz] bo'ldi.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qutilar mevalar bilan bitta qatorda: [English pronunciation] div inline [O'zbekcha tallaffuz] bo'ldi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qutilar yo'q, faqat mevalar qoldi: [English pronunciation] div none [O'zbekcha tallaffuz] bo'ldi.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] display [O'zbekcha tallaffuz] ni sahifadan o'qiysiz.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektordagi havolalar o'lchamiga qarang: [English pronunciation] width [O'zbekcha tallaffuz] yozilganda o'zgarmaydi, [English pronunciation] inline-block [O'zbekcha tallaffuz] dan keyin esa o'zgaradi.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qator elementlari [English pronunciation] width [O'zbekcha tallaffuz] va [English pronunciation] height [O'zbekcha tallaffuz] ni olmaydi. [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan esa element yonma-yon turadi va o'lchamni ham oladi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Klaviaturadagi tugmalarni eslang: ular yonma-yon turadi, lekin har birining o'z o'lchami bor. [English pronunciation] inline-block [O'zbekcha tallaffuz] tugmalari ham shunday.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi menyuga qaytamiz. Havolalar [English pronunciation] inline [O'zbekcha tallaffuz] elementlar. Ularning bir siri bor: [English pronunciation] inline [O'zbekcha tallaffuz] elementlar [English pronunciation] width [O'zbekcha tallaffuz] va [English pronunciation] height [O'zbekcha tallaffuz] ni qabul qilmaydi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalarga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz o'n piksel. Qarang, Inspektorda hech narsa o'zgarmadi! Havolalar [English pronunciation] inline [O'zbekcha tallaffuz], kenglik ularga ishlamaydi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] display inline-block [O'zbekcha tallaffuz]. U ikkalasini birlashtiradi: havolalar yonma-yon qoladi, kenglik esa ishlaydi. Har biri bir yuz o'n piksel!", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] height [O'zbekcha tallaffuz] ham ishlaydi: qirq piksel. Bular haqiqiy tugmalar!", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon turadi va o'lchamni qabul qiladi. Menyu tugmalari uchun aynan shu kerak.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Havolalarga [English pronunciation] width [O'zbekcha tallaffuz] bor, lekin u ishlamayapti. Ular yonma-yon qolsin va kenglik ishlasin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing: ikki so'z, orasida chiziqcha.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi: [English pronunciation] inline [O'zbekcha tallaffuz], chiziqcha, [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglik ishladi, lekin tugmalar ustma-ust bo'lib qoldi. Ular yonma-yon bo'lishi kerak.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline [O'zbekcha tallaffuz] bilan [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi. Boshqa qiymat kerak.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoldi. Tugmalar ko'rinib tursin.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Yonma-yon va kenglik bilan kerak.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat yonma-yon turadi va [English pronunciation] width [O'zbekcha tallaffuz] ni qabul qiladi?", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki so'z birlashadi: [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Tugmalar teng va yonma-yon.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'zingizni sinab ko'ring. Kodda [English pronunciation] display [O'zbekcha tallaffuz] qiymati yashirilgan. Menyuga qarang va toping: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] yoki [English pronunciation] inline-block [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tugmalar yonma-yonmi yoki ustma-ust? Kenglik ishlayaptimi?", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust va kenglik bilan; [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, kengliksiz; [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon va kenglik bilan.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalar yonma-yon va teng: [English pronunciation] inline-block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalar ustma-ust: [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalar yonma-yon, lekin har xil, kenglik ishlamagan: [English pronunciation] inline [O'zbekcha tallaffuz].", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Uchala qiymatni bir qarashda ajratasiz.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin mevalar qanday turganiga qarang.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] so'zlari harfma-harf to'g'ri yozilishi kerak. Qator elementiga esa [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi, qoida to'g'ri bo'lsa ham.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Parolda bitta harf xato bo'lsa, eshik ochilmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] so'zlari ham xuddi shunday aniq yozilishi kerak.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir [English pronunciation] span tag [O'zbekcha tallaffuz]-lari [English pronunciation] block [O'zbekcha tallaffuz], har biri o'z qatorida.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] block [O'zbekcha tallaffuz] so'zida xato, blok deb yozilgan. Brauzer qoidani tashlab yubordi, mevalar yana yonma-yon.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: [English pronunciation] inline-block [O'zbekcha tallaffuz] chiziqchasiz yozilgan. Bu ham boshqa so'z, brauzer uni tanimaydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi xato emas, lekin tuzoq: [English pronunciation] inline span tag [O'zbekcha tallaffuz]-iga [English pronunciation] width [O'zbekcha tallaffuz] beramiz. Qoida to'g'ri, ammo [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] display [O'zbekcha tallaffuz] so'zlari aniq yoziladi, [English pronunciation] inline [O'zbekcha tallaffuz] elementga esa [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men tugmalar uchun [English pronunciation] display [O'zbekcha tallaffuz] yozdim, lekin ular baribir har xil! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] So'zlar orasida hali bo'sh joy bor. Uning o'rniga chiziqcha qo'ying.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz] chiziqcha bilan yoziladi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglik ishladi, lekin tugmalar ustma-ust. Yonma-yon kerak.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline [O'zbekcha tallaffuz] bilan [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi. Ikki so'z kerak edi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Bo'sh joy o'rniga chiziqcha qo'ying, xolos.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] So'zlar orasida nima turibdi?", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'sh joy emas, chiziqcha kerak.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'sh joyni o'chirib, chiziqcha qo'ying, keyin Tekshirishni bosing.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Tugmalar teng.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va Inspektorga qarang, keyin o'sha qoidani bosing.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa sahifa. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] inline-block [O'zbekcha tallaffuz] chiziqchasiz yozilgan edi.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi. [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan ishladi.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalar tugmaga o'xshayaptimi? [English pronunciation] display [O'zbekcha tallaffuz] qiymatini tekshiring.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Inspektorda [English pronunciation] span tag [O'zbekcha tallaffuz]-ining kengligi qancha? Kodda esa qancha?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: chiziqcha yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ishlamayotgani uchinchi qoida: [English pronunciation] span inline [O'zbekcha tallaffuz]. O'sha qatorni bosing.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz sahifani haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Telefonda menyu ustma-ust tursin: har bir havola o'z qatorida. Selektor a.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat orasida ikki nuqta yo'q.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalar uchun a selektori kerak.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Element qanday turishini [English pronunciation] display [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Havolalar hali yonma-yon. Har biri o'z qatorida bo'lishi kerak.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoldi. Havolalar ko'rinib tursin.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qiymat. Har biri o'z qatorida bo'lsin.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi selektor havolalarni tanlaydi? Qaysi qiymat har birini yangi qatordan boshlaydi?", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor a, xususiyat [English pronunciation] display [O'zbekcha tallaffuz], qiymat [English pronunciation] block [O'zbekcha tallaffuz].", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Menyu ustma-ust, xuddi telefondagidek. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z menyungizni yasang. Havolalar uchun [English pronunciation] display [O'zbekcha tallaffuz], kenglik va fon rangini yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoladi. Ko'rinadigan qiymat tanlang.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz] uchun [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] yoki [English pronunciation] inline-block [O'zbekcha tallaffuz]; kenglik son va [English pronunciation] px [O'zbekcha tallaffuz]; fon uchun rang.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: [English pronunciation] inline-block [O'zbekcha tallaffuz], bir yuz piksel va [English pronunciation] gold [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning menyungiz.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Tayyor! Esingizdami, [English pronunciation] inline [O'zbekcha tallaffuz] bilan kenglik ishlamaydi, shuning uchun tugmalar har xil. Bu ham sizning tanlovingiz.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men gap aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap qaysi qiymat haqida: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz], [English pronunciation] inline-block [O'zbekcha tallaffuz] yoki [English pronunciation] none [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon va kengliksiz, [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon va kenglik bilan, [English pronunciation] none [O'zbekcha tallaffuz] esa yashiradi.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] div [O'zbekcha tallaffuz] odatda butun qatorni egallaydi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] div block [O'zbekcha tallaffuz] element.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida [English pronunciation] span tag [O'zbekcha tallaffuz]-ini kengroq qiladi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display none [O'zbekcha tallaffuz] elementni sahifadan yashiradi.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] none [O'zbekcha tallaffuz] bilan element ko'rinmaydi va joy ham olmaydi.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida havolalarni bitta qatorga teradi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] block [O'zbekcha tallaffuz] har bir havolani yangi qatorga qo'yadi: ular ustma-ust turadi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] display [O'zbekcha tallaffuz] ni yaxshi bilasiz.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men havolalarga faqat [English pronunciation] width [O'zbekcha tallaffuz] bir yuz yigirma piksel bergan edim? Qarang: hech narsa o'zgarmadi, Inspektor ham buni ko'rsatyapti. Men adashibman! Havolalar [English pronunciation] inline [O'zbekcha tallaffuz], kenglik ularga ishlamaydi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Display [English pronunciation] inline-block [O'zbekcha tallaffuz] qo'shsak, kenglik ishlaydi, tugmalar esa yonma-yon qoladi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning menyungiz, o'zingiz tanlagan qiymatlar bilan!", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] elementlar, masalan [English pronunciation] div [O'zbekcha tallaffuz], abzas va sarlavha, butun qatorni egallaydi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline [O'zbekcha tallaffuz] elementlar, masalan [English pronunciation] span [O'zbekcha tallaffuz] va havola, matn kabi yonma-yon turadi.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon turadi va o'lchamni qabul qiladi.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] esa elementni yashiradi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz elementlar sahifada qanday turishini bilasiz. Keyingi darsda [English pronunciation] Flexbox [O'zbekcha tallaffuz] ni o'rganamiz: u elementlarni qatorga yoki ustunga juda oson teradi. Ko'rishguncha!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] o'ynaymiz!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Block mi, [English pronunciation] inline [O'zbekcha tallaffuz] mi?", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu [English pronunciation] tag block [O'zbekcha tallaffuz] mi yoki [English pronunciation] inline [O'zbekcha tallaffuz] mi?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi kod?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifani qaysi qoida shunday qildi?", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] display [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu menyuda qaysi [English pronunciation] display [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я сделал на сайте меню из трёх ссылок. Хочу, чтобы это были красивые кнопки одной ширины. Но смотри: они крошечные и разные. Инспектор это тоже показывает. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Ссылки стали кнопками одной ширины и стоят рядом.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделало свойство [English pronunciation] display [Русское произношение], то есть то, как элемент ведёт себя на странице. Его значение, [English pronunciation] inline-block [Русское произношение].", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты узнаешь, как элементы ведут себя на странице. Но сначала загадка. Чтобы кнопки стали одинаковыми, я даю ссылкам только [English pronunciation] width [Русское произношение] сто двадцать пикселей. По-моему, этого хватит. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на [English pronunciation] div [Русское произношение] и [English pronunciation] span [Русское произношение] в Инспекторе: [English pronunciation] div [Русское произношение] занимает всю строку, а [English pronunciation] span [Русское произношение], только ширину своего текста.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Блочные элементы стоят друг под другом, даже если они узкие. А строчные стоят рядом, как слова в тексте.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Коробки на полке стоят друг на друге, а слова в предложении, рядом. [English pronunciation] div [Русское произношение], как коробка, [English pronunciation] span [Русское произношение], как слово.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На этой странице два новых тега. [English pronunciation] div [Русское произношение], то есть пустая коробка: в неё можно положить что угодно. А [English pronunciation] span [Русское произношение], кусочек текста. Смотри: [English pronunciation] div [Русское произношение] занимают всю строку и стоят друг под другом. Это блочные элементы, [English pronunciation] block [Русское произношение]. А [English pronunciation] span [Русское произношение] занимают место только по своему тексту и стоят рядом. Это строчные элементы, [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь дадим [English pronunciation] div width [Русское произношение] сто пятьдесят пикселей. Смотри, [English pronunciation] div [Русское произношение] стал уже, но всё равно стоит на своей строке: второй не встал рядом. Блочный элемент всегда начинается с новой строки.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, блочные элементы стоят друг под другом: так стоят [English pronunciation] div [Русское произношение], абзац P и заголовок [English pronunciation] H one [Русское произношение]. А строчные стоят рядом, как слова в тексте: так стоят [English pronunciation] span [Русское произношение] и ссылка a.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Яблоко и груша стоят рядом. Пусть каждый стоит на своей строке, как коробка: впиши значение [English pronunciation] display [Русское произношение] для [English pronunciation] span [Русское произношение].", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: одно слово.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] inline-block [Русское произношение] оставит их рядом. Здесь нужно одно слово, как у коробки [English pronunciation] div [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline [Русское произношение] они так и останутся рядом. А нужно каждый с новой строки.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline-block [Русское произношение] они тоже остаются рядом. Нужно как у коробки.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] none [Русское произношение] они совсем пропали. Пусть будут видны, просто каждый на своей строке.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужно как у коробки.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие элементы всегда начинаются с новой строки?", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пусть будут как [English pronunciation] div [Русское произношение]: он блочный, [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] block [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь яблоко и груша, каждый на своей строке, как коробки.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я покажу тег, а ты выбери, как он обычно стоит на странице: [English pronunciation] block [Русское произношение] или [English pronunciation] inline [Русское произношение]?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: абзац и заголовок занимают всю строку, а ссылка и [English pronunciation] span [Русское произношение] стоят внутри текста.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац и заголовки занимают всю строку. А [English pronunciation] span [Русское произношение] и ссылка стоят внутри текста.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац занимает всю строку: [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылка стоит внутри текста: [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок занимает всю строку: [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] span [Русское произношение], кусочек текста: [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты делишь теги на [English pronunciation] block [Русское произношение] и [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на значение [English pronunciation] display [Русское произношение] и на то, как стоят элементы: меняется значение, они встают рядом или друг под другом.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] display [Русское произношение] говорит, как стоит элемент: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, [English pronunciation] none [Русское произношение], его совсем не видно.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Книги можно поставить на полку в ряд или сложить стопкой. [English pronunciation] display [Русское произношение] так же выбирает, как разместить элементы.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обычное поведение элемента можно поменять свойством [English pronunciation] display [Русское произношение]. Значения: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] и [English pronunciation] none [Русское произношение]. Давай посмотрим.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] div [Русское произношение], [English pronunciation] display inline [Русское произношение]. Смотри: коробки теперь стоят рядом, как текст, в одной строке с яблоком и грушей.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] span [Русское произношение], [English pronunciation] display block [Русское произношение]. Теперь яблоко и груша каждый на своей строке, как коробки.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И последнее, [English pronunciation] none [Русское произношение]. Если дать [English pronunciation] div display none [Русское произношение], коробки совсем пропадут, даже места не останется.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] display [Русское произношение] говорит, как стоит элемент: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, а [English pronunciation] none [Русское произношение], его совсем не видно.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Абзац пока не нужен, спрячь его со страницы: впиши значение [English pronunciation] display [Русское произношение] для P.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У [English pronunciation] display [Русское произношение] нет такого слова. Чтобы спрятать, нужно другое слово: по-английски ничего.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тут не нужны два слова. Чтобы спрятать, нужно одно короткое слово.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] block [Русское произношение] абзац виден. А его нужно спрятать.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline [Русское произношение] абзац виден. А его нужно спрятать.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline-block [Русское произношение] абзац виден. А его нужно спрятать.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзац всё ещё виден. Нужно слово, которое прячет.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение совсем не показывает элемент?", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это слово по-английски значит ничего.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Абзац спрятан, и места от него не осталось.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу страницу, а ты выбери, какое правило сделало её такой.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на коробки и фрукты: кто друг под другом, кто рядом, кого нет?", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, [English pronunciation] none [Русское произношение], прячет.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Яблоко и груша каждый на своей строке: [English pronunciation] span [Русское произношение] стал [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Коробки в одной строке с фруктами: [English pronunciation] div [Русское произношение] стал [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Коробок нет, остались только фрукты: [English pronunciation] div [Русское произношение] стал [English pronunciation] none [Русское произношение].", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты читаешь [English pronunciation] display [Русское произношение] прямо по странице.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на размеры ссылок в Инспекторе: от [English pronunciation] width [Русское произношение] они не меняются, а после [English pronunciation] inline-block [Русское произношение] меняются.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строчные элементы не принимают [English pronunciation] width [Русское произношение] и [English pronunciation] height [Русское произношение]. А с [English pronunciation] inline-block [Русское произношение] элемент стоит рядом и принимает размеры.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни клавиши на клавиатуре: они стоят рядом, но у каждой свой размер. Кнопки с [English pronunciation] inline-block [Русское произношение], такие же.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к меню. Ссылки, строчные элементы. У них есть секрет: строчные элементы не принимают [English pronunciation] width [Русское произношение] и [English pronunciation] height [Русское произношение].", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылкам [English pronunciation] width [Русское произношение] сто десять пикселей. Смотри, в Инспекторе ничего не изменилось! Ссылки строчные, ширина на них не действует.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] display inline-block [Русское произношение]. Он соединяет оба мира: ссылки стоят рядом, а ширина работает. Каждая, сто десять пикселей!", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь работает и [English pronunciation] height [Русское произношение]: сорок пикселей. Это настоящие кнопки!", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] inline-block [Русское произношение] стоит рядом и принимает размеры. Для кнопок меню нужно именно это.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. У ссылок есть [English pronunciation] width [Русское произношение], но он не работает. Пусть они останутся рядом и ширина заработает: впиши значение для [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: два слова через чёрточку.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Два слова пишутся через чёрточку, без пробела: [English pronunciation] inline [Русское произношение], чёрточка, [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина заработала, но кнопки встали друг под другом. А нужно рядом.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline [Русское произношение] ширина не работает. Нужно другое значение.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] none [Русское произношение] меню пропало. Кнопки должны быть видны.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужно рядом и с шириной.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение стоит рядом и принимает [English pronunciation] width [Русское произношение]?", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Два слова вместе: [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] inline-block [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кнопки равные и стоят рядом.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. В коде значение [English pronunciation] display [Русское произношение] спрятано. Посмотри на меню и реши: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] или [English pronunciation] inline-block [Русское произношение]?", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кнопки рядом или друг под другом? Работает ли ширина?", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] block [Русское произношение], друг под другом и с шириной; [English pronunciation] inline [Русское произношение], рядом, без ширины; [English pronunciation] inline-block [Русское произношение], рядом и с шириной.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопки рядом и одинаковые: [English pronunciation] inline-block [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопки друг под другом: [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кнопки рядом, но разные, ширина не сработала: [English pronunciation] inline [Русское произношение].", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты различаешь все три значения с одного взгляда.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на код: слово написано верно? Потом смотри, как стоят фрукты.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слова [English pronunciation] display [Русское произношение] пишутся буква в букву. А на строчный элемент [English pronunciation] width [Русское произношение] не действует, даже если правило верное.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если в пароле ошибиться на одну букву, дверь не откроется. Слова [English pronunciation] CSS [Русское произношение] тоже надо писать так же точно.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И с [English pronunciation] display [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас [English pronunciation] span [Русское произношение], [English pronunciation] block [Русское произношение], каждый на своей строке.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: в слове [English pronunciation] block [Русское произношение] ошибка, написано blok. Браузер выбросил правило, фрукты снова рядом.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: [English pronunciation] inline-block [Русское произношение] написан без чёрточки. Это тоже чужое слово, браузер его не знает.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья, не ошибка, а ловушка: даём строчному [English pronunciation] span width [Русское произношение]. Правило верное, но [English pronunciation] span [Русское произношение] строчный, ширина на него не действует.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, слова [English pronunciation] display [Русское произношение] пишутся точно, а на строчный элемент [English pronunciation] width [Русское произношение] не действует.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал [English pronunciation] display [Русское произношение] для кнопок, а они всё равно разные! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между словами всё ещё пробел. Поставь вместо него чёрточку.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение] пишутся через чёрточку.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина работает, но кнопки друг под другом. Нужно рядом.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] inline [Русское произношение] ширина не работает. Нужны были два слова.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Просто поставь чёрточку вместо пробела.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что стоит между словами?", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужна не пробел, а чёрточка.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри пробел, поставь чёрточку и нажми Проверить.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Кнопки одинаковые.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и Инспектор и нажми это правило.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь другая страница. Какое правило не работает?", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! [English pronunciation] inline-block [Русское произношение] был написан без чёрточки.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! [English pronunciation] span [Русское произношение] строчный, ширина на него не действует. С [English pronunciation] inline-block [Русское произношение] заработало.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что не так, как в коде?", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похожи ли ссылки на кнопки? Проверь значение [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая ширина у [English pronunciation] span [Русское произношение] в Инспекторе? А в коде?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: нет чёрточки. Нажми эту строку.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не работает третье правило: [English pronunciation] span [Русское произношение] строчный. Нажми эту строку.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Оба найдены. Ты проверяешь страницу как настоящий разработчик.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. Пусть на телефоне меню стоит столбиком: каждая ссылка на своей строке. Селектор, a.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для ссылок нужен селектор a.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как стоит элемент, задаёт свойство [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ссылки всё ещё рядом. Нужно, чтобы каждая была на своей строке.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] none [Русское произношение] меню пропало. Ссылки должны быть видны.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое значение. Нужно, чтобы каждая была на своей строке.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой селектор выбирает ссылки? Какое значение начинает каждую с новой строки?", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор a, свойство [English pronunciation] display [Русское произношение], значение [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Меню стоит столбиком, как на телефоне. Правило написано тобой целиком.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай своё меню. Впиши для ссылок [English pronunciation] display [Русское произношение], ширину и цвет фона. Потом нажми Готово.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] none [Русское произношение] меню пропадёт. Выбери видимое значение.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] display [Русское произношение], [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] или [English pronunciation] inline-block [Русское произношение]; ширина, число и [English pronunciation] px [Русское произношение]; для фона, цвет.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: [English pronunciation] inline-block [Русское произношение], сто пикселей и [English pronunciation] gold [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твоё меню.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Готово! Помнишь, с [English pronunciation] inline [Русское произношение] ширина не работает, поэтому кнопки разные. Это тоже твой выбор.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О каком значении фраза: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение], [English pronunciation] inline-block [Русское произношение] или [English pronunciation] none [Русское произношение]?", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом и без ширины, [English pronunciation] inline-block [Русское произношение], рядом и с шириной, а [English pronunciation] none [Русское произношение] прячет.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] div [Русское произношение] обычно занимает всю строку.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] div [Русское произношение], блочный элемент.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило делает [English pronunciation] span [Русское произношение] шире.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] span [Русское произношение] строчный, ширина на него не действует.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] display none [Русское произношение] прячет элемент со страницы.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: с [English pronunciation] none [Русское произношение] элемента не видно, и места он не занимает.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило ставит ссылки в одну строку.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] block [Русское произношение] ставит каждую ссылку на новую строку: они стоят столбиком.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я дал ссылкам только [English pronunciation] width [Русское произношение] сто двадцать пикселей? Смотри: ничего не изменилось, Инспектор это тоже показывает. Я ошибся! Ссылки строчные, ширина на них не действует.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавим [English pronunciation] display inline-block [Русское произношение], и ширина заработает, а кнопки останутся рядом.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоё меню с твоими собственными значениями!", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Блочные элементы, например [English pronunciation] div [Русское произношение], абзац и заголовок, занимают всю строку.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строчные элементы, например [English pronunciation] span [Русское произношение] и ссылка, стоят рядом, как текст.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] inline-block [Русское произношение] стоит рядом и принимает размеры.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] none [Русское произношение] прячет элемент.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты знаешь, как элементы стоят на странице. На следующем уроке изучим [English pronunciation] Flexbox [Русское произношение]: он очень легко расставляет элементы в ряд или в столбик. До встречи!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Block или [English pronunciation] inline [Русское произношение]?", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Этот тег [English pronunciation] block [Русское произношение] или [English pronunciation] inline [Русское произношение]?", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое правило сделало страницу такой?", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] display [Русское произношение]?", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой [English pronunciation] display [Русское произношение] у этого меню?", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I made a menu on my site: three links. I want them to be nice buttons of the same width. But look: they’re tiny and all different. The Inspector shows it too. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The links became buttons of the same width, standing side by side.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The display property did it, meaning how an element behaves on the page. Its value is inline-block.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn how elements behave on a page. But first, a riddle. To make the buttons equal, I give the links only width one hundred twenty pixels. I think that’s enough. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at div and span in the Inspector: div takes the whole line, span only the width of its text.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Block elements stack one under another, even when they’re narrow. Inline elements sit side by side, like words in text.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Boxes on a shelf stack on top of each other, while words in a sentence sit side by side. div is like a box, span is like a word.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This page has two new tags. div, meaning an empty box: you can put anything inside it. And span is a piece of text. Look: the divs take the whole line and stand one under another. They’re block elements. The spans take only as much room as their text and stand side by side. They’re inline elements.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s give the div width one hundred fifty pixels. Look, the div got narrower, but it still stands on its own line: the second one didn’t move next to it. A block element always starts on a new line.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So block elements stack one under another: that’s div, the paragraph P and the heading H one. And inline elements sit side by side, like words in a text: that’s span and the link a.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. The apple and the pear stand side by side. Let each one stand on its own line, like a box: type the display value for span.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: one word.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] inline-block would keep them side by side. Here you need one word, like the div box.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for display.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline they stay side by side. Each one should be on a new line.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline-block they still sit side by side. We need them like a box.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With none they disappeared. Keep them visible, just each on its own line.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need it like a box.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which elements always start on a new line?", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Make them like div: it’s a block element.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type block and tap Check.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the apple and the pear are each on their own line, like boxes.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I’ll show a tag, and you pick how it normally stands on a page: block or inline?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: a paragraph and a heading take the whole line, while a link and span sit inside the text.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Paragraphs and headings take the whole line. span and links sit inside the text.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A paragraph takes the whole line: block.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A link sits inside the text: inline.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A heading takes the whole line: block.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] span is a piece of text: inline.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You sort tags into block and inline.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the display value and how the elements are placed: when it changes, they go side by side or one under another.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display says how an element sits: block one under another, inline side by side, none means you can’t see it at all.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can stand books in a row on a shelf or stack them in a pile. display chooses how to place elements the same way.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can change an element’s normal behavior with the display property. The values are block, inline and none. Let’s see.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display inline for div. Look: the boxes now sit side by side like text, on one line with the apple and the pear.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And display block for span. Now the apple and the pear are each on their own line, like boxes.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last one is none. If we give div display none, the boxes vanish completely, leaving no space.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So display says how an element stands: block stacks, inline sits side by side, and none isn’t shown at all.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The paragraph isn’t needed for now; hide it from the page: type the display value for P.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display has no such word. To hide, you need another word: the English for nothing.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not two words here. To hide, you need one short word.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With block the paragraph is visible. It needs to be hidden.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline the paragraph is visible. It needs to be hidden.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline-block the paragraph is visible. It needs to be hidden.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The paragraph is still visible. We need the word that hides it.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value doesn’t show the element at all?", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word means nothing in English.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type none and tap Check.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The paragraph is hidden, and no space is left.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show the page, and you pick which rule made it look like that.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the boxes and the fruit: what stacks, what sits side by side, what’s missing?", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] block stacks, inline sits side by side, none hides.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The apple and the pear are each on their own line: span became block.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The boxes are on one line with the fruit: div became inline.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The boxes are gone, only the fruit is left: div became none.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You read display right from the page.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the link sizes in the Inspector: width doesn’t change them, but after inline-block it does.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inline elements don’t accept width and height. With inline-block, an element sits side by side and accepts sizes too.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Think of keyboard keys: they sit side by side, but each has its own size. inline-block buttons are like that.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to the menu. Links are inline elements. They have a secret: inline elements don’t accept width and height.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Links get width one hundred ten pixels. Look, nothing changed in the Inspector! Links are inline, width doesn’t work on them.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now display inline-block. It combines both: the links stay side by side, and width works. Each one is one hundred ten pixels!", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now height works too: forty pixels. These are real buttons!", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So inline-block sits side by side and accepts sizes. That’s exactly what menu buttons need.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The links have width, but it doesn’t work. Let them stay side by side and make the width work: type the value for display.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: two words joined by a dash.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two words are joined by a dash, with no space: inline, dash, block.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The width works, but the buttons stacked up. They need to be side by side.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline, width doesn’t work. We need another value.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With none the menu disappeared. The buttons should be visible.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. We need side by side, with width.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value sits side by side and accepts width?", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two words together: inline and block.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type inline-block and tap Check.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The buttons are equal and side by side.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. The display value is hidden in the code. Look at the menu and decide: block, inline or inline-block?", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Are the buttons side by side or stacked? Does the width work?", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] block stacks with width; inline sits side by side without width; inline-block sits side by side with width.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The buttons are side by side and equal: inline-block.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The buttons are stacked: block.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The buttons are side by side but different; the width didn’t work: inline.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You tell all three values apart at a glance.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each time, look at the code: is the word spelled right? Then see how the fruits are placed.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display words must be spelled letter for letter. And width doesn’t work on an inline element, even when the rule is correct.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If one letter in a password is wrong, the door won’t open. CSS words must be just as exact.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display has mistakes too. Let’s look at three. Right now the spans are block, each on its own line.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: block is misspelled as blok. The browser threw the rule away, the fruit is side by side again.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The second: inline-block is written without the dash. That’s a different word too, the browser doesn’t know it.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third isn’t a mistake but a trap: we give the inline span a width. The rule is right, but span is inline, so width doesn’t work on it.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So display words must be written exactly, and width doesn’t work on an inline element.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wrote display for the buttons, but they’re still different! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still a space between the words. Put a dash in its place.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. inline and block are joined by a dash.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The width works, but the buttons are stacked. They need to be side by side.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With inline, width doesn’t work. We needed two words.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. Just put a dash instead of the space.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s between the words?", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not a space, a dash is needed.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Delete the space, put a dash, then tap Check.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The buttons are equal.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the Inspector, then tap that rule.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now another page. Which rule doesn’t work?", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! inline-block was written without the dash.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! span is inline, width doesn’t work on it. With inline-block it works.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what doesn’t match the code?", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Do the links look like buttons? Check the display value.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What width does the Inspector show for span? And the code?", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: no dash. Tap that line.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third rule doesn’t work: span is inline. Tap that line.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check the page like a real developer.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. On a phone, let the menu stand in a column: each link on its own line. The selector is a.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value inside curly braces.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The links need the a selector.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The display property sets how an element stands.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The links are still side by side. Each should be on its own line.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With none the menu disappeared. The links should be visible.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different value. Each should be on its own line.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which selector picks the links? Which value starts each one on a new line?", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Selector a, property display, value block.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The menu stands in a column, just like on a phone. You wrote the whole rule yourself.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own menu. Type display, a width and a background color for the links. Then tap Done.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With none the menu disappears. Pick a visible value.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For display, block, inline or inline-block; the width is a number and px; a color for the background.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: inline-block, one hundred pixels and gold. Then tap Done.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! This is your menu.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Done! Remember, with inline the width doesn’t work, so the buttons are different. That’s your choice too.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value is the sentence about: block, inline, inline-block or none?", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: block stacks, inline sits side by side without width, inline-block sits side by side with width, and none hides.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A div normally takes the whole line.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: div is a block element.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule makes the span wider.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually span is inline, width doesn’t work on it.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display none hides the element from the page.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: with none the element isn’t shown and takes no space.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule puts the links in one row.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually block puts each link on a new line: they stand in a column.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know display really well.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I gave the links only width one hundred twenty pixels? Look: nothing changed, the Inspector shows it too. I was wrong! Links are inline, width doesn’t work on them.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Add display inline-block, and the width works while the buttons stay side by side.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your menu with the values you picked yourself!", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Block elements, like div, paragraphs and headings, take the whole line.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inline elements, like span and links, sit side by side like text.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] inline-block sits side by side and accepts sizes.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And none hides the element.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you know how elements stand on a page. Next lesson we’ll learn Flexbox: it lines elements up in a row or a column very easily. See you!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Block or inline?", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is this tag block or inline?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code?", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which rule made the page look like this?", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which display?", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which display does this menu have?", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Men saytimga menyu qildim: uchta havola. Ularni bir xil kenglikdagi chiroyli tugmalar qilmoqchiman. Lekin qarang: ular kichkina va har xil. Inspektor ham buni ko'rsatyapti. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Havolalar bir xil kenglikdagi tugmalarga aylandi va yonma-yon turibdi.": "uz002",
+    "Buni [English pronunciation] display [O'zbekcha tallaffuz] xususiyati qildi, ya'ni element sahifada o'zini qanday tutishi degani. Uning qiymati [English pronunciation] inline-block [O'zbekcha tallaffuz].": "uz003",
+    "Bugun elementlar sahifada qanday turishini o'rganasiz. Lekin oldin topishmoq. Men tugmalarni teng qilish uchun havolalarga faqat [English pronunciation] width [O'zbekcha tallaffuz] bir yuz yigirma piksel beraman. Menimcha, shuning o'zi yetadi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Inspektorda [English pronunciation] div [O'zbekcha tallaffuz] va [English pronunciation] span tag [O'zbekcha tallaffuz]-lariga qarang: [English pronunciation] div [O'zbekcha tallaffuz] butun qatorni egallaydi, [English pronunciation] span [O'zbekcha tallaffuz] esa faqat matn kengligida.": "uz005",
+    "Blok elementlar bir-birining ostida turadi, eni kichik bo'lsa ham. Qator elementlari esa yonma-yon turadi, xuddi matndagi so'zlardek.": "uz006",
+    "Javondagi qutilar ustma-ust turadi, gapdagi so'zlar esa yonma-yon. [English pronunciation] div [O'zbekcha tallaffuz] quti kabi, [English pronunciation] span [O'zbekcha tallaffuz] esa so'z kabi.": "uz007",
+    "Bu sahifada ikkita yangi [English pronunciation] tag [O'zbekcha tallaffuz] bor. [English pronunciation] div [O'zbekcha tallaffuz], ya'ni bo'sh quti degani: uning ichiga istalgan narsani solish mumkin. [English pronunciation] span [O'zbekcha tallaffuz] esa matn bo'lagi. Qarang: [English pronunciation] div tag [O'zbekcha tallaffuz]-lari butun qatorni egallab, biri ostida biri turibdi. Ular [English pronunciation] block [O'zbekcha tallaffuz] elementlar. [English pronunciation] span tag [O'zbekcha tallaffuz]-lari esa faqat matnicha joy oladi va yonma-yon turadi. Ular [English pronunciation] inline [O'zbekcha tallaffuz] elementlar.": "uz008",
+    "Endi [English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz ellik piksel beramiz. Qarang, [English pronunciation] div [O'zbekcha tallaffuz] torroq bo'ldi, lekin baribir o'z qatorida turibdi: ikkinchisi yoniga chiqmadi. [English pronunciation] block [O'zbekcha tallaffuz] element doim yangi qatordan boshlanadi.": "uz009",
+    "Demak, [English pronunciation] block [O'zbekcha tallaffuz] elementlar ustma-ust turadi: [English pronunciation] div [O'zbekcha tallaffuz], P abzasi va [English pronunciation] H one [O'zbekcha tallaffuz] sarlavhasi shunday. [English pronunciation] inline [O'zbekcha tallaffuz] elementlar esa matndagi so'zlar kabi yonma-yon turadi: [English pronunciation] span [O'zbekcha tallaffuz] va a havolasi shunday.": "uz010",
+    "Endi navbat sizga. olma va nok yonma-yon turibdi. Ular ham quti kabi har biri o'z qatorida tursin: [English pronunciation] span [O'zbekcha tallaffuz] uchun [English pronunciation] display [O'zbekcha tallaffuz] qiymatini yozing.": "uz011",
+    "Qiymatni yozing: bitta so'z.": "uz012",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] ularni yonma-yon qoldiradi. Bu yerda quti kabi bitta so'z kerak.": "uz013",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz014",
+    "[English pronunciation] inline [O'zbekcha tallaffuz] bilan ular hozirgidek yonma-yon qoladi. Har biri yangi qatorda bo'lishi kerak.": "uz015",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] bilan ham ular yonma-yon qoladi. Quti kabi kerak.": "uz016",
+    "[English pronunciation] none [O'zbekcha tallaffuz] bilan ular umuman yo'qoldi. Ko'rinib tursin, faqat har biri o'z qatorida.": "uz017",
+    "Bu boshqa qiymat. Quti kabi bo'lishi kerak.": "uz018",
+    "Qaysi elementlar har doim yangi qatordan boshlanadi?": "uz019",
+    "[English pronunciation] div [O'zbekcha tallaffuz] kabi bo'lsin: u [English pronunciation] block [O'zbekcha tallaffuz] element.": "uz020",
+    "[English pronunciation] block [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz021",
+    "Zo'r! Endi olma va nok har biri o'z qatorida, quti kabi.": "uz022",
+    "Endi o'zingizni sinab ko'ring. Men [English pronunciation] tag [O'zbekcha tallaffuz] ko'rsataman, siz esa u odatda qanday turishini tanlang: [English pronunciation] block [O'zbekcha tallaffuz] mi yoki [English pronunciation] inline [O'zbekcha tallaffuz] mi?": "uz023",
+    "Eslang: abzas va sarlavha butun qatorni egallaydi, havola va [English pronunciation] span [O'zbekcha tallaffuz] esa matn ichida turadi.": "uz024",
+    "Abzas va sarlavhalar butun qatorni egallaydi. [English pronunciation] span [O'zbekcha tallaffuz] va havola esa matn ichida turadi.": "uz025",
+    "Abzas butun qatorni egallaydi: [English pronunciation] block [O'zbekcha tallaffuz].": "uz026",
+    "Havola matn ichida turadi: [English pronunciation] inline [O'zbekcha tallaffuz].": "uz027",
+    "Sarlavha butun qatorni egallaydi: [English pronunciation] block [O'zbekcha tallaffuz].": "uz028",
+    "[English pronunciation] span [O'zbekcha tallaffuz] matn bo'lagi: [English pronunciation] inline [O'zbekcha tallaffuz].": "uz029",
+    "Barakalla!": "uz030",
+    "Hammasi to'g'ri! [English pronunciation] tag [O'zbekcha tallaffuz]-larni [English pronunciation] block [O'zbekcha tallaffuz] va [English pronunciation] inline [O'zbekcha tallaffuz] ga ajratasiz.": "uz031",
+    "[English pronunciation] display [O'zbekcha tallaffuz] qiymatiga va elementlar joylashuviga qarang: qiymat o'zgarsa, ular yonma-yon yoki ustma-ust bo'ladi.": "uz032",
+    "[English pronunciation] display [O'zbekcha tallaffuz] element qanday turishini aytadi: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] bo'lsa umuman ko'rinmaydi.": "uz033",
+    "Kitoblarni javonga tik qo'yish yoki ustma-ust taxlash mumkin. [English pronunciation] display [O'zbekcha tallaffuz] ham elementlarni qanday joylashtirishni tanlaydi.": "uz034",
+    "Elementning odatdagi xulqini [English pronunciation] display [O'zbekcha tallaffuz] xususiyati bilan o'zgartirish mumkin. Qiymatlari: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] none [O'zbekcha tallaffuz]. Keling, ko'ramiz.": "uz035",
+    "[English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] display inline [O'zbekcha tallaffuz]. Qarang: qutilar endi matn kabi yonma-yon, olma va nok bilan bir qatorda.": "uz036",
+    "[English pronunciation] span tag [O'zbekcha tallaffuz]-iga esa [English pronunciation] display block [O'zbekcha tallaffuz]. Endi olma va nok har biri o'z qatorida, quti kabi.": "uz037",
+    "Oxirgisi [English pronunciation] none [O'zbekcha tallaffuz]. [English pronunciation] div tag [O'zbekcha tallaffuz]-iga [English pronunciation] display none [O'zbekcha tallaffuz] bersak, qutilar butunlay yo'qoladi, joyi ham qolmaydi.": "uz038",
+    "Demak, [English pronunciation] display [O'zbekcha tallaffuz] element qanday turishini aytadi: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] esa umuman ko'rinmaydi.": "uz039",
+    "Endi siz. Abzas hozircha kerak emas, uni sahifadan yashiring: P uchun [English pronunciation] display [O'zbekcha tallaffuz] qiymatini yozing.": "uz040",
+    "[English pronunciation] display [O'zbekcha tallaffuz] uchun bunday so'z yo'q. Yashirish uchun boshqa so'z kerak: inglizcha hech narsa.": "uz041",
+    "Bu ikki so'z emas. Yashirish uchun bitta qisqa so'z kerak.": "uz042",
+    "[English pronunciation] block [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.": "uz043",
+    "[English pronunciation] inline [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.": "uz044",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] bilan abzas ko'rinib turibdi. Uni yashirish kerak.": "uz045",
+    "Abzas hali ko'rinib turibdi. Yashirish so'zi kerak.": "uz046",
+    "Qaysi qiymat elementni umuman ko'rsatmaydi?": "uz047",
+    "Bu so'z inglizcha hech narsa degani.": "uz048",
+    "[English pronunciation] none [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz049",
+    "Barakalla! Abzas yashirindi, sahifada joyi ham qolmadi.": "uz050",
+    "Endi o'zingizni sinab ko'ring. Men sahifani ko'rsataman, siz esa uni qaysi qoida shunday qilganini tanlang.": "uz051",
+    "Qutilar va mevalarga qarang: kim ustma-ust, kim yonma-yon, kim yo'q?": "uz052",
+    "[English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, [English pronunciation] none [O'zbekcha tallaffuz] esa yo'qotadi.": "uz053",
+    "Olma va nok har biri o'z qatorida: [English pronunciation] span block [O'zbekcha tallaffuz] bo'ldi.": "uz054",
+    "Qutilar mevalar bilan bitta qatorda: [English pronunciation] div inline [O'zbekcha tallaffuz] bo'ldi.": "uz055",
+    "Qutilar yo'q, faqat mevalar qoldi: [English pronunciation] div none [O'zbekcha tallaffuz] bo'ldi.": "uz056",
+    "Hammasi to'g'ri! [English pronunciation] display [O'zbekcha tallaffuz] ni sahifadan o'qiysiz.": "uz057",
+    "Inspektordagi havolalar o'lchamiga qarang: [English pronunciation] width [O'zbekcha tallaffuz] yozilganda o'zgarmaydi, [English pronunciation] inline-block [O'zbekcha tallaffuz] dan keyin esa o'zgaradi.": "uz058",
+    "Qator elementlari [English pronunciation] width [O'zbekcha tallaffuz] va [English pronunciation] height [O'zbekcha tallaffuz] ni olmaydi. [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan esa element yonma-yon turadi va o'lchamni ham oladi.": "uz059",
+    "Klaviaturadagi tugmalarni eslang: ular yonma-yon turadi, lekin har birining o'z o'lchami bor. [English pronunciation] inline-block [O'zbekcha tallaffuz] tugmalari ham shunday.": "uz060",
+    "Endi menyuga qaytamiz. Havolalar [English pronunciation] inline [O'zbekcha tallaffuz] elementlar. Ularning bir siri bor: [English pronunciation] inline [O'zbekcha tallaffuz] elementlar [English pronunciation] width [O'zbekcha tallaffuz] va [English pronunciation] height [O'zbekcha tallaffuz] ni qabul qilmaydi.": "uz061",
+    "Havolalarga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz o'n piksel. Qarang, Inspektorda hech narsa o'zgarmadi! Havolalar [English pronunciation] inline [O'zbekcha tallaffuz], kenglik ularga ishlamaydi.": "uz062",
+    "Endi [English pronunciation] display inline-block [O'zbekcha tallaffuz]. U ikkalasini birlashtiradi: havolalar yonma-yon qoladi, kenglik esa ishlaydi. Har biri bir yuz o'n piksel!": "uz063",
+    "Endi [English pronunciation] height [O'zbekcha tallaffuz] ham ishlaydi: qirq piksel. Bular haqiqiy tugmalar!": "uz064",
+    "Demak, [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon turadi va o'lchamni qabul qiladi. Menyu tugmalari uchun aynan shu kerak.": "uz065",
+    "Endi siz. Havolalarga [English pronunciation] width [O'zbekcha tallaffuz] bor, lekin u ishlamayapti. Ular yonma-yon qolsin va kenglik ishlasin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz066",
+    "Qiymatni yozing: ikki so'z, orasida chiziqcha.": "uz067",
+    "Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi: [English pronunciation] inline [O'zbekcha tallaffuz], chiziqcha, [English pronunciation] block [O'zbekcha tallaffuz].": "uz068",
+    "Kenglik ishladi, lekin tugmalar ustma-ust bo'lib qoldi. Ular yonma-yon bo'lishi kerak.": "uz069",
+    "[English pronunciation] inline [O'zbekcha tallaffuz] bilan [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi. Boshqa qiymat kerak.": "uz070",
+    "[English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoldi. Tugmalar ko'rinib tursin.": "uz071",
+    "Bu boshqa qiymat. Yonma-yon va kenglik bilan kerak.": "uz072",
+    "Qaysi qiymat yonma-yon turadi va [English pronunciation] width [O'zbekcha tallaffuz] ni qabul qiladi?": "uz073",
+    "Ikki so'z birlashadi: [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz].": "uz074",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz075",
+    "Ajoyib! Tugmalar teng va yonma-yon.": "uz076",
+    "Endi o'zingizni sinab ko'ring. Kodda [English pronunciation] display [O'zbekcha tallaffuz] qiymati yashirilgan. Menyuga qarang va toping: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] yoki [English pronunciation] inline-block [O'zbekcha tallaffuz]?": "uz077",
+    "Tugmalar yonma-yonmi yoki ustma-ust? Kenglik ishlayaptimi?": "uz078",
+    "[English pronunciation] block [O'zbekcha tallaffuz] ustma-ust va kenglik bilan; [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon, kengliksiz; [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon va kenglik bilan.": "uz079",
+    "Tugmalar yonma-yon va teng: [English pronunciation] inline-block [O'zbekcha tallaffuz].": "uz080",
+    "Tugmalar ustma-ust: [English pronunciation] block [O'zbekcha tallaffuz].": "uz081",
+    "Tugmalar yonma-yon, lekin har xil, kenglik ishlamagan: [English pronunciation] inline [O'zbekcha tallaffuz].": "uz082",
+    "Hammasi to'g'ri! Uchala qiymatni bir qarashda ajratasiz.": "uz083",
+    "Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin mevalar qanday turganiga qarang.": "uz084",
+    "[English pronunciation] display [O'zbekcha tallaffuz] so'zlari harfma-harf to'g'ri yozilishi kerak. Qator elementiga esa [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi, qoida to'g'ri bo'lsa ham.": "uz085",
+    "Parolda bitta harf xato bo'lsa, eshik ochilmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] so'zlari ham xuddi shunday aniq yozilishi kerak.": "uz086",
+    "[English pronunciation] display [O'zbekcha tallaffuz] da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir [English pronunciation] span tag [O'zbekcha tallaffuz]-lari [English pronunciation] block [O'zbekcha tallaffuz], har biri o'z qatorida.": "uz087",
+    "Birinchisi: [English pronunciation] block [O'zbekcha tallaffuz] so'zida xato, blok deb yozilgan. Brauzer qoidani tashlab yubordi, mevalar yana yonma-yon.": "uz088",
+    "Ikkinchisi: [English pronunciation] inline-block [O'zbekcha tallaffuz] chiziqchasiz yozilgan. Bu ham boshqa so'z, brauzer uni tanimaydi.": "uz089",
+    "Uchinchisi xato emas, lekin tuzoq: [English pronunciation] inline span tag [O'zbekcha tallaffuz]-iga [English pronunciation] width [O'zbekcha tallaffuz] beramiz. Qoida to'g'ri, ammo [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi.": "uz090",
+    "Demak, [English pronunciation] display [O'zbekcha tallaffuz] so'zlari aniq yoziladi, [English pronunciation] inline [O'zbekcha tallaffuz] elementga esa [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi.": "uz091",
+    "Voy, men tugmalar uchun [English pronunciation] display [O'zbekcha tallaffuz] yozdim, lekin ular baribir har xil! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz092",
+    "So'zlar orasida hali bo'sh joy bor. Uning o'rniga chiziqcha qo'ying.": "uz093",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz] chiziqcha bilan yoziladi.": "uz094",
+    "Kenglik ishladi, lekin tugmalar ustma-ust. Yonma-yon kerak.": "uz095",
+    "[English pronunciation] inline [O'zbekcha tallaffuz] bilan [English pronunciation] width [O'zbekcha tallaffuz] ishlamaydi. Ikki so'z kerak edi.": "uz096",
+    "Bu boshqa qiymat. Bo'sh joy o'rniga chiziqcha qo'ying, xolos.": "uz097",
+    "So'zlar orasida nima turibdi?": "uz098",
+    "Bo'sh joy emas, chiziqcha kerak.": "uz099",
+    "Bo'sh joyni o'chirib, chiziqcha qo'ying, keyin Tekshirishni bosing.": "uz100",
+    "Ura, ishladi! Tugmalar teng.": "uz101",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va Inspektorga qarang, keyin o'sha qoidani bosing.": "uz102",
+    "Zo'r, birinchisi topildi! Endi boshqa sahifa. Qaysi qoida ishlamayapti?": "uz103",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz104",
+    "Topdingiz! [English pronunciation] inline-block [O'zbekcha tallaffuz] chiziqchasiz yozilgan edi.": "uz105",
+    "Topdingiz! [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi. [English pronunciation] inline-block [O'zbekcha tallaffuz] bilan ishladi.": "uz106",
+    "Sahifaga qarang: qaysi narsa kod aytgandek emas?": "uz107",
+    "Havolalar tugmaga o'xshayaptimi? [English pronunciation] display [O'zbekcha tallaffuz] qiymatini tekshiring.": "uz108",
+    "Inspektorda [English pronunciation] span tag [O'zbekcha tallaffuz]-ining kengligi qancha? Kodda esa qancha?": "uz109",
+    "Xato ikkinchi qoidada: chiziqcha yo'q. O'sha qatorni bosing.": "uz110",
+    "Ishlamayotgani uchinchi qoida: [English pronunciation] span inline [O'zbekcha tallaffuz]. O'sha qatorni bosing.": "uz111",
+    "Super! Ikkalasi ham topildi. Siz sahifani haqiqiy dasturchi kabi tekshiryapsiz.": "uz112",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Telefonda menyu ustma-ust tursin: har bir havola o'z qatorida. Selektor a.": "uz113",
+    "Qoidani yozing: avval selektor, keyin figurali qavslar ichida xususiyat va qiymat.": "uz114",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz115",
+    "Xususiyat va qiymat orasida ikki nuqta yo'q.": "uz116",
+    "Havolalar uchun a selektori kerak.": "uz117",
+    "Element qanday turishini [English pronunciation] display [O'zbekcha tallaffuz] xususiyati beradi.": "uz118",
+    "Havolalar hali yonma-yon. Har biri o'z qatorida bo'lishi kerak.": "uz119",
+    "[English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoldi. Havolalar ko'rinib tursin.": "uz120",
+    "Bu boshqa qiymat. Har biri o'z qatorida bo'lsin.": "uz121",
+    "Qaysi selektor havolalarni tanlaydi? Qaysi qiymat har birini yangi qatordan boshlaydi?": "uz122",
+    "Selektor a, xususiyat [English pronunciation] display [O'zbekcha tallaffuz], qiymat [English pronunciation] block [O'zbekcha tallaffuz].": "uz123",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz124",
+    "Ajoyib! Menyu ustma-ust, xuddi telefondagidek. Qoidani o'zingiz yozdingiz.": "uz125",
+    "Endi o'z menyungizni yasang. Havolalar uchun [English pronunciation] display [O'zbekcha tallaffuz], kenglik va fon rangini yozing. Keyin Tayyorni bosing.": "uz126",
+    "[English pronunciation] none [O'zbekcha tallaffuz] bilan menyu yo'qoladi. Ko'rinadigan qiymat tanlang.": "uz127",
+    "Har bir maydonga bitta qiymat yozing.": "uz128",
+    "[English pronunciation] display [O'zbekcha tallaffuz] uchun [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz] yoki [English pronunciation] inline-block [O'zbekcha tallaffuz]; kenglik son va [English pronunciation] px [O'zbekcha tallaffuz]; fon uchun rang.": "uz129",
+    "Masalan: [English pronunciation] inline-block [O'zbekcha tallaffuz], bir yuz piksel va [English pronunciation] gold [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz130",
+    "Voy, qanday chiroyli! Bu sizning menyungiz.": "uz131",
+    "Tayyor! Esingizdami, [English pronunciation] inline [O'zbekcha tallaffuz] bilan kenglik ishlamaydi, shuning uchun tugmalar har xil. Bu ham sizning tanlovingiz.": "uz132",
+    "Endi tezkor tekshiruv. Men gap aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz133",
+    "Gap qaysi qiymat haqida: [English pronunciation] block [O'zbekcha tallaffuz], [English pronunciation] inline [O'zbekcha tallaffuz], [English pronunciation] inline-block [O'zbekcha tallaffuz] yoki [English pronunciation] none [O'zbekcha tallaffuz]?": "uz134",
+    "Esingizdami: [English pronunciation] block [O'zbekcha tallaffuz] ustma-ust, [English pronunciation] inline [O'zbekcha tallaffuz] yonma-yon va kengliksiz, [English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon va kenglik bilan, [English pronunciation] none [O'zbekcha tallaffuz] esa yashiradi.": "uz135",
+    "[English pronunciation] div [O'zbekcha tallaffuz] odatda butun qatorni egallaydi.": "uz136",
+    "To'g'ri: [English pronunciation] div block [O'zbekcha tallaffuz] element.": "uz137",
+    "Bu qoida [English pronunciation] span tag [O'zbekcha tallaffuz]-ini kengroq qiladi.": "uz138",
+    "Aslida [English pronunciation] span inline [O'zbekcha tallaffuz], kenglik unga ishlamaydi.": "uz139",
+    "[English pronunciation] display none [O'zbekcha tallaffuz] elementni sahifadan yashiradi.": "uz140",
+    "To'g'ri: [English pronunciation] none [O'zbekcha tallaffuz] bilan element ko'rinmaydi va joy ham olmaydi.": "uz141",
+    "Bu qoida havolalarni bitta qatorga teradi.": "uz142",
+    "Aslida [English pronunciation] block [O'zbekcha tallaffuz] har bir havolani yangi qatorga qo'yadi: ular ustma-ust turadi.": "uz143",
+    "Hammasi to'g'ri! Siz [English pronunciation] display [O'zbekcha tallaffuz] ni yaxshi bilasiz.": "uz144",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men havolalarga faqat [English pronunciation] width [O'zbekcha tallaffuz] bir yuz yigirma piksel bergan edim? Qarang: hech narsa o'zgarmadi, Inspektor ham buni ko'rsatyapti. Men adashibman! Havolalar [English pronunciation] inline [O'zbekcha tallaffuz], kenglik ularga ishlamaydi.": "uz145",
+    "Display [English pronunciation] inline-block [O'zbekcha tallaffuz] qo'shsak, kenglik ishlaydi, tugmalar esa yonma-yon qoladi.": "uz146",
+    "Qarang, bu sizning menyungiz, o'zingiz tanlagan qiymatlar bilan!": "uz147",
+    "[English pronunciation] block [O'zbekcha tallaffuz] elementlar, masalan [English pronunciation] div [O'zbekcha tallaffuz], abzas va sarlavha, butun qatorni egallaydi.": "uz148",
+    "[English pronunciation] inline [O'zbekcha tallaffuz] elementlar, masalan [English pronunciation] span [O'zbekcha tallaffuz] va havola, matn kabi yonma-yon turadi.": "uz149",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] yonma-yon turadi va o'lchamni qabul qiladi.": "uz150",
+    "[English pronunciation] none [O'zbekcha tallaffuz] esa elementni yashiradi.": "uz151",
+    "Tabriklayman! Endi siz elementlar sahifada qanday turishini bilasiz. Keyingi darsda [English pronunciation] Flexbox [O'zbekcha tallaffuz] ni o'rganamiz: u elementlarni qatorga yoki ustunga juda oson teradi. Ko'rishguncha!": "uz152",
+    "Voy, zo‘r!": "uz153",
+    "Ana! Chiqdi!": "uz154",
+    "Super!": "uz155",
+    "Qoyil!": "uz156",
+    "Ura!": "uz157",
+    "Zo‘r-ku!": "uz158",
+    "Yana bir bor urinib ko‘ring.": "uz159",
+    "Diqqat bilan qarang.": "uz160",
+    "Yaqin qoldingiz. Shoshilmang.": "uz161",
+    "o'ynaymiz!": "uz162",
+    "Block mi, [English pronunciation] inline [O'zbekcha tallaffuz] mi?": "uz163",
+    "Bu [English pronunciation] tag block [O'zbekcha tallaffuz] mi yoki [English pronunciation] inline [O'zbekcha tallaffuz] mi?": "uz164",
+    "Qaysi kod?": "uz165",
+    "Sahifani qaysi qoida shunday qildi?": "uz166",
+    "Qaysi [English pronunciation] display [O'zbekcha tallaffuz]?": "uz167",
+    "Bu menyuda qaysi [English pronunciation] display [O'zbekcha tallaffuz]?": "uz168",
+    "To'g'rimi?": "uz169",
+    "To'g'rimi yoki noto'g'rimi?": "uz170",
+    "Salom, dunyo!": "uz171",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz172",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz173",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz174",
+  },
+  ru: {
+    "Привет! Я сделал на сайте меню из трёх ссылок. Хочу, чтобы это были красивые кнопки одной ширины. Но смотри: они крошечные и разные. Инспектор это тоже показывает. Нажми Превратить.": "ru001",
+    "Вот! Ссылки стали кнопками одной ширины и стоят рядом.": "ru002",
+    "Это сделало свойство [English pronunciation] display [Русское произношение], то есть то, как элемент ведёт себя на странице. Его значение, [English pronunciation] inline-block [Русское произношение].": "ru003",
+    "Сегодня ты узнаешь, как элементы ведут себя на странице. Но сначала загадка. Чтобы кнопки стали одинаковыми, я даю ссылкам только [English pronunciation] width [Русское произношение] сто двадцать пикселей. По-моему, этого хватит. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на [English pronunciation] div [Русское произношение] и [English pronunciation] span [Русское произношение] в Инспекторе: [English pronunciation] div [Русское произношение] занимает всю строку, а [English pronunciation] span [Русское произношение], только ширину своего текста.": "ru005",
+    "Блочные элементы стоят друг под другом, даже если они узкие. А строчные стоят рядом, как слова в тексте.": "ru006",
+    "Коробки на полке стоят друг на друге, а слова в предложении, рядом. [English pronunciation] div [Русское произношение], как коробка, [English pronunciation] span [Русское произношение], как слово.": "ru007",
+    "На этой странице два новых тега. [English pronunciation] div [Русское произношение], то есть пустая коробка: в неё можно положить что угодно. А [English pronunciation] span [Русское произношение], кусочек текста. Смотри: [English pronunciation] div [Русское произношение] занимают всю строку и стоят друг под другом. Это блочные элементы, [English pronunciation] block [Русское произношение]. А [English pronunciation] span [Русское произношение] занимают место только по своему тексту и стоят рядом. Это строчные элементы, [English pronunciation] inline [Русское произношение].": "ru008",
+    "Теперь дадим [English pronunciation] div width [Русское произношение] сто пятьдесят пикселей. Смотри, [English pronunciation] div [Русское произношение] стал уже, но всё равно стоит на своей строке: второй не встал рядом. Блочный элемент всегда начинается с новой строки.": "ru009",
+    "Значит, блочные элементы стоят друг под другом: так стоят [English pronunciation] div [Русское произношение], абзац P и заголовок [English pronunciation] H one [Русское произношение]. А строчные стоят рядом, как слова в тексте: так стоят [English pronunciation] span [Русское произношение] и ссылка a.": "ru010",
+    "Теперь твоя очередь. Яблоко и груша стоят рядом. Пусть каждый стоит на своей строке, как коробка: впиши значение [English pronunciation] display [Русское произношение] для [English pronunciation] span [Русское произношение].": "ru011",
+    "Впиши значение: одно слово.": "ru012",
+    "[English pronunciation] inline-block [Русское произношение] оставит их рядом. Здесь нужно одно слово, как у коробки [English pronunciation] div [Русское произношение].": "ru013",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].": "ru014",
+    "С [English pronunciation] inline [Русское произношение] они так и останутся рядом. А нужно каждый с новой строки.": "ru015",
+    "С [English pronunciation] inline-block [Русское произношение] они тоже остаются рядом. Нужно как у коробки.": "ru016",
+    "С [English pronunciation] none [Русское произношение] они совсем пропали. Пусть будут видны, просто каждый на своей строке.": "ru017",
+    "Это другое значение. Нужно как у коробки.": "ru018",
+    "Какие элементы всегда начинаются с новой строки?": "ru019",
+    "Пусть будут как [English pronunciation] div [Русское произношение]: он блочный, [English pronunciation] block [Русское произношение].": "ru020",
+    "Впиши [English pronunciation] block [Русское произношение] и нажми Проверить.": "ru021",
+    "Огонь! Теперь яблоко и груша, каждый на своей строке, как коробки.": "ru022",
+    "Теперь проверь себя. Я покажу тег, а ты выбери, как он обычно стоит на странице: [English pronunciation] block [Русское произношение] или [English pronunciation] inline [Русское произношение]?": "ru023",
+    "Вспомни: абзац и заголовок занимают всю строку, а ссылка и [English pronunciation] span [Русское произношение] стоят внутри текста.": "ru024",
+    "Абзац и заголовки занимают всю строку. А [English pronunciation] span [Русское произношение] и ссылка стоят внутри текста.": "ru025",
+    "Абзац занимает всю строку: [English pronunciation] block [Русское произношение].": "ru026",
+    "Ссылка стоит внутри текста: [English pronunciation] inline [Русское произношение].": "ru027",
+    "Заголовок занимает всю строку: [English pronunciation] block [Русское произношение].": "ru028",
+    "[English pronunciation] span [Русское произношение], кусочек текста: [English pronunciation] inline [Русское произношение].": "ru029",
+    "Точно!": "ru030",
+    "Всё верно! Ты делишь теги на [English pronunciation] block [Русское произношение] и [English pronunciation] inline [Русское произношение].": "ru031",
+    "Посмотри на значение [English pronunciation] display [Русское произношение] и на то, как стоят элементы: меняется значение, они встают рядом или друг под другом.": "ru032",
+    "[English pronunciation] display [Русское произношение] говорит, как стоит элемент: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, [English pronunciation] none [Русское произношение], его совсем не видно.": "ru033",
+    "Книги можно поставить на полку в ряд или сложить стопкой. [English pronunciation] display [Русское произношение] так же выбирает, как разместить элементы.": "ru034",
+    "Обычное поведение элемента можно поменять свойством [English pronunciation] display [Русское произношение]. Значения: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] и [English pronunciation] none [Русское произношение]. Давай посмотрим.": "ru035",
+    "[English pronunciation] div [Русское произношение], [English pronunciation] display inline [Русское произношение]. Смотри: коробки теперь стоят рядом, как текст, в одной строке с яблоком и грушей.": "ru036",
+    "А [English pronunciation] span [Русское произношение], [English pronunciation] display block [Русское произношение]. Теперь яблоко и груша каждый на своей строке, как коробки.": "ru037",
+    "И последнее, [English pronunciation] none [Русское произношение]. Если дать [English pronunciation] div display none [Русское произношение], коробки совсем пропадут, даже места не останется.": "ru038",
+    "Значит, [English pronunciation] display [Русское произношение] говорит, как стоит элемент: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, а [English pronunciation] none [Русское произношение], его совсем не видно.": "ru039",
+    "Теперь ты. Абзац пока не нужен, спрячь его со страницы: впиши значение [English pronunciation] display [Русское произношение] для P.": "ru040",
+    "У [English pronunciation] display [Русское произношение] нет такого слова. Чтобы спрятать, нужно другое слово: по-английски ничего.": "ru041",
+    "Тут не нужны два слова. Чтобы спрятать, нужно одно короткое слово.": "ru042",
+    "С [English pronunciation] block [Русское произношение] абзац виден. А его нужно спрятать.": "ru043",
+    "С [English pronunciation] inline [Русское произношение] абзац виден. А его нужно спрятать.": "ru044",
+    "С [English pronunciation] inline-block [Русское произношение] абзац виден. А его нужно спрятать.": "ru045",
+    "Абзац всё ещё виден. Нужно слово, которое прячет.": "ru046",
+    "Какое значение совсем не показывает элемент?": "ru047",
+    "Это слово по-английски значит ничего.": "ru048",
+    "Впиши [English pronunciation] none [Русское произношение] и нажми Проверить.": "ru049",
+    "Молодец! Абзац спрятан, и места от него не осталось.": "ru050",
+    "Теперь проверь себя. Я покажу страницу, а ты выбери, какое правило сделало её такой.": "ru051",
+    "Посмотри на коробки и фрукты: кто друг под другом, кто рядом, кого нет?": "ru052",
+    "[English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом, [English pronunciation] none [Русское произношение], прячет.": "ru053",
+    "Яблоко и груша каждый на своей строке: [English pronunciation] span [Русское произношение] стал [English pronunciation] block [Русское произношение].": "ru054",
+    "Коробки в одной строке с фруктами: [English pronunciation] div [Русское произношение] стал [English pronunciation] inline [Русское произношение].": "ru055",
+    "Коробок нет, остались только фрукты: [English pronunciation] div [Русское произношение] стал [English pronunciation] none [Русское произношение].": "ru056",
+    "Всё верно! Ты читаешь [English pronunciation] display [Русское произношение] прямо по странице.": "ru057",
+    "Посмотри на размеры ссылок в Инспекторе: от [English pronunciation] width [Русское произношение] они не меняются, а после [English pronunciation] inline-block [Русское произношение] меняются.": "ru058",
+    "Строчные элементы не принимают [English pronunciation] width [Русское произношение] и [English pronunciation] height [Русское произношение]. А с [English pronunciation] inline-block [Русское произношение] элемент стоит рядом и принимает размеры.": "ru059",
+    "Вспомни клавиши на клавиатуре: они стоят рядом, но у каждой свой размер. Кнопки с [English pronunciation] inline-block [Русское произношение], такие же.": "ru060",
+    "Вернёмся к меню. Ссылки, строчные элементы. У них есть секрет: строчные элементы не принимают [English pronunciation] width [Русское произношение] и [English pronunciation] height [Русское произношение].": "ru061",
+    "Ссылкам [English pronunciation] width [Русское произношение] сто десять пикселей. Смотри, в Инспекторе ничего не изменилось! Ссылки строчные, ширина на них не действует.": "ru062",
+    "Теперь [English pronunciation] display inline-block [Русское произношение]. Он соединяет оба мира: ссылки стоят рядом, а ширина работает. Каждая, сто десять пикселей!": "ru063",
+    "Теперь работает и [English pronunciation] height [Русское произношение]: сорок пикселей. Это настоящие кнопки!": "ru064",
+    "Значит, [English pronunciation] inline-block [Русское произношение] стоит рядом и принимает размеры. Для кнопок меню нужно именно это.": "ru065",
+    "Теперь ты. У ссылок есть [English pronunciation] width [Русское произношение], но он не работает. Пусть они останутся рядом и ширина заработает: впиши значение для [English pronunciation] display [Русское произношение].": "ru066",
+    "Впиши значение: два слова через чёрточку.": "ru067",
+    "Два слова пишутся через чёрточку, без пробела: [English pronunciation] inline [Русское произношение], чёрточка, [English pronunciation] block [Русское произношение].": "ru068",
+    "Ширина заработала, но кнопки встали друг под другом. А нужно рядом.": "ru069",
+    "С [English pronunciation] inline [Русское произношение] ширина не работает. Нужно другое значение.": "ru070",
+    "С [English pronunciation] none [Русское произношение] меню пропало. Кнопки должны быть видны.": "ru071",
+    "Это другое значение. Нужно рядом и с шириной.": "ru072",
+    "Какое значение стоит рядом и принимает [English pronunciation] width [Русское произношение]?": "ru073",
+    "Два слова вместе: [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение].": "ru074",
+    "Впиши [English pronunciation] inline-block [Русское произношение] и нажми Проверить.": "ru075",
+    "Отлично! Кнопки равные и стоят рядом.": "ru076",
+    "Теперь проверь себя. В коде значение [English pronunciation] display [Русское произношение] спрятано. Посмотри на меню и реши: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] или [English pronunciation] inline-block [Русское произношение]?": "ru077",
+    "Кнопки рядом или друг под другом? Работает ли ширина?": "ru078",
+    "[English pronunciation] block [Русское произношение], друг под другом и с шириной; [English pronunciation] inline [Русское произношение], рядом, без ширины; [English pronunciation] inline-block [Русское произношение], рядом и с шириной.": "ru079",
+    "Кнопки рядом и одинаковые: [English pronunciation] inline-block [Русское произношение].": "ru080",
+    "Кнопки друг под другом: [English pronunciation] block [Русское произношение].": "ru081",
+    "Кнопки рядом, но разные, ширина не сработала: [English pronunciation] inline [Русское произношение].": "ru082",
+    "Всё верно! Ты различаешь все три значения с одного взгляда.": "ru083",
+    "Каждый раз смотри на код: слово написано верно? Потом смотри, как стоят фрукты.": "ru084",
+    "Слова [English pronunciation] display [Русское произношение] пишутся буква в букву. А на строчный элемент [English pronunciation] width [Русское произношение] не действует, даже если правило верное.": "ru085",
+    "Если в пароле ошибиться на одну букву, дверь не откроется. Слова [English pronunciation] CSS [Русское произношение] тоже надо писать так же точно.": "ru086",
+    "И с [English pronunciation] display [Русское произношение] бывают ошибки. Давай посмотрим на три. Сейчас [English pronunciation] span [Русское произношение], [English pronunciation] block [Русское произношение], каждый на своей строке.": "ru087",
+    "Первая: в слове [English pronunciation] block [Русское произношение] ошибка, написано blok. Браузер выбросил правило, фрукты снова рядом.": "ru088",
+    "Вторая: [English pronunciation] inline-block [Русское произношение] написан без чёрточки. Это тоже чужое слово, браузер его не знает.": "ru089",
+    "Третья, не ошибка, а ловушка: даём строчному [English pronunciation] span width [Русское произношение]. Правило верное, но [English pronunciation] span [Русское произношение] строчный, ширина на него не действует.": "ru090",
+    "Значит, слова [English pronunciation] display [Русское произношение] пишутся точно, а на строчный элемент [English pronunciation] width [Русское произношение] не действует.": "ru091",
+    "Ой, я написал [English pronunciation] display [Русское произношение] для кнопок, а они всё равно разные! В поле, моё значение. Найди ошибку и исправь.": "ru092",
+    "Между словами всё ещё пробел. Поставь вместо него чёрточку.": "ru093",
+    "Браузер не узнал это слово. [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение] пишутся через чёрточку.": "ru094",
+    "Ширина работает, но кнопки друг под другом. Нужно рядом.": "ru095",
+    "С [English pronunciation] inline [Русское произношение] ширина не работает. Нужны были два слова.": "ru096",
+    "Это другое значение. Просто поставь чёрточку вместо пробела.": "ru097",
+    "Что стоит между словами?": "ru098",
+    "Нужна не пробел, а чёрточка.": "ru099",
+    "Сотри пробел, поставь чёрточку и нажми Проверить.": "ru100",
+    "Ура, заработало! Кнопки одинаковые.": "ru101",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и Инспектор и нажми это правило.": "ru102",
+    "Класс, первая найдена! Теперь другая страница. Какое правило не работает?": "ru103",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru104",
+    "Есть! [English pronunciation] inline-block [Русское произношение] был написан без чёрточки.": "ru105",
+    "Есть! [English pronunciation] span [Русское произношение] строчный, ширина на него не действует. С [English pronunciation] inline-block [Русское произношение] заработало.": "ru106",
+    "Посмотри на страницу: что не так, как в коде?": "ru107",
+    "Похожи ли ссылки на кнопки? Проверь значение [English pronunciation] display [Русское произношение].": "ru108",
+    "Какая ширина у [English pronunciation] span [Русское произношение] в Инспекторе? А в коде?": "ru109",
+    "Ошибка во втором правиле: нет чёрточки. Нажми эту строку.": "ru110",
+    "Не работает третье правило: [English pronunciation] span [Русское произношение] строчный. Нажми эту строку.": "ru111",
+    "Супер! Оба найдены. Ты проверяешь страницу как настоящий разработчик.": "ru112",
+    "Теперь напиши правило целиком. Пусть на телефоне меню стоит столбиком: каждая ссылка на своей строке. Селектор, a.": "ru113",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru114",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru115",
+    "Между свойством и значением нет двоеточия.": "ru116",
+    "Для ссылок нужен селектор a.": "ru117",
+    "Как стоит элемент, задаёт свойство [English pronunciation] display [Русское произношение].": "ru118",
+    "Ссылки всё ещё рядом. Нужно, чтобы каждая была на своей строке.": "ru119",
+    "С [English pronunciation] none [Русское произношение] меню пропало. Ссылки должны быть видны.": "ru120",
+    "Это другое значение. Нужно, чтобы каждая была на своей строке.": "ru121",
+    "Какой селектор выбирает ссылки? Какое значение начинает каждую с новой строки?": "ru122",
+    "Селектор a, свойство [English pronunciation] display [Русское произношение], значение [English pronunciation] block [Русское произношение].": "ru123",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru124",
+    "Отлично! Меню стоит столбиком, как на телефоне. Правило написано тобой целиком.": "ru125",
+    "Теперь сделай своё меню. Впиши для ссылок [English pronunciation] display [Русское произношение], ширину и цвет фона. Потом нажми Готово.": "ru126",
+    "С [English pronunciation] none [Русское произношение] меню пропадёт. Выбери видимое значение.": "ru127",
+    "В каждое поле, одно значение.": "ru128",
+    "Для [English pronunciation] display [Русское произношение], [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение] или [English pronunciation] inline-block [Русское произношение]; ширина, число и [English pronunciation] px [Русское произношение]; для фона, цвет.": "ru129",
+    "Например: [English pronunciation] inline-block [Русское произношение], сто пикселей и [English pronunciation] gold [Русское произношение]. Потом нажми Готово.": "ru130",
+    "Ого, как красиво! Это твоё меню.": "ru131",
+    "Готово! Помнишь, с [English pronunciation] inline [Русское произношение] ширина не работает, поэтому кнопки разные. Это тоже твой выбор.": "ru132",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru133",
+    "О каком значении фраза: [English pronunciation] block [Русское произношение], [English pronunciation] inline [Русское произношение], [English pronunciation] inline-block [Русское произношение] или [English pronunciation] none [Русское произношение]?": "ru134",
+    "Вспомни: [English pronunciation] block [Русское произношение], друг под другом, [English pronunciation] inline [Русское произношение], рядом и без ширины, [English pronunciation] inline-block [Русское произношение], рядом и с шириной, а [English pronunciation] none [Русское произношение] прячет.": "ru135",
+    "[English pronunciation] div [Русское произношение] обычно занимает всю строку.": "ru136",
+    "Верно: [English pronunciation] div [Русское произношение], блочный элемент.": "ru137",
+    "Это правило делает [English pronunciation] span [Русское произношение] шире.": "ru138",
+    "На самом деле [English pronunciation] span [Русское произношение] строчный, ширина на него не действует.": "ru139",
+    "[English pronunciation] display none [Русское произношение] прячет элемент со страницы.": "ru140",
+    "Верно: с [English pronunciation] none [Русское произношение] элемента не видно, и места он не занимает.": "ru141",
+    "Это правило ставит ссылки в одну строку.": "ru142",
+    "На самом деле [English pronunciation] block [Русское произношение] ставит каждую ссылку на новую строку: они стоят столбиком.": "ru143",
+    "Всё верно! Ты отлично разбираешься в [English pronunciation] display [Русское произношение].": "ru144",
+    "Вернёмся к загадке. Помнишь, я дал ссылкам только [English pronunciation] width [Русское произношение] сто двадцать пикселей? Смотри: ничего не изменилось, Инспектор это тоже показывает. Я ошибся! Ссылки строчные, ширина на них не действует.": "ru145",
+    "Добавим [English pronunciation] display inline-block [Русское произношение], и ширина заработает, а кнопки останутся рядом.": "ru146",
+    "Смотри, это твоё меню с твоими собственными значениями!": "ru147",
+    "Блочные элементы, например [English pronunciation] div [Русское произношение], абзац и заголовок, занимают всю строку.": "ru148",
+    "Строчные элементы, например [English pronunciation] span [Русское произношение] и ссылка, стоят рядом, как текст.": "ru149",
+    "[English pronunciation] inline-block [Русское произношение] стоит рядом и принимает размеры.": "ru150",
+    "А [English pronunciation] none [Русское произношение] прячет элемент.": "ru151",
+    "Ура! Теперь ты знаешь, как элементы стоят на странице. На следующем уроке изучим [English pronunciation] Flexbox [Русское произношение]: он очень легко расставляет элементы в ряд или в столбик. До встречи!": "ru152",
+    "Вау, классно!": "ru153",
+    "Есть! Получилось!": "ru154",
+    "Супер!": "ru155",
+    "Огонь!": "ru156",
+    "Ура!": "ru157",
+    "Вот это да!": "ru158",
+    "Попробуй ещё раз.": "ru159",
+    "Посмотри внимательно.": "ru160",
+    "Уже близко. Не спеши.": "ru161",
+    "Block или [English pronunciation] inline [Русское произношение]?": "ru162",
+    "Этот тег [English pronunciation] block [Русское произношение] или [English pronunciation] inline [Русское произношение]?": "ru163",
+    "Какой код?": "ru164",
+    "Какое правило сделало страницу такой?": "ru165",
+    "Какой [English pronunciation] display [Русское произношение]?": "ru166",
+    "Какой [English pronunciation] display [Русское произношение] у этого меню?": "ru167",
+    "Верно или нет?": "ru168",
+    "Верно или неверно?": "ru169",
+    "Привет, мир!": "ru170",
+    "Здесь нужны только слова, без угловых скобок.": "ru171",
+    "Молодец!": "ru172",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru173",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru174",
+  },
+  en: {
+    "Hi! I made a menu on my site: three links. I want them to be nice buttons of the same width. But look: they’re tiny and all different. The Inspector shows it too. Tap Transform.": "en001",
+    "There! The links became buttons of the same width, standing side by side.": "en002",
+    "The display property did it, meaning how an element behaves on the page. Its value is inline-block.": "en003",
+    "Today you’ll learn how elements behave on a page. But first, a riddle. To make the buttons equal, I give the links only width one hundred twenty pixels. I think that’s enough. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at div and span in the Inspector: div takes the whole line, span only the width of its text.": "en005",
+    "Block elements stack one under another, even when they’re narrow. Inline elements sit side by side, like words in text.": "en006",
+    "Boxes on a shelf stack on top of each other, while words in a sentence sit side by side. div is like a box, span is like a word.": "en007",
+    "This page has two new tags. div, meaning an empty box: you can put anything inside it. And span is a piece of text. Look: the divs take the whole line and stand one under another. They’re block elements. The spans take only as much room as their text and stand side by side. They’re inline elements.": "en008",
+    "Now let’s give the div width one hundred fifty pixels. Look, the div got narrower, but it still stands on its own line: the second one didn’t move next to it. A block element always starts on a new line.": "en009",
+    "So block elements stack one under another: that’s div, the paragraph P and the heading H one. And inline elements sit side by side, like words in a text: that’s span and the link a.": "en010",
+    "Now it’s your turn. The apple and the pear stand side by side. Let each one stand on its own line, like a box: type the display value for span.": "en011",
+    "Type the value: one word.": "en012",
+    "inline-block would keep them side by side. Here you need one word, like the div box.": "en013",
+    "The browser didn’t recognize that word. Check the word for display.": "en014",
+    "With inline they stay side by side. Each one should be on a new line.": "en015",
+    "With inline-block they still sit side by side. We need them like a box.": "en016",
+    "With none they disappeared. Keep them visible, just each on its own line.": "en017",
+    "That’s a different value. We need it like a box.": "en018",
+    "Which elements always start on a new line?": "en019",
+    "Make them like div: it’s a block element.": "en020",
+    "Type block and tap Check.": "en021",
+    "Awesome! Now the apple and the pear are each on their own line, like boxes.": "en022",
+    "Now check yourself. I’ll show a tag, and you pick how it normally stands on a page: block or inline?": "en023",
+    "Remember: a paragraph and a heading take the whole line, while a link and span sit inside the text.": "en024",
+    "Paragraphs and headings take the whole line. span and links sit inside the text.": "en025",
+    "A paragraph takes the whole line: block.": "en026",
+    "A link sits inside the text: inline.": "en027",
+    "A heading takes the whole line: block.": "en028",
+    "span is a piece of text: inline.": "en029",
+    "Exactly!": "en030",
+    "All correct! You sort tags into block and inline.": "en031",
+    "Look at the display value and how the elements are placed: when it changes, they go side by side or one under another.": "en032",
+    "display says how an element sits: block one under another, inline side by side, none means you can’t see it at all.": "en033",
+    "You can stand books in a row on a shelf or stack them in a pile. display chooses how to place elements the same way.": "en034",
+    "You can change an element’s normal behavior with the display property. The values are block, inline and none. Let’s see.": "en035",
+    "display inline for div. Look: the boxes now sit side by side like text, on one line with the apple and the pear.": "en036",
+    "And display block for span. Now the apple and the pear are each on their own line, like boxes.": "en037",
+    "The last one is none. If we give div display none, the boxes vanish completely, leaving no space.": "en038",
+    "So display says how an element stands: block stacks, inline sits side by side, and none isn’t shown at all.": "en039",
+    "Your turn. The paragraph isn’t needed for now; hide it from the page: type the display value for P.": "en040",
+    "display has no such word. To hide, you need another word: the English for nothing.": "en041",
+    "Not two words here. To hide, you need one short word.": "en042",
+    "With block the paragraph is visible. It needs to be hidden.": "en043",
+    "With inline the paragraph is visible. It needs to be hidden.": "en044",
+    "With inline-block the paragraph is visible. It needs to be hidden.": "en045",
+    "The paragraph is still visible. We need the word that hides it.": "en046",
+    "Which value doesn’t show the element at all?": "en047",
+    "The word means nothing in English.": "en048",
+    "Type none and tap Check.": "en049",
+    "Well done! The paragraph is hidden, and no space is left.": "en050",
+    "Now check yourself. I’ll show the page, and you pick which rule made it look like that.": "en051",
+    "Look at the boxes and the fruit: what stacks, what sits side by side, what’s missing?": "en052",
+    "block stacks, inline sits side by side, none hides.": "en053",
+    "The apple and the pear are each on their own line: span became block.": "en054",
+    "The boxes are on one line with the fruit: div became inline.": "en055",
+    "The boxes are gone, only the fruit is left: div became none.": "en056",
+    "All correct! You read display right from the page.": "en057",
+    "Look at the link sizes in the Inspector: width doesn’t change them, but after inline-block it does.": "en058",
+    "Inline elements don’t accept width and height. With inline-block, an element sits side by side and accepts sizes too.": "en059",
+    "Think of keyboard keys: they sit side by side, but each has its own size. inline-block buttons are like that.": "en060",
+    "Back to the menu. Links are inline elements. They have a secret: inline elements don’t accept width and height.": "en061",
+    "Links get width one hundred ten pixels. Look, nothing changed in the Inspector! Links are inline, width doesn’t work on them.": "en062",
+    "Now display inline-block. It combines both: the links stay side by side, and width works. Each one is one hundred ten pixels!": "en063",
+    "Now height works too: forty pixels. These are real buttons!": "en064",
+    "So inline-block sits side by side and accepts sizes. That’s exactly what menu buttons need.": "en065",
+    "Your turn. The links have width, but it doesn’t work. Let them stay side by side and make the width work: type the value for display.": "en066",
+    "Type the value: two words joined by a dash.": "en067",
+    "Two words are joined by a dash, with no space: inline, dash, block.": "en068",
+    "The width works, but the buttons stacked up. They need to be side by side.": "en069",
+    "With inline, width doesn’t work. We need another value.": "en070",
+    "With none the menu disappeared. The buttons should be visible.": "en071",
+    "That’s a different value. We need side by side, with width.": "en072",
+    "Which value sits side by side and accepts width?": "en073",
+    "Two words together: inline and block.": "en074",
+    "Type inline-block and tap Check.": "en075",
+    "Great! The buttons are equal and side by side.": "en076",
+    "Now check yourself. The display value is hidden in the code. Look at the menu and decide: block, inline or inline-block?": "en077",
+    "Are the buttons side by side or stacked? Does the width work?": "en078",
+    "block stacks with width; inline sits side by side without width; inline-block sits side by side with width.": "en079",
+    "The buttons are side by side and equal: inline-block.": "en080",
+    "The buttons are stacked: block.": "en081",
+    "The buttons are side by side but different; the width didn’t work: inline.": "en082",
+    "All correct! You tell all three values apart at a glance.": "en083",
+    "Each time, look at the code: is the word spelled right? Then see how the fruits are placed.": "en084",
+    "display words must be spelled letter for letter. And width doesn’t work on an inline element, even when the rule is correct.": "en085",
+    "If one letter in a password is wrong, the door won’t open. CSS words must be just as exact.": "en086",
+    "display has mistakes too. Let’s look at three. Right now the spans are block, each on its own line.": "en087",
+    "The first: block is misspelled as blok. The browser threw the rule away, the fruit is side by side again.": "en088",
+    "The second: inline-block is written without the dash. That’s a different word too, the browser doesn’t know it.": "en089",
+    "The third isn’t a mistake but a trap: we give the inline span a width. The rule is right, but span is inline, so width doesn’t work on it.": "en090",
+    "So display words must be written exactly, and width doesn’t work on an inline element.": "en091",
+    "Oops, I wrote display for the buttons, but they’re still different! My value is in the field. Find the mistake and fix it.": "en092",
+    "There’s still a space between the words. Put a dash in its place.": "en093",
+    "The browser didn’t recognize that word. inline and block are joined by a dash.": "en094",
+    "The width works, but the buttons are stacked. They need to be side by side.": "en095",
+    "With inline, width doesn’t work. We needed two words.": "en096",
+    "That’s a different value. Just put a dash instead of the space.": "en097",
+    "What’s between the words?": "en098",
+    "Not a space, a dash is needed.": "en099",
+    "Delete the space, put a dash, then tap Check.": "en100",
+    "Hooray, it works! The buttons are equal.": "en101",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the Inspector, then tap that rule.": "en102",
+    "Great, the first one is found! Now another page. Which rule doesn’t work?": "en103",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en104",
+    "Found it! inline-block was written without the dash.": "en105",
+    "Found it! span is inline, width doesn’t work on it. With inline-block it works.": "en106",
+    "Look at the page: what doesn’t match the code?": "en107",
+    "Do the links look like buttons? Check the display value.": "en108",
+    "What width does the Inspector show for span? And the code?": "en109",
+    "The bug is in the second rule: no dash. Tap that line.": "en110",
+    "The third rule doesn’t work: span is inline. Tap that line.": "en111",
+    "Super! Both found. You check the page like a real developer.": "en112",
+    "Now write the whole rule yourself. On a phone, let the menu stand in a column: each link on its own line. The selector is a.": "en113",
+    "Write the rule: first the selector, then the property and value inside curly braces.": "en114",
+    "The rule needs curly braces: an opening one and a closing one.": "en115",
+    "There’s no colon between the property and the value.": "en116",
+    "The links need the a selector.": "en117",
+    "The display property sets how an element stands.": "en118",
+    "The links are still side by side. Each should be on its own line.": "en119",
+    "With none the menu disappeared. The links should be visible.": "en120",
+    "That’s a different value. Each should be on its own line.": "en121",
+    "Which selector picks the links? Which value starts each one on a new line?": "en122",
+    "Selector a, property display, value block.": "en123",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en124",
+    "Great! The menu stands in a column, just like on a phone. You wrote the whole rule yourself.": "en125",
+    "Now make your own menu. Type display, a width and a background color for the links. Then tap Done.": "en126",
+    "With none the menu disappears. Pick a visible value.": "en127",
+    "One value in each field.": "en128",
+    "For display, block, inline or inline-block; the width is a number and px; a color for the background.": "en129",
+    "For example: inline-block, one hundred pixels and gold. Then tap Done.": "en130",
+    "Wow, how pretty! This is your menu.": "en131",
+    "Done! Remember, with inline the width doesn’t work, so the buttons are different. That’s your choice too.": "en132",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en133",
+    "Which value is the sentence about: block, inline, inline-block or none?": "en134",
+    "Remember: block stacks, inline sits side by side without width, inline-block sits side by side with width, and none hides.": "en135",
+    "A div normally takes the whole line.": "en136",
+    "Right: div is a block element.": "en137",
+    "This rule makes the span wider.": "en138",
+    "Actually span is inline, width doesn’t work on it.": "en139",
+    "display none hides the element from the page.": "en140",
+    "Right: with none the element isn’t shown and takes no space.": "en141",
+    "This rule puts the links in one row.": "en142",
+    "Actually block puts each link on a new line: they stand in a column.": "en143",
+    "All correct! You know display really well.": "en144",
+    "Back to our riddle. Remember, I gave the links only width one hundred twenty pixels? Look: nothing changed, the Inspector shows it too. I was wrong! Links are inline, width doesn’t work on them.": "en145",
+    "Add display inline-block, and the width works while the buttons stay side by side.": "en146",
+    "Look, this is your menu with the values you picked yourself!": "en147",
+    "Block elements, like div, paragraphs and headings, take the whole line.": "en148",
+    "Inline elements, like span and links, sit side by side like text.": "en149",
+    "inline-block sits side by side and accepts sizes.": "en150",
+    "And none hides the element.": "en151",
+    "Hooray! Now you know how elements stand on a page. Next lesson we’ll learn Flexbox: it lines elements up in a row or a column very easily. See you!": "en152",
+    "Wow, awesome!": "en153",
+    "Yes! You did it!": "en154",
+    "Super!": "en155",
+    "Brilliant!": "en156",
+    "Hooray!": "en157",
+    "Amazing!": "en158",
+    "Try once more.": "en159",
+    "Take a closer look.": "en160",
+    "You are close. No rush.": "en161",
+    "Block or inline?": "en162",
+    "Is this tag block or inline?": "en163",
+    "Which code?": "en164",
+    "Which rule made the page look like this?": "en165",
+    "Which display?": "en166",
+    "Which display does this menu have?": "en167",
+    "True or false?": "en168",
+    "Hello, world!": "en169",
+    "Only words here, no angle brackets.": "en170",
+    "Well done!": "en171",
+    "Everything in the window lives inside body.": "en172",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en173",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

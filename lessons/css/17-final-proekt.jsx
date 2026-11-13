@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8119,15 +7670,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -15340,3 +14884,1217 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c17-sheet .kz-br.c17-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 199, ru 200, en 199; всего знаков 65292. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Qarang, bu yozgi lagerimiz sayti. Yashil shapka, menyu, rasm, kartalar va kattalashadigan tugma. Hammasini [English pronunciation] CSS [O'zbekcha tallaffuz] chizgan. Hozir uni do'stlarimga yuboraman...", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Nima bo'ldi? Hamma [English pronunciation] CSS [O'zbekcha tallaffuz] o'chib ketdi! Sayt oq-qora, hammasi bir-birining ustida, rasm oynaga sig'maydi. Lekin siz [English pronunciation] CSS [O'zbekcha tallaffuz] ning hamma mavzularini bilasiz. Keling, saytni birga tiklaymiz. Tuzatish tugmasini bosing.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bizning yo'limiz: o'n olti bekat, har bir darsga bittadan. Har bir bekatda saytning bir bo'lagini qaytarasiz.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Lekin oldin topishmoq. Menimcha, bunday saytni qaytarish uchun ming qator kod kerak, yoki birovning tayyor shablonini olish kerak. Siz nima deb o'ylaysiz? Javobni oxirida birga sanab ko'ramiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bekat, eng boshidan. Esingizdami, [English pronunciation] CSS [O'zbekcha tallaffuz] qoidasi qanday tuziladi? Sahifa foni och sariq bo'lsin. Qoidani bo'laklardan yig'ing: ularni tartib bilan bosing yoki kodga suring.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektordan keyin oldin ochuvchi figurali qavs keladi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan keyin xususiyat: nimani o'zgartiramiz? Bizga fon rangi kerak.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyatdan keyin ikki nuqta keladi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ikki nuqtadan keyin qiymat: qanday rang?", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatdan keyin nuqtali vergul.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida qoidani yopuvchi figurali qavs.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib: selektor, qavs, xususiyat, ikki nuqta, qiymat, nuqtali vergul, qavs.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodda yonib turgan bo'sh joyga qarang: hozir qaysi bo'lak navbatda?", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Bo'laklarni xuddi shu tartibda qo'ying.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sahifaga iliq fon qaytdi. Birinchi bekat tayyor!", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchi bekat, selektorlar. Kartalardagi yozuvlar to'q ko'k bo'lsin, boshqa hech narsa emas. Pastdan selektorni tanlang va sahifaga qarang.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] selektori hamma [English pronunciation] div tag [O'zbekcha tallaffuz]-larini tanladi: shapka ham, menyu ham ko'k bo'lib qoldi. Bizga faqat kartalar kerak.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifada [English pronunciation] id [O'zbekcha tallaffuz] si karta bo'lgan element yo'q, shuning uchun hech narsa o'zgarmadi. Kartalarda klass bor.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kartalarni boshqa elementlardan nima ajratib turadi?", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartalarning klassi bor: karta. Klass selektori nuqta bilan boshlanadi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta karta selektorini tanlang.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'ppa-to'g'ri! Klass selektori faqat kartalarni tanladi.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi bekat, ranglar. Shapka lagerning yashil rangida bo'lsin. Rang kodi palitrada turibdi: uni ko'chirib yozing.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang kodini yozing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod panjara belgisi bilan boshlanadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hex kodda panjaradan keyin oltita belgi bo'ladi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rang. Palitradagi lager rangi kerak.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu rangni tanimadi. Palitradagi kodni belgima-belgi ko'chiring.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang kodi palitrada yozilgan: panjara va oltita belgi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin panjara belgisini qo'ying, keyin palitradagi oltita belgini.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kod ostidagi namunani ko'chirib, Tekshirishni bosing.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Shapka yashil, yozuv oq. Uchinchi bekat tayyor.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtinchi bekat, fon. Shapkaga tog'li rasm qo'ydik, lekin u takrorlanib, kichkina plitkalardek bo'lib qoldi. Rasm bitta bo'lsin va butun shapkani qoplasin. So'zlarni bo'sh joylarga qo'ying.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] repeat [O'zbekcha tallaffuz] ya'ni takrorla degani: rasm yana plitkalar bo'ladi. Bizga takrorlamaslik kerak.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] cover [O'zbekcha tallaffuz] o'lcham so'zi, u pastdagi [English pronunciation] background-size [O'zbekcha tallaffuz] ga kerak. Bu yerda takrorlash haqida gap.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] repeat [O'zbekcha tallaffuz] takrorlash so'zi, o'lcham emas. Butun joyni qoplaydigan so'z kerak.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bo'sh joy takrorlash haqida, ikkinchisi o'lcham haqida.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Takrorlamaslik [English pronunciation] no-repeat [O'zbekcha tallaffuz], butun joyni qoplash [English pronunciation] cover [O'zbekcha tallaffuz].", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namunadagidek oldin [English pronunciation] no-repeat [O'zbekcha tallaffuz], keyin [English pronunciation] cover [O'zbekcha tallaffuz] ni qo'ying.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Rasm butun shapkani qopladi. Yashil rang esa zaxirada qoldi: rasm yuklanmasa, u ko'rinadi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Beshinchi bekat, matn. Sarlavha chap chetga yopishib qolgan. Uni o'rtaga qo'ying: tekislash uchun qiymat yozing.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qiymat sarlavhani o'rtaga qo'ymaydi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. Tekislash so'zini tekshiring.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'rta inglizcha qanday bo'ladi?", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rta bu [English pronunciation] center [O'zbekcha tallaffuz].", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Sarlavha o'rtada.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oltinchi bekat, o'lchamlar. Men rasmga olti yuz piksel yozibman, u oynaga sig'mayapti. Rasm oyna qancha keng bo'lsa, shuncha keng bo'lsin: maydondagi qiymatni tuzating.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Piksel doim bir xil: kichik oynada rasm baribir sig'maydi. Foiz kerak.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin birligi yo'q.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu oynaning bir qismi. Butun en necha foiz?", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va foiz belgisini yozing.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oynaga qarab o'zgaradigan birlik qaysi?", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Butun en bu yuz foiz.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maydonni tozalab, yuz deb yozing, keyin foiz belgisini bosing.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Rasm oynaga roppa-rosa sig'di.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yettinchi bekat, Box Model. Kartalardagi yozuv chetga yopishib turibdi. Ichkaridan joy bering: qaysi xususiyat kerakligini yozing.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyatni yozing.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] margin [O'zbekcha tallaffuz] tashqi masofa: kartalar bir-biridan uzoqlashdi, lekin yozuv hamon chetda. Ichki masofa kerak.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] border [O'zbekcha tallaffuz] bu ramka, u ichkaridan joy bermaydi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu xususiyat ichkaridan joy bermaydi.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu xususiyatni tanimadi.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ichki va tashqi masofa bor: qaysi biri kerak?", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ichki masofa [English pronunciation] padding [O'zbekcha tallaffuz] deyiladi.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] padding [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Yozuvga ichkaridan joy bo'ldi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sakkizinchi bekat, chiroyli kartalar. Kartalarga uchta bezak kerak. Oldin chapdan kodni bosing, keyin o'ngdan u beradigan ko'rinishni toping.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] border-radius [O'zbekcha tallaffuz] burchaklarni yumaloqlaydi. Qaysi kartaning burchagi yumaloq?", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] box-shadow [O'zbekcha tallaffuz] element ostiga soya tushiradi. Qaysi karta soyali?", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] border-top [O'zbekcha tallaffuz] faqat tepadagi chiziq. Qaysi kartada tepada chiziq bor?", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdagi kodni bosing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ha, yumaloq burchaklar!", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ha, soya!", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ha, tepada chiziq!", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir kodning birinchi so'ziga qarang.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] radius bu burchak, shadow bu soya, [English pronunciation] top [O'zbekcha tallaffuz] bu tepa.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan kodni, keyin yonib turgan kartani bosing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi juft! Kartalar endi yumaloq, soyali va tepasida chizig'i bor.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'qqizinchi bekat, [English pronunciation] display [O'zbekcha tallaffuz]. Menyu bandlari ustma-ust turibdi, har biri butun qatorni egallagan. Ular bir qatorda yonma-yon tursin. Qaysi qiymat kerak?", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] block [O'zbekcha tallaffuz] har bir bandni yangi qatorga qo'yadi: hech narsa o'zgarmadi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] none [O'zbekcha tallaffuz] menyuni butunlay yashirdi! Bizga u kerak.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi qiymat elementlarni bir qatorga qo'yadi va [English pronunciation] padding [O'zbekcha tallaffuz] ni ham saqlaydi?", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz] ning aralashmasi.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] inline-block [O'zbekcha tallaffuz] ni tanlang.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Menyu bir qatorda.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'ninchi bekat, Flexbox. Kartalar ustma-ust turibdi. Ularni ota element boshqaradi, ya'ni qator degani. Kartalar yonma-yon tursin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymat yozing.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday qiymat yo'q. So'z qisqaroq: box siz.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qiymat kartalarni qatorga qo'ymaydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'ninchi darsdagi qatorga qo'yuvchi so'z esingizdami?", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu so'z [English pronunciation] flex [O'zbekcha tallaffuz].", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Kartalar qatorda turibdi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'n birinchi bekat, tekislash. Kartalar chapga qisilib qolgan. Chetdagi kartalar chetlarga tegsin, oralari esa teng bo'lsin. Qaysi qiymat?", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] flex-start [O'zbekcha tallaffuz] hammasini boshiga, chapga to'playdi. Hech narsa o'zgarmadi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] center [O'zbekcha tallaffuz] hammasini o'rtaga yig'di, chetlarda bo'sh joy qoldi.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bo'sh joy qayerda bo'lishi kerak: chetlardami yoki kartalar o'rtasidami?", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'sh joy faqat kartalar o'rtasida. between ya'ni o'rtasida degani.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] space-between [O'zbekcha tallaffuz] ni tanlang.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kartalar butun qator bo'ylab tekis turibdi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'n ikkinchi bekat, joylashuv. Birinchi kartada Yangi belgisi bor, lekin u matn ichida turibdi. U kartaning o'ng tepa burchagiga chiqsin. Karta allaqachon [English pronunciation] relative [O'zbekcha tallaffuz]. Belgiga qaysi [English pronunciation] position [O'zbekcha tallaffuz] kerak?", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] static [O'zbekcha tallaffuz] oddiy oqim: [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz] ishlamaydi, belgi joyida qoldi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] relative [O'zbekcha tallaffuz] belgini o'z joyidan biroz surdi xolos, u hamon matn ichida.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi oqimdan chiqib, kartaning burchagiga yopishishi kerak.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ota elementga nisbatan joy oladigan qiymat [English pronunciation] absolute [O'zbekcha tallaffuz].", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] absolute [O'zbekcha tallaffuz] ni tanlang.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Belgi burchakda, xuddi stikerdek.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n uchinchi bekat, [English pronunciation] hover [O'zbekcha tallaffuz]. Sichqoncha Yozilish tugmasiga kelganda, u biroz kattalashsin. [English pronunciation] transform [O'zbekcha tallaffuz] uchun qiymat yozing. Keyin tugma ustiga sichqonchani olib boring yoki bosing.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavslar kerak: [English pronunciation] scale [O'zbekcha tallaffuz], keyin qavs ichida son.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir yoki undan kichik son tugmani kattalashtirmaydi. Birdan biroz katta son yozing.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda katta! Bir yarimdan oshmasin.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tugmani aylantiradi, kattalashtirmaydi. [English pronunciation] scale [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tugmani suradi, kattalashtirmaydi. [English pronunciation] scale [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. [English pronunciation] scale [O'zbekcha tallaffuz] va qavs ichida son yozing.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kattalashtiruvchi [English pronunciation] transform [O'zbekcha tallaffuz] so'zi qaysi?", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] scale [O'zbekcha tallaffuz], qavs ichida birdan biroz katta son.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura! Sichqoncha kelganda tugma kattalashadi.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n to'rtinchi bekat, silliq o'tish. Tugma bir zumda sakrab kattalashyapti. U yumshoq kattalashsin: [English pronunciation] transition [O'zbekcha tallaffuz] uchun xususiyat va vaqtni yozing.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va vaqtni yozing.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yo'q: son va s harfi kerak.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtning birligi yo'q: s yoki ms.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu xususiyat o'zgarmayapti. Tugmada o'zgaradigani [English pronunciation] transform [O'zbekcha tallaffuz].", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda sekin, tugma uxlab qoldi. Uch soniyadan kam bo'lsin.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer buni tanimadi. Xususiyat, bo'sh joy va vaqt yozing.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima o'zgaradi va qancha vaqtda?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat [English pronunciation] transform [O'zbekcha tallaffuz], vaqt soniyada, masalan nol butun uch soniya.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Tugma endi yumshoq kattalashadi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n beshinchi bekat, animatsiya. Kodda aylanish retsepti bor, ya'ni [English pronunciation] keyframes [O'zbekcha tallaffuz] degani. Sarlavhadagi quyosh doim aylanib tursin. [English pronunciation] animation [O'zbekcha tallaffuz] ga retsept nomini yozing.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retsept nomini yozing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday nomli [English pronunciation] keyframes [O'zbekcha tallaffuz] yo'q. Nomini [English pronunciation] keyframes [O'zbekcha tallaffuz] qatoridan harfma-harf ko'chiring.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom bitta so'z bo'ladi, belgilarsiz.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retsept nomi [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin yozilgan.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nomi aylan.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] aylan deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, quyosh aylanyapti! Animatsiya tayyor.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'n oltinchi bekat, oxirgisi! Telefonda kartalar siqilib qoladi. Tor oynada ular ustma-ust tursin: [English pronunciation] flex-direction [O'zbekcha tallaffuz] uchun qiymat yozing. Keyin telefon va kompyuterni almashtirib ko'ring.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] row [O'zbekcha tallaffuz] bu qator, xuddi hozirgidek. Ustma-ust uchun boshqa so'z kerak.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib teskari bo'ldi. Oddiy ustun kerak.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. Ustun so'zini tekshiring.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ustun inglizcha qanday?", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ustun bu [English pronunciation] column [O'zbekcha tallaffuz].", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] column [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Telefonda kartalar ustma-ust, kompyuterda qatorda. Hamma o'n olti bekat tayyor!", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi eng qiyin sinov. Men saytni nusxaladim va kodda beshta xato qilib qo'ydim. Sahifaga qarang: nima buzuq? Har bir buzilgan qatorni bosing, istalgan tartibda.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Klass nomi katta harf bilan yozilgan edi. Brauzer uchun Karta va karta har xil nomlar.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Yuz yonida birlik yo'q edi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] flexbox [O'zbekcha tallaffuz] degan qiymat yo'q, [English pronunciation] flex [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! orang emas, [English pronunciation] orange [O'zbekcha tallaffuz].", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Ikki nuqta tushib qolgan edi.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifada nima buzuq: kartalar, rasm, menyu yoki tugma?", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buzuq joyning qoidasini toping va undagi har bir so'z va belgini tekshiring.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan qatorni bosing.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi beshtasi topildi! Siz xatolarni haqiqiy dasturchidek topasiz.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv, butun kurs bo'yicha. Men gap aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap qaysi mavzu haqida?", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: nuqta bu klass, [English pronunciation] padding [O'zbekcha tallaffuz] ichkarida, [English pronunciation] flex [O'zbekcha tallaffuz] ota elementga yoziladi, [English pronunciation] animation [O'zbekcha tallaffuz] retseptni nomi bilan chaqiradi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta bilan boshlangan selektor klassni tanlaydi.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: nuqta bu klass, panjara esa [English pronunciation] id [O'zbekcha tallaffuz].", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] padding [O'zbekcha tallaffuz] bu elementlar orasidagi tashqi masofa.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] padding [O'zbekcha tallaffuz] ichki masofa, tashqisi esa [English pronunciation] margin [O'zbekcha tallaffuz].", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display flex [O'zbekcha tallaffuz] kartalarning o'ziga emas, ularning ota elementiga yoziladi.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: ota element bolalarini qatorga qo'yadi.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] keyframes [O'zbekcha tallaffuz] ning o'zi elementni harakatga keltiradi, [English pronunciation] animation [O'zbekcha tallaffuz] shart emas.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida retsept o'zi ishlamaydi: [English pronunciation] animation [O'zbekcha tallaffuz] uni nomi bilan chaqirishi kerak.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qoida sakkiz yuz pikselli oynada ishlaydi.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida ishlamaydi: sakkiz yuz olti yuzdan katta, qoida uxlaydi.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz [English pronunciation] CSS [O'zbekcha tallaffuz] ni chuqur tushunasiz.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi sayt sizniki! Sahifa foni, tugma rangi va karta burchaklarini o'zingiz tanlang. Natija darrov sahifada ko'rinadi. Keyin Tayyorni bosing.", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchak uchun son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qirq pikseldan oshmasin, aks holda karta g'alati bo'ladi.", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat.", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi va ikkinchisiga rang, uchinchisiga [English pronunciation] px [O'zbekcha tallaffuz] dagi son.", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: lavender, tomato va o'n olti [English pronunciation] px [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Bu endi sizning lageringiz sayti.", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men ming qator kod kerak deb o'ylagandim? Keling, sanaymiz: o'n olti bekatda siz atigi yigirmataga yaqin qisqa qoida yozdingiz. Men adashibman! Ming qator ham, birovning shabloni ham kerak emas. Har bir qoidani tushunish kifoya.", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning saytingiz, o'z ranglaringiz bilan. Telefonda ham chiroyli!", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rang, fon va matn saytga kayfiyat beradi.", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'lcham, [English pronunciation] padding [O'zbekcha tallaffuz] va bezaklar elementlarni chiroyli qiladi.", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] display [O'zbekcha tallaffuz], Flexbox va [English pronunciation] position [O'zbekcha tallaffuz] hammasini joyiga qo'yadi.", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] hover [O'zbekcha tallaffuz], [English pronunciation] transition [O'zbekcha tallaffuz] va animatsiya saytni jonlantiradi, [English pronunciation] media [O'zbekcha tallaffuz] esa uni telefonga moslaydi.", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Siz [English pronunciation] CSS [O'zbekcha tallaffuz] kursini tugatdingiz va saytni boshidan oxirigacha o'zingiz qaytardingiz. Keyingi modulda sun'iy intellekt bilan tanishasiz va u yozgan kodni ham tushunadigan bo'lasiz. Ko'rishguncha!", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozda yetti kun: suzish, futbol va robotlar!", required: true },
+    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Смотри, это сайт нашего летнего лагеря. Зелёная шапка, меню, фото, карточки и кнопка, которая растёт под мышкой. Всё это нарисовал [English pronunciation] CSS [Русское произношение]. Сейчас отправлю его друзьям...", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! Что случилось? Весь [English pronunciation] CSS [Русское произношение] стёрся! Сайт чёрно-белый, всё свалилось друг под друга, фото не влезает в окно. Но ты знаешь все темы [English pronunciation] CSS [Русское произношение]. Давай вернём сайт вместе. Нажми Починить.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот наш путь: шестнадцать станций, по одной на каждый урок. На каждой станции ты вернёшь сайту одну часть.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Но сначала загадка. По-моему, чтобы вернуть такой сайт, нужна тысяча строк кода или чужой готовый шаблон. Как думаешь? Ответ посчитаем вместе в конце.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая станция, с самого начала. Помнишь, как устроено правило [English pronunciation] CSS [Русское произношение]? Пусть фон страницы будет светло-жёлтым. Собери правило из кусочков: нажимай их по порядку или перетаскивай в код.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После селектора сначала идёт открывающая фигурная скобка.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После скобки, свойство: что меняем? Нам нужен цвет фона.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После свойства идёт двоеточие.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] После двоеточия, значение: какой цвет?", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После значения, точка с запятой.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце правило закрывает фигурная скобка.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок: селектор, скобка, свойство, двоеточие, значение, точка с запятой, скобка.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на горящее пустое место в коде: какой кусочек сейчас на очереди?", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Ставь кусочки в том же порядке.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Странице вернулся тёплый фон. Первая станция готова!", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая станция, селекторы. Пусть надписи на карточках будут тёмно-синими, и больше ничего. Выбери селектор внизу и посмотри на страницу.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор тега выбрал все [English pronunciation] div [Русское произношение]: посинели и шапка, и меню. А нужны только карточки.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На странице нет элемента с [English pronunciation] id [Русское произношение] karta, поэтому ничего не изменилось. У карточек есть класс.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Чем карточки отличаются от остальных элементов?", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У карточек есть класс karta. Селектор класса начинается с точки.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбери селектор точка karta.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] В точку! Селектор класса выбрал только карточки.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья станция, цвета. Пусть шапка будет фирменного зелёного цвета лагеря. Код цвета есть в палитре: перепиши его.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши код цвета.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код начинается со знака решётки.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] hex [Русское произношение]-коде после решётки шесть знаков.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой цвет. Нужен цвет лагеря из палитры.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал этот цвет. Перепиши код из палитры знак за знаком.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Код цвета написан в палитре: решётка и шесть знаков.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала поставь решётку, потом шесть знаков из палитры.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перепиши образец под кодом и нажми Проверить.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Шапка зелёная, надпись белая. Третья станция готова.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четвёртая станция, фон. В шапку поставили картинку с горами, но она повторяется мелкими плитками. Пусть картинка будет одна и закроет всю шапку. Поставь слова на пустые места.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] repeat [Русское произношение], то есть повторяй: снова будут плитки. Нам нужно не повторять.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] cover [Русское произношение], слово размера, оно для [English pronunciation] background-size [Русское произношение] ниже. Здесь речь о повторе.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] repeat [Русское произношение], слово повтора, а не размера. Нужно слово закрыть всё.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первое пустое место, про повтор, второе, про размер.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не повторять, [English pronunciation] no-repeat [Русское произношение], закрыть всё, [English pronunciation] cover [Русское произношение].", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как в образце: сначала [English pronunciation] no-repeat [Русское произношение], потом [English pronunciation] cover [Русское произношение].", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Картинка закрыла всю шапку. А зелёный остался запасным: если картинка не загрузится, будет виден он.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятая станция, текст. Заголовок прилип к левому краю. Поставь его по центру: впиши значение выравнивания.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это значение не ставит заголовок по центру.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово выравнивания.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как будет центр по-английски?", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Центр, это [English pronunciation] center [Русское произношение].", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Заголовок по центру.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Шестая станция, размеры. Я написал картинке шестьсот пикселей, и она не влезает в окно. Пусть картинка будет такой же ширины, как окно: исправь значение в поле.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиксели всегда одинаковые: в маленьком окне картинка всё равно не влезет. Нужны проценты.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а единицы нет.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это только часть окна. Сколько процентов, вся ширина?", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и знак процента.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какая единица меняется вместе с окном?", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вся ширина, это сто процентов.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри поле, впиши сто и нажми знак процента.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Картинка ровно по окну.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Седьмая станция, Box Model. Надпись на карточках прилипла к краю. Дай ей место изнутри: впиши, какое свойство нужно.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши свойство.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] margin [Русское произношение], это отступ снаружи: карточки разошлись, а надпись всё ещё у края. Нужен отступ внутри.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] border [Русское произношение], это рамка, места внутри она не даёт.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это свойство не даёт места внутри.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это свойство.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть отступ внутри и снаружи: какой нужен?", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отступ внутри, это [English pronunciation] padding [Русское произношение].", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] padding [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! У надписи появилось место внутри.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Восьмая станция, красивые карточки. Карточкам нужны три украшения. Сначала нажми код слева, потом найди справа, как он выглядит.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] border-radius [Русское произношение] скругляет углы. У какой карточки круглые углы?", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] box-shadow [Русское произношение] кладёт тень под элемент. У какой карточки тень?", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] border-top [Русское произношение], только полоса сверху. У какой карточки полоса сверху?", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми код слева.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Да, круглые углы!", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Да, тень!", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Да, полоса сверху!", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри на первое слово каждого кода.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] radius, угол, shadow, тень, [English pronunciation] top [Русское произношение], верх.", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящий код, потом горящую карточку.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пары собраны! Карточки теперь круглые, с тенью и с полосой сверху.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Девятая станция, [English pronunciation] display [Русское произношение]. Пункты меню стоят друг под другом, каждый занимает всю строку. Пусть они встанут рядом в одну строку. Какое значение нужно?", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] block [Русское произношение] ставит каждый пункт с новой строки: ничего не изменилось.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] none [Русское произношение] совсем спрятал меню! А оно нам нужно.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое значение ставит элементы в строку и при этом сохраняет [English pronunciation] padding [Русское произношение]?", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это смесь [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение].", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбери [English pronunciation] inline-block [Русское произношение].", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Меню в одну строку.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Десятая станция, Flexbox. Карточки стоят друг под другом. Ими управляет родитель, то есть ряд. Пусть карточки встанут рядом: впиши значение [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого значения нет. Слово короче, без box.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это значение не ставит карточки в ряд.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни слово из десятого урока, которое ставит в ряд.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это слово [English pronunciation] flex [Русское произношение].", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] flex [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Карточки стоят в ряд.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Одиннадцатая станция, выравнивание. Карточки прижались влево. Пусть крайние карточки касаются краёв, а промежутки между ними будут равными. Какое значение?", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] flex-start [Русское произношение] собирает всё в начале, слева. Ничего не изменилось.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] center [Русское произношение] собрал всё в середине, по краям осталось пусто.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Где должно быть пустое место: по краям или между карточками?", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пустое место только между карточками. between, то есть между.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбери [English pronunciation] space-between [Русское произношение].", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Карточки ровно стоят по всему ряду.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Двенадцатая станция, позиционирование. На первой карточке есть значок Новое, но он стоит внутри текста. Пусть он выйдет в правый верхний угол карточки. У карточки уже [English pronunciation] relative [Русское произношение]. Какой [English pronunciation] position [Русское произношение] нужен значку?", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] static [Русское произношение], обычный поток: [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение] не работают, значок на месте.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] relative [Русское произношение] только чуть сдвинул значок с его места, он всё ещё в тексте.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значок должен выйти из потока и прилипнуть к углу карточки.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение, которое ставит относительно родителя,, [English pronunciation] absolute [Русское произношение].", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Выбери [English pronunciation] absolute [Русское произношение].", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Значок в углу, как наклейка.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тринадцатая станция, [English pronunciation] hover [Русское произношение]. Когда мышка наводится на кнопку Записаться, пусть она немного увеличивается. Впиши значение [English pronunciation] transform [Русское произношение]. Потом наведи мышку на кнопку или нажми её.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нужны скобки: [English pronunciation] scale [Русское произношение], потом число в скобках.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Единица и меньше кнопку не увеличат. Напиши число чуть больше единицы.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слишком большая! Не больше полутора.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это поворачивает кнопку, а не увеличивает. Нужен [English pronunciation] scale [Русское произношение].", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сдвигает кнопку, а не увеличивает. Нужен [English pronunciation] scale [Русское произношение].", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши [English pronunciation] scale [Русское произношение] и число в скобках.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какое слово [English pronunciation] transform [Русское произношение] увеличивает?", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] scale [Русское произношение] и в скобках число чуть больше единицы.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Кнопка увеличивается под мышкой.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Четырнадцатая станция, плавный переход. Кнопка увеличивается рывком. Пусть растёт мягко: впиши для [English pronunciation] transition [Русское произношение] свойство и время.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши свойство и время.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет времени: нужно число и буква s.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У времени нет единицы: s или ms.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это свойство не меняется. У кнопки меняется [English pronunciation] transform [Русское произношение].", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Слишком медленно, кнопка уснула. Пусть будет меньше трёх секунд.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер это не узнал. Напиши свойство, пробел и время.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что меняется и за какое время?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Свойство, [English pronunciation] transform [Русское произношение], время в секундах, например ноль целых три десятых.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Теперь кнопка растёт мягко.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятнадцатая станция, анимация. В коде есть рецепт вращения, то есть [English pronunciation] keyframes [Русское произношение]. Пусть солнце в заголовке всё время крутится. Впиши в [English pronunciation] animation [Русское произношение] имя рецепта.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя рецепта.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] keyframes [Русское произношение] с таким именем нет. Перепиши имя из строки [English pronunciation] keyframes [Русское произношение] буква в букву.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя, одно слово, без знаков.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя рецепта написано после слова [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Его имя, aylan.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши aylan и нажми Проверить.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ух ты, солнце крутится! Анимация готова.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Шестнадцатая станция, последняя! На телефоне карточки сжимаются. Пусть в узком окне они стоят друг под другом: впиши значение [English pronunciation] flex-direction [Русское произношение]. Потом переключи телефон и компьютер.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] row [Русское произношение], это ряд, как сейчас. Для друг под другом нужно другое слово.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок стал обратным. Нужен обычный столбик.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Проверь слово столбик.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как будет столбик по-английски?", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Столбик, это [English pronunciation] column [Русское произношение].", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] column [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На телефоне карточки столбиком, на компьютере в ряд. Все шестнадцать станций готовы!", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь самое трудное испытание. Я скопировал сайт и сделал в коде пять ошибок. Посмотри на страницу: что сломано? Нажми каждую сломанную строку, в любом порядке.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка работает: на странице видно, что она сделала. Что выглядит не так, как сказано в коде?", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Имя класса было с большой буквы. Для браузера Karta и karta, разные имена.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! У числа сто не было единицы.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Значения [English pronunciation] flexbox [Русское произношение] нет, нужен [English pronunciation] flex [Русское произношение].", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Не orang, а [English pronunciation] orange [Русское произношение].", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Пропало двоеточие.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что на странице сломано: карточки, фото, меню или кнопка?", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Найди правило сломанного места и проверь в нём каждое слово и знак.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую строку.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все пять найдены! Ты находишь ошибки как настоящий разработчик.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка по всему курсу. Я говорю фразу, а ты выбираешь: верно или неверно.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О какой теме эта фраза?", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: точка, это класс, [English pronunciation] padding [Русское произношение], внутри, [English pronunciation] flex [Русское произношение] пишут родителю, [English pronunciation] animation [Русское произношение] зовёт рецепт по имени.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор с точкой в начале выбирает класс.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: точка, это класс, а решётка, [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] padding [Русское произношение], это отступ снаружи, между элементами.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] padding [Русское произношение], отступ внутри, а снаружи, [English pronunciation] margin [Русское произношение].", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] display flex [Русское произношение] пишут не самим карточкам, а их родителю.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: родитель выстраивает своих детей в ряд.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] keyframes [Русское произношение] сам двигает элемент, [English pronunciation] animation [Русское произношение] не нужен.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле рецепт сам не работает: [English pronunciation] animation [Русское произношение] должен позвать его по имени.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это правило сработает в окне шириной восемьсот пикселей.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле нет: восемьсот больше шестисот, правило спит.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты по-настоящему понимаешь [English pronunciation] CSS [Русское произношение].", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сайт твой! Сам выбери фон страницы, цвет кнопки и скругление карточек. Результат сразу виден на странице. Потом нажми Готово.", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для углов напиши число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не больше сорока пикселей, иначе карточка станет странной.", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первые два, цвета, в третье, число в [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: lavender, tomato и 16[English pronunciation] px [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, классно! Теперь это сайт твоего лагеря.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я думал, что нужна тысяча строк? Давай посчитаем: на шестнадцати станциях ты написал всего около двадцати коротких правил. Я ошибся! Ни тысяча строк, ни чужой шаблон не нужны. Достаточно понимать каждое правило.", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой сайт, в твоих цветах. И на телефоне красиво!", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет, фон и текст задают сайту настроение.", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Размеры, [English pronunciation] padding [Русское произношение] и украшения делают элементы красивыми.", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] display [Русское произношение], Flexbox и [English pronunciation] position [Русское произношение] расставляют всё по местам.", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] hover [Русское произношение], [English pronunciation] transition [Русское произношение] и анимация оживляют сайт, а [English pronunciation] media [Русское произношение] подстраивает его под телефон.", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [warmly] Поздравляю! Ты прошёл курс [English pronunciation] CSS [Русское произношение] и сам вернул сайт от начала до конца. В следующем модуле познакомишься с искусственным интеллектом и научишься понимать код, который он пишет. До встречи!", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Семь дней лета: плавание, футбол и роботы!", required: true },
+    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Look, this is our summer camp site. A green header, a menu, a photo, cards and a button that grows under the mouse. CSS drew all of it. I’m about to send it to my friends...", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! What happened? All the CSS got erased! The site is black and white, everything is piled up, and the photo doesn’t fit the window. But you know every CSS topic. Let’s bring the site back together. Tap Fix it.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s our path: sixteen stops, one for each lesson. At each stop you’ll bring back one part of the site.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] But first, a riddle. I think bringing back a site like this takes a thousand lines of code, or someone else’s ready-made template. What do you think? We’ll count the answer together at the end.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop one, from the very start. Remember how a CSS rule is built? Make the page background light yellow. Build the rule from pieces: tap them in order or drag them into the code.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the selector comes the opening curly brace.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the brace comes the property: what are we changing? We need the background color.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the property comes a colon.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] After the colon comes the value: which color?", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the value comes a semicolon.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At the end, a closing curly brace.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order: selector, brace, property, colon, value, semicolon, brace.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the glowing empty spot in the code: which piece is next?", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Place the pieces in the same order.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The page has its warm background back. Stop one is done!", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop two, selectors. Make the text on the cards dark blue, and nothing else. Pick a selector below and look at the page.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The tag selector picked every div: the header and the menu turned blue too. We only need the cards.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no element with the id karta on the page, so nothing changed. The cards have a class.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What sets the cards apart from the other elements?", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cards have the class karta. A class selector starts with a dot.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick the selector dot karta.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Spot on! The class selector picked only the cards.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop three, colors. Make the header the camp’s green. The color code is in the palette: copy it.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the color code.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The code starts with a hash sign.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hex code has six characters after the hash.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different color. We need the camp color from the palette.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that color. Copy the palette code character by character.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The color code is in the palette: a hash and six characters.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put the hash first, then the six characters from the palette.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Copy the example under the code and tap Check.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The header is green and the text is white. Stop three is done.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop four, background. We put a mountain picture in the header, but it repeats like small tiles. Make it one picture covering the whole header. Put the words in the empty spots.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] repeat means repeat: tiles again. We need don’t repeat.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] cover is a size word, it goes in background-size below. This spot is about repeating.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] repeat is a repeating word, not a size. We need the word for covering everything.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first empty spot is about repeating, the second is about size.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t repeat is no-repeat; cover everything is cover.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Like the example: first no-repeat, then cover.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The picture covers the whole header. And the green stays as a backup: if the picture doesn’t load, you’ll see it.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop five, text. The heading is stuck to the left edge. Center it: type the alignment value.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That value doesn’t center the heading.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the alignment word.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English word for the middle?", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The middle is center.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type center and tap Check.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The heading is centered.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop six, sizes. I gave the picture six hundred pixels, and it doesn’t fit the window. Make the picture as wide as the window: fix the value in the field.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pixels always stay the same: in a small window the picture still won’t fit. We need percent.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no unit.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] That’s only part of the window. What percent is the whole width?", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and a percent sign.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which unit changes with the window?", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The whole width is a hundred percent.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Clear the field, type a hundred, then tap the percent sign.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The picture fits the window exactly.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop seven, Box Model. The text on the cards is stuck to the edge. Give it room on the inside: type which property you need.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the property.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] margin is the outside space: the cards moved apart, but the text is still at the edge. We need inside space.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] border is a frame, it doesn’t give room inside.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That property doesn’t give room inside.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that property.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] There’s inside and outside space: which one do we need?", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside space is called padding.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type padding and tap Check.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The text has room inside now.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop eight, pretty cards. The cards need three decorations. First tap a code on the left, then find on the right what it looks like.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] border-radius rounds the corners. Which card has round corners?", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] box-shadow puts a shadow under the element. Which card has a shadow?", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] border-top is only the line on top. Which card has a stripe on top?", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First tap a code on the left.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes, round corners!", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes, a shadow!", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes, a stripe on top!", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the first word of each code.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] radius is a corner, shadow is a shadow, top is the top.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing code, then the glowing card.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All matched! The cards are now rounded, with a shadow and a stripe on top.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Stop nine, display. The menu items are stacked, each one taking a whole line. Make them sit side by side on one line. Which value do you need?", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] block puts each item on a new line: nothing changed.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] none hid the menu completely! We need it.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which value puts elements in a line and still keeps their padding?", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s a mix of inline and block.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick inline-block.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The menu is on one line.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop ten, Flexbox. The cards are stacked. Their parent, the row, controls them. Make the cards stand side by side: type the value for display.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such value. The word is shorter, without box.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That value doesn’t put the cards in a row.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for display.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember the word from lesson ten that makes a row.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The word is flex.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type flex and tap Check.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The cards are in a row.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Stop eleven, alignment. The cards are squeezed to the left. Make the outer cards touch the edges with equal gaps between them. Which value?", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] flex-start gathers everything at the start, on the left. Nothing changed.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] center gathered everything in the middle, leaving empty space at the edges.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Where should the empty space go: at the edges or between the cards?", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The space goes only between the cards. between means between.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick space-between.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The cards are spread evenly across the row.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Stop twelve, positioning. The first card has a New badge, but it sits inside the text. Move it to the card’s top right corner. The card is already relative. Which position does the badge need?", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] static is the normal flow: top and right don’t work, the badge stays put.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] relative only nudged the badge from its spot, it’s still inside the text.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The badge has to leave the flow and stick to the card’s corner.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value that places it relative to the parent is absolute.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick absolute.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The badge is in the corner, like a sticker.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop thirteen, hover. When the mouse comes over the Sign up button, make it grow a little. Type the value for transform. Then move the mouse over the button or tap it.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You need brackets: scale, then a number in brackets.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One or less won’t make the button grow. Write a number a little bigger than one.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Too big! No more than one and a half.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That turns the button, it doesn’t make it bigger. We need scale.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That moves the button, it doesn’t make it bigger. We need scale.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write scale and a number in brackets.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which transform word makes things bigger?", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] scale with a number a little bigger than one in brackets.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! The button grows under the mouse.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop fourteen, smooth change. The button jumps bigger in an instant. Make it grow softly: type the property and the time for transition.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the property and the time.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no time: you need a number and the letter s.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time has no unit: s or ms.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That property doesn’t change. What changes on the button is transform.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Too slow, the button fell asleep. Keep it under three seconds.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that. Write the property, a space and the time.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What changes, and how fast?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The property is transform, the time in seconds, for example zero point three.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! Now the button grows smoothly.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop fifteen, animation. The code has a spinning recipe, that is keyframes. Make the sun in the heading spin all the time. Type the recipe’s name into animation.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the recipe’s name.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no keyframes with that name. Copy the name from the keyframes line letter by letter.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A name is one word, with no symbols.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The recipe’s name is written after the word keyframes.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Its name is aylan.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type aylan and tap Check.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, the sun is spinning! The animation is ready.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stop sixteen, the last one! On a phone the cards get squeezed. Make them stack in a narrow window: type the value for flex-direction. Then switch between phone and computer.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] row is a row, just like now. Stacking needs another word.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order got reversed. We need a plain column.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Check the word for column.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English word for a column?", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A column is column.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type column and tap Check.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! On a phone the cards stack, on a computer they’re in a row. All sixteen stops are done!", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the hardest test. I copied the site and made five mistakes in the code. Look at the page: what’s broken? Tap every broken line, in any order.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line works: you can see what it did on the page. What doesn’t look the way the code says?", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The class name had a capital letter. To the browser, Karta and karta are different names.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The hundred had no unit.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There’s no value flexbox, it’s flex.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! Not orang, but orange.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The colon was missing.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s broken on the page: the cards, the photo, the menu or the button?", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Find the rule for the broken spot and check every word and symbol in it.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing line.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All five found! You catch bugs like a real developer.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check of the whole course. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which topic is this sentence about?", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: a dot is a class, padding is inside, flex goes on the parent, and animation calls a recipe by name.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A selector starting with a dot picks a class.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: a dot is a class, and a hash is an id.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] padding is the outside space between elements.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually padding is the inside space, and the outside one is margin.", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display flex goes on the cards’ parent, not on the cards themselves.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: the parent lines up its children.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] keyframes moves the element by itself, animation isn’t needed.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the recipe does nothing on its own: animation has to call it by name.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This rule works in a window eight hundred pixels wide.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually no: eight hundred is more than six hundred, so the rule sleeps.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You really understand CSS.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the site is yours! Choose the page background, the button color and the card corners yourself. You’ll see the result right away. Then tap Done.", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For the corners write a number and px.", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No more than forty pixels, or the card will look odd.", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Colors in the first two, a number in px in the third.", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: lavender, tomato and 16px. Then tap Done.", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! Now this is your camp’s site.", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I thought it would take a thousand lines? Let’s count: across sixteen stops you wrote only about twenty short rules. I was wrong! No thousand lines, no one else’s template. Understanding each rule is enough.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your site, in your own colors. It looks good on a phone too!", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Color, background and text set the site’s mood.", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sizes, padding and decorations make the elements look good.", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] display, Flexbox and position put everything in its place.", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] hover, transition and animation bring the site to life, and media fits it to a phone.", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [warmly] Congratulations! You’ve finished the CSS course and brought the site back from start to finish yourself. In the next module you’ll meet artificial intelligence and learn to understand the code it writes. See you!", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Seven summer days: swimming, football and robots!", required: true },
+    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Qarang, bu yozgi lagerimiz sayti. Yashil shapka, menyu, rasm, kartalar va kattalashadigan tugma. Hammasini [English pronunciation] CSS [O'zbekcha tallaffuz] chizgan. Hozir uni do'stlarimga yuboraman...": "uz001",
+    "Voy! Nima bo'ldi? Hamma [English pronunciation] CSS [O'zbekcha tallaffuz] o'chib ketdi! Sayt oq-qora, hammasi bir-birining ustida, rasm oynaga sig'maydi. Lekin siz [English pronunciation] CSS [O'zbekcha tallaffuz] ning hamma mavzularini bilasiz. Keling, saytni birga tiklaymiz. Tuzatish tugmasini bosing.": "uz002",
+    "Mana bizning yo'limiz: o'n olti bekat, har bir darsga bittadan. Har bir bekatda saytning bir bo'lagini qaytarasiz.": "uz003",
+    "Lekin oldin topishmoq. Menimcha, bunday saytni qaytarish uchun ming qator kod kerak, yoki birovning tayyor shablonini olish kerak. Siz nima deb o'ylaysiz? Javobni oxirida birga sanab ko'ramiz.": "uz004",
+    "Birinchi bekat, eng boshidan. Esingizdami, [English pronunciation] CSS [O'zbekcha tallaffuz] qoidasi qanday tuziladi? Sahifa foni och sariq bo'lsin. Qoidani bo'laklardan yig'ing: ularni tartib bilan bosing yoki kodga suring.": "uz005",
+    "Selektordan keyin oldin ochuvchi figurali qavs keladi.": "uz006",
+    "Qavsdan keyin xususiyat: nimani o'zgartiramiz? Bizga fon rangi kerak.": "uz007",
+    "Xususiyatdan keyin ikki nuqta keladi.": "uz008",
+    "Ikki nuqtadan keyin qiymat: qanday rang?": "uz009",
+    "Qiymatdan keyin nuqtali vergul.": "uz010",
+    "Oxirida qoidani yopuvchi figurali qavs.": "uz011",
+    "Tartib: selektor, qavs, xususiyat, ikki nuqta, qiymat, nuqtali vergul, qavs.": "uz012",
+    "Kodda yonib turgan bo'sh joyga qarang: hozir qaysi bo'lak navbatda?": "uz013",
+    "Namuna kod ostida paydo bo'ldi. Bo'laklarni xuddi shu tartibda qo'ying.": "uz014",
+    "Zo'r! Sahifaga iliq fon qaytdi. Birinchi bekat tayyor!": "uz015",
+    "Ikkinchi bekat, selektorlar. Kartalardagi yozuvlar to'q ko'k bo'lsin, boshqa hech narsa emas. Pastdan selektorni tanlang va sahifaga qarang.": "uz016",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] selektori hamma [English pronunciation] div tag [O'zbekcha tallaffuz]-larini tanladi: shapka ham, menyu ham ko'k bo'lib qoldi. Bizga faqat kartalar kerak.": "uz017",
+    "Sahifada [English pronunciation] id [O'zbekcha tallaffuz] si karta bo'lgan element yo'q, shuning uchun hech narsa o'zgarmadi. Kartalarda klass bor.": "uz018",
+    "Kartalarni boshqa elementlardan nima ajratib turadi?": "uz019",
+    "Kartalarning klassi bor: karta. Klass selektori nuqta bilan boshlanadi.": "uz020",
+    "Nuqta karta selektorini tanlang.": "uz021",
+    "To'ppa-to'g'ri! Klass selektori faqat kartalarni tanladi.": "uz022",
+    "Uchinchi bekat, ranglar. Shapka lagerning yashil rangida bo'lsin. Rang kodi palitrada turibdi: uni ko'chirib yozing.": "uz023",
+    "Rang kodini yozing.": "uz024",
+    "Kod panjara belgisi bilan boshlanadi.": "uz025",
+    "Hex kodda panjaradan keyin oltita belgi bo'ladi.": "uz026",
+    "Bu boshqa rang. Palitradagi lager rangi kerak.": "uz027",
+    "Brauzer bu rangni tanimadi. Palitradagi kodni belgima-belgi ko'chiring.": "uz028",
+    "Rang kodi palitrada yozilgan: panjara va oltita belgi.": "uz029",
+    "Oldin panjara belgisini qo'ying, keyin palitradagi oltita belgini.": "uz030",
+    "Kod ostidagi namunani ko'chirib, Tekshirishni bosing.": "uz031",
+    "Ajoyib! Shapka yashil, yozuv oq. Uchinchi bekat tayyor.": "uz032",
+    "To'rtinchi bekat, fon. Shapkaga tog'li rasm qo'ydik, lekin u takrorlanib, kichkina plitkalardek bo'lib qoldi. Rasm bitta bo'lsin va butun shapkani qoplasin. So'zlarni bo'sh joylarga qo'ying.": "uz033",
+    "[English pronunciation] repeat [O'zbekcha tallaffuz] ya'ni takrorla degani: rasm yana plitkalar bo'ladi. Bizga takrorlamaslik kerak.": "uz034",
+    "[English pronunciation] cover [O'zbekcha tallaffuz] o'lcham so'zi, u pastdagi [English pronunciation] background-size [O'zbekcha tallaffuz] ga kerak. Bu yerda takrorlash haqida gap.": "uz035",
+    "[English pronunciation] repeat [O'zbekcha tallaffuz] takrorlash so'zi, o'lcham emas. Butun joyni qoplaydigan so'z kerak.": "uz036",
+    "Birinchi bo'sh joy takrorlash haqida, ikkinchisi o'lcham haqida.": "uz037",
+    "Takrorlamaslik [English pronunciation] no-repeat [O'zbekcha tallaffuz], butun joyni qoplash [English pronunciation] cover [O'zbekcha tallaffuz].": "uz038",
+    "Namunadagidek oldin [English pronunciation] no-repeat [O'zbekcha tallaffuz], keyin [English pronunciation] cover [O'zbekcha tallaffuz] ni qo'ying.": "uz039",
+    "Mana! Rasm butun shapkani qopladi. Yashil rang esa zaxirada qoldi: rasm yuklanmasa, u ko'rinadi.": "uz040",
+    "Beshinchi bekat, matn. Sarlavha chap chetga yopishib qolgan. Uni o'rtaga qo'ying: tekislash uchun qiymat yozing.": "uz041",
+    "Qiymatni yozing.": "uz042",
+    "Bu qiymat sarlavhani o'rtaga qo'ymaydi.": "uz043",
+    "Brauzer bu so'zni tanimadi. Tekislash so'zini tekshiring.": "uz044",
+    "O'rta inglizcha qanday bo'ladi?": "uz045",
+    "O'rta bu [English pronunciation] center [O'zbekcha tallaffuz].": "uz046",
+    "[English pronunciation] center [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz047",
+    "Barakalla! Sarlavha o'rtada.": "uz048",
+    "Oltinchi bekat, o'lchamlar. Men rasmga olti yuz piksel yozibman, u oynaga sig'mayapti. Rasm oyna qancha keng bo'lsa, shuncha keng bo'lsin: maydondagi qiymatni tuzating.": "uz049",
+    "Piksel doim bir xil: kichik oynada rasm baribir sig'maydi. Foiz kerak.": "uz050",
+    "Son bor, lekin birligi yo'q.": "uz051",
+    "Bu oynaning bir qismi. Butun en necha foiz?": "uz052",
+    "Brauzer bu qiymatni tanimadi. Son va foiz belgisini yozing.": "uz053",
+    "Oynaga qarab o'zgaradigan birlik qaysi?": "uz054",
+    "Butun en bu yuz foiz.": "uz055",
+    "Maydonni tozalab, yuz deb yozing, keyin foiz belgisini bosing.": "uz056",
+    "Zo'r! Rasm oynaga roppa-rosa sig'di.": "uz057",
+    "Yettinchi bekat, Box Model. Kartalardagi yozuv chetga yopishib turibdi. Ichkaridan joy bering: qaysi xususiyat kerakligini yozing.": "uz058",
+    "Xususiyatni yozing.": "uz059",
+    "[English pronunciation] margin [O'zbekcha tallaffuz] tashqi masofa: kartalar bir-biridan uzoqlashdi, lekin yozuv hamon chetda. Ichki masofa kerak.": "uz060",
+    "[English pronunciation] border [O'zbekcha tallaffuz] bu ramka, u ichkaridan joy bermaydi.": "uz061",
+    "Bu xususiyat ichkaridan joy bermaydi.": "uz062",
+    "Brauzer bu xususiyatni tanimadi.": "uz063",
+    "Ichki va tashqi masofa bor: qaysi biri kerak?": "uz064",
+    "Ichki masofa [English pronunciation] padding [O'zbekcha tallaffuz] deyiladi.": "uz065",
+    "[English pronunciation] padding [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz066",
+    "Ajoyib! Yozuvga ichkaridan joy bo'ldi.": "uz067",
+    "Sakkizinchi bekat, chiroyli kartalar. Kartalarga uchta bezak kerak. Oldin chapdan kodni bosing, keyin o'ngdan u beradigan ko'rinishni toping.": "uz068",
+    "[English pronunciation] border-radius [O'zbekcha tallaffuz] burchaklarni yumaloqlaydi. Qaysi kartaning burchagi yumaloq?": "uz069",
+    "[English pronunciation] box-shadow [O'zbekcha tallaffuz] element ostiga soya tushiradi. Qaysi karta soyali?": "uz070",
+    "[English pronunciation] border-top [O'zbekcha tallaffuz] faqat tepadagi chiziq. Qaysi kartada tepada chiziq bor?": "uz071",
+    "Oldin chapdagi kodni bosing.": "uz072",
+    "Ha, yumaloq burchaklar!": "uz073",
+    "Ha, soya!": "uz074",
+    "Ha, tepada chiziq!": "uz075",
+    "Har bir kodning birinchi so'ziga qarang.": "uz076",
+    "radius bu burchak, shadow bu soya, [English pronunciation] top [O'zbekcha tallaffuz] bu tepa.": "uz077",
+    "Yonib turgan kodni, keyin yonib turgan kartani bosing.": "uz078",
+    "Hammasi juft! Kartalar endi yumaloq, soyali va tepasida chizig'i bor.": "uz079",
+    "To'qqizinchi bekat, [English pronunciation] display [O'zbekcha tallaffuz]. Menyu bandlari ustma-ust turibdi, har biri butun qatorni egallagan. Ular bir qatorda yonma-yon tursin. Qaysi qiymat kerak?": "uz080",
+    "[English pronunciation] block [O'zbekcha tallaffuz] har bir bandni yangi qatorga qo'yadi: hech narsa o'zgarmadi.": "uz081",
+    "[English pronunciation] none [O'zbekcha tallaffuz] menyuni butunlay yashirdi! Bizga u kerak.": "uz082",
+    "Qaysi qiymat elementlarni bir qatorga qo'yadi va [English pronunciation] padding [O'zbekcha tallaffuz] ni ham saqlaydi?": "uz083",
+    "Bu [English pronunciation] inline [O'zbekcha tallaffuz] va [English pronunciation] block [O'zbekcha tallaffuz] ning aralashmasi.": "uz084",
+    "[English pronunciation] inline-block [O'zbekcha tallaffuz] ni tanlang.": "uz085",
+    "Zo'r! Menyu bir qatorda.": "uz086",
+    "O'ninchi bekat, Flexbox. Kartalar ustma-ust turibdi. Ularni ota element boshqaradi, ya'ni qator degani. Kartalar yonma-yon tursin: [English pronunciation] display [O'zbekcha tallaffuz] uchun qiymat yozing.": "uz087",
+    "Bunday qiymat yo'q. So'z qisqaroq: box siz.": "uz088",
+    "Bu qiymat kartalarni qatorga qo'ymaydi.": "uz089",
+    "Brauzer bu so'zni tanimadi. [English pronunciation] display [O'zbekcha tallaffuz] uchun so'zni tekshiring.": "uz090",
+    "O'ninchi darsdagi qatorga qo'yuvchi so'z esingizdami?": "uz091",
+    "Bu so'z [English pronunciation] flex [O'zbekcha tallaffuz].": "uz092",
+    "[English pronunciation] flex [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz093",
+    "Barakalla! Kartalar qatorda turibdi.": "uz094",
+    "O'n birinchi bekat, tekislash. Kartalar chapga qisilib qolgan. Chetdagi kartalar chetlarga tegsin, oralari esa teng bo'lsin. Qaysi qiymat?": "uz095",
+    "[English pronunciation] flex-start [O'zbekcha tallaffuz] hammasini boshiga, chapga to'playdi. Hech narsa o'zgarmadi.": "uz096",
+    "[English pronunciation] center [O'zbekcha tallaffuz] hammasini o'rtaga yig'di, chetlarda bo'sh joy qoldi.": "uz097",
+    "Bo'sh joy qayerda bo'lishi kerak: chetlardami yoki kartalar o'rtasidami?": "uz098",
+    "Bo'sh joy faqat kartalar o'rtasida. between ya'ni o'rtasida degani.": "uz099",
+    "[English pronunciation] space-between [O'zbekcha tallaffuz] ni tanlang.": "uz100",
+    "Ajoyib! Kartalar butun qator bo'ylab tekis turibdi.": "uz101",
+    "O'n ikkinchi bekat, joylashuv. Birinchi kartada Yangi belgisi bor, lekin u matn ichida turibdi. U kartaning o'ng tepa burchagiga chiqsin. Karta allaqachon [English pronunciation] relative [O'zbekcha tallaffuz]. Belgiga qaysi [English pronunciation] position [O'zbekcha tallaffuz] kerak?": "uz102",
+    "[English pronunciation] static [O'zbekcha tallaffuz] oddiy oqim: [English pronunciation] top [O'zbekcha tallaffuz] va [English pronunciation] right [O'zbekcha tallaffuz] ishlamaydi, belgi joyida qoldi.": "uz103",
+    "[English pronunciation] relative [O'zbekcha tallaffuz] belgini o'z joyidan biroz surdi xolos, u hamon matn ichida.": "uz104",
+    "Belgi oqimdan chiqib, kartaning burchagiga yopishishi kerak.": "uz105",
+    "Ota elementga nisbatan joy oladigan qiymat [English pronunciation] absolute [O'zbekcha tallaffuz].": "uz106",
+    "[English pronunciation] absolute [O'zbekcha tallaffuz] ni tanlang.": "uz107",
+    "Zo'r! Belgi burchakda, xuddi stikerdek.": "uz108",
+    "O'n uchinchi bekat, [English pronunciation] hover [O'zbekcha tallaffuz]. Sichqoncha Yozilish tugmasiga kelganda, u biroz kattalashsin. [English pronunciation] transform [O'zbekcha tallaffuz] uchun qiymat yozing. Keyin tugma ustiga sichqonchani olib boring yoki bosing.": "uz109",
+    "Qavslar kerak: [English pronunciation] scale [O'zbekcha tallaffuz], keyin qavs ichida son.": "uz110",
+    "Bir yoki undan kichik son tugmani kattalashtirmaydi. Birdan biroz katta son yozing.": "uz111",
+    "Juda katta! Bir yarimdan oshmasin.": "uz112",
+    "Bu tugmani aylantiradi, kattalashtirmaydi. [English pronunciation] scale [O'zbekcha tallaffuz] kerak.": "uz113",
+    "Bu tugmani suradi, kattalashtirmaydi. [English pronunciation] scale [O'zbekcha tallaffuz] kerak.": "uz114",
+    "Brauzer bu qiymatni tanimadi. [English pronunciation] scale [O'zbekcha tallaffuz] va qavs ichida son yozing.": "uz115",
+    "Kattalashtiruvchi [English pronunciation] transform [O'zbekcha tallaffuz] so'zi qaysi?": "uz116",
+    "[English pronunciation] scale [O'zbekcha tallaffuz], qavs ichida birdan biroz katta son.": "uz117",
+    "Ura! Sichqoncha kelganda tugma kattalashadi.": "uz118",
+    "O'n to'rtinchi bekat, silliq o'tish. Tugma bir zumda sakrab kattalashyapti. U yumshoq kattalashsin: [English pronunciation] transition [O'zbekcha tallaffuz] uchun xususiyat va vaqtni yozing.": "uz119",
+    "Xususiyat va vaqtni yozing.": "uz120",
+    "Vaqt yo'q: son va s harfi kerak.": "uz121",
+    "Vaqtning birligi yo'q: s yoki ms.": "uz122",
+    "Bu xususiyat o'zgarmayapti. Tugmada o'zgaradigani [English pronunciation] transform [O'zbekcha tallaffuz].": "uz123",
+    "Juda sekin, tugma uxlab qoldi. Uch soniyadan kam bo'lsin.": "uz124",
+    "Brauzer buni tanimadi. Xususiyat, bo'sh joy va vaqt yozing.": "uz125",
+    "Nima o'zgaradi va qancha vaqtda?": "uz126",
+    "Xususiyat [English pronunciation] transform [O'zbekcha tallaffuz], vaqt soniyada, masalan nol butun uch soniya.": "uz127",
+    "Mana! Tugma endi yumshoq kattalashadi.": "uz128",
+    "O'n beshinchi bekat, animatsiya. Kodda aylanish retsepti bor, ya'ni [English pronunciation] keyframes [O'zbekcha tallaffuz] degani. Sarlavhadagi quyosh doim aylanib tursin. [English pronunciation] animation [O'zbekcha tallaffuz] ga retsept nomini yozing.": "uz129",
+    "Retsept nomini yozing.": "uz130",
+    "Bunday nomli [English pronunciation] keyframes [O'zbekcha tallaffuz] yo'q. Nomini [English pronunciation] keyframes [O'zbekcha tallaffuz] qatoridan harfma-harf ko'chiring.": "uz131",
+    "Nom bitta so'z bo'ladi, belgilarsiz.": "uz132",
+    "Retsept nomi [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin yozilgan.": "uz133",
+    "Nomi aylan.": "uz134",
+    "aylan deb yozing va Tekshirishni bosing.": "uz135",
+    "Voy, quyosh aylanyapti! Animatsiya tayyor.": "uz136",
+    "O'n oltinchi bekat, oxirgisi! Telefonda kartalar siqilib qoladi. Tor oynada ular ustma-ust tursin: [English pronunciation] flex-direction [O'zbekcha tallaffuz] uchun qiymat yozing. Keyin telefon va kompyuterni almashtirib ko'ring.": "uz137",
+    "[English pronunciation] row [O'zbekcha tallaffuz] bu qator, xuddi hozirgidek. Ustma-ust uchun boshqa so'z kerak.": "uz138",
+    "Tartib teskari bo'ldi. Oddiy ustun kerak.": "uz139",
+    "Brauzer bu so'zni tanimadi. Ustun so'zini tekshiring.": "uz140",
+    "Ustun inglizcha qanday?": "uz141",
+    "Ustun bu [English pronunciation] column [O'zbekcha tallaffuz].": "uz142",
+    "[English pronunciation] column [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz143",
+    "Ajoyib! Telefonda kartalar ustma-ust, kompyuterda qatorda. Hamma o'n olti bekat tayyor!": "uz144",
+    "Endi eng qiyin sinov. Men saytni nusxaladim va kodda beshta xato qilib qo'ydim. Sahifaga qarang: nima buzuq? Har bir buzilgan qatorni bosing, istalgan tartibda.": "uz145",
+    "Bu qator ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz146",
+    "Topdingiz! Klass nomi katta harf bilan yozilgan edi. Brauzer uchun Karta va karta har xil nomlar.": "uz147",
+    "Topdingiz! Yuz yonida birlik yo'q edi.": "uz148",
+    "Topdingiz! [English pronunciation] flexbox [O'zbekcha tallaffuz] degan qiymat yo'q, [English pronunciation] flex [O'zbekcha tallaffuz] kerak.": "uz149",
+    "Topdingiz! orang emas, [English pronunciation] orange [O'zbekcha tallaffuz].": "uz150",
+    "Topdingiz! Ikki nuqta tushib qolgan edi.": "uz151",
+    "Sahifada nima buzuq: kartalar, rasm, menyu yoki tugma?": "uz152",
+    "Buzuq joyning qoidasini toping va undagi har bir so'z va belgini tekshiring.": "uz153",
+    "Yonib turgan qatorni bosing.": "uz154",
+    "Hammasi beshtasi topildi! Siz xatolarni haqiqiy dasturchidek topasiz.": "uz155",
+    "Endi tezkor tekshiruv, butun kurs bo'yicha. Men gap aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz156",
+    "Barakalla!": "uz157",
+    "Gap qaysi mavzu haqida?": "uz158",
+    "Esingizdami: nuqta bu klass, [English pronunciation] padding [O'zbekcha tallaffuz] ichkarida, [English pronunciation] flex [O'zbekcha tallaffuz] ota elementga yoziladi, [English pronunciation] animation [O'zbekcha tallaffuz] retseptni nomi bilan chaqiradi.": "uz159",
+    "Nuqta bilan boshlangan selektor klassni tanlaydi.": "uz160",
+    "To'g'ri: nuqta bu klass, panjara esa [English pronunciation] id [O'zbekcha tallaffuz].": "uz161",
+    "[English pronunciation] padding [O'zbekcha tallaffuz] bu elementlar orasidagi tashqi masofa.": "uz162",
+    "Aslida [English pronunciation] padding [O'zbekcha tallaffuz] ichki masofa, tashqisi esa [English pronunciation] margin [O'zbekcha tallaffuz].": "uz163",
+    "[English pronunciation] display flex [O'zbekcha tallaffuz] kartalarning o'ziga emas, ularning ota elementiga yoziladi.": "uz164",
+    "To'g'ri: ota element bolalarini qatorga qo'yadi.": "uz165",
+    "[English pronunciation] keyframes [O'zbekcha tallaffuz] ning o'zi elementni harakatga keltiradi, [English pronunciation] animation [O'zbekcha tallaffuz] shart emas.": "uz166",
+    "Aslida retsept o'zi ishlamaydi: [English pronunciation] animation [O'zbekcha tallaffuz] uni nomi bilan chaqirishi kerak.": "uz167",
+    "Bu qoida sakkiz yuz pikselli oynada ishlaydi.": "uz168",
+    "Aslida ishlamaydi: sakkiz yuz olti yuzdan katta, qoida uxlaydi.": "uz169",
+    "Hammasi to'g'ri! Siz [English pronunciation] CSS [O'zbekcha tallaffuz] ni chuqur tushunasiz.": "uz170",
+    "Endi sayt sizniki! Sahifa foni, tugma rangi va karta burchaklarini o'zingiz tanlang. Natija darrov sahifada ko'rinadi. Keyin Tayyorni bosing.": "uz171",
+    "Burchak uchun son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.": "uz172",
+    "Qirq pikseldan oshmasin, aks holda karta g'alati bo'ladi.": "uz173",
+    "Har bir maydonga bitta qiymat.": "uz174",
+    "Birinchi va ikkinchisiga rang, uchinchisiga [English pronunciation] px [O'zbekcha tallaffuz] dagi son.": "uz175",
+    "Masalan: lavender, tomato va o'n olti [English pronunciation] px [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz176",
+    "Voy, zo'r! Bu endi sizning lageringiz sayti.": "uz177",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men ming qator kod kerak deb o'ylagandim? Keling, sanaymiz: o'n olti bekatda siz atigi yigirmataga yaqin qisqa qoida yozdingiz. Men adashibman! Ming qator ham, birovning shabloni ham kerak emas. Har bir qoidani tushunish kifoya.": "uz178",
+    "Qarang, bu sizning saytingiz, o'z ranglaringiz bilan. Telefonda ham chiroyli!": "uz179",
+    "Rang, fon va matn saytga kayfiyat beradi.": "uz180",
+    "O'lcham, [English pronunciation] padding [O'zbekcha tallaffuz] va bezaklar elementlarni chiroyli qiladi.": "uz181",
+    "[English pronunciation] display [O'zbekcha tallaffuz], Flexbox va [English pronunciation] position [O'zbekcha tallaffuz] hammasini joyiga qo'yadi.": "uz182",
+    "[English pronunciation] hover [O'zbekcha tallaffuz], [English pronunciation] transition [O'zbekcha tallaffuz] va animatsiya saytni jonlantiradi, [English pronunciation] media [O'zbekcha tallaffuz] esa uni telefonga moslaydi.": "uz183",
+    "Tabriklayman! Siz [English pronunciation] CSS [O'zbekcha tallaffuz] kursini tugatdingiz va saytni boshidan oxirigacha o'zingiz qaytardingiz. Keyingi modulda sun'iy intellekt bilan tanishasiz va u yozgan kodni ham tushunadigan bo'lasiz. Ko'rishguncha!": "uz184",
+    "Voy, zo‘r!": "uz185",
+    "Ana! Chiqdi!": "uz186",
+    "Super!": "uz187",
+    "Qoyil!": "uz188",
+    "Ura!": "uz189",
+    "Zo‘r-ku!": "uz190",
+    "Yana bir bor urinib ko‘ring.": "uz191",
+    "Diqqat bilan qarang.": "uz192",
+    "Yaqin qoldingiz. Shoshilmang.": "uz193",
+    "Yozda yetti kun: suzish, futbol va robotlar!": "uz194",
+    "To'g'rimi?": "uz195",
+    "To'g'rimi yoki noto'g'rimi?": "uz196",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz197",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz198",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz199",
+  },
+  ru: {
+    "Привет! Смотри, это сайт нашего летнего лагеря. Зелёная шапка, меню, фото, карточки и кнопка, которая растёт под мышкой. Всё это нарисовал [English pronunciation] CSS [Русское произношение]. Сейчас отправлю его друзьям...": "ru001",
+    "Ой! Что случилось? Весь [English pronunciation] CSS [Русское произношение] стёрся! Сайт чёрно-белый, всё свалилось друг под друга, фото не влезает в окно. Но ты знаешь все темы [English pronunciation] CSS [Русское произношение]. Давай вернём сайт вместе. Нажми Починить.": "ru002",
+    "Вот наш путь: шестнадцать станций, по одной на каждый урок. На каждой станции ты вернёшь сайту одну часть.": "ru003",
+    "Но сначала загадка. По-моему, чтобы вернуть такой сайт, нужна тысяча строк кода или чужой готовый шаблон. Как думаешь? Ответ посчитаем вместе в конце.": "ru004",
+    "Первая станция, с самого начала. Помнишь, как устроено правило [English pronunciation] CSS [Русское произношение]? Пусть фон страницы будет светло-жёлтым. Собери правило из кусочков: нажимай их по порядку или перетаскивай в код.": "ru005",
+    "После селектора сначала идёт открывающая фигурная скобка.": "ru006",
+    "После скобки, свойство: что меняем? Нам нужен цвет фона.": "ru007",
+    "После свойства идёт двоеточие.": "ru008",
+    "После двоеточия, значение: какой цвет?": "ru009",
+    "После значения, точка с запятой.": "ru010",
+    "В конце правило закрывает фигурная скобка.": "ru011",
+    "Порядок: селектор, скобка, свойство, двоеточие, значение, точка с запятой, скобка.": "ru012",
+    "Посмотри на горящее пустое место в коде: какой кусочек сейчас на очереди?": "ru013",
+    "Образец появился под кодом. Ставь кусочки в том же порядке.": "ru014",
+    "Огонь! Странице вернулся тёплый фон. Первая станция готова!": "ru015",
+    "Вторая станция, селекторы. Пусть надписи на карточках будут тёмно-синими, и больше ничего. Выбери селектор внизу и посмотри на страницу.": "ru016",
+    "Селектор тега выбрал все [English pronunciation] div [Русское произношение]: посинели и шапка, и меню. А нужны только карточки.": "ru017",
+    "На странице нет элемента с [English pronunciation] id [Русское произношение] karta, поэтому ничего не изменилось. У карточек есть класс.": "ru018",
+    "Чем карточки отличаются от остальных элементов?": "ru019",
+    "У карточек есть класс karta. Селектор класса начинается с точки.": "ru020",
+    "Выбери селектор точка karta.": "ru021",
+    "В точку! Селектор класса выбрал только карточки.": "ru022",
+    "Третья станция, цвета. Пусть шапка будет фирменного зелёного цвета лагеря. Код цвета есть в палитре: перепиши его.": "ru023",
+    "Впиши код цвета.": "ru024",
+    "Код начинается со знака решётки.": "ru025",
+    "В [English pronunciation] hex [Русское произношение]-коде после решётки шесть знаков.": "ru026",
+    "Это другой цвет. Нужен цвет лагеря из палитры.": "ru027",
+    "Браузер не узнал этот цвет. Перепиши код из палитры знак за знаком.": "ru028",
+    "Код цвета написан в палитре: решётка и шесть знаков.": "ru029",
+    "Сначала поставь решётку, потом шесть знаков из палитры.": "ru030",
+    "Перепиши образец под кодом и нажми Проверить.": "ru031",
+    "Отлично! Шапка зелёная, надпись белая. Третья станция готова.": "ru032",
+    "Четвёртая станция, фон. В шапку поставили картинку с горами, но она повторяется мелкими плитками. Пусть картинка будет одна и закроет всю шапку. Поставь слова на пустые места.": "ru033",
+    "[English pronunciation] repeat [Русское произношение], то есть повторяй: снова будут плитки. Нам нужно не повторять.": "ru034",
+    "[English pronunciation] cover [Русское произношение], слово размера, оно для [English pronunciation] background-size [Русское произношение] ниже. Здесь речь о повторе.": "ru035",
+    "[English pronunciation] repeat [Русское произношение], слово повтора, а не размера. Нужно слово закрыть всё.": "ru036",
+    "Первое пустое место, про повтор, второе, про размер.": "ru037",
+    "Не повторять, [English pronunciation] no-repeat [Русское произношение], закрыть всё, [English pronunciation] cover [Русское произношение].": "ru038",
+    "Как в образце: сначала [English pronunciation] no-repeat [Русское произношение], потом [English pronunciation] cover [Русское произношение].": "ru039",
+    "Вот! Картинка закрыла всю шапку. А зелёный остался запасным: если картинка не загрузится, будет виден он.": "ru040",
+    "Пятая станция, текст. Заголовок прилип к левому краю. Поставь его по центру: впиши значение выравнивания.": "ru041",
+    "Впиши значение.": "ru042",
+    "Это значение не ставит заголовок по центру.": "ru043",
+    "Браузер не узнал это слово. Проверь слово выравнивания.": "ru044",
+    "Как будет центр по-английски?": "ru045",
+    "Центр, это [English pronunciation] center [Русское произношение].": "ru046",
+    "Впиши [English pronunciation] center [Русское произношение] и нажми Проверить.": "ru047",
+    "Молодец! Заголовок по центру.": "ru048",
+    "Шестая станция, размеры. Я написал картинке шестьсот пикселей, и она не влезает в окно. Пусть картинка будет такой же ширины, как окно: исправь значение в поле.": "ru049",
+    "Пиксели всегда одинаковые: в маленьком окне картинка всё равно не влезет. Нужны проценты.": "ru050",
+    "Число есть, а единицы нет.": "ru051",
+    "Это только часть окна. Сколько процентов, вся ширина?": "ru052",
+    "Браузер не узнал это значение. Напиши число и знак процента.": "ru053",
+    "Какая единица меняется вместе с окном?": "ru054",
+    "Вся ширина, это сто процентов.": "ru055",
+    "Сотри поле, впиши сто и нажми знак процента.": "ru056",
+    "Огонь! Картинка ровно по окну.": "ru057",
+    "Седьмая станция, Box Model. Надпись на карточках прилипла к краю. Дай ей место изнутри: впиши, какое свойство нужно.": "ru058",
+    "Впиши свойство.": "ru059",
+    "[English pronunciation] margin [Русское произношение], это отступ снаружи: карточки разошлись, а надпись всё ещё у края. Нужен отступ внутри.": "ru060",
+    "[English pronunciation] border [Русское произношение], это рамка, места внутри она не даёт.": "ru061",
+    "Это свойство не даёт места внутри.": "ru062",
+    "Браузер не узнал это свойство.": "ru063",
+    "Есть отступ внутри и снаружи: какой нужен?": "ru064",
+    "Отступ внутри, это [English pronunciation] padding [Русское произношение].": "ru065",
+    "Впиши [English pronunciation] padding [Русское произношение] и нажми Проверить.": "ru066",
+    "Отлично! У надписи появилось место внутри.": "ru067",
+    "Восьмая станция, красивые карточки. Карточкам нужны три украшения. Сначала нажми код слева, потом найди справа, как он выглядит.": "ru068",
+    "[English pronunciation] border-radius [Русское произношение] скругляет углы. У какой карточки круглые углы?": "ru069",
+    "[English pronunciation] box-shadow [Русское произношение] кладёт тень под элемент. У какой карточки тень?": "ru070",
+    "[English pronunciation] border-top [Русское произношение], только полоса сверху. У какой карточки полоса сверху?": "ru071",
+    "Сначала нажми код слева.": "ru072",
+    "Да, круглые углы!": "ru073",
+    "Да, тень!": "ru074",
+    "Да, полоса сверху!": "ru075",
+    "Смотри на первое слово каждого кода.": "ru076",
+    "radius, угол, shadow, тень, [English pronunciation] top [Русское произношение], верх.": "ru077",
+    "Нажми горящий код, потом горящую карточку.": "ru078",
+    "Все пары собраны! Карточки теперь круглые, с тенью и с полосой сверху.": "ru079",
+    "Девятая станция, [English pronunciation] display [Русское произношение]. Пункты меню стоят друг под другом, каждый занимает всю строку. Пусть они встанут рядом в одну строку. Какое значение нужно?": "ru080",
+    "[English pronunciation] block [Русское произношение] ставит каждый пункт с новой строки: ничего не изменилось.": "ru081",
+    "[English pronunciation] none [Русское произношение] совсем спрятал меню! А оно нам нужно.": "ru082",
+    "Какое значение ставит элементы в строку и при этом сохраняет [English pronunciation] padding [Русское произношение]?": "ru083",
+    "Это смесь [English pronunciation] inline [Русское произношение] и [English pronunciation] block [Русское произношение].": "ru084",
+    "Выбери [English pronunciation] inline-block [Русское произношение].": "ru085",
+    "Класс! Меню в одну строку.": "ru086",
+    "Десятая станция, Flexbox. Карточки стоят друг под другом. Ими управляет родитель, то есть ряд. Пусть карточки встанут рядом: впиши значение [English pronunciation] display [Русское произношение].": "ru087",
+    "Такого значения нет. Слово короче, без box.": "ru088",
+    "Это значение не ставит карточки в ряд.": "ru089",
+    "Браузер не узнал это слово. Проверь слово для [English pronunciation] display [Русское произношение].": "ru090",
+    "Вспомни слово из десятого урока, которое ставит в ряд.": "ru091",
+    "Это слово [English pronunciation] flex [Русское произношение].": "ru092",
+    "Впиши [English pronunciation] flex [Русское произношение] и нажми Проверить.": "ru093",
+    "Молодец! Карточки стоят в ряд.": "ru094",
+    "Одиннадцатая станция, выравнивание. Карточки прижались влево. Пусть крайние карточки касаются краёв, а промежутки между ними будут равными. Какое значение?": "ru095",
+    "[English pronunciation] flex-start [Русское произношение] собирает всё в начале, слева. Ничего не изменилось.": "ru096",
+    "[English pronunciation] center [Русское произношение] собрал всё в середине, по краям осталось пусто.": "ru097",
+    "Где должно быть пустое место: по краям или между карточками?": "ru098",
+    "Пустое место только между карточками. between, то есть между.": "ru099",
+    "Выбери [English pronunciation] space-between [Русское произношение].": "ru100",
+    "Отлично! Карточки ровно стоят по всему ряду.": "ru101",
+    "Двенадцатая станция, позиционирование. На первой карточке есть значок Новое, но он стоит внутри текста. Пусть он выйдет в правый верхний угол карточки. У карточки уже [English pronunciation] relative [Русское произношение]. Какой [English pronunciation] position [Русское произношение] нужен значку?": "ru102",
+    "[English pronunciation] static [Русское произношение], обычный поток: [English pronunciation] top [Русское произношение] и [English pronunciation] right [Русское произношение] не работают, значок на месте.": "ru103",
+    "[English pronunciation] relative [Русское произношение] только чуть сдвинул значок с его места, он всё ещё в тексте.": "ru104",
+    "Значок должен выйти из потока и прилипнуть к углу карточки.": "ru105",
+    "Значение, которое ставит относительно родителя,, [English pronunciation] absolute [Русское произношение].": "ru106",
+    "Выбери [English pronunciation] absolute [Русское произношение].": "ru107",
+    "Класс! Значок в углу, как наклейка.": "ru108",
+    "Тринадцатая станция, [English pronunciation] hover [Русское произношение]. Когда мышка наводится на кнопку Записаться, пусть она немного увеличивается. Впиши значение [English pronunciation] transform [Русское произношение]. Потом наведи мышку на кнопку или нажми её.": "ru109",
+    "Нужны скобки: [English pronunciation] scale [Русское произношение], потом число в скобках.": "ru110",
+    "Единица и меньше кнопку не увеличат. Напиши число чуть больше единицы.": "ru111",
+    "Слишком большая! Не больше полутора.": "ru112",
+    "Это поворачивает кнопку, а не увеличивает. Нужен [English pronunciation] scale [Русское произношение].": "ru113",
+    "Это сдвигает кнопку, а не увеличивает. Нужен [English pronunciation] scale [Русское произношение].": "ru114",
+    "Браузер не узнал это значение. Напиши [English pronunciation] scale [Русское произношение] и число в скобках.": "ru115",
+    "Какое слово [English pronunciation] transform [Русское произношение] увеличивает?": "ru116",
+    "[English pronunciation] scale [Русское произношение] и в скобках число чуть больше единицы.": "ru117",
+    "Ура! Кнопка увеличивается под мышкой.": "ru118",
+    "Четырнадцатая станция, плавный переход. Кнопка увеличивается рывком. Пусть растёт мягко: впиши для [English pronunciation] transition [Русское произношение] свойство и время.": "ru119",
+    "Впиши свойство и время.": "ru120",
+    "Нет времени: нужно число и буква s.": "ru121",
+    "У времени нет единицы: s или ms.": "ru122",
+    "Это свойство не меняется. У кнопки меняется [English pronunciation] transform [Русское произношение].": "ru123",
+    "Слишком медленно, кнопка уснула. Пусть будет меньше трёх секунд.": "ru124",
+    "Браузер это не узнал. Напиши свойство, пробел и время.": "ru125",
+    "Что меняется и за какое время?": "ru126",
+    "Свойство, [English pronunciation] transform [Русское произношение], время в секундах, например ноль целых три десятых.": "ru127",
+    "Вот! Теперь кнопка растёт мягко.": "ru128",
+    "Пятнадцатая станция, анимация. В коде есть рецепт вращения, то есть [English pronunciation] keyframes [Русское произношение]. Пусть солнце в заголовке всё время крутится. Впиши в [English pronunciation] animation [Русское произношение] имя рецепта.": "ru129",
+    "Впиши имя рецепта.": "ru130",
+    "[English pronunciation] keyframes [Русское произношение] с таким именем нет. Перепиши имя из строки [English pronunciation] keyframes [Русское произношение] буква в букву.": "ru131",
+    "Имя, одно слово, без знаков.": "ru132",
+    "Имя рецепта написано после слова [English pronunciation] keyframes [Русское произношение].": "ru133",
+    "Его имя, aylan.": "ru134",
+    "Впиши aylan и нажми Проверить.": "ru135",
+    "Ух ты, солнце крутится! Анимация готова.": "ru136",
+    "Шестнадцатая станция, последняя! На телефоне карточки сжимаются. Пусть в узком окне они стоят друг под другом: впиши значение [English pronunciation] flex-direction [Русское произношение]. Потом переключи телефон и компьютер.": "ru137",
+    "[English pronunciation] row [Русское произношение], это ряд, как сейчас. Для друг под другом нужно другое слово.": "ru138",
+    "Порядок стал обратным. Нужен обычный столбик.": "ru139",
+    "Браузер не узнал это слово. Проверь слово столбик.": "ru140",
+    "Как будет столбик по-английски?": "ru141",
+    "Столбик, это [English pronunciation] column [Русское произношение].": "ru142",
+    "Впиши [English pronunciation] column [Русское произношение] и нажми Проверить.": "ru143",
+    "Отлично! На телефоне карточки столбиком, на компьютере в ряд. Все шестнадцать станций готовы!": "ru144",
+    "Теперь самое трудное испытание. Я скопировал сайт и сделал в коде пять ошибок. Посмотри на страницу: что сломано? Нажми каждую сломанную строку, в любом порядке.": "ru145",
+    "Эта строка работает: на странице видно, что она сделала. Что выглядит не так, как сказано в коде?": "ru146",
+    "Есть! Имя класса было с большой буквы. Для браузера Karta и karta, разные имена.": "ru147",
+    "Есть! У числа сто не было единицы.": "ru148",
+    "Есть! Значения [English pronunciation] flexbox [Русское произношение] нет, нужен [English pronunciation] flex [Русское произношение].": "ru149",
+    "Есть! Не orang, а [English pronunciation] orange [Русское произношение].": "ru150",
+    "Есть! Пропало двоеточие.": "ru151",
+    "Что на странице сломано: карточки, фото, меню или кнопка?": "ru152",
+    "Найди правило сломанного места и проверь в нём каждое слово и знак.": "ru153",
+    "Нажми горящую строку.": "ru154",
+    "Все пять найдены! Ты находишь ошибки как настоящий разработчик.": "ru155",
+    "Теперь быстрая проверка по всему курсу. Я говорю фразу, а ты выбираешь: верно или неверно.": "ru156",
+    "Точно!": "ru157",
+    "О какой теме эта фраза?": "ru158",
+    "Вспомни: точка, это класс, [English pronunciation] padding [Русское произношение], внутри, [English pronunciation] flex [Русское произношение] пишут родителю, [English pronunciation] animation [Русское произношение] зовёт рецепт по имени.": "ru159",
+    "Селектор с точкой в начале выбирает класс.": "ru160",
+    "Верно: точка, это класс, а решётка, [English pronunciation] id [Русское произношение].": "ru161",
+    "[English pronunciation] padding [Русское произношение], это отступ снаружи, между элементами.": "ru162",
+    "На самом деле [English pronunciation] padding [Русское произношение], отступ внутри, а снаружи, [English pronunciation] margin [Русское произношение].": "ru163",
+    "[English pronunciation] display flex [Русское произношение] пишут не самим карточкам, а их родителю.": "ru164",
+    "Верно: родитель выстраивает своих детей в ряд.": "ru165",
+    "[English pronunciation] keyframes [Русское произношение] сам двигает элемент, [English pronunciation] animation [Русское произношение] не нужен.": "ru166",
+    "На самом деле рецепт сам не работает: [English pronunciation] animation [Русское произношение] должен позвать его по имени.": "ru167",
+    "Это правило сработает в окне шириной восемьсот пикселей.": "ru168",
+    "На самом деле нет: восемьсот больше шестисот, правило спит.": "ru169",
+    "Всё верно! Ты по-настоящему понимаешь [English pronunciation] CSS [Русское произношение].": "ru170",
+    "Теперь сайт твой! Сам выбери фон страницы, цвет кнопки и скругление карточек. Результат сразу виден на странице. Потом нажми Готово.": "ru171",
+    "Для углов напиши число и [English pronunciation] px [Русское произношение].": "ru172",
+    "Не больше сорока пикселей, иначе карточка станет странной.": "ru173",
+    "В каждое поле, одно значение.": "ru174",
+    "В первые два, цвета, в третье, число в [English pronunciation] px [Русское произношение].": "ru175",
+    "Например: lavender, tomato и 16[English pronunciation] px [Русское произношение]. Потом нажми Готово.": "ru176",
+    "Ого, классно! Теперь это сайт твоего лагеря.": "ru177",
+    "Вернёмся к загадке. Помнишь, я думал, что нужна тысяча строк? Давай посчитаем: на шестнадцати станциях ты написал всего около двадцати коротких правил. Я ошибся! Ни тысяча строк, ни чужой шаблон не нужны. Достаточно понимать каждое правило.": "ru178",
+    "Смотри, это твой сайт, в твоих цветах. И на телефоне красиво!": "ru179",
+    "Цвет, фон и текст задают сайту настроение.": "ru180",
+    "Размеры, [English pronunciation] padding [Русское произношение] и украшения делают элементы красивыми.": "ru181",
+    "[English pronunciation] display [Русское произношение], Flexbox и [English pronunciation] position [Русское произношение] расставляют всё по местам.": "ru182",
+    "[English pronunciation] hover [Русское произношение], [English pronunciation] transition [Русское произношение] и анимация оживляют сайт, а [English pronunciation] media [Русское произношение] подстраивает его под телефон.": "ru183",
+    "Поздравляю! Ты прошёл курс [English pronunciation] CSS [Русское произношение] и сам вернул сайт от начала до конца. В следующем модуле познакомишься с искусственным интеллектом и научишься понимать код, который он пишет. До встречи!": "ru184",
+    "Вау, классно!": "ru185",
+    "Есть! Получилось!": "ru186",
+    "Супер!": "ru187",
+    "Огонь!": "ru188",
+    "Ура!": "ru189",
+    "Вот это да!": "ru190",
+    "Попробуй ещё раз.": "ru191",
+    "Посмотри внимательно.": "ru192",
+    "Уже близко. Не спеши.": "ru193",
+    "Семь дней лета: плавание, футбол и роботы!": "ru194",
+    "Верно или нет?": "ru195",
+    "Верно или неверно?": "ru196",
+    "Здесь нужны только слова, без угловых скобок.": "ru197",
+    "Молодец!": "ru198",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru199",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru200",
+  },
+  en: {
+    "Hi! Look, this is our summer camp site. A green header, a menu, a photo, cards and a button that grows under the mouse. CSS drew all of it. I’m about to send it to my friends...": "en001",
+    "Oh no! What happened? All the CSS got erased! The site is black and white, everything is piled up, and the photo doesn’t fit the window. But you know every CSS topic. Let’s bring the site back together. Tap Fix it.": "en002",
+    "Here’s our path: sixteen stops, one for each lesson. At each stop you’ll bring back one part of the site.": "en003",
+    "But first, a riddle. I think bringing back a site like this takes a thousand lines of code, or someone else’s ready-made template. What do you think? We’ll count the answer together at the end.": "en004",
+    "Stop one, from the very start. Remember how a CSS rule is built? Make the page background light yellow. Build the rule from pieces: tap them in order or drag them into the code.": "en005",
+    "After the selector comes the opening curly brace.": "en006",
+    "After the brace comes the property: what are we changing? We need the background color.": "en007",
+    "After the property comes a colon.": "en008",
+    "After the colon comes the value: which color?": "en009",
+    "After the value comes a semicolon.": "en010",
+    "At the end, a closing curly brace.": "en011",
+    "The order: selector, brace, property, colon, value, semicolon, brace.": "en012",
+    "Look at the glowing empty spot in the code: which piece is next?": "en013",
+    "An example appeared under the code. Place the pieces in the same order.": "en014",
+    "Awesome! The page has its warm background back. Stop one is done!": "en015",
+    "Stop two, selectors. Make the text on the cards dark blue, and nothing else. Pick a selector below and look at the page.": "en016",
+    "The tag selector picked every div: the header and the menu turned blue too. We only need the cards.": "en017",
+    "There’s no element with the id karta on the page, so nothing changed. The cards have a class.": "en018",
+    "What sets the cards apart from the other elements?": "en019",
+    "The cards have the class karta. A class selector starts with a dot.": "en020",
+    "Pick the selector dot karta.": "en021",
+    "Spot on! The class selector picked only the cards.": "en022",
+    "Stop three, colors. Make the header the camp’s green. The color code is in the palette: copy it.": "en023",
+    "Type the color code.": "en024",
+    "The code starts with a hash sign.": "en025",
+    "A hex code has six characters after the hash.": "en026",
+    "That’s a different color. We need the camp color from the palette.": "en027",
+    "The browser didn’t recognize that color. Copy the palette code character by character.": "en028",
+    "The color code is in the palette: a hash and six characters.": "en029",
+    "Put the hash first, then the six characters from the palette.": "en030",
+    "Copy the example under the code and tap Check.": "en031",
+    "Great! The header is green and the text is white. Stop three is done.": "en032",
+    "Stop four, background. We put a mountain picture in the header, but it repeats like small tiles. Make it one picture covering the whole header. Put the words in the empty spots.": "en033",
+    "repeat means repeat: tiles again. We need don’t repeat.": "en034",
+    "cover is a size word, it goes in background-size below. This spot is about repeating.": "en035",
+    "repeat is a repeating word, not a size. We need the word for covering everything.": "en036",
+    "The first empty spot is about repeating, the second is about size.": "en037",
+    "Don’t repeat is no-repeat; cover everything is cover.": "en038",
+    "Like the example: first no-repeat, then cover.": "en039",
+    "There! The picture covers the whole header. And the green stays as a backup: if the picture doesn’t load, you’ll see it.": "en040",
+    "Stop five, text. The heading is stuck to the left edge. Center it: type the alignment value.": "en041",
+    "Type the value.": "en042",
+    "That value doesn’t center the heading.": "en043",
+    "The browser didn’t recognize that word. Check the alignment word.": "en044",
+    "What’s the English word for the middle?": "en045",
+    "The middle is center.": "en046",
+    "Type center and tap Check.": "en047",
+    "Well done! The heading is centered.": "en048",
+    "Stop six, sizes. I gave the picture six hundred pixels, and it doesn’t fit the window. Make the picture as wide as the window: fix the value in the field.": "en049",
+    "Pixels always stay the same: in a small window the picture still won’t fit. We need percent.": "en050",
+    "There’s a number but no unit.": "en051",
+    "That’s only part of the window. What percent is the whole width?": "en052",
+    "The browser didn’t recognize that value. Write a number and a percent sign.": "en053",
+    "Which unit changes with the window?": "en054",
+    "The whole width is a hundred percent.": "en055",
+    "Clear the field, type a hundred, then tap the percent sign.": "en056",
+    "Awesome! The picture fits the window exactly.": "en057",
+    "Stop seven, Box Model. The text on the cards is stuck to the edge. Give it room on the inside: type which property you need.": "en058",
+    "Type the property.": "en059",
+    "margin is the outside space: the cards moved apart, but the text is still at the edge. We need inside space.": "en060",
+    "border is a frame, it doesn’t give room inside.": "en061",
+    "That property doesn’t give room inside.": "en062",
+    "The browser didn’t recognize that property.": "en063",
+    "There’s inside and outside space: which one do we need?": "en064",
+    "Inside space is called padding.": "en065",
+    "Type padding and tap Check.": "en066",
+    "Great! The text has room inside now.": "en067",
+    "Stop eight, pretty cards. The cards need three decorations. First tap a code on the left, then find on the right what it looks like.": "en068",
+    "border-radius rounds the corners. Which card has round corners?": "en069",
+    "box-shadow puts a shadow under the element. Which card has a shadow?": "en070",
+    "border-top is only the line on top. Which card has a stripe on top?": "en071",
+    "First tap a code on the left.": "en072",
+    "Yes, round corners!": "en073",
+    "Yes, a shadow!": "en074",
+    "Yes, a stripe on top!": "en075",
+    "Look at the first word of each code.": "en076",
+    "radius is a corner, shadow is a shadow, top is the top.": "en077",
+    "Tap the glowing code, then the glowing card.": "en078",
+    "All matched! The cards are now rounded, with a shadow and a stripe on top.": "en079",
+    "Stop nine, display. The menu items are stacked, each one taking a whole line. Make them sit side by side on one line. Which value do you need?": "en080",
+    "block puts each item on a new line: nothing changed.": "en081",
+    "none hid the menu completely! We need it.": "en082",
+    "Which value puts elements in a line and still keeps their padding?": "en083",
+    "It’s a mix of inline and block.": "en084",
+    "Pick inline-block.": "en085",
+    "Great! The menu is on one line.": "en086",
+    "Stop ten, Flexbox. The cards are stacked. Their parent, the row, controls them. Make the cards stand side by side: type the value for display.": "en087",
+    "There’s no such value. The word is shorter, without box.": "en088",
+    "That value doesn’t put the cards in a row.": "en089",
+    "The browser didn’t recognize that word. Check the word for display.": "en090",
+    "Remember the word from lesson ten that makes a row.": "en091",
+    "The word is flex.": "en092",
+    "Type flex and tap Check.": "en093",
+    "Well done! The cards are in a row.": "en094",
+    "Stop eleven, alignment. The cards are squeezed to the left. Make the outer cards touch the edges with equal gaps between them. Which value?": "en095",
+    "flex-start gathers everything at the start, on the left. Nothing changed.": "en096",
+    "center gathered everything in the middle, leaving empty space at the edges.": "en097",
+    "Where should the empty space go: at the edges or between the cards?": "en098",
+    "The space goes only between the cards. between means between.": "en099",
+    "Pick space-between.": "en100",
+    "Great! The cards are spread evenly across the row.": "en101",
+    "Stop twelve, positioning. The first card has a New badge, but it sits inside the text. Move it to the card’s top right corner. The card is already relative. Which position does the badge need?": "en102",
+    "static is the normal flow: top and right don’t work, the badge stays put.": "en103",
+    "relative only nudged the badge from its spot, it’s still inside the text.": "en104",
+    "The badge has to leave the flow and stick to the card’s corner.": "en105",
+    "The value that places it relative to the parent is absolute.": "en106",
+    "Pick absolute.": "en107",
+    "Great! The badge is in the corner, like a sticker.": "en108",
+    "Stop thirteen, hover. When the mouse comes over the Sign up button, make it grow a little. Type the value for transform. Then move the mouse over the button or tap it.": "en109",
+    "You need brackets: scale, then a number in brackets.": "en110",
+    "One or less won’t make the button grow. Write a number a little bigger than one.": "en111",
+    "Too big! No more than one and a half.": "en112",
+    "That turns the button, it doesn’t make it bigger. We need scale.": "en113",
+    "That moves the button, it doesn’t make it bigger. We need scale.": "en114",
+    "The browser didn’t recognize that value. Write scale and a number in brackets.": "en115",
+    "Which transform word makes things bigger?": "en116",
+    "scale with a number a little bigger than one in brackets.": "en117",
+    "Hooray! The button grows under the mouse.": "en118",
+    "Stop fourteen, smooth change. The button jumps bigger in an instant. Make it grow softly: type the property and the time for transition.": "en119",
+    "Type the property and the time.": "en120",
+    "There’s no time: you need a number and the letter s.": "en121",
+    "The time has no unit: s or ms.": "en122",
+    "That property doesn’t change. What changes on the button is transform.": "en123",
+    "Too slow, the button fell asleep. Keep it under three seconds.": "en124",
+    "The browser didn’t recognize that. Write the property, a space and the time.": "en125",
+    "What changes, and how fast?": "en126",
+    "The property is transform, the time in seconds, for example zero point three.": "en127",
+    "There! Now the button grows smoothly.": "en128",
+    "Stop fifteen, animation. The code has a spinning recipe, that is keyframes. Make the sun in the heading spin all the time. Type the recipe’s name into animation.": "en129",
+    "Type the recipe’s name.": "en130",
+    "There’s no keyframes with that name. Copy the name from the keyframes line letter by letter.": "en131",
+    "A name is one word, with no symbols.": "en132",
+    "The recipe’s name is written after the word keyframes.": "en133",
+    "Its name is aylan.": "en134",
+    "Type aylan and tap Check.": "en135",
+    "Wow, the sun is spinning! The animation is ready.": "en136",
+    "Stop sixteen, the last one! On a phone the cards get squeezed. Make them stack in a narrow window: type the value for flex-direction. Then switch between phone and computer.": "en137",
+    "row is a row, just like now. Stacking needs another word.": "en138",
+    "The order got reversed. We need a plain column.": "en139",
+    "The browser didn’t recognize that word. Check the word for column.": "en140",
+    "What’s the English word for a column?": "en141",
+    "A column is column.": "en142",
+    "Type column and tap Check.": "en143",
+    "Great! On a phone the cards stack, on a computer they’re in a row. All sixteen stops are done!": "en144",
+    "Now the hardest test. I copied the site and made five mistakes in the code. Look at the page: what’s broken? Tap every broken line, in any order.": "en145",
+    "This line works: you can see what it did on the page. What doesn’t look the way the code says?": "en146",
+    "Found it! The class name had a capital letter. To the browser, Karta and karta are different names.": "en147",
+    "Found it! The hundred had no unit.": "en148",
+    "Found it! There’s no value flexbox, it’s flex.": "en149",
+    "Found it! Not orang, but orange.": "en150",
+    "Found it! The colon was missing.": "en151",
+    "What’s broken on the page: the cards, the photo, the menu or the button?": "en152",
+    "Find the rule for the broken spot and check every word and symbol in it.": "en153",
+    "Tap the glowing line.": "en154",
+    "All five found! You catch bugs like a real developer.": "en155",
+    "Now a quick check of the whole course. I say a sentence, and you choose: true or false.": "en156",
+    "Exactly!": "en157",
+    "Which topic is this sentence about?": "en158",
+    "Remember: a dot is a class, padding is inside, flex goes on the parent, and animation calls a recipe by name.": "en159",
+    "A selector starting with a dot picks a class.": "en160",
+    "Right: a dot is a class, and a hash is an id.": "en161",
+    "padding is the outside space between elements.": "en162",
+    "Actually padding is the inside space, and the outside one is margin.": "en163",
+    "display flex goes on the cards’ parent, not on the cards themselves.": "en164",
+    "Right: the parent lines up its children.": "en165",
+    "keyframes moves the element by itself, animation isn’t needed.": "en166",
+    "Actually the recipe does nothing on its own: animation has to call it by name.": "en167",
+    "This rule works in a window eight hundred pixels wide.": "en168",
+    "Actually no: eight hundred is more than six hundred, so the rule sleeps.": "en169",
+    "All correct! You really understand CSS.": "en170",
+    "Now the site is yours! Choose the page background, the button color and the card corners yourself. You’ll see the result right away. Then tap Done.": "en171",
+    "For the corners write a number and px.": "en172",
+    "No more than forty pixels, or the card will look odd.": "en173",
+    "One value in each field.": "en174",
+    "Colors in the first two, a number in px in the third.": "en175",
+    "For example: lavender, tomato and 16px. Then tap Done.": "en176",
+    "Wow, great! Now this is your camp’s site.": "en177",
+    "Back to our riddle. Remember, I thought it would take a thousand lines? Let’s count: across sixteen stops you wrote only about twenty short rules. I was wrong! No thousand lines, no one else’s template. Understanding each rule is enough.": "en178",
+    "Look, this is your site, in your own colors. It looks good on a phone too!": "en179",
+    "Color, background and text set the site’s mood.": "en180",
+    "Sizes, padding and decorations make the elements look good.": "en181",
+    "display, Flexbox and position put everything in its place.": "en182",
+    "hover, transition and animation bring the site to life, and media fits it to a phone.": "en183",
+    "Congratulations! You’ve finished the CSS course and brought the site back from start to finish yourself. In the next module you’ll meet artificial intelligence and learn to understand the code it writes. See you!": "en184",
+    "Wow, awesome!": "en185",
+    "Yes! You did it!": "en186",
+    "Super!": "en187",
+    "Brilliant!": "en188",
+    "Hooray!": "en189",
+    "Amazing!": "en190",
+    "Try once more.": "en191",
+    "Take a closer look.": "en192",
+    "You are close. No rush.": "en193",
+    "Seven summer days: swimming, football and robots!": "en194",
+    "True or false?": "en195",
+    "Only words here, no angle brackets.": "en196",
+    "Well done!": "en197",
+    "Everything in the window lives inside body.": "en198",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en199",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

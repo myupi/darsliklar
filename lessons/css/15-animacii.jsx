@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8053,15 +7604,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14763,3 +14307,1173 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c15-sheet .kz-br.c15-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 191, ru 193, en 192; всего знаков 66305. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Qarang, o'yinimning qahramoni to'q sariq kubik. Lekin u qotib turibdi, xuddi rasmdek. O'tgan darsda biz [English pronunciation] transition [O'zbekcha tallaffuz] bilan silliq o'zgarish qildik, lekin unga sichqoncha kerak edi. Men esa kubik o'zi, hech kim tegmasa ham sakrab tursin deyman. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Kubik o'zi sakrayapti, sichqonchasiz ham, to'xtamasdan.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni ikki narsa qildi. Birinchisi [English pronunciation] keyframes [O'zbekcha tallaffuz], ya'ni harakat rejasi degani: kubik boshida qayerda, o'rtada qayerda turadi. [English pronunciation] animation [O'zbekcha tallaffuz] esa shu rejani kubikka ulaydi. Pastdagi chiziq animatsiyaning nomini va vaqtini ko'rsatadi.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun narsalarni o'zi harakatlantirishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] animation [O'zbekcha tallaffuz] da nomni katta harf bilan yozgan edim: sakra emas, Sakra. Menimcha, bu bir xil so'z, baribir ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodga qarang: avval [English pronunciation] keyframes [O'zbekcha tallaffuz] rejasi paydo bo'ladi, keyin [English pronunciation] animation [O'zbekcha tallaffuz] qatori. Kubik qachon harakatlana boshlaydi?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] keyframes [O'zbekcha tallaffuz] harakat rejasini yozadi: from boshi, to oxiri. [English pronunciation] animation [O'zbekcha tallaffuz] esa shu rejani nomi bilan ishga tushiradi va vaqtini aytadi. [English pronunciation] infinite [O'zbekcha tallaffuz] bo'lsa, to'xtamaydi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Raqs harakatlari yozilgan qog'oz o'zi raqsga tushmaydi, kimdir uni ijro etishi kerak. [English pronunciation] keyframes [O'zbekcha tallaffuz] qog'oz, [English pronunciation] animation [O'zbekcha tallaffuz] esa raqqos.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Animatsiya ikki qismdan iborat: harakat rejasi va uni ishga tushiradigan qoida. Keling, bittadan qo'shamiz.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] keyframes [O'zbekcha tallaffuz], ya'ni kalit kadrlar degani. sakra bu rejaning nomi. from bo'yicha boshida kubik joyida, to bo'yicha oxirida yigirma piksel yuqorida. Lekin qarang, kubik qimirlamadi: reja bor, uni hech kim ishga tushirmadi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] animation [O'zbekcha tallaffuz]: rejaning nomi sakra va vaqt bir soniya. Kubik bir marta sakradi va joyiga qaytdi. Animatsiya tugadi.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] ya'ni cheksiz degani. Endi kubik to'xtamasdan sakraydi. Chiziqdagi cheksizlik belgisiga qarang.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] keyframes [O'zbekcha tallaffuz] harakatni rejalaydi, [English pronunciation] animation [O'zbekcha tallaffuz] esa uni nom bilan ulaydi va vaqtini aytadi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Tepada aylanish rejasi tayyor. Kubik aylansin: [English pronunciation] animation [O'zbekcha tallaffuz] ga rejaning nomini yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rejaning nomini yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar katta-kichikligi bilan farq qiladi. Nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek, aynan bir xil yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu nom emas. Nom [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin turibdi.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday reja yo'q. Nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] qatoridan qarang.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rejaning nomi [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin yozilgan.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U yerda aylan deb yozilgan.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] aylan deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Kubik ikki soniyada bir marta aylanyapti, to'xtamasdan.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang: [English pronunciation] transition [O'zbekcha tallaffuz] yoki [English pronunciation] animation [O'zbekcha tallaffuz].", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Narsa o'zi harakatlanadimi yoki sichqoncha kelganda o'zgaradimi?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'zi harakatlansa, bu [English pronunciation] animation [O'zbekcha tallaffuz]. Sichqoncha bilan silliq o'zgarsa, bu [English pronunciation] transition [O'zbekcha tallaffuz].", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuklanish doirasi to'xtamasdan aylanadi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U o'zi aylanadi, demak [English pronunciation] animation [O'zbekcha tallaffuz].", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha kelganda tugma silliq kattalashadi.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha bilan silliq o'zgarish, demak [English pronunciation] transition [O'zbekcha tallaffuz].", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yurakcha har soniyada urib turadi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U o'zi takrorlanadi, demak [English pronunciation] animation [O'zbekcha tallaffuz].", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sichqoncha kelganda havola rangi silliq o'zgaradi.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ham sichqoncha bilan silliq o'zgarish.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] transition [O'zbekcha tallaffuz] va [English pronunciation] animation [O'zbekcha tallaffuz] ni adashtirmaysiz.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kubikning pastga tushishiga qarang: avval birdaniga, keyin silliq. Oxirida necha marta sakraydi?", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kadrlarni foizda yozish mumkin: nol foiz boshi, ellik foiz o'rtasi, yuz foiz oxiri. [English pronunciation] infinite [O'zbekcha tallaffuz] o'rniga son yozilsa, animatsiya shuncha marta bo'ladi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Multfilm chizganda boshlang'ich, o'rtadagi va oxirgi kadrni chizasiz. [English pronunciation] keyframes [O'zbekcha tallaffuz] ham kalit kadrlarni shunday belgilaydi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, kubik sakraydi, lekin yuqoridan pastga birdaniga tushadi. Nega shunday? Keling, tuzatamiz.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] from va to faqat boshi va oxiri. Oxiriga yetgach, animatsiya yana boshidan boshlanadi, shuning uchun kubik pastga sakrab tushadi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kadrlar foizda: nol foiz bu boshi, ellik foiz bu o'rtasi, yuz foiz bu oxiri. O'rtada kubik tepada, oxirida yana pastda. Endi u silliq ko'tariladi va silliq tushadi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] o'rniga uch soni: kubik uch marta sakraydi va to'xtaydi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, foizlar bilan istalgan miqdorda kadr qo'yish mumkin, son esa necha marta takrorlanishini aytadi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Rejada boshi va oxiri bor, o'rtadagi kadrning foizi esa yo'q. Kubik o'rtada tepada bo'lishi kerak: foizni yozing.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Foizni yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin foiz belgisi yo'q. Busiz brauzer kadrni tashlab yuboradi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa joy. O'rtasi boshi va oxirining qoq o'rtasida.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga son va foiz belgisi kerak.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Boshi nol foiz, oxiri yuz foiz. O'rtasi-chi?", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'rtasi ellik foiz.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ellik deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Kubik silliq ko'tarilib, silliq tushyapti.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa animatsiya necha marta bo'lishini tanlang.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Vaqtdan keyin nima yozilgan?", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son necha marta ekanini aytadi. [English pronunciation] infinite [O'zbekcha tallaffuz] bo'lsa cheksiz, hech narsa bo'lmasa bir marta.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki soni turibdi: ikki marta.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] bu cheksiz degani.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son yo'q: animatsiya bir marta bo'ladi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Takrorlanishni bir qarashda o'qiysiz.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kubikka qarang: aylanishda u to'xtab qolyaptimi? O'ngga yurganda boshiga sakrayaptimi yoki qaytib keladimi?", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] linear [O'zbekcha tallaffuz] tezlikni tekis qiladi. [English pronunciation] alternate [O'zbekcha tallaffuz] esa animatsiyani borib-qaytadigan qiladi: bir safar oldinga, bir safar orqaga.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Soat strelkasi tekis aylanadi, bu [English pronunciation] linear [O'zbekcha tallaffuz]. Belanchak esa borib-qaytadi, bu [English pronunciation] alternate [O'zbekcha tallaffuz].", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Animatsiyada ham tezlikni va yo'nalishni tanlash mumkin. Hozir kubik ikki soniyada bir marta aylanadi. Har aylanishda u biroz to'xtab qolayotganini ko'ryapsizmi?", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] ease [O'zbekcha tallaffuz] edi: boshida va oxirida sekin. [English pronunciation] linear [O'zbekcha tallaffuz] bilan esa aylanish tekis, xuddi g'ildirakdek.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kubik o'ngga yuradi. Lekin har safar oxiriga yetgach, boshiga sakrab qaytadi.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] alternate [O'zbekcha tallaffuz] ya'ni navbatma-navbat degani: bir safar oldinga, bir safar orqaga. Endi kubik borib-qaytadi, sakramasdan.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] linear [O'zbekcha tallaffuz] tezlikni tekis qiladi, [English pronunciation] alternate [O'zbekcha tallaffuz] esa animatsiyani borib-qaytadigan qiladi.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz. Kubik g'ildirakdek tekis aylansin, to'xtab qolmasin: tezlik so'zini yozing.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tezlik so'zini yozing.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] ease [O'zbekcha tallaffuz] boshida va oxirida sekinlashadi. Bizga tekis tezlik kerak.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tezlik emas. Tezlik bir xil bo'ladigan so'z kerak.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu so'zni tanimadi. Tekis tezlik so'zini yozing.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Tekis tezlik inglizcha qanday?", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] linear [O'zbekcha tallaffuz].", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] linear [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kubik g'ildirakdek tekis aylanyapti.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kubikda yur animatsiyasi bir soniya turibdi. Men vazifani aytaman, siz esa nima yozish kerakligini tanlang.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Vazifa nima haqida: takrorlashmi, yo'nalishmi yoki tezlikmi?", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] bu cheksiz, son bu necha marta, [English pronunciation] alternate [O'zbekcha tallaffuz] bu borib-qaytish, [English pronunciation] linear [O'zbekcha tallaffuz] bu tekis tezlik.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik to'xtamasdan yursin.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'xtamasdan, ya'ni cheksiz degani.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik roppa-rosa uch marta yursin.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Necha marta bo'lsa, o'sha son yoziladi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik borib, yana qaytib kelsin.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Borib-qaytish bu [English pronunciation] alternate [O'zbekcha tallaffuz].", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik bir xil tezlikda yursin.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir xil tezlik bu [English pronunciation] linear [O'zbekcha tallaffuz].", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! [English pronunciation] animation [O'zbekcha tallaffuz] ni xohlaganingizdek sozlay olasiz.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har safar kodga va chiziqqa qarang: nom kulrangmi, vaqt bormi, kadrda foiz belgisi bormi?", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom ikki joyda harfma-harf bir xil bo'lishi kerak, vaqt yozilishi kerak, kadrlarda esa foiz belgisi turishi kerak.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Do'stingizni noto'g'ri ism bilan chaqirsangiz, u kelmaydi. Brauzer ham rejani faqat aniq nomi bilan topadi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Animatsiyada ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: kubik sakrayapti.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: [English pronunciation] animation [O'zbekcha tallaffuz] da nomda bitta harf yo'q. Brauzer bunday rejani topmadi, kubik to'xtadi. Chiziqda esa nom kulrang.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: vaqt yozilmagan. Unda animatsiya nol soniya davom etadi va hech narsa ko'rinmaydi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi: o'rtadagi kadrda foiz belgisi yo'q. Brauzer bu kadrni tashlab yubordi, boshi va oxiri esa bir xil, shuning uchun kubik qimirlamaydi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, nom aynan bir xil bo'lishi, vaqt yozilishi va kadrlarda foiz belgisi turishi kerak.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men kubik har soniyada sakrasin deb yozdim, lekin u qimirlamayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymatni yozing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt hali yo'q. Har soniyada sakrashi uchun bir soniya yozing.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son bor, lekin s harfi yo'q.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sonda vergul bor. Kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom katta harf bilan yozilgan. U [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek bo'lishi kerak.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom o'zgarib qoldi. Reja sakra deb nomlangan.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik to'xtamasdan sakrashi kerak: [English pronunciation] infinite [O'zbekcha tallaffuz] qolsin.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Nom, vaqt va [English pronunciation] infinite [O'zbekcha tallaffuz] ni tekshiring.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt boshqa. Har soniyada sakrashi uchun bir soniya kerak.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] [English pronunciation] animation [O'zbekcha tallaffuz] da nima yetishmayapti: nom, vaqt yoki takrorlash?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yo'q. Nomdan keyin vaqt yoziladi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] sakra, bo'sh joy, bir s, bo'sh joy, [English pronunciation] infinite [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Kubik har soniyada sakrayapti.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va chiziqqa qarang, keyin o'sha qoidani bosing.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Nomda harflar almashgan edi.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Vaqt yozilmagan edi.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik harakatlanyaptimi? Chiziqqa qarang.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chiziqda nom kulrang: bunday reja yo'q. [English pronunciation] animation [O'zbekcha tallaffuz] dagi nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] bilan solishtiring.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Chiziqda nol soniya. [English pronunciation] animation [O'zbekcha tallaffuz] da vaqt bormi?", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: aylna. O'sha qatorni bosing.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato oxirgi qoidada: vaqt yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz animatsiyalarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reja joyida: u faqat harakatni tasvirlaydi. Uni ishga tushiradigan [English pronunciation] animation [O'zbekcha tallaffuz] qatoriga qarang.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. aylan rejasi tayyor. Kubik uchun qoida yozing: aylan rejasi, ikki soniya, tekis tezlik va cheksiz.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor: nuqta va kubik klassi.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rejani [English pronunciation] animation [O'zbekcha tallaffuz] xususiyati ishga tushiradi.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Nom, vaqt va so'zlarni tekshiring.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek kichik harflar bilan bo'lishi kerak.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom boshqa. Reja aylan deb nomlangan.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtga s harfi kerak.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt yo'q. Ikki soniya yozing.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqt boshqa. Ikki soniya kerak.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tezlik tekis bo'lishi kerak: [English pronunciation] linear [O'zbekcha tallaffuz].", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kubik to'xtamasligi kerak: [English pronunciation] infinite [O'zbekcha tallaffuz].", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor kubik klassi, xususiyat [English pronunciation] animation [O'zbekcha tallaffuz], qiymatda esa nom, vaqt, tezlik va cheksiz.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat: aylan, ikki s, [English pronunciation] linear [O'zbekcha tallaffuz], [English pronunciation] infinite [O'zbekcha tallaffuz].", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kubik g'ildirakdek aylanyapti. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z animatsiyangizni yarating. Oxirida kubik qanday bo'lishini, qancha vaqt davom etishini va necha marta takrorlanishini o'zingiz tanlang. Keyin Tayyorni bosing.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nol soniyada hech narsa ko'rinmaydi. Noldan katta vaqt yozing.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu juda uzoq. Besh soniyadan kam yozing.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir maydonga bitta qiymat yozing.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisiga qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], ikkinchisiga vaqt, uchinchisiga [English pronunciation] infinite [O'zbekcha tallaffuz] yoki son.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: [English pronunciation] rotate [O'zbekcha tallaffuz] va qavs ichida qirq besh [English pronunciation] deg [O'zbekcha tallaffuz], keyin bir s va [English pronunciation] infinite [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, kubik jonlandi! Bu sizning o'z animatsiyangiz.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gap nima haqida: reja, ishga tushirish yoki nom?", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami: [English pronunciation] keyframes [O'zbekcha tallaffuz] faqat reja, [English pronunciation] animation [O'zbekcha tallaffuz] uni ishga tushiradi, [English pronunciation] infinite [O'zbekcha tallaffuz] cheksiz degani, nom esa harfma-harf bir xil bo'lishi kerak, katta va kichik harflar ham.", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat [English pronunciation] keyframes [O'zbekcha tallaffuz] ning o'zi kubikni harakatlantiradi.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] keyframes [O'zbekcha tallaffuz] faqat reja. Uni [English pronunciation] animation [O'zbekcha tallaffuz] ishga tushiradi.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] bilan animatsiya to'xtamaydi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] infinite [O'zbekcha tallaffuz] cheksiz degani.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Animatsiya sichqonchasiz ham ishlaydi.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: [English pronunciation] animation [O'zbekcha tallaffuz] o'zi ishlaydi, [English pronunciation] transition [O'zbekcha tallaffuz] dan farqli.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu kubik sakraydi.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] CSS [O'zbekcha tallaffuz] uchun Sakra va sakra har xil nomlar, ikkinchi darsdagi [English pronunciation] class [O'zbekcha tallaffuz] nomlari kabi. Brauzer rejani topmaydi va kubik joyida turadi.", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz animatsiyalarni yaxshi bilasiz.", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] animation [O'zbekcha tallaffuz] da nomni katta harf bilan yozgan edim? Qarang: kubik qimirlamayapti, chiziqda esa nom kulrang! Men adashibman. [English pronunciation] CSS [O'zbekcha tallaffuz] uchun katta va kichik harflar har xil, shuning uchun brauzer bunday rejani topmadi.", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nomni aynan [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek yozsak, kubik darrov sakraydi. Mana!", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning o'z animatsiyangiz!", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] keyframes [O'zbekcha tallaffuz] harakat rejasini yozadi.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] animation [O'zbekcha tallaffuz] shu rejani nom va vaqt bilan ishga tushiradi.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] infinite [O'zbekcha tallaffuz] yoki son necha marta takrorlanishini aytadi.", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom esa ikki joyda harfma-harf bir xil bo'lishi kerak.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi sahifangizdagi narsalar o'zi harakatlanadi. Keyingi darsda saytni telefonga moslashni o'rganamiz: katta ekranda ham, kichik ekranda ham chiroyli bo'ladi. Ko'rishguncha!", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu kubik o'yinning qahramoni.", required: true },
+    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rekord: 120 ochko.", required: true },
+    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] transition [O'zbekcha tallaffuz] yoki [English pronunciation] animation [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Buning uchun nima kerak?", required: true },
+    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'rtadagi kadr: necha foiz?", required: true },
+    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Necha marta?", required: true },
+    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Animatsiya necha marta bo'ladi?", required: true },
+    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nima yozish kerak?", required: true },
+    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi yoki noto'g'rimi?", required: true },
+    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Смотри, герой моей игры, оранжевый кубик. Но он застыл, как картинка. На прошлом уроке мы сделали плавное изменение через [English pronunciation] transition [Русское произношение], но ему нужна была мышка. А я хочу, чтобы кубик прыгал сам, даже если его никто не трогает. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Кубик прыгает сам, без мышки и без остановки.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделали две вещи. [English pronunciation] keyframes [Русское произношение], план движения, то есть где кубик в начале, где в середине. А [English pronunciation] animation [Русское произношение] подключает этот план к кубику. Полоса внизу показывает имя анимации и время.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься двигать вещи сами по себе. Но сначала загадка. В первый раз я написал имя в [English pronunciation] animation [Русское произношение] с большой буквы: не sakra, а Sakra. По-моему, это одно и то же слово, всё равно сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на код: сначала появляется план [English pronunciation] keyframes [Русское произношение], потом строка [English pronunciation] animation [Русское произношение]. Когда кубик начинает двигаться?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] keyframes [Русское произношение] записывает план движения: from, начало, to, конец. [English pronunciation] animation [Русское произношение] запускает этот план по имени и задаёт время. С [English pronunciation] infinite [Русское произношение] он не останавливается.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Листок с движениями танца сам не танцует, его должен кто-то исполнить. [English pronunciation] keyframes [Русское произношение], листок, [English pronunciation] animation [Русское произношение], танцор.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Анимация состоит из двух частей: плана движения и правила, которое его запускает. Давай добавим по одной.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это [English pronunciation] keyframes [Русское произношение], то есть ключевые кадры. sakra, имя плана. from, в начале кубик на месте, to, в конце на двадцать пикселей выше. Но смотри, кубик не двинулся: план есть, а запустить его некому.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь [English pronunciation] animation [Русское произношение]: имя плана sakra и время одна секунда. Кубик прыгнул один раз и вернулся. Анимация закончилась.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] infinite [Русское произношение], то есть бесконечно. Теперь кубик прыгает без остановки. Посмотри на знак бесконечности на полосе.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] keyframes [Русское произношение] задаёт план движения, а [English pronunciation] animation [Русское произношение] подключает его по имени и задаёт время.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Вверху готов план вращения. Пусть кубик крутится: впиши в [English pronunciation] animation [Русское произношение] имя плана.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя плана.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Большие и маленькие буквы различаются. Напиши имя точно так же, как в [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это не имя. Имя стоит сразу после слова [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого плана нет. Посмотри имя в строке [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя плана написано после слова [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Там написано aylan.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши aylan и нажми Проверить.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Кубик делает оборот за две секунды без остановки.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно: [English pronunciation] transition [Русское произношение] или [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вещь движется сама или меняется, когда приходит мышка?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Движется сама, [English pronunciation] animation [Русское произношение], плавно меняется под мышкой, [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кружок загрузки крутится без остановки.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Он крутится сам, значит, [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под мышкой кнопка плавно растёт.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плавное изменение под мышкой, это [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сердечко бьётся каждую секунду.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Оно повторяется само, значит, [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Под мышкой цвет ссылки плавно меняется.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это тоже плавное изменение под мышкой.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь [English pronunciation] transition [Русское произношение] и [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри, как кубик опускается: сначала рывком, потом плавно. А в конце, сколько раз он прыгает?", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кадры можно писать в процентах: ноль, начало, пятьдесят, середина, сто, конец. Вместо [English pronunciation] infinite [Русское произношение] можно написать число, столько раз и будет.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда рисуют мультфильм, рисуют первый, средний и последний кадр. [English pronunciation] keyframes [Русское произношение] отмечает ключевые кадры так же.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, кубик прыгает, но сверху вниз падает рывком. Почему так? Давай исправим.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] from и to, это только начало и конец. Дойдя до конца, анимация снова начинается с начала, поэтому кубик падает вниз рывком.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь кадры в процентах: ноль процентов, начало, пятьдесят, середина, сто, конец. В середине кубик наверху, в конце снова внизу. Теперь он плавно поднимается и плавно опускается.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вместо [English pronunciation] infinite [Русское произношение] число три: кубик прыгнет три раза и остановится.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, с процентами можно поставить сколько угодно кадров, а число говорит, сколько раз повторить.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. В плане есть начало и конец, а у кадра посередине нет процента. Кубик должен быть наверху в середине: впиши процент.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши процент.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а знака процента нет. Без него браузер выбросит кадр.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это другое место. Середина, ровно между началом и концом.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужно число и знак процента.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Начало, ноль процентов, конец, сто. А середина?", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Середина, пятьдесят процентов.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши пятьдесят, потом нажми внизу кнопку со знаком процента и Проверить.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Кубик плавно поднимается и плавно опускается.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу правило, а ты выбери, сколько раз будет анимация.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что написано после времени?", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число говорит, сколько раз, [English pronunciation] infinite [Русское произношение], без конца, а если ничего нет, один раз.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Стоит число два: два раза.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] infinite [Русское произношение], без конца.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Числа нет: анимация будет один раз.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты сразу видишь, сколько повторов.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на кубик: при вращении он притормаживает? Когда едет вправо, прыгает в начало или возвращается?", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] linear [Русское произношение] делает скорость ровной. А [English pronunciation] alternate [Русское произношение] делает анимацию туда и обратно: раз вперёд, раз назад.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Стрелка часов крутится ровно, это [English pronunciation] linear [Русское произношение]. Качели ходят туда и обратно, это [English pronunciation] alternate [Русское произношение].", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В анимации тоже можно выбрать скорость и направление. Сейчас кубик делает оборот за две секунды. Видишь, на каждом обороте он будто притормаживает?", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это был [English pronunciation] ease [Русское произношение]: в начале и в конце медленно. А с [English pronunciation] linear [Русское произношение] вращение ровное, как у колеса.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь кубик едет вправо. Но каждый раз, доехав до конца, прыгает обратно в начало.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] alternate [Русское произношение], то есть по очереди: раз вперёд, раз назад. Теперь кубик ездит туда и обратно, без рывков.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] linear [Русское произношение] делает скорость ровной, а [English pronunciation] alternate [Русское произношение], анимацию туда и обратно.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты. Пусть кубик крутится ровно, как колесо, без притормаживания: впиши слово скорости.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши слово скорости.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] ease [Русское произношение] замедляется в начале и в конце. А нам нужна ровная скорость.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это не скорость. Нужно слово, при котором скорость одинаковая.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это слово. Впиши слово ровной скорости.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как по-английски ровная скорость?", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это [English pronunciation] linear [Русское произношение].", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши [English pronunciation] linear [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кубик крутится ровно, как колесо.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. У кубика стоит анимация yur на одну секунду. Я скажу задачу, а ты выбери, что дописать.", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём задача: о повторах, о направлении или о скорости?", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] infinite [Русское произношение], без конца, число, сколько раз, [English pronunciation] alternate [Русское произношение], туда и обратно, [English pronunciation] linear [Русское произношение], ровно.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик должен ездить без остановки.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без остановки, значит, [English pronunciation] infinite [Русское произношение].", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик должен проехать ровно три раза.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сколько раз, то число и пишут.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик должен ездить туда и обратно.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Туда и обратно, это [English pronunciation] alternate [Русское произношение].", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик должен ехать с одинаковой скоростью.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одинаковая скорость, это [English pronunciation] linear [Русское произношение].", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты умеешь настроить [English pronunciation] animation [Русское произношение] как хочешь.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каждый раз смотри на код и на полосу: имя серое, есть ли время, есть ли знак процента у кадра?", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя в двух местах должно совпадать буква в букву, время должно быть написано, а у кадров нужен знак процента.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если позвать друга не тем именем, он не придёт. Браузер тоже находит план только по точному имени.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в анимации бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: кубик прыгает.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Первая: в имени в [English pronunciation] animation [Русское произношение] не хватает буквы. Браузер не нашёл такого плана, кубик встал. А на полосе имя серое.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: не написано время. Тогда анимация длится ноль секунд, и ничего не видно.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья: у кадра посередине нет знака процента. Браузер выбросил этот кадр, а начало и конец одинаковые, поэтому кубик не двигается.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, имя должно совпадать точно, время должно быть написано, а у кадров должен быть знак процента.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я хотел, чтобы кубик прыгал каждую секунду, а он не двигается! В поле, моё значение. Найди ошибку и исправь.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени всё ещё нет. Чтобы прыгать каждую секунду, напиши одну секунду.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число есть, а буквы s нет.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В числе запятая. Дробь пишут через точку.", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя написано с большой буквы. Оно должно быть как в [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя изменилось. План называется sakra.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик должен прыгать без остановки: оставь [English pronunciation] infinite [Русское произношение].", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь имя, время и [English pronunciation] infinite [Русское произношение].", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время другое. Нужно каждую секунду, то есть одна секунда.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Чего не хватает в [English pronunciation] animation [Русское произношение]: имени, времени или повторов?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет времени. После имени пишут время.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши sakra, пробел, 1s, пробел, [English pronunciation] infinite [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Кубик прыгает каждую секунду.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на полосу, потом нажми это правило.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В имени были переставлены буквы.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Не было написано время.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик двигается? Посмотри на полосу.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На полосе имя серое: такого плана нет. Сравни имя в [English pronunciation] animation [Русское произношение] с [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] На полосе ноль секунд. Есть ли время в [English pronunciation] animation [Русское произношение]?", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: aylna. Нажми эту строку.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в последнем правиле: нет времени. Нажми эту строку.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь анимации как настоящий разработчик.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] План в порядке: он только описывает движение. Посмотри на строку [English pronunciation] animation [Русское произношение], которая его запускает.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком. План aylan уже готов. Напиши правило для кубика: план aylan, две секунды, ровная скорость и без конца.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор: точка и класс кубика.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] План запускает свойство [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Проверь имя, время и слова.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя должно быть маленькими буквами, как в [English pronunciation] keyframes [Русское произношение].", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя другое. План называется aylan.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени нужна буква s.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет времени. Напиши две секунды.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Время другое. Нужно две секунды.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скорость должна быть ровной: [English pronunciation] linear [Русское произношение].", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кубик не должен останавливаться: [English pronunciation] infinite [Русское произношение].", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор, класс кубика, свойство, [English pronunciation] animation [Русское произношение], а в значении, имя, время, скорость и без конца.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение: aylan, 2s, [English pronunciation] linear [Русское произношение], [English pronunciation] infinite [Русское произношение].", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Кубик крутится как колесо. Правило написано тобой целиком.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свою анимацию. Сам выбери, каким кубик станет в конце, сколько это длится и сколько раз повторится. Потом нажми Готово.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Во времени запятая. Дробь пишут через точку.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Времени нужны s или [English pronunciation] ms [Русское произношение].", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] За ноль секунд ничего не видно. Напиши время больше нуля.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это слишком долго. Напиши меньше пяти секунд.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каждое поле, одно значение.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В первое, [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, во второе, время, в третье, [English pronunciation] infinite [Русское произношение] или число.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: [English pronunciation] rotate [Русское произношение] и в скобках сорок пять [English pronunciation] deg [Русское произношение], потом 1s и [English pronunciation] infinite [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, кубик ожил! Это твоя собственная анимация.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О чём фраза: о плане, о запуске или об имени?", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни: [English pronunciation] keyframes [Русское произношение], только план, [English pronunciation] animation [Русское произношение] его запускает, [English pronunciation] infinite [Русское произношение], без конца, а имя должно совпадать буква в букву, даже большие и маленькие буквы.", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Один только [English pronunciation] keyframes [Русское произношение] двигает кубик.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] keyframes [Русское произношение], только план. Запускает его [English pronunciation] animation [Русское произношение].", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] С [English pronunciation] infinite [Русское произношение] анимация не останавливается.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] infinite [Русское произношение] значит без конца.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Анимация работает и без мышки.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: [English pronunciation] animation [Русское произношение] работает сама, в отличие от [English pronunciation] transition [Русское произношение].", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот кубик будет прыгать.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле для [English pronunciation] CSS [Русское произношение] Sakra и sakra, разные имена, как имена классов во втором уроке. Браузер не найдёт план, и кубик будет стоять.", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в анимациях.", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал имя в [English pronunciation] animation [Русское произношение] с большой буквы? Смотри: кубик не двигается, а на полосе имя серое! Я ошибся. Для [English pronunciation] CSS [Русское произношение] большие и маленькие буквы, разные, поэтому браузер не нашёл такой план.", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напишем имя точно как в [English pronunciation] keyframes [Русское произношение], и кубик сразу прыгает. Вот!", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя собственная анимация!", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] keyframes [Русское произношение] записывает план движения.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] animation [Русское произношение] запускает этот план по имени и со временем.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] infinite [Русское произношение] или число говорят, сколько раз повторить.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А имя в двух местах должно совпадать буква в букву.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь вещи на твоей странице двигаются сами. На следующем уроке научимся подстраивать сайт под телефон: он будет красивым и на большом экране, и на маленьком. До встречи!", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот кубик, герой игры.", required: true },
+    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рекорд: 120 очков.", required: true },
+    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] transition [Русское произношение] или [English pronunciation] animation [Русское произношение]?", required: true },
+    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что для этого нужно?", required: true },
+    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Кадр посередине: сколько процентов?", required: true },
+    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сколько раз?", required: true },
+    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сколько раз будет анимация?", required: true },
+    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что дописать?", required: true },
+    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что нужно дописать?", required: true },
+    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или неверно?", required: true },
+    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! Look, the hero of my game is an orange cube. But it’s frozen, like a picture. Last lesson we made a smooth change with transition, but it needed the mouse. I want the cube to jump by itself, even when nobody touches it. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The cube jumps by itself, without the mouse and without stopping.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two things did it. keyframes is a movement plan, meaning where the cube is at the start and where in the middle. animation connects that plan to the cube. The bar below shows the animation’s name and time.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to make things move by themselves. But first, a riddle. The first time, I wrote the name in animation with a capital letter: Sakra instead of sakra. I think it’s the same word, so it’ll still work. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the code: first the keyframes plan appears, then the animation line. When does the cube start moving?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] keyframes writes the movement plan: from is the start, to is the end. animation starts that plan by name and sets the time. With infinite it never stops.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A sheet with dance moves doesn’t dance by itself; someone has to perform it. keyframes is the sheet, animation is the dancer.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An animation has two parts: a movement plan and a rule that starts it. Let’s add them one at a time.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is keyframes, meaning key frames. sakra is the plan’s name. from: at the start the cube is in place; to: at the end it’s twenty pixels higher. But look, the cube didn’t move: there’s a plan, but nothing starts it.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now animation: the plan’s name sakra and the time one second. The cube jumped once and came back. The animation ended.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] infinite means endless. Now the cube jumps without stopping. Look at the infinity sign on the bar.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So keyframes plans the movement, and animation connects it by name and sets the time.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. A spinning plan is ready at the top. Make the cube spin: type the plan’s name in animation.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the plan’s name.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Capital and small letters are different. Write the name exactly as in keyframes.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s not the name. The name comes right after the word keyframes.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such plan. Look for the name in the keyframes line.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The plan’s name is written after the word keyframes.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It says aylan there.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type aylan and tap Check.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The cube spins once every two seconds, non-stop.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll say a task, and you pick what’s needed: transition or animation.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does it move by itself, or change when the mouse comes?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Moves by itself: animation. Changes smoothly under the mouse: transition.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A loading circle spins non-stop.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It spins by itself, so it’s animation.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The button grows smoothly under the mouse.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A smooth change under the mouse is transition.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A heart beats every second.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It repeats by itself, so it’s animation.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A link’s color changes smoothly under the mouse.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a smooth change under the mouse too.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up transition and animation.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Watch how the cube comes down: first with a jerk, then smoothly. And at the end, how many times does it jump?", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Frames can be written in percent: zero is the start, fifty the middle, a hundred the end. Instead of infinite you can write a number: that many times.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When you draw a cartoon, you draw the first, middle and last frame. keyframes marks the key frames the same way.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, the cube jumps, but it drops from the top all at once. Why? Let’s fix it.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] from and to are just the start and the end. After reaching the end, the animation starts over, so the cube snaps back down.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the frames are in percent: zero percent is the start, fifty is the middle, a hundred is the end. In the middle the cube is up, at the end it’s down again. Now it rises and falls smoothly.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Instead of infinite, the number three: the cube jumps three times and stops.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So with percentages you can add as many frames as you like, and a number says how many times to repeat.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. The plan has a start and an end, but the middle frame has no percent. The cube should be up in the middle: type the percent.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the percent.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no percent sign. Without it the browser throws the frame away.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different spot. The middle is exactly between the start and the end.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This needs a number and a percent sign.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The start is zero percent, the end is a hundred. And the middle?", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The middle is fifty percent.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type fifty, then tap the percent sign button below and Check.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The cube rises and falls smoothly.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show a rule, and you pick how many times the animation runs.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s written after the time?", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A number says how many times, infinite means endlessly, and nothing means once.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s the number two: twice.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] infinite means endlessly.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No number: the animation runs once.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You read the repeats at a glance.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the cube: does it slow down while spinning? When it moves right, does it jump back to the start or come back?", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] linear makes the speed even. alternate makes the animation go there and back: once forward, once back.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A clock hand turns evenly: that’s linear. A swing goes back and forth: that’s alternate.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] You can choose speed and direction in an animation too. Right now the cube spins once every two seconds. See how it seems to slow down on every turn?", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That was ease: slow at the start and the end. With linear the spinning is even, like a wheel.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the cube moves right. But every time it reaches the end, it jumps back to the start.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] alternate means taking turns: once forward, once back. Now the cube goes there and back, without jumps.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So linear makes the speed even, and alternate makes the animation go there and back.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn. Make the cube spin evenly, like a wheel, without slowing down: type the speed word.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the speed word.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] ease slows down at the start and the end. We need an even speed.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s not a speed. We need the word that keeps the speed the same.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that word. Type the word for an even speed.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the English word for an even speed?", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s linear.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type linear and tap Check.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The cube spins evenly, like a wheel.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. The cube has the yur animation for one second. I’ll say a task, and you pick what to add.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the task about: repeats, direction or speed?", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] infinite is endless, a number is how many times, alternate is there and back, linear is even.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube should move non-stop.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Non-stop means infinite.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube should move exactly three times.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You write the number of times.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube should go there and come back.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There and back is alternate.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube should move at the same speed.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The same speed is linear.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You can set up animation however you like.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Each time, look at the code and the bar: is the name grey, is there a time, does the frame have a percent sign?", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name must match letter for letter in both places, the time must be written, and frames need a percent sign.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Call a friend by the wrong name and they won’t come. The browser also finds a plan only by its exact name.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Animations have mistakes too. Let’s look at three. Right now everything is correct: the cube is jumping.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The first: the name in animation is missing a letter. The browser found no such plan, and the cube stopped. The name on the bar is grey.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: no time is written. Then the animation lasts zero seconds, and you see nothing.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third: the middle frame has no percent sign. The browser threw that frame away, and the start and end are the same, so the cube doesn’t move.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the name must match exactly, the time must be written, and the frames need a percent sign.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wanted the cube to jump every second, but it doesn’t move! My value is in the field. Find the mistake and fix it.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still no time. To jump every second, write one second.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a number but no letter s.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a comma in the number. Decimals use a dot.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name has a capital letter. It must match keyframes.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name changed. The plan is called sakra.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube should jump non-stop: keep infinite.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the name, the time and infinite.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time is different. We need every second, that is one second.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s missing in animation: the name, the time or the repeats?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no time. The time goes after the name.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type sakra, space, 1s, space, infinite and tap Check.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray, it works! The cube jumps every second.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the bar, then tap that rule.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule doesn’t work?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: you can see what it did on the page. What doesn’t match the code?", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! Letters in the name were swapped.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The time wasn’t written.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Is the cube moving? Look at the bar.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name on the bar is grey: there’s no such plan. Compare the name in animation with keyframes.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The bar shows zero seconds. Is there a time in animation?", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: aylna. Tap that line.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the last rule: no time. Tap that line.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both found. You check animations like a real developer.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The plan is fine: it only describes the motion. Look at the animation line that starts it.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. The aylan plan is ready. Write a rule for the cube: the aylan plan, two seconds, an even speed and endlessly.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value inside curly braces.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector: a dot and the cube’s class.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The animation property starts the plan.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Check the name, the time and the words.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name must be in small letters, as in keyframes.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name is different. The plan is called aylan.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time needs the letter s.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no time. Write two seconds.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time is different. We need two seconds.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The speed should be even: linear.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The cube shouldn’t stop: infinite.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is the cube’s class, the property is animation, and the value has the name, time, speed and endlessly.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value: aylan, 2s, linear, infinite.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The cube spins like a wheel. You wrote the whole rule yourself.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own animation. Choose what the cube becomes at the end, how long it takes and how many times it repeats. Then tap Done.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a comma in the time. Decimals use a dot.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The time needs s or ms.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With zero seconds you see nothing. Write a time greater than zero.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s too long. Write less than five seconds.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One value in each field.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In the first, scale, rotate or translate with brackets and a number; in the second, a time; in the third, infinite or a number.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: rotate with forty-five deg in brackets, then 1s and infinite. Then tap Done.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, the cube came alive! This is your very own animation.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now a quick check. I say a sentence, and you choose: true or false.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s the sentence about: the plan, starting it or the name?", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: keyframes is only a plan, animation starts it, infinite is endless, and the name must match letter for letter, even capital and small letters.", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] keyframes alone moves the cube.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually keyframes is only a plan. animation starts it.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] With infinite the animation doesn’t stop.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: infinite means endless.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An animation works without the mouse too.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: animation runs by itself, unlike transition.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This cube will jump.", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually, to CSS Sakra and sakra are different names, like the class names in lesson two. The browser won’t find the plan, and the cube will stand still.", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know animations really well.", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrote the name in animation with a capital letter? Look: the cube doesn’t move, and the name on the bar is grey! I was wrong. To CSS, capital and small letters are different, so the browser couldn’t find that plan.", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the name exactly as in keyframes, and the cube jumps right away. There!", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your very own animation!", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] keyframes writes the movement plan.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] animation starts that plan by name, with a time.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] infinite or a number says how many times to repeat.", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the name must match letter for letter in both places.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now things on your page move by themselves. Next lesson we’ll learn to fit a site to a phone: it will look good on big and small screens alike. See you!", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This cube is the game’s hero.", required: true },
+    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Record: 120 points.", required: true },
+    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] transition or animation?", required: true },
+    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does this need?", required: true },
+    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The middle frame: what percent?", required: true },
+    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How many times?", required: true },
+    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How many times will the animation run?", required: true },
+    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What to add?", required: true },
+    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What do you need to add?", required: true },
+    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Qarang, o'yinimning qahramoni to'q sariq kubik. Lekin u qotib turibdi, xuddi rasmdek. O'tgan darsda biz [English pronunciation] transition [O'zbekcha tallaffuz] bilan silliq o'zgarish qildik, lekin unga sichqoncha kerak edi. Men esa kubik o'zi, hech kim tegmasa ham sakrab tursin deyman. Aylantirish tugmasini bosing.": "uz001",
+    "Mana! Kubik o'zi sakrayapti, sichqonchasiz ham, to'xtamasdan.": "uz002",
+    "Buni ikki narsa qildi. Birinchisi [English pronunciation] keyframes [O'zbekcha tallaffuz], ya'ni harakat rejasi degani: kubik boshida qayerda, o'rtada qayerda turadi. [English pronunciation] animation [O'zbekcha tallaffuz] esa shu rejani kubikka ulaydi. Pastdagi chiziq animatsiyaning nomini va vaqtini ko'rsatadi.": "uz003",
+    "Bugun narsalarni o'zi harakatlantirishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta [English pronunciation] animation [O'zbekcha tallaffuz] da nomni katta harf bilan yozgan edim: sakra emas, Sakra. Menimcha, bu bir xil so'z, baribir ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Kodga qarang: avval [English pronunciation] keyframes [O'zbekcha tallaffuz] rejasi paydo bo'ladi, keyin [English pronunciation] animation [O'zbekcha tallaffuz] qatori. Kubik qachon harakatlana boshlaydi?": "uz005",
+    "[English pronunciation] keyframes [O'zbekcha tallaffuz] harakat rejasini yozadi: from boshi, to oxiri. [English pronunciation] animation [O'zbekcha tallaffuz] esa shu rejani nomi bilan ishga tushiradi va vaqtini aytadi. [English pronunciation] infinite [O'zbekcha tallaffuz] bo'lsa, to'xtamaydi.": "uz006",
+    "Raqs harakatlari yozilgan qog'oz o'zi raqsga tushmaydi, kimdir uni ijro etishi kerak. [English pronunciation] keyframes [O'zbekcha tallaffuz] qog'oz, [English pronunciation] animation [O'zbekcha tallaffuz] esa raqqos.": "uz007",
+    "Animatsiya ikki qismdan iborat: harakat rejasi va uni ishga tushiradigan qoida. Keling, bittadan qo'shamiz.": "uz008",
+    "Bu [English pronunciation] keyframes [O'zbekcha tallaffuz], ya'ni kalit kadrlar degani. sakra bu rejaning nomi. from bo'yicha boshida kubik joyida, to bo'yicha oxirida yigirma piksel yuqorida. Lekin qarang, kubik qimirlamadi: reja bor, uni hech kim ishga tushirmadi.": "uz009",
+    "Endi [English pronunciation] animation [O'zbekcha tallaffuz]: rejaning nomi sakra va vaqt bir soniya. Kubik bir marta sakradi va joyiga qaytdi. Animatsiya tugadi.": "uz010",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] ya'ni cheksiz degani. Endi kubik to'xtamasdan sakraydi. Chiziqdagi cheksizlik belgisiga qarang.": "uz011",
+    "Demak, [English pronunciation] keyframes [O'zbekcha tallaffuz] harakatni rejalaydi, [English pronunciation] animation [O'zbekcha tallaffuz] esa uni nom bilan ulaydi va vaqtini aytadi.": "uz012",
+    "Endi navbat sizga. Tepada aylanish rejasi tayyor. Kubik aylansin: [English pronunciation] animation [O'zbekcha tallaffuz] ga rejaning nomini yozing.": "uz013",
+    "Rejaning nomini yozing.": "uz014",
+    "Harflar katta-kichikligi bilan farq qiladi. Nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek, aynan bir xil yozing.": "uz015",
+    "Bu nom emas. Nom [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin turibdi.": "uz016",
+    "Bunday reja yo'q. Nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] qatoridan qarang.": "uz017",
+    "Rejaning nomi [English pronunciation] keyframes [O'zbekcha tallaffuz] so'zidan keyin yozilgan.": "uz018",
+    "U yerda aylan deb yozilgan.": "uz019",
+    "aylan deb yozing va Tekshirishni bosing.": "uz020",
+    "Zo'r! Kubik ikki soniyada bir marta aylanyapti, to'xtamasdan.": "uz021",
+    "Endi o'zingizni sinab ko'ring. Men vazifani aytaman, siz esa nima kerakligini tanlang: [English pronunciation] transition [O'zbekcha tallaffuz] yoki [English pronunciation] animation [O'zbekcha tallaffuz].": "uz022",
+    "Narsa o'zi harakatlanadimi yoki sichqoncha kelganda o'zgaradimi?": "uz023",
+    "O'zi harakatlansa, bu [English pronunciation] animation [O'zbekcha tallaffuz]. Sichqoncha bilan silliq o'zgarsa, bu [English pronunciation] transition [O'zbekcha tallaffuz].": "uz024",
+    "Yuklanish doirasi to'xtamasdan aylanadi.": "uz025",
+    "U o'zi aylanadi, demak [English pronunciation] animation [O'zbekcha tallaffuz].": "uz026",
+    "Sichqoncha kelganda tugma silliq kattalashadi.": "uz027",
+    "Sichqoncha bilan silliq o'zgarish, demak [English pronunciation] transition [O'zbekcha tallaffuz].": "uz028",
+    "Yurakcha har soniyada urib turadi.": "uz029",
+    "U o'zi takrorlanadi, demak [English pronunciation] animation [O'zbekcha tallaffuz].": "uz030",
+    "Sichqoncha kelganda havola rangi silliq o'zgaradi.": "uz031",
+    "Bu ham sichqoncha bilan silliq o'zgarish.": "uz032",
+    "Barakalla!": "uz033",
+    "Hammasi to'g'ri! [English pronunciation] transition [O'zbekcha tallaffuz] va [English pronunciation] animation [O'zbekcha tallaffuz] ni adashtirmaysiz.": "uz034",
+    "Kubikning pastga tushishiga qarang: avval birdaniga, keyin silliq. Oxirida necha marta sakraydi?": "uz035",
+    "Kadrlarni foizda yozish mumkin: nol foiz boshi, ellik foiz o'rtasi, yuz foiz oxiri. [English pronunciation] infinite [O'zbekcha tallaffuz] o'rniga son yozilsa, animatsiya shuncha marta bo'ladi.": "uz036",
+    "Multfilm chizganda boshlang'ich, o'rtadagi va oxirgi kadrni chizasiz. [English pronunciation] keyframes [O'zbekcha tallaffuz] ham kalit kadrlarni shunday belgilaydi.": "uz037",
+    "Qarang, kubik sakraydi, lekin yuqoridan pastga birdaniga tushadi. Nega shunday? Keling, tuzatamiz.": "uz038",
+    "from va to faqat boshi va oxiri. Oxiriga yetgach, animatsiya yana boshidan boshlanadi, shuning uchun kubik pastga sakrab tushadi.": "uz039",
+    "Endi kadrlar foizda: nol foiz bu boshi, ellik foiz bu o'rtasi, yuz foiz bu oxiri. O'rtada kubik tepada, oxirida yana pastda. Endi u silliq ko'tariladi va silliq tushadi.": "uz040",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] o'rniga uch soni: kubik uch marta sakraydi va to'xtaydi.": "uz041",
+    "Demak, foizlar bilan istalgan miqdorda kadr qo'yish mumkin, son esa necha marta takrorlanishini aytadi.": "uz042",
+    "Endi siz. Rejada boshi va oxiri bor, o'rtadagi kadrning foizi esa yo'q. Kubik o'rtada tepada bo'lishi kerak: foizni yozing.": "uz043",
+    "Foizni yozing.": "uz044",
+    "Son bor, lekin foiz belgisi yo'q. Busiz brauzer kadrni tashlab yuboradi.": "uz045",
+    "Bu boshqa joy. O'rtasi boshi va oxirining qoq o'rtasida.": "uz046",
+    "Bu yerga son va foiz belgisi kerak.": "uz047",
+    "Boshi nol foiz, oxiri yuz foiz. O'rtasi-chi?": "uz048",
+    "O'rtasi ellik foiz.": "uz049",
+    "Ellik deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.": "uz050",
+    "Barakalla! Kubik silliq ko'tarilib, silliq tushyapti.": "uz051",
+    "Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa animatsiya necha marta bo'lishini tanlang.": "uz052",
+    "Vaqtdan keyin nima yozilgan?": "uz053",
+    "Son necha marta ekanini aytadi. [English pronunciation] infinite [O'zbekcha tallaffuz] bo'lsa cheksiz, hech narsa bo'lmasa bir marta.": "uz054",
+    "Ikki soni turibdi: ikki marta.": "uz055",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] bu cheksiz degani.": "uz056",
+    "Son yo'q: animatsiya bir marta bo'ladi.": "uz057",
+    "Hammasi to'g'ri! Takrorlanishni bir qarashda o'qiysiz.": "uz058",
+    "Kubikka qarang: aylanishda u to'xtab qolyaptimi? O'ngga yurganda boshiga sakrayaptimi yoki qaytib keladimi?": "uz059",
+    "[English pronunciation] linear [O'zbekcha tallaffuz] tezlikni tekis qiladi. [English pronunciation] alternate [O'zbekcha tallaffuz] esa animatsiyani borib-qaytadigan qiladi: bir safar oldinga, bir safar orqaga.": "uz060",
+    "Soat strelkasi tekis aylanadi, bu [English pronunciation] linear [O'zbekcha tallaffuz]. Belanchak esa borib-qaytadi, bu [English pronunciation] alternate [O'zbekcha tallaffuz].": "uz061",
+    "Animatsiyada ham tezlikni va yo'nalishni tanlash mumkin. Hozir kubik ikki soniyada bir marta aylanadi. Har aylanishda u biroz to'xtab qolayotganini ko'ryapsizmi?": "uz062",
+    "Bu [English pronunciation] ease [O'zbekcha tallaffuz] edi: boshida va oxirida sekin. [English pronunciation] linear [O'zbekcha tallaffuz] bilan esa aylanish tekis, xuddi g'ildirakdek.": "uz063",
+    "Endi kubik o'ngga yuradi. Lekin har safar oxiriga yetgach, boshiga sakrab qaytadi.": "uz064",
+    "[English pronunciation] alternate [O'zbekcha tallaffuz] ya'ni navbatma-navbat degani: bir safar oldinga, bir safar orqaga. Endi kubik borib-qaytadi, sakramasdan.": "uz065",
+    "Demak, [English pronunciation] linear [O'zbekcha tallaffuz] tezlikni tekis qiladi, [English pronunciation] alternate [O'zbekcha tallaffuz] esa animatsiyani borib-qaytadigan qiladi.": "uz066",
+    "Endi siz. Kubik g'ildirakdek tekis aylansin, to'xtab qolmasin: tezlik so'zini yozing.": "uz067",
+    "Tezlik so'zini yozing.": "uz068",
+    "[English pronunciation] ease [O'zbekcha tallaffuz] boshida va oxirida sekinlashadi. Bizga tekis tezlik kerak.": "uz069",
+    "Bu tezlik emas. Tezlik bir xil bo'ladigan so'z kerak.": "uz070",
+    "Brauzer bu so'zni tanimadi. Tekis tezlik so'zini yozing.": "uz071",
+    "Tekis tezlik inglizcha qanday?": "uz072",
+    "Bu [English pronunciation] linear [O'zbekcha tallaffuz].": "uz073",
+    "[English pronunciation] linear [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz074",
+    "Ajoyib! Kubik g'ildirakdek tekis aylanyapti.": "uz075",
+    "Endi o'zingizni sinab ko'ring. Kubikda yur animatsiyasi bir soniya turibdi. Men vazifani aytaman, siz esa nima yozish kerakligini tanlang.": "uz076",
+    "Vazifa nima haqida: takrorlashmi, yo'nalishmi yoki tezlikmi?": "uz077",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] bu cheksiz, son bu necha marta, [English pronunciation] alternate [O'zbekcha tallaffuz] bu borib-qaytish, [English pronunciation] linear [O'zbekcha tallaffuz] bu tekis tezlik.": "uz078",
+    "Kubik to'xtamasdan yursin.": "uz079",
+    "To'xtamasdan, ya'ni cheksiz degani.": "uz080",
+    "Kubik roppa-rosa uch marta yursin.": "uz081",
+    "Necha marta bo'lsa, o'sha son yoziladi.": "uz082",
+    "Kubik borib, yana qaytib kelsin.": "uz083",
+    "Borib-qaytish bu [English pronunciation] alternate [O'zbekcha tallaffuz].": "uz084",
+    "Kubik bir xil tezlikda yursin.": "uz085",
+    "Bir xil tezlik bu [English pronunciation] linear [O'zbekcha tallaffuz].": "uz086",
+    "Hammasi to'g'ri! [English pronunciation] animation [O'zbekcha tallaffuz] ni xohlaganingizdek sozlay olasiz.": "uz087",
+    "Har safar kodga va chiziqqa qarang: nom kulrangmi, vaqt bormi, kadrda foiz belgisi bormi?": "uz088",
+    "Nom ikki joyda harfma-harf bir xil bo'lishi kerak, vaqt yozilishi kerak, kadrlarda esa foiz belgisi turishi kerak.": "uz089",
+    "Do'stingizni noto'g'ri ism bilan chaqirsangiz, u kelmaydi. Brauzer ham rejani faqat aniq nomi bilan topadi.": "uz090",
+    "Animatsiyada ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: kubik sakrayapti.": "uz091",
+    "Birinchisi: [English pronunciation] animation [O'zbekcha tallaffuz] da nomda bitta harf yo'q. Brauzer bunday rejani topmadi, kubik to'xtadi. Chiziqda esa nom kulrang.": "uz092",
+    "Ikkinchisi: vaqt yozilmagan. Unda animatsiya nol soniya davom etadi va hech narsa ko'rinmaydi.": "uz093",
+    "Uchinchisi: o'rtadagi kadrda foiz belgisi yo'q. Brauzer bu kadrni tashlab yubordi, boshi va oxiri esa bir xil, shuning uchun kubik qimirlamaydi.": "uz094",
+    "Demak, nom aynan bir xil bo'lishi, vaqt yozilishi va kadrlarda foiz belgisi turishi kerak.": "uz095",
+    "Voy, men kubik har soniyada sakrasin deb yozdim, lekin u qimirlamayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.": "uz096",
+    "Qiymatni yozing.": "uz097",
+    "Vaqt hali yo'q. Har soniyada sakrashi uchun bir soniya yozing.": "uz098",
+    "Son bor, lekin s harfi yo'q.": "uz099",
+    "Sonda vergul bor. Kasr nuqta bilan yoziladi.": "uz100",
+    "Nom katta harf bilan yozilgan. U [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek bo'lishi kerak.": "uz101",
+    "Nom o'zgarib qoldi. Reja sakra deb nomlangan.": "uz102",
+    "Kubik to'xtamasdan sakrashi kerak: [English pronunciation] infinite [O'zbekcha tallaffuz] qolsin.": "uz103",
+    "Brauzer bu qiymatni tanimadi. Nom, vaqt va [English pronunciation] infinite [O'zbekcha tallaffuz] ni tekshiring.": "uz104",
+    "Vaqt boshqa. Har soniyada sakrashi uchun bir soniya kerak.": "uz105",
+    "[English pronunciation] animation [O'zbekcha tallaffuz] da nima yetishmayapti: nom, vaqt yoki takrorlash?": "uz106",
+    "Vaqt yo'q. Nomdan keyin vaqt yoziladi.": "uz107",
+    "sakra, bo'sh joy, bir s, bo'sh joy, [English pronunciation] infinite [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz108",
+    "Ura, ishladi! Kubik har soniyada sakrayapti.": "uz109",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va chiziqqa qarang, keyin o'sha qoidani bosing.": "uz110",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?": "uz111",
+    "Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?": "uz112",
+    "Topdingiz! Nomda harflar almashgan edi.": "uz113",
+    "Topdingiz! Vaqt yozilmagan edi.": "uz114",
+    "Kubik harakatlanyaptimi? Chiziqqa qarang.": "uz115",
+    "Chiziqda nom kulrang: bunday reja yo'q. [English pronunciation] animation [O'zbekcha tallaffuz] dagi nomni [English pronunciation] keyframes [O'zbekcha tallaffuz] bilan solishtiring.": "uz116",
+    "Chiziqda nol soniya. [English pronunciation] animation [O'zbekcha tallaffuz] da vaqt bormi?": "uz117",
+    "Xato ikkinchi qoidada: aylna. O'sha qatorni bosing.": "uz118",
+    "Xato oxirgi qoidada: vaqt yo'q. O'sha qatorni bosing.": "uz119",
+    "Super! Ikkalasi ham topildi. Siz animatsiyalarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz120",
+    "Reja joyida: u faqat harakatni tasvirlaydi. Uni ishga tushiradigan [English pronunciation] animation [O'zbekcha tallaffuz] qatoriga qarang.": "uz121",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. aylan rejasi tayyor. Kubik uchun qoida yozing: aylan rejasi, ikki soniya, tekis tezlik va cheksiz.": "uz122",
+    "Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.": "uz123",
+    "Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.": "uz124",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz125",
+    "Selektor: nuqta va kubik klassi.": "uz126",
+    "Rejani [English pronunciation] animation [O'zbekcha tallaffuz] xususiyati ishga tushiradi.": "uz127",
+    "Brauzer bu qiymatni tanimadi. Nom, vaqt va so'zlarni tekshiring.": "uz128",
+    "Nom [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek kichik harflar bilan bo'lishi kerak.": "uz129",
+    "Nom boshqa. Reja aylan deb nomlangan.": "uz130",
+    "Vaqtga s harfi kerak.": "uz131",
+    "Vaqt yo'q. Ikki soniya yozing.": "uz132",
+    "Vaqt boshqa. Ikki soniya kerak.": "uz133",
+    "Tezlik tekis bo'lishi kerak: [English pronunciation] linear [O'zbekcha tallaffuz].": "uz134",
+    "Kubik to'xtamasligi kerak: [English pronunciation] infinite [O'zbekcha tallaffuz].": "uz135",
+    "Selektor kubik klassi, xususiyat [English pronunciation] animation [O'zbekcha tallaffuz], qiymatda esa nom, vaqt, tezlik va cheksiz.": "uz136",
+    "Qiymat: aylan, ikki s, [English pronunciation] linear [O'zbekcha tallaffuz], [English pronunciation] infinite [O'zbekcha tallaffuz].": "uz137",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz138",
+    "Ajoyib! Kubik g'ildirakdek aylanyapti. Qoidani o'zingiz yozdingiz.": "uz139",
+    "Endi o'z animatsiyangizni yarating. Oxirida kubik qanday bo'lishini, qancha vaqt davom etishini va necha marta takrorlanishini o'zingiz tanlang. Keyin Tayyorni bosing.": "uz140",
+    "Vaqtda vergul bor. Kasr nuqta bilan yoziladi.": "uz141",
+    "Vaqtga s yoki [English pronunciation] ms [O'zbekcha tallaffuz] kerak.": "uz142",
+    "Nol soniyada hech narsa ko'rinmaydi. Noldan katta vaqt yozing.": "uz143",
+    "Bu juda uzoq. Besh soniyadan kam yozing.": "uz144",
+    "Har bir maydonga bitta qiymat yozing.": "uz145",
+    "Birinchisiga qavsli va sonli [English pronunciation] scale [O'zbekcha tallaffuz], [English pronunciation] rotate [O'zbekcha tallaffuz] yoki [English pronunciation] translate [O'zbekcha tallaffuz], ikkinchisiga vaqt, uchinchisiga [English pronunciation] infinite [O'zbekcha tallaffuz] yoki son.": "uz146",
+    "Masalan: [English pronunciation] rotate [O'zbekcha tallaffuz] va qavs ichida qirq besh [English pronunciation] deg [O'zbekcha tallaffuz], keyin bir s va [English pronunciation] infinite [O'zbekcha tallaffuz]. Keyin Tayyorni bosing.": "uz147",
+    "Voy, kubik jonlandi! Bu sizning o'z animatsiyangiz.": "uz148",
+    "Endi tezkor tekshiruv. Men [English pronunciation] gap [O'zbekcha tallaffuz] aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.": "uz149",
+    "Gap nima haqida: reja, ishga tushirish yoki nom?": "uz150",
+    "Esingizdami: [English pronunciation] keyframes [O'zbekcha tallaffuz] faqat reja, [English pronunciation] animation [O'zbekcha tallaffuz] uni ishga tushiradi, [English pronunciation] infinite [O'zbekcha tallaffuz] cheksiz degani, nom esa harfma-harf bir xil bo'lishi kerak, katta va kichik harflar ham.": "uz151",
+    "Faqat [English pronunciation] keyframes [O'zbekcha tallaffuz] ning o'zi kubikni harakatlantiradi.": "uz152",
+    "Aslida [English pronunciation] keyframes [O'zbekcha tallaffuz] faqat reja. Uni [English pronunciation] animation [O'zbekcha tallaffuz] ishga tushiradi.": "uz153",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] bilan animatsiya to'xtamaydi.": "uz154",
+    "To'g'ri: [English pronunciation] infinite [O'zbekcha tallaffuz] cheksiz degani.": "uz155",
+    "Animatsiya sichqonchasiz ham ishlaydi.": "uz156",
+    "To'g'ri: [English pronunciation] animation [O'zbekcha tallaffuz] o'zi ishlaydi, [English pronunciation] transition [O'zbekcha tallaffuz] dan farqli.": "uz157",
+    "Bu kubik sakraydi.": "uz158",
+    "Aslida [English pronunciation] CSS [O'zbekcha tallaffuz] uchun Sakra va sakra har xil nomlar, ikkinchi darsdagi [English pronunciation] class [O'zbekcha tallaffuz] nomlari kabi. Brauzer rejani topmaydi va kubik joyida turadi.": "uz159",
+    "Hammasi to'g'ri! Siz animatsiyalarni yaxshi bilasiz.": "uz160",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men [English pronunciation] animation [O'zbekcha tallaffuz] da nomni katta harf bilan yozgan edim? Qarang: kubik qimirlamayapti, chiziqda esa nom kulrang! Men adashibman. [English pronunciation] CSS [O'zbekcha tallaffuz] uchun katta va kichik harflar har xil, shuning uchun brauzer bunday rejani topmadi.": "uz161",
+    "Nomni aynan [English pronunciation] keyframes [O'zbekcha tallaffuz] dagidek yozsak, kubik darrov sakraydi. Mana!": "uz162",
+    "Qarang, bu sizning o'z animatsiyangiz!": "uz163",
+    "[English pronunciation] keyframes [O'zbekcha tallaffuz] harakat rejasini yozadi.": "uz164",
+    "[English pronunciation] animation [O'zbekcha tallaffuz] shu rejani nom va vaqt bilan ishga tushiradi.": "uz165",
+    "[English pronunciation] infinite [O'zbekcha tallaffuz] yoki son necha marta takrorlanishini aytadi.": "uz166",
+    "Nom esa ikki joyda harfma-harf bir xil bo'lishi kerak.": "uz167",
+    "Tabriklayman! Endi sahifangizdagi narsalar o'zi harakatlanadi. Keyingi darsda saytni telefonga moslashni o'rganamiz: katta ekranda ham, kichik ekranda ham chiroyli bo'ladi. Ko'rishguncha!": "uz168",
+    "Voy, zo‘r!": "uz169",
+    "Ana! Chiqdi!": "uz170",
+    "Super!": "uz171",
+    "Qoyil!": "uz172",
+    "Ura!": "uz173",
+    "Zo‘r-ku!": "uz174",
+    "Yana bir bor urinib ko‘ring.": "uz175",
+    "Diqqat bilan qarang.": "uz176",
+    "Yaqin qoldingiz. Shoshilmang.": "uz177",
+    "Bu kubik o'yinning qahramoni.": "uz178",
+    "Rekord: 120 ochko.": "uz179",
+    "[English pronunciation] transition [O'zbekcha tallaffuz] yoki [English pronunciation] animation [O'zbekcha tallaffuz]?": "uz180",
+    "Buning uchun nima kerak?": "uz181",
+    "O'rtadagi kadr: necha foiz?": "uz182",
+    "Necha marta?": "uz183",
+    "Animatsiya necha marta bo'ladi?": "uz184",
+    "Nima yozish kerak?": "uz185",
+    "To'g'rimi?": "uz186",
+    "To'g'rimi yoki noto'g'rimi?": "uz187",
+    "Salom, dunyo!": "uz188",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz189",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz190",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz191",
+  },
+  ru: {
+    "Привет! Смотри, герой моей игры, оранжевый кубик. Но он застыл, как картинка. На прошлом уроке мы сделали плавное изменение через [English pronunciation] transition [Русское произношение], но ему нужна была мышка. А я хочу, чтобы кубик прыгал сам, даже если его никто не трогает. Нажми Превратить.": "ru001",
+    "Вот! Кубик прыгает сам, без мышки и без остановки.": "ru002",
+    "Это сделали две вещи. [English pronunciation] keyframes [Русское произношение], план движения, то есть где кубик в начале, где в середине. А [English pronunciation] animation [Русское произношение] подключает этот план к кубику. Полоса внизу показывает имя анимации и время.": "ru003",
+    "Сегодня ты научишься двигать вещи сами по себе. Но сначала загадка. В первый раз я написал имя в [English pronunciation] animation [Русское произношение] с большой буквы: не sakra, а Sakra. По-моему, это одно и то же слово, всё равно сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на код: сначала появляется план [English pronunciation] keyframes [Русское произношение], потом строка [English pronunciation] animation [Русское произношение]. Когда кубик начинает двигаться?": "ru005",
+    "[English pronunciation] keyframes [Русское произношение] записывает план движения: from, начало, to, конец. [English pronunciation] animation [Русское произношение] запускает этот план по имени и задаёт время. С [English pronunciation] infinite [Русское произношение] он не останавливается.": "ru006",
+    "Листок с движениями танца сам не танцует, его должен кто-то исполнить. [English pronunciation] keyframes [Русское произношение], листок, [English pronunciation] animation [Русское произношение], танцор.": "ru007",
+    "Анимация состоит из двух частей: плана движения и правила, которое его запускает. Давай добавим по одной.": "ru008",
+    "Это [English pronunciation] keyframes [Русское произношение], то есть ключевые кадры. sakra, имя плана. from, в начале кубик на месте, to, в конце на двадцать пикселей выше. Но смотри, кубик не двинулся: план есть, а запустить его некому.": "ru009",
+    "Теперь [English pronunciation] animation [Русское произношение]: имя плана sakra и время одна секунда. Кубик прыгнул один раз и вернулся. Анимация закончилась.": "ru010",
+    "[English pronunciation] infinite [Русское произношение], то есть бесконечно. Теперь кубик прыгает без остановки. Посмотри на знак бесконечности на полосе.": "ru011",
+    "Значит, [English pronunciation] keyframes [Русское произношение] задаёт план движения, а [English pronunciation] animation [Русское произношение] подключает его по имени и задаёт время.": "ru012",
+    "Теперь твоя очередь. Вверху готов план вращения. Пусть кубик крутится: впиши в [English pronunciation] animation [Русское произношение] имя плана.": "ru013",
+    "Впиши имя плана.": "ru014",
+    "Большие и маленькие буквы различаются. Напиши имя точно так же, как в [English pronunciation] keyframes [Русское произношение].": "ru015",
+    "Это не имя. Имя стоит сразу после слова [English pronunciation] keyframes [Русское произношение].": "ru016",
+    "Такого плана нет. Посмотри имя в строке [English pronunciation] keyframes [Русское произношение].": "ru017",
+    "Имя плана написано после слова [English pronunciation] keyframes [Русское произношение].": "ru018",
+    "Там написано aylan.": "ru019",
+    "Впиши aylan и нажми Проверить.": "ru020",
+    "Огонь! Кубик делает оборот за две секунды без остановки.": "ru021",
+    "Теперь проверь себя. Я скажу задачу, а ты выбери, что нужно: [English pronunciation] transition [Русское произношение] или [English pronunciation] animation [Русское произношение].": "ru022",
+    "Вещь движется сама или меняется, когда приходит мышка?": "ru023",
+    "Движется сама, [English pronunciation] animation [Русское произношение], плавно меняется под мышкой, [English pronunciation] transition [Русское произношение].": "ru024",
+    "Кружок загрузки крутится без остановки.": "ru025",
+    "Он крутится сам, значит, [English pronunciation] animation [Русское произношение].": "ru026",
+    "Под мышкой кнопка плавно растёт.": "ru027",
+    "Плавное изменение под мышкой, это [English pronunciation] transition [Русское произношение].": "ru028",
+    "Сердечко бьётся каждую секунду.": "ru029",
+    "Оно повторяется само, значит, [English pronunciation] animation [Русское произношение].": "ru030",
+    "Под мышкой цвет ссылки плавно меняется.": "ru031",
+    "Это тоже плавное изменение под мышкой.": "ru032",
+    "Точно!": "ru033",
+    "Всё верно! Ты не путаешь [English pronunciation] transition [Русское произношение] и [English pronunciation] animation [Русское произношение].": "ru034",
+    "Посмотри, как кубик опускается: сначала рывком, потом плавно. А в конце, сколько раз он прыгает?": "ru035",
+    "Кадры можно писать в процентах: ноль, начало, пятьдесят, середина, сто, конец. Вместо [English pronunciation] infinite [Русское произношение] можно написать число, столько раз и будет.": "ru036",
+    "Когда рисуют мультфильм, рисуют первый, средний и последний кадр. [English pronunciation] keyframes [Русское произношение] отмечает ключевые кадры так же.": "ru037",
+    "Смотри, кубик прыгает, но сверху вниз падает рывком. Почему так? Давай исправим.": "ru038",
+    "from и to, это только начало и конец. Дойдя до конца, анимация снова начинается с начала, поэтому кубик падает вниз рывком.": "ru039",
+    "Теперь кадры в процентах: ноль процентов, начало, пятьдесят, середина, сто, конец. В середине кубик наверху, в конце снова внизу. Теперь он плавно поднимается и плавно опускается.": "ru040",
+    "Вместо [English pronunciation] infinite [Русское произношение] число три: кубик прыгнет три раза и остановится.": "ru041",
+    "Значит, с процентами можно поставить сколько угодно кадров, а число говорит, сколько раз повторить.": "ru042",
+    "Теперь ты. В плане есть начало и конец, а у кадра посередине нет процента. Кубик должен быть наверху в середине: впиши процент.": "ru043",
+    "Впиши процент.": "ru044",
+    "Число есть, а знака процента нет. Без него браузер выбросит кадр.": "ru045",
+    "Это другое место. Середина, ровно между началом и концом.": "ru046",
+    "Здесь нужно число и знак процента.": "ru047",
+    "Начало, ноль процентов, конец, сто. А середина?": "ru048",
+    "Середина, пятьдесят процентов.": "ru049",
+    "Впиши пятьдесят, потом нажми внизу кнопку со знаком процента и Проверить.": "ru050",
+    "Молодец! Кубик плавно поднимается и плавно опускается.": "ru051",
+    "Теперь проверь себя. Я покажу правило, а ты выбери, сколько раз будет анимация.": "ru052",
+    "Что написано после времени?": "ru053",
+    "Число говорит, сколько раз, [English pronunciation] infinite [Русское произношение], без конца, а если ничего нет, один раз.": "ru054",
+    "Стоит число два: два раза.": "ru055",
+    "[English pronunciation] infinite [Русское произношение], без конца.": "ru056",
+    "Числа нет: анимация будет один раз.": "ru057",
+    "Всё верно! Ты сразу видишь, сколько повторов.": "ru058",
+    "Посмотри на кубик: при вращении он притормаживает? Когда едет вправо, прыгает в начало или возвращается?": "ru059",
+    "[English pronunciation] linear [Русское произношение] делает скорость ровной. А [English pronunciation] alternate [Русское произношение] делает анимацию туда и обратно: раз вперёд, раз назад.": "ru060",
+    "Стрелка часов крутится ровно, это [English pronunciation] linear [Русское произношение]. Качели ходят туда и обратно, это [English pronunciation] alternate [Русское произношение].": "ru061",
+    "В анимации тоже можно выбрать скорость и направление. Сейчас кубик делает оборот за две секунды. Видишь, на каждом обороте он будто притормаживает?": "ru062",
+    "Это был [English pronunciation] ease [Русское произношение]: в начале и в конце медленно. А с [English pronunciation] linear [Русское произношение] вращение ровное, как у колеса.": "ru063",
+    "Теперь кубик едет вправо. Но каждый раз, доехав до конца, прыгает обратно в начало.": "ru064",
+    "[English pronunciation] alternate [Русское произношение], то есть по очереди: раз вперёд, раз назад. Теперь кубик ездит туда и обратно, без рывков.": "ru065",
+    "Значит, [English pronunciation] linear [Русское произношение] делает скорость ровной, а [English pronunciation] alternate [Русское произношение], анимацию туда и обратно.": "ru066",
+    "Теперь ты. Пусть кубик крутится ровно, как колесо, без притормаживания: впиши слово скорости.": "ru067",
+    "Впиши слово скорости.": "ru068",
+    "[English pronunciation] ease [Русское произношение] замедляется в начале и в конце. А нам нужна ровная скорость.": "ru069",
+    "Это не скорость. Нужно слово, при котором скорость одинаковая.": "ru070",
+    "Браузер не узнал это слово. Впиши слово ровной скорости.": "ru071",
+    "Как по-английски ровная скорость?": "ru072",
+    "Это [English pronunciation] linear [Русское произношение].": "ru073",
+    "Впиши [English pronunciation] linear [Русское произношение] и нажми Проверить.": "ru074",
+    "Отлично! Кубик крутится ровно, как колесо.": "ru075",
+    "Теперь проверь себя. У кубика стоит анимация yur на одну секунду. Я скажу задачу, а ты выбери, что дописать.": "ru076",
+    "О чём задача: о повторах, о направлении или о скорости?": "ru077",
+    "[English pronunciation] infinite [Русское произношение], без конца, число, сколько раз, [English pronunciation] alternate [Русское произношение], туда и обратно, [English pronunciation] linear [Русское произношение], ровно.": "ru078",
+    "Кубик должен ездить без остановки.": "ru079",
+    "Без остановки, значит, [English pronunciation] infinite [Русское произношение].": "ru080",
+    "Кубик должен проехать ровно три раза.": "ru081",
+    "Сколько раз, то число и пишут.": "ru082",
+    "Кубик должен ездить туда и обратно.": "ru083",
+    "Туда и обратно, это [English pronunciation] alternate [Русское произношение].": "ru084",
+    "Кубик должен ехать с одинаковой скоростью.": "ru085",
+    "Одинаковая скорость, это [English pronunciation] linear [Русское произношение].": "ru086",
+    "Всё верно! Ты умеешь настроить [English pronunciation] animation [Русское произношение] как хочешь.": "ru087",
+    "Каждый раз смотри на код и на полосу: имя серое, есть ли время, есть ли знак процента у кадра?": "ru088",
+    "Имя в двух местах должно совпадать буква в букву, время должно быть написано, а у кадров нужен знак процента.": "ru089",
+    "Если позвать друга не тем именем, он не придёт. Браузер тоже находит план только по точному имени.": "ru090",
+    "И в анимации бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: кубик прыгает.": "ru091",
+    "Первая: в имени в [English pronunciation] animation [Русское произношение] не хватает буквы. Браузер не нашёл такого плана, кубик встал. А на полосе имя серое.": "ru092",
+    "Вторая: не написано время. Тогда анимация длится ноль секунд, и ничего не видно.": "ru093",
+    "Третья: у кадра посередине нет знака процента. Браузер выбросил этот кадр, а начало и конец одинаковые, поэтому кубик не двигается.": "ru094",
+    "Значит, имя должно совпадать точно, время должно быть написано, а у кадров должен быть знак процента.": "ru095",
+    "Ой, я хотел, чтобы кубик прыгал каждую секунду, а он не двигается! В поле, моё значение. Найди ошибку и исправь.": "ru096",
+    "Впиши значение.": "ru097",
+    "Времени всё ещё нет. Чтобы прыгать каждую секунду, напиши одну секунду.": "ru098",
+    "Число есть, а буквы s нет.": "ru099",
+    "В числе запятая. Дробь пишут через точку.": "ru100",
+    "Имя написано с большой буквы. Оно должно быть как в [English pronunciation] keyframes [Русское произношение].": "ru101",
+    "Имя изменилось. План называется sakra.": "ru102",
+    "Кубик должен прыгать без остановки: оставь [English pronunciation] infinite [Русское произношение].": "ru103",
+    "Браузер не узнал это значение. Проверь имя, время и [English pronunciation] infinite [Русское произношение].": "ru104",
+    "Время другое. Нужно каждую секунду, то есть одна секунда.": "ru105",
+    "Чего не хватает в [English pronunciation] animation [Русское произношение]: имени, времени или повторов?": "ru106",
+    "Нет времени. После имени пишут время.": "ru107",
+    "Впиши sakra, пробел, 1s, пробел, [English pronunciation] infinite [Русское произношение] и нажми Проверить.": "ru108",
+    "Ура, заработало! Кубик прыгает каждую секунду.": "ru109",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на полосу, потом нажми это правило.": "ru110",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?": "ru111",
+    "Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?": "ru112",
+    "Есть! В имени были переставлены буквы.": "ru113",
+    "Есть! Не было написано время.": "ru114",
+    "Кубик двигается? Посмотри на полосу.": "ru115",
+    "На полосе имя серое: такого плана нет. Сравни имя в [English pronunciation] animation [Русское произношение] с [English pronunciation] keyframes [Русское произношение].": "ru116",
+    "На полосе ноль секунд. Есть ли время в [English pronunciation] animation [Русское произношение]?": "ru117",
+    "Ошибка во втором правиле: aylna. Нажми эту строку.": "ru118",
+    "Ошибка в последнем правиле: нет времени. Нажми эту строку.": "ru119",
+    "Супер! Обе найдены. Ты проверяешь анимации как настоящий разработчик.": "ru120",
+    "План в порядке: он только описывает движение. Посмотри на строку [English pronunciation] animation [Русское произношение], которая его запускает.": "ru121",
+    "Теперь напиши правило целиком. План aylan уже готов. Напиши правило для кубика: план aylan, две секунды, ровная скорость и без конца.": "ru122",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru123",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru124",
+    "Между свойством и значением нет двоеточия.": "ru125",
+    "Селектор: точка и класс кубика.": "ru126",
+    "План запускает свойство [English pronunciation] animation [Русское произношение].": "ru127",
+    "Браузер не узнал это значение. Проверь имя, время и слова.": "ru128",
+    "Имя должно быть маленькими буквами, как в [English pronunciation] keyframes [Русское произношение].": "ru129",
+    "Имя другое. План называется aylan.": "ru130",
+    "Времени нужна буква s.": "ru131",
+    "Нет времени. Напиши две секунды.": "ru132",
+    "Время другое. Нужно две секунды.": "ru133",
+    "Скорость должна быть ровной: [English pronunciation] linear [Русское произношение].": "ru134",
+    "Кубик не должен останавливаться: [English pronunciation] infinite [Русское произношение].": "ru135",
+    "Селектор, класс кубика, свойство, [English pronunciation] animation [Русское произношение], а в значении, имя, время, скорость и без конца.": "ru136",
+    "Значение: aylan, 2s, [English pronunciation] linear [Русское произношение], [English pronunciation] infinite [Русское произношение].": "ru137",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru138",
+    "Отлично! Кубик крутится как колесо. Правило написано тобой целиком.": "ru139",
+    "Теперь сделай свою анимацию. Сам выбери, каким кубик станет в конце, сколько это длится и сколько раз повторится. Потом нажми Готово.": "ru140",
+    "Во времени запятая. Дробь пишут через точку.": "ru141",
+    "Времени нужны s или [English pronunciation] ms [Русское произношение].": "ru142",
+    "За ноль секунд ничего не видно. Напиши время больше нуля.": "ru143",
+    "Это слишком долго. Напиши меньше пяти секунд.": "ru144",
+    "В каждое поле, одно значение.": "ru145",
+    "В первое, [English pronunciation] scale [Русское произношение], [English pronunciation] rotate [Русское произношение] или [English pronunciation] translate [Русское произношение] со скобками и числом, во второе, время, в третье, [English pronunciation] infinite [Русское произношение] или число.": "ru146",
+    "Например: [English pronunciation] rotate [Русское произношение] и в скобках сорок пять [English pronunciation] deg [Русское произношение], потом 1s и [English pronunciation] infinite [Русское произношение]. Потом нажми Готово.": "ru147",
+    "Ого, кубик ожил! Это твоя собственная анимация.": "ru148",
+    "Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.": "ru149",
+    "О чём фраза: о плане, о запуске или об имени?": "ru150",
+    "Вспомни: [English pronunciation] keyframes [Русское произношение], только план, [English pronunciation] animation [Русское произношение] его запускает, [English pronunciation] infinite [Русское произношение], без конца, а имя должно совпадать буква в букву, даже большие и маленькие буквы.": "ru151",
+    "Один только [English pronunciation] keyframes [Русское произношение] двигает кубик.": "ru152",
+    "На самом деле [English pronunciation] keyframes [Русское произношение], только план. Запускает его [English pronunciation] animation [Русское произношение].": "ru153",
+    "С [English pronunciation] infinite [Русское произношение] анимация не останавливается.": "ru154",
+    "Верно: [English pronunciation] infinite [Русское произношение] значит без конца.": "ru155",
+    "Анимация работает и без мышки.": "ru156",
+    "Верно: [English pronunciation] animation [Русское произношение] работает сама, в отличие от [English pronunciation] transition [Русское произношение].": "ru157",
+    "Этот кубик будет прыгать.": "ru158",
+    "На самом деле для [English pronunciation] CSS [Русское произношение] Sakra и sakra, разные имена, как имена классов во втором уроке. Браузер не найдёт план, и кубик будет стоять.": "ru159",
+    "Всё верно! Ты отлично разбираешься в анимациях.": "ru160",
+    "Вернёмся к загадке. Помнишь, я написал имя в [English pronunciation] animation [Русское произношение] с большой буквы? Смотри: кубик не двигается, а на полосе имя серое! Я ошибся. Для [English pronunciation] CSS [Русское произношение] большие и маленькие буквы, разные, поэтому браузер не нашёл такой план.": "ru161",
+    "Напишем имя точно как в [English pronunciation] keyframes [Русское произношение], и кубик сразу прыгает. Вот!": "ru162",
+    "Смотри, это твоя собственная анимация!": "ru163",
+    "[English pronunciation] keyframes [Русское произношение] записывает план движения.": "ru164",
+    "[English pronunciation] animation [Русское произношение] запускает этот план по имени и со временем.": "ru165",
+    "[English pronunciation] infinite [Русское произношение] или число говорят, сколько раз повторить.": "ru166",
+    "А имя в двух местах должно совпадать буква в букву.": "ru167",
+    "Ура! Теперь вещи на твоей странице двигаются сами. На следующем уроке научимся подстраивать сайт под телефон: он будет красивым и на большом экране, и на маленьком. До встречи!": "ru168",
+    "Вау, классно!": "ru169",
+    "Есть! Получилось!": "ru170",
+    "Супер!": "ru171",
+    "Огонь!": "ru172",
+    "Ура!": "ru173",
+    "Вот это да!": "ru174",
+    "Попробуй ещё раз.": "ru175",
+    "Посмотри внимательно.": "ru176",
+    "Уже близко. Не спеши.": "ru177",
+    "Этот кубик, герой игры.": "ru178",
+    "Рекорд: 120 очков.": "ru179",
+    "[English pronunciation] transition [Русское произношение] или [English pronunciation] animation [Русское произношение]?": "ru180",
+    "Что для этого нужно?": "ru181",
+    "Кадр посередине: сколько процентов?": "ru182",
+    "Сколько раз?": "ru183",
+    "Сколько раз будет анимация?": "ru184",
+    "Что дописать?": "ru185",
+    "Что нужно дописать?": "ru186",
+    "Верно или нет?": "ru187",
+    "Верно или неверно?": "ru188",
+    "Привет, мир!": "ru189",
+    "Здесь нужны только слова, без угловых скобок.": "ru190",
+    "Молодец!": "ru191",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru192",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru193",
+  },
+  en: {
+    "Hi! Look, the hero of my game is an orange cube. But it’s frozen, like a picture. Last lesson we made a smooth change with transition, but it needed the mouse. I want the cube to jump by itself, even when nobody touches it. Tap Transform.": "en001",
+    "There! The cube jumps by itself, without the mouse and without stopping.": "en002",
+    "Two things did it. keyframes is a movement plan, meaning where the cube is at the start and where in the middle. animation connects that plan to the cube. The bar below shows the animation’s name and time.": "en003",
+    "Today you’ll learn to make things move by themselves. But first, a riddle. The first time, I wrote the name in animation with a capital letter: Sakra instead of sakra. I think it’s the same word, so it’ll still work. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at the code: first the keyframes plan appears, then the animation line. When does the cube start moving?": "en005",
+    "keyframes writes the movement plan: from is the start, to is the end. animation starts that plan by name and sets the time. With infinite it never stops.": "en006",
+    "A sheet with dance moves doesn’t dance by itself; someone has to perform it. keyframes is the sheet, animation is the dancer.": "en007",
+    "An animation has two parts: a movement plan and a rule that starts it. Let’s add them one at a time.": "en008",
+    "This is keyframes, meaning key frames. sakra is the plan’s name. from: at the start the cube is in place; to: at the end it’s twenty pixels higher. But look, the cube didn’t move: there’s a plan, but nothing starts it.": "en009",
+    "Now animation: the plan’s name sakra and the time one second. The cube jumped once and came back. The animation ended.": "en010",
+    "infinite means endless. Now the cube jumps without stopping. Look at the infinity sign on the bar.": "en011",
+    "So keyframes plans the movement, and animation connects it by name and sets the time.": "en012",
+    "Now it’s your turn. A spinning plan is ready at the top. Make the cube spin: type the plan’s name in animation.": "en013",
+    "Type the plan’s name.": "en014",
+    "Capital and small letters are different. Write the name exactly as in keyframes.": "en015",
+    "That’s not the name. The name comes right after the word keyframes.": "en016",
+    "There’s no such plan. Look for the name in the keyframes line.": "en017",
+    "The plan’s name is written after the word keyframes.": "en018",
+    "It says aylan there.": "en019",
+    "Type aylan and tap Check.": "en020",
+    "Awesome! The cube spins once every two seconds, non-stop.": "en021",
+    "Now check yourself. I’ll say a task, and you pick what’s needed: transition or animation.": "en022",
+    "Does it move by itself, or change when the mouse comes?": "en023",
+    "Moves by itself: animation. Changes smoothly under the mouse: transition.": "en024",
+    "A loading circle spins non-stop.": "en025",
+    "It spins by itself, so it’s animation.": "en026",
+    "The button grows smoothly under the mouse.": "en027",
+    "A smooth change under the mouse is transition.": "en028",
+    "A heart beats every second.": "en029",
+    "It repeats by itself, so it’s animation.": "en030",
+    "A link’s color changes smoothly under the mouse.": "en031",
+    "That’s a smooth change under the mouse too.": "en032",
+    "Exactly!": "en033",
+    "All correct! You don’t mix up transition and animation.": "en034",
+    "Watch how the cube comes down: first with a jerk, then smoothly. And at the end, how many times does it jump?": "en035",
+    "Frames can be written in percent: zero is the start, fifty the middle, a hundred the end. Instead of infinite you can write a number: that many times.": "en036",
+    "When you draw a cartoon, you draw the first, middle and last frame. keyframes marks the key frames the same way.": "en037",
+    "Look, the cube jumps, but it drops from the top all at once. Why? Let’s fix it.": "en038",
+    "from and to are just the start and the end. After reaching the end, the animation starts over, so the cube snaps back down.": "en039",
+    "Now the frames are in percent: zero percent is the start, fifty is the middle, a hundred is the end. In the middle the cube is up, at the end it’s down again. Now it rises and falls smoothly.": "en040",
+    "Instead of infinite, the number three: the cube jumps three times and stops.": "en041",
+    "So with percentages you can add as many frames as you like, and a number says how many times to repeat.": "en042",
+    "Your turn. The plan has a start and an end, but the middle frame has no percent. The cube should be up in the middle: type the percent.": "en043",
+    "Type the percent.": "en044",
+    "There’s a number but no percent sign. Without it the browser throws the frame away.": "en045",
+    "That’s a different spot. The middle is exactly between the start and the end.": "en046",
+    "This needs a number and a percent sign.": "en047",
+    "The start is zero percent, the end is a hundred. And the middle?": "en048",
+    "The middle is fifty percent.": "en049",
+    "Type fifty, then tap the percent sign button below and Check.": "en050",
+    "Well done! The cube rises and falls smoothly.": "en051",
+    "Now check yourself. I’ll show a rule, and you pick how many times the animation runs.": "en052",
+    "What’s written after the time?": "en053",
+    "A number says how many times, infinite means endlessly, and nothing means once.": "en054",
+    "There’s the number two: twice.": "en055",
+    "infinite means endlessly.": "en056",
+    "No number: the animation runs once.": "en057",
+    "All correct! You read the repeats at a glance.": "en058",
+    "Look at the cube: does it slow down while spinning? When it moves right, does it jump back to the start or come back?": "en059",
+    "linear makes the speed even. alternate makes the animation go there and back: once forward, once back.": "en060",
+    "A clock hand turns evenly: that’s linear. A swing goes back and forth: that’s alternate.": "en061",
+    "You can choose speed and direction in an animation too. Right now the cube spins once every two seconds. See how it seems to slow down on every turn?": "en062",
+    "That was ease: slow at the start and the end. With linear the spinning is even, like a wheel.": "en063",
+    "Now the cube moves right. But every time it reaches the end, it jumps back to the start.": "en064",
+    "alternate means taking turns: once forward, once back. Now the cube goes there and back, without jumps.": "en065",
+    "So linear makes the speed even, and alternate makes the animation go there and back.": "en066",
+    "Your turn. Make the cube spin evenly, like a wheel, without slowing down: type the speed word.": "en067",
+    "Type the speed word.": "en068",
+    "ease slows down at the start and the end. We need an even speed.": "en069",
+    "That’s not a speed. We need the word that keeps the speed the same.": "en070",
+    "The browser didn’t recognize that word. Type the word for an even speed.": "en071",
+    "What’s the English word for an even speed?": "en072",
+    "It’s linear.": "en073",
+    "Type linear and tap Check.": "en074",
+    "Great! The cube spins evenly, like a wheel.": "en075",
+    "Now check yourself. The cube has the yur animation for one second. I’ll say a task, and you pick what to add.": "en076",
+    "What’s the task about: repeats, direction or speed?": "en077",
+    "infinite is endless, a number is how many times, alternate is there and back, linear is even.": "en078",
+    "The cube should move non-stop.": "en079",
+    "Non-stop means infinite.": "en080",
+    "The cube should move exactly three times.": "en081",
+    "You write the number of times.": "en082",
+    "The cube should go there and come back.": "en083",
+    "There and back is alternate.": "en084",
+    "The cube should move at the same speed.": "en085",
+    "The same speed is linear.": "en086",
+    "All correct! You can set up animation however you like.": "en087",
+    "Each time, look at the code and the bar: is the name grey, is there a time, does the frame have a percent sign?": "en088",
+    "The name must match letter for letter in both places, the time must be written, and frames need a percent sign.": "en089",
+    "Call a friend by the wrong name and they won’t come. The browser also finds a plan only by its exact name.": "en090",
+    "Animations have mistakes too. Let’s look at three. Right now everything is correct: the cube is jumping.": "en091",
+    "The first: the name in animation is missing a letter. The browser found no such plan, and the cube stopped. The name on the bar is grey.": "en092",
+    "The second: no time is written. Then the animation lasts zero seconds, and you see nothing.": "en093",
+    "The third: the middle frame has no percent sign. The browser threw that frame away, and the start and end are the same, so the cube doesn’t move.": "en094",
+    "So the name must match exactly, the time must be written, and the frames need a percent sign.": "en095",
+    "Oops, I wanted the cube to jump every second, but it doesn’t move! My value is in the field. Find the mistake and fix it.": "en096",
+    "Type the value.": "en097",
+    "There’s still no time. To jump every second, write one second.": "en098",
+    "There’s a number but no letter s.": "en099",
+    "There’s a comma in the number. Decimals use a dot.": "en100",
+    "The name has a capital letter. It must match keyframes.": "en101",
+    "The name changed. The plan is called sakra.": "en102",
+    "The cube should jump non-stop: keep infinite.": "en103",
+    "The browser didn’t recognize that value. Check the name, the time and infinite.": "en104",
+    "The time is different. We need every second, that is one second.": "en105",
+    "What’s missing in animation: the name, the time or the repeats?": "en106",
+    "There’s no time. The time goes after the name.": "en107",
+    "Type sakra, space, 1s, space, infinite and tap Check.": "en108",
+    "Hooray, it works! The cube jumps every second.": "en109",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the bar, then tap that rule.": "en110",
+    "Great, the first one is found! Now something else broke. Which rule doesn’t work?": "en111",
+    "This rule works: you can see what it did on the page. What doesn’t match the code?": "en112",
+    "Found it! Letters in the name were swapped.": "en113",
+    "Found it! The time wasn’t written.": "en114",
+    "Is the cube moving? Look at the bar.": "en115",
+    "The name on the bar is grey: there’s no such plan. Compare the name in animation with keyframes.": "en116",
+    "The bar shows zero seconds. Is there a time in animation?": "en117",
+    "The bug is in the second rule: aylna. Tap that line.": "en118",
+    "The bug is in the last rule: no time. Tap that line.": "en119",
+    "Super! Both found. You check animations like a real developer.": "en120",
+    "The plan is fine: it only describes the motion. Look at the animation line that starts it.": "en121",
+    "Now write the whole rule yourself. The aylan plan is ready. Write a rule for the cube: the aylan plan, two seconds, an even speed and endlessly.": "en122",
+    "Write the rule: first the selector, then the property and value inside curly braces.": "en123",
+    "The rule needs curly braces: an opening one and a closing one.": "en124",
+    "There’s no colon between the property and the value.": "en125",
+    "The selector: a dot and the cube’s class.": "en126",
+    "The animation property starts the plan.": "en127",
+    "The browser didn’t recognize that value. Check the name, the time and the words.": "en128",
+    "The name must be in small letters, as in keyframes.": "en129",
+    "The name is different. The plan is called aylan.": "en130",
+    "The time needs the letter s.": "en131",
+    "There’s no time. Write two seconds.": "en132",
+    "The time is different. We need two seconds.": "en133",
+    "The speed should be even: linear.": "en134",
+    "The cube shouldn’t stop: infinite.": "en135",
+    "The selector is the cube’s class, the property is animation, and the value has the name, time, speed and endlessly.": "en136",
+    "The value: aylan, 2s, linear, infinite.": "en137",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en138",
+    "Great! The cube spins like a wheel. You wrote the whole rule yourself.": "en139",
+    "Now make your own animation. Choose what the cube becomes at the end, how long it takes and how many times it repeats. Then tap Done.": "en140",
+    "There’s a comma in the time. Decimals use a dot.": "en141",
+    "The time needs s or ms.": "en142",
+    "With zero seconds you see nothing. Write a time greater than zero.": "en143",
+    "That’s too long. Write less than five seconds.": "en144",
+    "One value in each field.": "en145",
+    "In the first, scale, rotate or translate with brackets and a number; in the second, a time; in the third, infinite or a number.": "en146",
+    "For example: rotate with forty-five deg in brackets, then 1s and infinite. Then tap Done.": "en147",
+    "Wow, the cube came alive! This is your very own animation.": "en148",
+    "Now a quick check. I say a sentence, and you choose: true or false.": "en149",
+    "What’s the sentence about: the plan, starting it or the name?": "en150",
+    "Remember: keyframes is only a plan, animation starts it, infinite is endless, and the name must match letter for letter, even capital and small letters.": "en151",
+    "keyframes alone moves the cube.": "en152",
+    "Actually keyframes is only a plan. animation starts it.": "en153",
+    "With infinite the animation doesn’t stop.": "en154",
+    "Right: infinite means endless.": "en155",
+    "An animation works without the mouse too.": "en156",
+    "Right: animation runs by itself, unlike transition.": "en157",
+    "This cube will jump.": "en158",
+    "Actually, to CSS Sakra and sakra are different names, like the class names in lesson two. The browser won’t find the plan, and the cube will stand still.": "en159",
+    "All correct! You know animations really well.": "en160",
+    "Back to our riddle. Remember, I wrote the name in animation with a capital letter? Look: the cube doesn’t move, and the name on the bar is grey! I was wrong. To CSS, capital and small letters are different, so the browser couldn’t find that plan.": "en161",
+    "Write the name exactly as in keyframes, and the cube jumps right away. There!": "en162",
+    "Look, this is your very own animation!": "en163",
+    "keyframes writes the movement plan.": "en164",
+    "animation starts that plan by name, with a time.": "en165",
+    "infinite or a number says how many times to repeat.": "en166",
+    "And the name must match letter for letter in both places.": "en167",
+    "Hooray! Now things on your page move by themselves. Next lesson we’ll learn to fit a site to a phone: it will look good on big and small screens alike. See you!": "en168",
+    "Wow, awesome!": "en169",
+    "Yes! You did it!": "en170",
+    "Super!": "en171",
+    "Brilliant!": "en172",
+    "Hooray!": "en173",
+    "Amazing!": "en174",
+    "Try once more.": "en175",
+    "Take a closer look.": "en176",
+    "You are close. No rush.": "en177",
+    "This cube is the game’s hero.": "en178",
+    "Record: 120 points.": "en179",
+    "transition or animation?": "en180",
+    "What does this need?": "en181",
+    "The middle frame: what percent?": "en182",
+    "How many times?": "en183",
+    "How many times will the animation run?": "en184",
+    "What to add?": "en185",
+    "What do you need to add?": "en186",
+    "True or false?": "en187",
+    "Hello, world!": "en188",
+    "Only words here, no angle brackets.": "en189",
+    "Well done!": "en190",
+    "Everything in the window lives inside body.": "en191",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en192",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

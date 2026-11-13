@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8065,15 +7616,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14106,3 +13650,927 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z8-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z8-s5 .kz-br.z8-br { aspect-ratio: auto !important; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 151, ru 151, en 151; всего знаков 60105. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Saytim kattalashib ketdi: sarlavha, menyu, o'yinlar, retseptlar va eng pastda kichik yozuv bor. Lekin kodga qarang: hammasi bitta uyum bo'lib turibdi. Qayerda saytning boshi, qayerda asosiy qismi, qayerda oxiri, tushunib bo'lmaydi. Keling, kodni tartibga solamiz. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Kod bo'laklarga bo'lindi: boshi, menyu, asosiy qism, bo'limlar va oxiri. Endi kodni o'qish ancha oson.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzerga qarang: sahifa umuman o'zgarmadi. Rangli ramkalarni esa men Inspektor bilan yoqib qo'ydim, ular saytning bir qismi emas.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun saytni shunday qismlarga bo'lishni o'rganasiz va o'z saytingizning qismlarini yasaysiz. Lekin oldin kichik topishmoq. Men boshqa saytimning tepasini [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'rab qo'ydim. Menimcha, endi sayt tepasi o'zi rangli, chiroyli bo'lib qoladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir saytning uchta katta qismi bor: boshi, asosiy qismi va oxiri. Keling, ularni bittalab o'raymiz. Ramkalarni Inspektor ko'rsatadi, sahifaning o'zi esa o'zgarmaydi.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha va menyuni [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] header [O'zbekcha tallaffuz] inglizcha so'z, ya'ni sayt boshi degani. Odatda unda sayt nomi va menyu turadi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'yinlar va retseptlarni [English pronunciation] main tag [O'zbekcha tallaffuz]-iga o'raymiz. [English pronunciation] main [O'zbekcha tallaffuz] ya'ni asosiy degani. Sahifaning eng muhim qismi shu yerda turadi va sahifada [English pronunciation] main [O'zbekcha tallaffuz] faqat bitta bo'ladi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida pastdagi yozuvni [English pronunciation] footer tag [O'zbekcha tallaffuz]-iga o'raymiz. [English pronunciation] footer [O'zbekcha tallaffuz] ya'ni sayt oxiri degani. Unda odatda mualliflik huquqi, aloqa va qo'shimcha havolalar bo'ladi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi, [English pronunciation] main [O'zbekcha tallaffuz] asosiy qism, [English pronunciation] footer [O'zbekcha tallaffuz] esa sayt oxiri bo'ladi. Ular sahifa ko'rinishini o'zgartirmaydi, faqat qaysi qism ekanini aytadi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Pastki qatorda ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun Inspektor sayt oxirini ko'rmayapti. Sayt oxirini bildiradigan [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing va Tekshirishni bosing.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Burchakli qavslar o'rtasiga [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavslar joyida turibdi. Bu yerga faqat [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu sayt boshi uchun bo'ladi. Bizga sayt oxiri kerak.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Sayt oxirini bildiradigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Inspektor sayt oxirini ko'rmadi. Nomni harfma-harf yozing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang: nomi o'sha yerda yozilgan.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U inglizcha, ya'ni oyoq tomoni, pastki qism degani. f harfi bilan boshlanadi.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] footer [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Inspektor sayt oxirini ko'rdi. Sahifa esa o'zgarmadi, xuddi shunday bo'lishi kerak.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektorda bitta ramka yonadi. Siz kodda shu qismni ochadigan yoki yopadigan qatorni bosing.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yongan qism kodning qaysi qatorida?", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi sahifaning tepasi yondi. U kodda qayerda?", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oxirgisi. Endi o'rtadagi katta qism yondi. U qaysi qatorda?", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Sayt oxirini [English pronunciation] footer [O'zbekcha tallaffuz] qatori yasaydi.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Sayt boshi [English pronunciation] header [O'zbekcha tallaffuz] ichida turibdi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Asosiy qism [English pronunciation] main [O'zbekcha tallaffuz] ichida, o'yinlar va retseptlar ham shu yerda.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu qator boshqa qismniki. Yongan ramkaning nomiga qarang va kodda xuddi shu nomli [English pronunciation] tag [O'zbekcha tallaffuz]-ni toping.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektorda qaysi ramka yonyapti? Uning burchagidagi yorliqni o'qing.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yorliqda [English pronunciation] tag [O'zbekcha tallaffuz] nomi yozilgan. Qism shu [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan joyda boshlanadi va yopilgan joyda tugaydi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Endi sahifaning har bir qismi kodning qayerida ekanini bilasiz.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt boshida menyu bor: boshqa sahifalarga olib boradigan havolalar. Ular uchun alohida [English pronunciation] tag [O'zbekcha tallaffuz] bor.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyuni [English pronunciation] nav tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] nav [O'zbekcha tallaffuz] inglizcha navigation so'zidan olingan, ya'ni yo'l ko'rsatish degani. Saytning asosiy havolalari shu yerda turadi. Qarang, [English pronunciation] nav header [O'zbekcha tallaffuz] ichida joylashdi.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat qiling: [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] header [O'zbekcha tallaffuz] boshqa-boshqa [English pronunciation] tag [O'zbekcha tallaffuz]-lar. [English pronunciation] head [O'zbekcha tallaffuz] birinchi darsda ko'rgan qismimiz, ya'ni sahifa haqidagi ko'rinmas ma'lumotlar degani. [English pronunciation] header [O'zbekcha tallaffuz] esa sahifaning ko'rinadigan tepasi bo'ladi va u [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] nav [O'zbekcha tallaffuz] menyu uchun, [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi uchun, [English pronunciation] head [O'zbekcha tallaffuz] esa sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi saytning karkasini o'zingiz yig'ing. [English pronunciation] body [O'zbekcha tallaffuz] ichida uchta bo'sh joy bor: tepadan pastga qarab qismlarni joylang. Bitta bo'lak esa ortiqcha.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head body [O'zbekcha tallaffuz] ichiga qo'yilmaydi: u sahifa haqidagi ko'rinmas ma'lumot. Sayt boshi uchun boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadan boshlang: birinchi bo'lib sayt boshi keladi.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt boshidan keyin asosiy qism keladi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirida sayt oxiri keladi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sayt nimadan boshlanadi?", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi bo'lib [English pronunciation] header [O'zbekcha tallaffuz], keyin [English pronunciation] main [O'zbekcha tallaffuz] keladi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartib shunday bo'ladi: [English pronunciation] header [O'zbekcha tallaffuz], [English pronunciation] main [O'zbekcha tallaffuz] va [English pronunciation] footer [O'zbekcha tallaffuz]. [English pronunciation] head [O'zbekcha tallaffuz] kerak emas.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Saytning karkasi tayyor: boshi, asosiy qismi va oxiri. Ortiqcha [English pronunciation] head [O'zbekcha tallaffuz]'ni ham to'g'ri tashlab ketdingiz.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, to'rtta sayt sxemasi. Har birida bitta qism yonib turibdi. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni o'z qismi bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin sxemani bosing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi bo'ladi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] nav [O'zbekcha tallaffuz] menyu bo'ladi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] main [O'zbekcha tallaffuz] asosiy qism bo'ladi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! [English pronunciation] footer [O'zbekcha tallaffuz] sayt oxiri bo'ladi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] header [O'zbekcha tallaffuz] butun sayt boshi bo'ladi: tepadagi keng qism.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] nav [O'zbekcha tallaffuz] faqat menyu bo'ladi: sayt boshidagi havolalar.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] main [O'zbekcha tallaffuz] o'rtadagi eng katta qism bo'ladi.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] footer [O'zbekcha tallaffuz] eng pastdagi qism bo'ladi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har bir sxemada qaysi joy yonib turibdi: tepa, o'rta yoki past?", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadagi keng qism [English pronunciation] header [O'zbekcha tallaffuz], uning ichidagi kichik qism esa [English pronunciation] nav [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepa [English pronunciation] header [O'zbekcha tallaffuz], ichidagi menyu [English pronunciation] nav [O'zbekcha tallaffuz], o'rta [English pronunciation] main [O'zbekcha tallaffuz], past esa [English pronunciation] footer [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Saytning hamma qismini bilasiz.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Asosiy qismda ikki xil narsa bor: o'yinlar va retseptlar. Ularni ham ajratib qo'yish mumkin.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'yinlar haqidagi qismni [English pronunciation] section tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] section [O'zbekcha tallaffuz] ya'ni bo'lim degani. Bitta bo'limda bitta mavzu bo'ladi va odatda u o'z sarlavhasi bilan boshlanadi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retseptlar ham alohida bo'lim bo'ldi. Diqqat qiling: [English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi, [English pronunciation] section [O'zbekcha tallaffuz] esa xohlagancha bo'lishi mumkin.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Eslab qoling: [English pronunciation] section [O'zbekcha tallaffuz] bitta mavzuli bo'lim bo'ladi, ular [English pronunciation] main [O'zbekcha tallaffuz] ichida bir nechta bo'lishi mumkin.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Retseptlar bo'limida ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun Inspektor faqat bitta bo'limni ko'ryapti. Bo'lim [English pronunciation] tag [O'zbekcha tallaffuz]-ining nomini yozing va Tekshirishni bosing.", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi va u allaqachon bor. Bu yerga bo'lim [English pronunciation] tag [O'zbekcha tallaffuz]-i kerak.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Bitta mavzuli bo'lim uchun [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Inspektor bo'limni ko'rmadi. Nomni harfma-harf yozing.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'yinlar bo'limi qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bilan boshlanadi?", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] section [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi asosiy qismda ikkita bo'lim bor: o'yinlar va retseptlar.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi ikkita holatga qarang: oldin va keyin. Kodga bitta [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi. Sahifa o'zgarmadi, lekin Inspektorda yangi ramka chiqdi. Xo'sh, qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi?", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi?", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Menyu atrofida [English pronunciation] nav [O'zbekcha tallaffuz] ramkasi chiqdi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Asosiy qism ikkita bo'limga bo'lindi.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri! Pastdagi yozuv [English pronunciation] footer [O'zbekcha tallaffuz] bo'ldi.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: yangi ramka menyu havolalari atrofida chiqdi. Menyuni [English pronunciation] nav [O'zbekcha tallaffuz] o'raydi.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni [English pronunciation] section [O'zbekcha tallaffuz] yasaydi.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: yangi ramka eng pastda chiqdi. Sayt oxirini [English pronunciation] footer [O'zbekcha tallaffuz] bildiradi.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oldin va keyin Inspektorini solishtiring: qayerda yangi ramka chiqdi?", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yangi ramka menyu havolalarini o'rab turibdi. Menyuni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'raydi, esingizdami?", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi, esingizdami?", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yangi ramka sahifaning eng pastida chiqdi. Sayt oxirini qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bildiradi, esingizdami?", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi Inspektorga qarab, kodga qaysi qism qo'shilganini bilasiz. Keyin bu qismlar nimaga kerakligini ko'ramiz.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifa ko'rinishi o'zgarmasa, bu [English pronunciation] tag [O'zbekcha tallaffuz]-lar nimaga kerak? Keling, saytni ko'rish qiyin bo'lgan odam kabi ko'rib chiqamiz. Uning uchun sahifani ekrandan o'qib beruvchi dastur o'qiydi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, dastur sahifani qismlarga bo'lib aytadi: sayt boshi, menyu, asosiy qism va sayt oxiri. Bularning hammasini u aynan shu [English pronunciation] tag [O'zbekcha tallaffuz]-lardan biladi.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi odam bitta tugma bilan to'g'ri asosiy qismga o'ta oladi. Menyuni har safar boshidan eshitib o'tirishi shart emas.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Google kabi qidiruv tizimlari ham [English pronunciation] main [O'zbekcha tallaffuz] ichidagi asosiy matnni yaxshiroq tushunadi. Boshqa dasturchilar esa kodni tez o'qiydi.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, bu [English pronunciation] tag [O'zbekcha tallaffuz]-lar saytni odamlar, dasturlar va qidiruv tizimlari uchun tushunarli qiladi.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z saytingizning qismlarini yasang. Karkas tayyor: [English pronunciation] header [O'zbekcha tallaffuz], [English pronunciation] main [O'zbekcha tallaffuz] va [English pronunciation] footer [O'zbekcha tallaffuz]. Oldin sayt oxiriga yozuv yozing: masalan, yil va saytingiz nomi. Keyin Tayyorni bosing.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Saytingiz oxiri tayyor. Endi o'z bo'limingizni qo'shamiz.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt oxirida odatda nima yoziladi? Shuni yozing.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] footer tag [O'zbekcha tallaffuz]-lari joyida turibdi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: 2026, Mening saytim. Keyin Tayyorni bosing.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi asosiy qismga o'z bo'limingizni qo'shing. Bo'lim nima haqida bo'ladi? Uning sarlavhasini [English pronunciation] H two [O'zbekcha tallaffuz] ichiga yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Saytingizda yangi bo'lim paydo bo'ldi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytingizda nima haqida yozmoqchisiz? Shuni sarlavha qiling.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Mening sevimli kitoblarim. Keyin Tayyorni bosing.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Men saytingiz tepasini tahrirladim va adashib boshqa [English pronunciation] tag [O'zbekcha tallaffuz] yozib qo'ydim. Sahifa xuddi avvalgidek, lekin Inspektor sayt boshini ko'rmayapti! To'g'ri [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga olib boring.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi va [English pronunciation] body [O'zbekcha tallaffuz] ichiga qo'yilmaydi.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] H one [O'zbekcha tallaffuz] bu sarlavha, u ichkarida allaqachon bor. Butun sayt boshi uchun boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Inspektorga qarang: sayt tepasida ramka bormi? Sarlavha va menyuni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'rashi kerak?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizga sahifaning ko'rinadigan tepasi kerak: sarlavha va menyu. [English pronunciation] head [O'zbekcha tallaffuz] esa sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] header tag [O'zbekcha tallaffuz]-ini bo'sh joyga olib boring: u sayt boshini bildiradi.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana endi joyida! Inspektor sayt boshini yana ko'rdi.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Mana, sayt va Inspektor, lekin kodda xato bor. Inspektorga qarang: qaysi ramka noto'g'ri joyda? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi Inspektorda bitta ramka umuman yo'q. Bu yerda nima buzilgan?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qator to'g'ri yozilgan. Inspektorga qarang: qaysi ramka joyida emas?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] nav [O'zbekcha tallaffuz] menyu o'rniga sarlavhaga o'ralgan edi. Menyu esa [English pronunciation] nav [O'zbekcha tallaffuz]'siz qolgan edi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] footer [O'zbekcha tallaffuz] so'zida bitta harf tushib qolgan edi. Brauzer bunday [English pronunciation] tag [O'zbekcha tallaffuz]-ni bilmaydi, shuning uchun sayt oxiri ko'rinmagan edi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Inspektorga qarang: [English pronunciation] nav [O'zbekcha tallaffuz] ramkasi nimani o'rab turibdi?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] nav [O'zbekcha tallaffuz] menyu havolalari uchun bo'ladi. Sarlavha esa [English pronunciation] nav [O'zbekcha tallaffuz] emas.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sarlavha qatoriga qarang: uni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'rab turibdi?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Inspektorga qarang: qaysi qismning ramkasi yo'q?", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt oxirining [English pronunciation] tag [O'zbekcha tallaffuz]-ini harfma-harf o'qing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oxirgi qatorga qarang: [English pronunciation] footer [O'zbekcha tallaffuz] to'liq yozilganmi?", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala xato ham topildi. Siz saytlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida? Pastdagi kodga ham qarang.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Saytning qismlari sahifa ko'rinishini o'zgartirmaydi, esingizdami? Ular faqat qaysi qism qayerda ekanini aytadi. [English pronunciation] head [O'zbekcha tallaffuz] esa ko'rinmas ma'lumot uchun bo'ladi. [English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi. Gap shunga mos keladimi?", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] header tag [O'zbekcha tallaffuz]-i sayt tepasini rangli qiladi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] header [O'zbekcha tallaffuz] ko'rinishni o'zgartirmaydi. U faqat bu sayt boshi ekanini aytadi.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] header [O'zbekcha tallaffuz] bitta [English pronunciation] tag [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ko'rinmas ma'lumot, [English pronunciation] header [O'zbekcha tallaffuz] esa sahifaning ko'rinadigan tepasi bo'ladi.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifada [English pronunciation] main [O'zbekcha tallaffuz] bitta bo'ladi, [English pronunciation] section [O'zbekcha tallaffuz] esa bir nechta bo'lishi mumkin.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] main [O'zbekcha tallaffuz] sahifaning asosiy qismi, u bitta. Uning ichida esa bo'limlar ko'p bo'lishi mumkin.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz saytning qismlarini yaxshi bilasiz.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men sayt tepasini [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'rab, u o'zi rangli bo'ladi deb o'ylagan edim? Afsuski, men adashibman. Qarang, sahifa umuman o'zgarmadi. [English pronunciation] header [O'zbekcha tallaffuz] faqat bu sayt boshi ekanini aytadi. Rang va chiroyni esa CSS beradi, uni keyingi kursda o'rganasiz.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning saytingiz! Unda sizning bo'limingiz va sizning sayt oxiringiz bor.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi bo'ladi.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] nav [O'zbekcha tallaffuz] menyu havolalari uchun bo'ladi.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] main [O'zbekcha tallaffuz] sahifaning yagona asosiy qismi bo'ladi.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] section [O'zbekcha tallaffuz] bitta mavzuli bo'lim bo'ladi.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] footer [O'zbekcha tallaffuz] esa sayt oxiri bo'ladi.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz haqiqiy saytlar qanday tuzilganini bilasiz. Keyingi darsda hamma bilganlaringizni yig'ib, o'zingizning yakuniy loyihangizni yasaysiz. Ko'rishguncha!", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Futbol, shaxmat va Minecraft.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Osh va somsa.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nimaga kerak?", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Мой сайт разросся: заголовок, меню, игры, рецепты, а в самом низу маленькая подпись. Но посмотри на код: всё лежит одной кучей. Где у сайта верх, где главная часть, где низ, не понять. Давай наведём в коде порядок. Нажми Превратить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Код разложен по частям: верх, меню, главная часть, разделы и низ. Теперь код читать гораздо проще.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на браузер: страница совсем не изменилась. А цветные рамки я включил Инспектором, на самом сайте их нет.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта. Но сначала маленькая загадка. На другом своём сайте я обернул верх в тег [English pronunciation] header [Русское произношение]. По-моему, теперь верх сайта сам станет цветным и красивым. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У каждого сайта три большие части: верх, главная часть и низ. Обернём их по очереди. Рамки показывает Инспектор, а сама страница не меняется.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок и меню обернули в тег [English pronunciation] header [Русское произношение], то есть верх сайта. Обычно там название сайта и меню.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь игры и рецепты обернём в тег [English pronunciation] main [Русское произношение], то есть главный. Здесь самое важное на странице, и [English pronunciation] main [Русское произношение] на странице бывает только один.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И в конце нижнюю подпись обернём в тег [English pronunciation] footer [Русское произношение], то есть низ сайта. Там обычно авторские права, контакты и дополнительные ссылки.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: [English pronunciation] header [Русское произношение], верх сайта, [English pronunciation] main [Русское произношение], главная часть, [English pronunciation] footer [Русское произношение], низ. Они не меняют вид страницы, а только говорят, что это за часть.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. В нижней строке у открывающего тега нет имени. Поэтому Инспектор не видит низ сайта. Впиши имя тега, который означает низ сайта, и нажми Проверить.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя тега между уголками.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скобки уже на месте. Здесь нужно только имя тега.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это для верха сайта. А нам нужен низ.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот тег делает другое. Нужен тег для низа сайта.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого тега нет, поэтому Инспектор не увидел низ сайта. Напиши имя буква в букву.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на закрывающий тег: имя написано там.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Оно английское, нижняя часть. Начинается с буквы f.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя тега, [English pronunciation] footer [Русское произношение]. Впиши его между уголками.", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Инспектор увидел низ сайта. А страница не изменилась, так и должно быть.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В Инспекторе загорается одна рамка. А ты нажми в коде строку, которая открывает или закрывает эту часть.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какой строке кода горящая часть?", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь горит верх страницы. Где он в коде?", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Последняя. Теперь горит большая часть посередине. В какой она строке?", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Низ сайта делает строка [English pronunciation] footer [Русское произношение].", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Верх сайта лежит внутри [English pronunciation] header [Русское произношение].", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Главная часть, внутри [English pronunciation] main [Русское произношение], игры и рецепты тоже там.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Эта строка от другой части. Посмотри на имя горящей рамки и найди в коде тег с таким именем.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Какая рамка горит в Инспекторе? Прочитай ярлычок в её углу.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На ярлычке написано имя тега. Часть начинается там, где этот тег открыт, и кончается там, где он закрыт.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Теперь ты знаешь, где в коде каждая часть страницы.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В верху сайта есть меню: ссылки на другие страницы. Для них есть отдельный тег.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меню обернули в тег [English pronunciation] nav [Русское произношение], от английского navigation, то есть навигация. Здесь главные ссылки сайта. Смотри, [English pronunciation] nav [Русское произношение] встал внутрь [English pronunciation] header [Русское произношение].", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Обрати внимание: [English pronunciation] head [Русское произношение] и [English pronunciation] header [Русское произношение], разные теги. [English pronunciation] head [Русское произношение] мы видели на первом уроке, это невидимые сведения о странице. А [English pronunciation] header [Русское произношение], видимый верх страницы, и он стоит внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] nav [Русское произношение], для меню, [English pronunciation] header [Русское произношение], для верха сайта, а [English pronunciation] head [Русское произношение], для невидимых сведений о странице.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь собери каркас сайта сам. Внутри [English pronunciation] body [Русское произношение] три пустых места: ставь части сверху вниз. А один кусок лишний.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] не ставят внутрь [English pronunciation] body [Русское произношение]: это невидимые сведения о странице. Для верха сайта нужен другой тег.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начни сверху: первым идёт верх сайта.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После верха сайта идёт главная часть.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В конце, низ сайта.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С чего начинается сайт?", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала [English pronunciation] header [Русское произношение], потом [English pronunciation] main [Русское произношение].", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок такой: [English pronunciation] header [Русское произношение], [English pronunciation] main [Русское произношение] и [English pronunciation] footer [Русское произношение]. [English pronunciation] head [Русское произношение] не нужен.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Каркас сайта готов: верх, главная часть и низ. И лишний [English pronunciation] head [Русское произношение] ты правильно не взял.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот четыре схемы сайта. На каждой горит одна часть. Соедини каждый тег со своей частью. Сначала нажми тег, потом схему.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] header [Русское произношение], верх сайта.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] nav [Русское произношение], меню.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] main [Русское произношение], главная часть.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! [English pronunciation] footer [Русское произношение], низ сайта.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] header [Русское произношение], весь верх сайта: широкая полоса наверху.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] nav [Русское произношение], только меню: ссылки в верху сайта.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] main [Русское произношение], самая большая часть посередине.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] footer [Русское произношение], самая нижняя часть.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что горит на каждой схеме: верх, середина или низ?", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Широкий верх, [English pronunciation] header [Русское произношение], а маленькая часть внутри него, [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Верх, [English pronunciation] header [Русское произношение], меню в нём, [English pronunciation] nav [Русское произношение], середина, [English pronunciation] main [Русское произношение], низ, [English pronunciation] footer [Русское произношение].", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Ты знаешь все части сайта.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала нажми тег.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В главной части два разных рассказа: про игры и про рецепты. Их тоже можно разделить.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Часть про игры обернули в тег [English pronunciation] section [Русское произношение], то есть раздел. В одном разделе одна тема, и обычно он начинается со своего заголовка.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Рецепты, тоже отдельный раздел. Обрати внимание: [English pronunciation] main [Русское произношение] на странице только один, а [English pronunciation] section [Русское произношение], сколько угодно.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Запомни: [English pronunciation] section [Русское произношение], раздел на одну тему, внутри [English pronunciation] main [Русское произношение] их может быть несколько.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У раздела с рецептами у открывающего тега нет имени. Поэтому Инспектор видит только один раздел. Впиши имя тега раздела и нажми Проверить.", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] main [Русское произношение] на странице один, и он уже есть. Здесь нужен тег раздела.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот тег делает другое. Нужен тег для раздела на одну тему.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Такого тега нет, поэтому Инспектор не увидел раздел. Напиши имя буква в букву.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] С какого тега начинается раздел про игры?", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя тега, [English pronunciation] section [Русское произношение]. Впиши его между уголками.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Теперь в главной части два раздела: игры и рецепты.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь посмотри на два состояния: до и после. В код добавили один тег. Страница не изменилась, но в Инспекторе появилась новая рамка. Ну и какой тег добавили?", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег добавили?", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Вокруг меню появилась рамка [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Главная часть разделилась на два раздела.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Нижняя подпись стала [English pronunciation] footer [Русское произношение].", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: новая рамка появилась вокруг ссылок меню. Меню оборачивает [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: внутри главной части появились две новые рамки. Разделы делает [English pronunciation] section [Русское произношение].", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: новая рамка появилась в самом низу. Низ сайта, это [English pronunciation] footer [Русское произношение].", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сравни Инспектор До и После: где появилась новая рамка?", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новая рамка обводит ссылки меню. Вспомни, какой тег оборачивает меню.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри главной части появились две новые рамки. Вспомни, какой тег делает разделы.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новая рамка появилась в самом низу страницы. Вспомни, какой тег обозначает низ сайта.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь по Инспектору ты понимаешь, какую часть добавили в код. Дальше посмотрим, зачем вообще нужны эти части.", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если вид страницы не меняется, зачем эти теги? Давай посмотрим на сайт так, как его видит человек с плохим зрением. Ему страницу читает вслух специальная программа.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, программа называет страницу по частям: верх сайта, меню, главная часть и низ. Всё это она узнаёт именно по этим тегам.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь человек одной кнопкой может перейти прямо к главной части. Не нужно каждый раз заново слушать меню.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поисковики вроде Google тоже лучше понимают главный текст внутри [English pronunciation] main [Русское произношение]. А другие программисты быстрее читают такой код.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, эти теги делают сайт понятным для людей, программ и поисковиков.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай части своего сайта. Каркас готов: [English pronunciation] header [Русское произношение], [English pronunciation] main [Русское произношение] и [English pronunciation] footer [Русское произношение]. Сначала напиши подпись для низа сайта: например, год и название сайта. Потом нажми Готово.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Низ сайта готов. Теперь добавим свой раздел.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Что обычно пишут в самом низу сайта? Это и напиши.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги [English pronunciation] footer [Русское произношение] на месте.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: 2026, Мой сайт. Потом нажми Готово.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь добавь в главную часть свой раздел. О чём он будет? Впиши его заголовок в [English pronunciation] H two [Русское произношение]. Потом нажми Готово.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! На твоём сайте появился новый раздел.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] О чём хочешь рассказать на сайте? Это и будет заголовком.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пиши только слова, теги на месте.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Мои любимые книги. Потом нажми Готово.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Я правил верх твоего сайта и по ошибке написал другой тег. Страница как раньше, но Инспектор не видит верх сайта! Перетащи правильный тег в пустое место.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение], для невидимых сведений о странице, внутрь [English pronunciation] body [Русское произношение] его не ставят.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] H one [Русское произношение], это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на Инспектор: есть ли рамка у верха сайта? Какой тег должен обернуть заголовок и меню?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нам нужен видимый верх страницы, то есть заголовок и меню. А [English pronunciation] head [Русское произношение], для невидимых сведений о странице.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи тег [English pronunciation] header [Русское произношение] в пустое место: он обозначает верх сайта.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот теперь порядок! Инспектор снова видит верх сайта.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Вот сайт и Инспектор, но в коде ошибка. Посмотри на Инспектор: какая рамка не на своём месте? Найди строку с ошибкой и нажми её.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь в Инспекторе одной рамки нет совсем. Что сломано здесь?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эта строка в порядке. Посмотри на Инспектор: какая рамка не на месте?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! [English pronunciation] nav [Русское произношение] обернули вокруг заголовка, а не меню. А меню осталось без [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В слове [English pronunciation] footer [Русское произношение] пропала буква. Браузер не знает такого тега, поэтому низа сайта не было видно.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на Инспектор: что обведено рамкой [English pronunciation] nav [Русское произношение]?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] nav [Русское произношение], для ссылок меню. А заголовок, не [English pronunciation] nav [Русское произношение].", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на строку заголовка: какой тег вокруг него?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на Инспектор: у какой части нет рамки?", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прочитай тег низа сайта буква за буквой.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на последнюю строку: [English pronunciation] footer [Русское произношение] написан полностью?", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь сайты как настоящий программист.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни: части сайта не меняют вид страницы, они только говорят, где какая часть. А [English pronunciation] head [Русское произношение], для невидимых сведений, и [English pronunciation] main [Русское произношение] на странице один. Фраза с этим совпадает?", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег [English pronunciation] header [Русское произношение] делает верх сайта цветным.", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] header [Русское произношение] не меняет вид. Он только говорит, что это верх сайта.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] и [English pronunciation] header [Русское произношение], один и тот же тег.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение], невидимые сведения о странице, а [English pronunciation] header [Русское произношение], видимый верх страницы.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На странице один [English pronunciation] main [Русское произношение], а [English pronunciation] section [Русское произношение] может быть несколько.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] main [Русское произношение], главная часть страницы, она одна. А разделов внутри может быть много.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь части сайта.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я обернул верх сайта в [English pronunciation] header [Русское произношение] и думал, что он сам станет цветным? Увы, я ошибся. Смотри, страница совсем не изменилась. [English pronunciation] header [Русское произношение] только говорит, что это верх сайта. А цвет и красоту даёт CSS, его ты изучишь в следующем курсе.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой сайт! В нём твой раздел и твой низ сайта.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] header [Русское произношение], верх сайта.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] nav [Русское произношение], для ссылок меню.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] main [Русское произношение], единственная главная часть страницы.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] section [Русское произношение], раздел на одну тему.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А [English pronunciation] footer [Русское произношение], низ сайта.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты знаешь, как устроены настоящие сайты. На следующем уроке соберёшь всё, что знаешь, в свой финальный проект. До встречи!", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Футбол, шахматы и Minecraft.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Плов и самса.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем это?", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! My site has grown: a heading, a menu, games, recipes, and a small line at the very bottom. But look at the code: it’s all one big pile. You can’t tell where the top of the site is, where the main part is, or where the bottom is. Let’s tidy up the code. Tap Transform.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! The code is split into parts: the top, the menu, the main part, sections and the bottom. Now the code is much easier to read.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the browser: the page didn’t change at all. I turned on the colored frames with the Inspector; they aren’t part of the site.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site. But first, a little riddle. On my other site I wrapped the top in the header tag. I think the top of the site will now become colorful and pretty by itself. So what do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Every site has three big parts: the top, the main part and the bottom. Let’s wrap them one by one. The Inspector shows the frames; the page itself doesn’t change.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We wrapped the heading and the menu in the header tag. header means the top of the site. It usually holds the site’s name and the menu.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we wrap the games and the recipes in the main tag. main means the main part. The most important things on the page go here, and a page has only one main.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Finally we wrap the bottom line in the footer tag. footer means the bottom of the site. It usually has the copyright, contacts and extra links.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: header is the top, main is the main part, and footer is the bottom. They don’t change how the page looks; they only say what each part is.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. In the bottom line the opening tag has no name, so the Inspector can’t see the bottom of the site. Type the name of the tag for the bottom of the site and tap Check.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the tag name between the brackets.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The brackets are already there. Only the tag name goes here.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s for the top of the site. We need the bottom.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That tag does something else. We need the tag for the bottom of the site.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such tag, so the Inspector didn’t see the bottom of the site. Type the name letter by letter.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the closing tag: the name is written there.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’s English for the bottom part. It starts with the letter f.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The tag name is footer. Type it between the brackets.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The Inspector sees the bottom of the site. And the page didn’t change, which is exactly right.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One frame lights up in the Inspector. Tap the line in the code that opens or closes this part.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code line is the lit part on?", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now the top of the page is lit. Where is it in the code?", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The last one. Now the big part in the middle is lit. Which line is it on?", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The footer line makes the bottom of the site.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The top of the site is inside header.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The main part is inside main, with the games and recipes.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This line belongs to another part. Look at the lit frame’s name and find the tag with that name in the code.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Which frame is lit in the Inspector? Read the label in its corner.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The label shows the tag name. The part starts where that tag opens and ends where it closes.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! Now you know where each part of the page is in the code.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At the top of the site there’s a menu: links to other pages. There’s a special tag for them.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We wrapped the menu in the nav tag, from the word navigation. The site’s main links go here. Look, nav sits inside header.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Note: head and header are different tags. head is the part we saw in the first lesson: invisible information about the page. header is the visible top of the page, and it goes inside body.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So nav is for the menu, header is for the top of the site, and head is for invisible information about the page.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now build the site’s frame yourself. There are three empty spots inside body: put the parts in from top to bottom. And one piece isn’t needed.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head doesn’t go inside body: it’s invisible information about the page. The top of the site needs a different tag.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Start at the top: the top of the site comes first.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] After the top of the site comes the main part.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At the end comes the bottom of the site.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What does a site start with?", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First header, then main.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The order is: header, main and footer. No head.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The site’s frame is ready: the top, the main part and the bottom. And you were right to leave out the extra head.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here are four diagrams of a site. One part is lit on each. Match each tag with its part. Tap a tag first, then a diagram.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! header is the top of the site.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! nav is the menu.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! main is the main part.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! footer is the bottom of the site.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] header is the whole top of the site: the wide strip at the top.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] nav is only the menu: the links at the top.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] main is the biggest part in the middle.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] footer is the part at the very bottom.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What’s lit on each diagram: the top, the middle or the bottom?", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The wide top is header, and the small part inside it is nav.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The top is header, the menu in it is nav, the middle is main, and the bottom is footer.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant! You know every part of a site.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap a tag first.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The main part has two different topics: games and recipes. We can separate them too.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We wrapped the games part in the section tag. section means a section: one topic, usually starting with its own heading.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The recipes became a separate section too. Note: a page has only one main, but it can have as many sections as you like.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember: section is a part about one topic, and main can hold several of them.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The recipes section’s opening tag has no name, so the Inspector sees only one section. Type the section tag’s name and tap Check.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A page has only one main, and it’s already there. Here you need the section tag.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That tag does something else. You need the tag for a section about one topic.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such tag, so the Inspector didn’t see the section. Type the name letter by letter.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What tag does the games section start with?", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The tag name is section. Type it between the brackets.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Now the main part has two sections: games and recipes.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now look at two states: before and after. One tag was added to the code. The page didn’t change, but a new frame appeared in the Inspector. So which tag was added?", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag was added?", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! A nav frame appeared around the menu.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The main part split into two sections.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The bottom line became footer.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the new frame appeared around the menu links. nav wraps the menu.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: two new frames appeared inside the main part. section makes sections.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the new frame appeared at the very bottom. footer marks the bottom of the site.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Compare the Inspector Before and After: where did a new frame appear?", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The new frame goes around the menu links. Remember which tag wraps the menu.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two new frames appeared inside the main part. Remember which tag makes sections.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The new frame appeared at the very bottom of the page. Remember which tag marks the bottom of the site.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you can tell from the Inspector which part was added to the code. Next, let’s see why these parts are needed at all.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If the page doesn’t look any different, why do we need these tags? Let’s look at the site the way a person who can’t see well does. A special program reads the page aloud to them.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, the program names the page’s parts: the top, the menu, the main part and the bottom. It knows all of them from exactly these tags.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the person can jump straight to the main part with one key. They don’t have to listen to the menu from the start every time.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Search engines like Google also understand the main text inside main better. And other programmers can read the code faster.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So these tags make a site clear for people, programs and search engines.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make the parts of your own site. The frame is ready: header, main and footer. First write a line for the bottom of the site: for example, the year and your site’s name. Then tap Done.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Your site’s bottom is ready. Now let’s add your own section.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What usually goes at the very bottom of a site? Write that.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the footer tags are in place.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: 2026, My site. Then tap Done.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now add your own section to the main part. What will it be about? Type its heading into H two. Then tap Done.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! A new section appeared on your site.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What do you want to write about on your site? Make that the heading.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type only words: the tags are in place.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: My favorite books. Then tap Done.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I was editing the top of your site and wrote the wrong tag by mistake. The page looks the same, but the Inspector can’t see the top of the site! Drag the right tag into the empty spot.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head is for invisible information about the page and doesn’t go inside body.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H one is a heading, and it’s already inside. The whole top of the site needs a different tag.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the Inspector: is there a frame around the top of the site? Which tag should wrap the heading and the menu?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We need the visible top of the page, that is, the heading and the menu. head is for invisible information about the page.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag the header tag into the empty spot: it marks the top of the site.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! The Inspector sees the top of the site again.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Now check yourself. Here’s the site and the Inspector, but the code has a bug. Look at the Inspector: which frame is in the wrong place? Find the line with the bug and tap it.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Great, the first bug is found! Now one frame is missing from the Inspector entirely. What’s broken here?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This line is fine. Look at the Inspector: which frame is out of place?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! nav was wrapped around the heading instead of the menu. And the menu was left without nav.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! A letter was missing from the word footer. The browser doesn’t know that tag, so the bottom of the site wasn’t visible.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the Inspector: what does the nav frame go around?", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] nav is for the menu links. The heading isn’t nav.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the heading line: which tag is around it?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the Inspector: which part has no frame?", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read the bottom-of-the-site tag letter by letter.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the last line: is footer spelled in full?", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check sites like a real programmer.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read the sentence piece by piece: which tag is it about? Look at the code below too.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember: the parts of a site don’t change how the page looks; they only say which part is where. head is for invisible information, and a page has only one main. Does the sentence match that?", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The header tag makes the top of the site colorful.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] header doesn’t change how things look. It only says this is the top of the site.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head and header are the same tag.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head is invisible information about the page, and header is the visible top of the page.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A page has one main, but it can have several sections.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] main is the page’s main part, and there’s only one. But it can hold many sections.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know the parts of a site really well.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrapped the top of the site in header and thought it would become colorful by itself? Sadly, I was wrong. Look, the page didn’t change at all. header only says this is the top of the site. Color and style come from CSS, which you’ll learn in the next course.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your site! It has your section and your bottom line.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] header is the top of the site.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] nav is for the menu links.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] main is the page’s one main part.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] section is a part about one topic.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And footer is the bottom of the site.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you know how real websites are built. Next time you’ll put everything you know together into your own final project. See you!", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Football, chess and Minecraft.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Plov and samsa.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Why bother?", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Saytim kattalashib ketdi: sarlavha, menyu, o'yinlar, retseptlar va eng pastda kichik yozuv bor. Lekin kodga qarang: hammasi bitta uyum bo'lib turibdi. Qayerda saytning boshi, qayerda asosiy qismi, qayerda oxiri, tushunib bo'lmaydi. Keling, kodni tartibga solamiz. Aylantirish tugmasini bosing.": "uz001",
+    "Voy, qarang! Kod bo'laklarga bo'lindi: boshi, menyu, asosiy qism, bo'limlar va oxiri. Endi kodni o'qish ancha oson.": "uz002",
+    "Brauzerga qarang: sahifa umuman o'zgarmadi. Rangli ramkalarni esa men Inspektor bilan yoqib qo'ydim, ular saytning bir qismi emas.": "uz003",
+    "Bugun saytni shunday qismlarga bo'lishni o'rganasiz va o'z saytingizning qismlarini yasaysiz. Lekin oldin kichik topishmoq. Men boshqa saytimning tepasini [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'rab qo'ydim. Menimcha, endi sayt tepasi o'zi rangli, chiroyli bo'lib qoladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Har bir saytning uchta katta qismi bor: boshi, asosiy qismi va oxiri. Keling, ularni bittalab o'raymiz. Ramkalarni Inspektor ko'rsatadi, sahifaning o'zi esa o'zgarmaydi.": "uz005",
+    "Sarlavha va menyuni [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] header [O'zbekcha tallaffuz] inglizcha so'z, ya'ni sayt boshi degani. Odatda unda sayt nomi va menyu turadi.": "uz006",
+    "Endi o'yinlar va retseptlarni [English pronunciation] main tag [O'zbekcha tallaffuz]-iga o'raymiz. [English pronunciation] main [O'zbekcha tallaffuz] ya'ni asosiy degani. Sahifaning eng muhim qismi shu yerda turadi va sahifada [English pronunciation] main [O'zbekcha tallaffuz] faqat bitta bo'ladi.": "uz007",
+    "Oxirida pastdagi yozuvni [English pronunciation] footer tag [O'zbekcha tallaffuz]-iga o'raymiz. [English pronunciation] footer [O'zbekcha tallaffuz] ya'ni sayt oxiri degani. Unda odatda mualliflik huquqi, aloqa va qo'shimcha havolalar bo'ladi.": "uz008",
+    "Eslab qoling: [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi, [English pronunciation] main [O'zbekcha tallaffuz] asosiy qism, [English pronunciation] footer [O'zbekcha tallaffuz] esa sayt oxiri bo'ladi. Ular sahifa ko'rinishini o'zgartirmaydi, faqat qaysi qism ekanini aytadi.": "uz009",
+    "Endi navbat sizga. Pastki qatorda ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun Inspektor sayt oxirini ko'rmayapti. Sayt oxirini bildiradigan [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing va Tekshirishni bosing.": "uz010",
+    "Burchakli qavslar o'rtasiga [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.": "uz011",
+    "Qavslar joyida turibdi. Bu yerga faqat [English pronunciation] tag [O'zbekcha tallaffuz] nomini yozing.": "uz012",
+    "Bu sayt boshi uchun bo'ladi. Bizga sayt oxiri kerak.": "uz013",
+    "Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Sayt oxirini bildiradigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz014",
+    "Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Inspektor sayt oxirini ko'rmadi. Nomni harfma-harf yozing.": "uz015",
+    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang: nomi o'sha yerda yozilgan.": "uz016",
+    "U inglizcha, ya'ni oyoq tomoni, pastki qism degani. f harfi bilan boshlanadi.": "uz017",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] footer [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.": "uz018",
+    "Zo'r! Inspektor sayt oxirini ko'rdi. Sahifa esa o'zgarmadi, xuddi shunday bo'lishi kerak.": "uz019",
+    "Inspektorda bitta ramka yonadi. Siz kodda shu qismni ochadigan yoki yopadigan qatorni bosing.": "uz020",
+    "Yongan qism kodning qaysi qatorida?": "uz021",
+    "Endi sahifaning tepasi yondi. U kodda qayerda?": "uz022",
+    "Oxirgisi. Endi o'rtadagi katta qism yondi. U qaysi qatorda?": "uz023",
+    "To'g'ri! Sayt oxirini [English pronunciation] footer [O'zbekcha tallaffuz] qatori yasaydi.": "uz024",
+    "To'g'ri! Sayt boshi [English pronunciation] header [O'zbekcha tallaffuz] ichida turibdi.": "uz025",
+    "To'g'ri! Asosiy qism [English pronunciation] main [O'zbekcha tallaffuz] ichida, o'yinlar va retseptlar ham shu yerda.": "uz026",
+    "Bu qator boshqa qismniki. Yongan ramkaning nomiga qarang va kodda xuddi shu nomli [English pronunciation] tag [O'zbekcha tallaffuz]-ni toping.": "uz027",
+    "Inspektorda qaysi ramka yonyapti? Uning burchagidagi yorliqni o'qing.": "uz028",
+    "Yorliqda [English pronunciation] tag [O'zbekcha tallaffuz] nomi yozilgan. Qism shu [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan joyda boshlanadi va yopilgan joyda tugaydi.": "uz029",
+    "Barakalla! Endi sahifaning har bir qismi kodning qayerida ekanini bilasiz.": "uz030",
+    "Sayt boshida menyu bor: boshqa sahifalarga olib boradigan havolalar. Ular uchun alohida [English pronunciation] tag [O'zbekcha tallaffuz] bor.": "uz031",
+    "Menyuni [English pronunciation] nav tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] nav [O'zbekcha tallaffuz] inglizcha navigation so'zidan olingan, ya'ni yo'l ko'rsatish degani. Saytning asosiy havolalari shu yerda turadi. Qarang, [English pronunciation] nav header [O'zbekcha tallaffuz] ichida joylashdi.": "uz032",
+    "Diqqat qiling: [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] header [O'zbekcha tallaffuz] boshqa-boshqa [English pronunciation] tag [O'zbekcha tallaffuz]-lar. [English pronunciation] head [O'zbekcha tallaffuz] birinchi darsda ko'rgan qismimiz, ya'ni sahifa haqidagi ko'rinmas ma'lumotlar degani. [English pronunciation] header [O'zbekcha tallaffuz] esa sahifaning ko'rinadigan tepasi bo'ladi va u [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz033",
+    "Demak, [English pronunciation] nav [O'zbekcha tallaffuz] menyu uchun, [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi uchun, [English pronunciation] head [O'zbekcha tallaffuz] esa sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi.": "uz034",
+    "Endi saytning karkasini o'zingiz yig'ing. [English pronunciation] body [O'zbekcha tallaffuz] ichida uchta bo'sh joy bor: tepadan pastga qarab qismlarni joylang. Bitta bo'lak esa ortiqcha.": "uz035",
+    "[English pronunciation] head body [O'zbekcha tallaffuz] ichiga qo'yilmaydi: u sahifa haqidagi ko'rinmas ma'lumot. Sayt boshi uchun boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz036",
+    "Tepadan boshlang: birinchi bo'lib sayt boshi keladi.": "uz037",
+    "Sayt boshidan keyin asosiy qism keladi.": "uz038",
+    "Oxirida sayt oxiri keladi.": "uz039",
+    "Sayt nimadan boshlanadi?": "uz040",
+    "Birinchi bo'lib [English pronunciation] header [O'zbekcha tallaffuz], keyin [English pronunciation] main [O'zbekcha tallaffuz] keladi.": "uz041",
+    "Tartib shunday bo'ladi: [English pronunciation] header [O'zbekcha tallaffuz], [English pronunciation] main [O'zbekcha tallaffuz] va [English pronunciation] footer [O'zbekcha tallaffuz]. [English pronunciation] head [O'zbekcha tallaffuz] kerak emas.": "uz042",
+    "Ajoyib! Saytning karkasi tayyor: boshi, asosiy qismi va oxiri. Ortiqcha [English pronunciation] head [O'zbekcha tallaffuz]'ni ham to'g'ri tashlab ketdingiz.": "uz043",
+    "Mana, to'rtta sayt sxemasi. Har birida bitta qism yonib turibdi. Har bir [English pronunciation] tag [O'zbekcha tallaffuz]-ni o'z qismi bilan juftlang. Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing, keyin sxemani bosing.": "uz044",
+    "To'g'ri! [English pronunciation] header [O'zbekcha tallaffuz] sayt boshi bo'ladi.": "uz045",
+    "To'g'ri! [English pronunciation] nav [O'zbekcha tallaffuz] menyu bo'ladi.": "uz046",
+    "To'g'ri! [English pronunciation] main [O'zbekcha tallaffuz] asosiy qism bo'ladi.": "uz047",
+    "To'g'ri! [English pronunciation] footer [O'zbekcha tallaffuz] sayt oxiri bo'ladi.": "uz048",
+    "[English pronunciation] header [O'zbekcha tallaffuz] butun sayt boshi bo'ladi: tepadagi keng qism.": "uz049",
+    "[English pronunciation] nav [O'zbekcha tallaffuz] faqat menyu bo'ladi: sayt boshidagi havolalar.": "uz050",
+    "[English pronunciation] main [O'zbekcha tallaffuz] o'rtadagi eng katta qism bo'ladi.": "uz051",
+    "[English pronunciation] footer [O'zbekcha tallaffuz] eng pastdagi qism bo'ladi.": "uz052",
+    "Har bir sxemada qaysi joy yonib turibdi: tepa, o'rta yoki past?": "uz053",
+    "Tepadagi keng qism [English pronunciation] header [O'zbekcha tallaffuz], uning ichidagi kichik qism esa [English pronunciation] nav [O'zbekcha tallaffuz] bo'ladi.": "uz054",
+    "Tepa [English pronunciation] header [O'zbekcha tallaffuz], ichidagi menyu [English pronunciation] nav [O'zbekcha tallaffuz], o'rta [English pronunciation] main [O'zbekcha tallaffuz], past esa [English pronunciation] footer [O'zbekcha tallaffuz] bo'ladi.": "uz055",
+    "Qoyil! Saytning hamma qismini bilasiz.": "uz056",
+    "Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni bosing.": "uz057",
+    "Asosiy qismda ikki xil narsa bor: o'yinlar va retseptlar. Ularni ham ajratib qo'yish mumkin.": "uz058",
+    "O'yinlar haqidagi qismni [English pronunciation] section tag [O'zbekcha tallaffuz]-iga o'radik. [English pronunciation] section [O'zbekcha tallaffuz] ya'ni bo'lim degani. Bitta bo'limda bitta mavzu bo'ladi va odatda u o'z sarlavhasi bilan boshlanadi.": "uz059",
+    "Retseptlar ham alohida bo'lim bo'ldi. Diqqat qiling: [English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi, [English pronunciation] section [O'zbekcha tallaffuz] esa xohlagancha bo'lishi mumkin.": "uz060",
+    "Eslab qoling: [English pronunciation] section [O'zbekcha tallaffuz] bitta mavzuli bo'lim bo'ladi, ular [English pronunciation] main [O'zbekcha tallaffuz] ichida bir nechta bo'lishi mumkin.": "uz061",
+    "Retseptlar bo'limida ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] nomi yo'q. Shuning uchun Inspektor faqat bitta bo'limni ko'ryapti. Bo'lim [English pronunciation] tag [O'zbekcha tallaffuz]-ining nomini yozing va Tekshirishni bosing.": "uz062",
+    "[English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi va u allaqachon bor. Bu yerga bo'lim [English pronunciation] tag [O'zbekcha tallaffuz]-i kerak.": "uz063",
+    "Bu [English pronunciation] tag [O'zbekcha tallaffuz] boshqa ish qiladi. Bitta mavzuli bo'lim uchun [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz064",
+    "Bunday [English pronunciation] tag [O'zbekcha tallaffuz] yo'q, shuning uchun Inspektor bo'limni ko'rmadi. Nomni harfma-harf yozing.": "uz065",
+    "O'yinlar bo'limi qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bilan boshlanadi?": "uz066",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] nomi [English pronunciation] section [O'zbekcha tallaffuz] bo'ladi. Uni burchakli qavslar o'rtasiga yozing.": "uz067",
+    "Zo'r! Endi asosiy qismda ikkita bo'lim bor: o'yinlar va retseptlar.": "uz068",
+    "Endi ikkita holatga qarang: oldin va keyin. Kodga bitta [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi. Sahifa o'zgarmadi, lekin Inspektorda yangi ramka chiqdi. Xo'sh, qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi?": "uz069",
+    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] qo'shildi?": "uz070",
+    "To'g'ri! Menyu atrofida [English pronunciation] nav [O'zbekcha tallaffuz] ramkasi chiqdi.": "uz071",
+    "To'g'ri! Asosiy qism ikkita bo'limga bo'lindi.": "uz072",
+    "To'g'ri! Pastdagi yozuv [English pronunciation] footer [O'zbekcha tallaffuz] bo'ldi.": "uz073",
+    "Qarang: yangi ramka menyu havolalari atrofida chiqdi. Menyuni [English pronunciation] nav [O'zbekcha tallaffuz] o'raydi.": "uz074",
+    "Qarang: asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni [English pronunciation] section [O'zbekcha tallaffuz] yasaydi.": "uz075",
+    "Qarang: yangi ramka eng pastda chiqdi. Sayt oxirini [English pronunciation] footer [O'zbekcha tallaffuz] bildiradi.": "uz076",
+    "Oldin va keyin Inspektorini solishtiring: qayerda yangi ramka chiqdi?": "uz077",
+    "Yangi ramka menyu havolalarini o'rab turibdi. Menyuni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'raydi, esingizdami?": "uz078",
+    "Asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yasaydi, esingizdami?": "uz079",
+    "Yangi ramka sahifaning eng pastida chiqdi. Sayt oxirini qaysi [English pronunciation] tag [O'zbekcha tallaffuz] bildiradi, esingizdami?": "uz080",
+    "Endi Inspektorga qarab, kodga qaysi qism qo'shilganini bilasiz. Keyin bu qismlar nimaga kerakligini ko'ramiz.": "uz081",
+    "Sahifa ko'rinishi o'zgarmasa, bu [English pronunciation] tag [O'zbekcha tallaffuz]-lar nimaga kerak? Keling, saytni ko'rish qiyin bo'lgan odam kabi ko'rib chiqamiz. Uning uchun sahifani ekrandan o'qib beruvchi dastur o'qiydi.": "uz082",
+    "Qarang, dastur sahifani qismlarga bo'lib aytadi: sayt boshi, menyu, asosiy qism va sayt oxiri. Bularning hammasini u aynan shu [English pronunciation] tag [O'zbekcha tallaffuz]-lardan biladi.": "uz083",
+    "Endi odam bitta tugma bilan to'g'ri asosiy qismga o'ta oladi. Menyuni har safar boshidan eshitib o'tirishi shart emas.": "uz084",
+    "Google kabi qidiruv tizimlari ham [English pronunciation] main [O'zbekcha tallaffuz] ichidagi asosiy matnni yaxshiroq tushunadi. Boshqa dasturchilar esa kodni tez o'qiydi.": "uz085",
+    "Demak, bu [English pronunciation] tag [O'zbekcha tallaffuz]-lar saytni odamlar, dasturlar va qidiruv tizimlari uchun tushunarli qiladi.": "uz086",
+    "Endi o'z saytingizning qismlarini yasang. Karkas tayyor: [English pronunciation] header [O'zbekcha tallaffuz], [English pronunciation] main [O'zbekcha tallaffuz] va [English pronunciation] footer [O'zbekcha tallaffuz]. Oldin sayt oxiriga yozuv yozing: masalan, yil va saytingiz nomi. Keyin Tayyorni bosing.": "uz087",
+    "Zo'r! Saytingiz oxiri tayyor. Endi o'z bo'limingizni qo'shamiz.": "uz088",
+    "Sayt oxirida odatda nima yoziladi? Shuni yozing.": "uz089",
+    "Faqat so'z yozing, [English pronunciation] footer tag [O'zbekcha tallaffuz]-lari joyida turibdi.": "uz090",
+    "Masalan: 2026, Mening saytim. Keyin Tayyorni bosing.": "uz091",
+    "Endi asosiy qismga o'z bo'limingizni qo'shing. Bo'lim nima haqida bo'ladi? Uning sarlavhasini [English pronunciation] H two [O'zbekcha tallaffuz] ichiga yozing. Keyin Tayyorni bosing.": "uz092",
+    "Ajoyib! Saytingizda yangi bo'lim paydo bo'ldi.": "uz093",
+    "Saytingizda nima haqida yozmoqchisiz? Shuni sarlavha qiling.": "uz094",
+    "Faqat so'z yozing, [English pronunciation] tag [O'zbekcha tallaffuz]-lar joyida turibdi.": "uz095",
+    "Masalan: Mening sevimli kitoblarim. Keyin Tayyorni bosing.": "uz096",
+    "Men saytingiz tepasini tahrirladim va adashib boshqa [English pronunciation] tag [O'zbekcha tallaffuz] yozib qo'ydim. Sahifa xuddi avvalgidek, lekin Inspektor sayt boshini ko'rmayapti! To'g'ri [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga olib boring.": "uz097",
+    "[English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi va [English pronunciation] body [O'zbekcha tallaffuz] ichiga qo'yilmaydi.": "uz098",
+    "[English pronunciation] H one [O'zbekcha tallaffuz] bu sarlavha, u ichkarida allaqachon bor. Butun sayt boshi uchun boshqa [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz099",
+    "Inspektorga qarang: sayt tepasida ramka bormi? Sarlavha va menyuni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'rashi kerak?": "uz100",
+    "Bizga sahifaning ko'rinadigan tepasi kerak: sarlavha va menyu. [English pronunciation] head [O'zbekcha tallaffuz] esa sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi.": "uz101",
+    "[English pronunciation] header tag [O'zbekcha tallaffuz]-ini bo'sh joyga olib boring: u sayt boshini bildiradi.": "uz102",
+    "Ana endi joyida! Inspektor sayt boshini yana ko'rdi.": "uz103",
+    "Endi o'zingizni sinab ko'ring. Mana, sayt va Inspektor, lekin kodda xato bor. Inspektorga qarang: qaysi ramka noto'g'ri joyda? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.": "uz104",
+    "Zo'r, birinchi xato topildi! Endi Inspektorda bitta ramka umuman yo'q. Bu yerda nima buzilgan?": "uz105",
+    "Bu qator to'g'ri yozilgan. Inspektorga qarang: qaysi ramka joyida emas?": "uz106",
+    "Topdingiz! [English pronunciation] nav [O'zbekcha tallaffuz] menyu o'rniga sarlavhaga o'ralgan edi. Menyu esa [English pronunciation] nav [O'zbekcha tallaffuz]'siz qolgan edi.": "uz107",
+    "Topdingiz! [English pronunciation] footer [O'zbekcha tallaffuz] so'zida bitta harf tushib qolgan edi. Brauzer bunday [English pronunciation] tag [O'zbekcha tallaffuz]-ni bilmaydi, shuning uchun sayt oxiri ko'rinmagan edi.": "uz108",
+    "Inspektorga qarang: [English pronunciation] nav [O'zbekcha tallaffuz] ramkasi nimani o'rab turibdi?": "uz109",
+    "[English pronunciation] nav [O'zbekcha tallaffuz] menyu havolalari uchun bo'ladi. Sarlavha esa [English pronunciation] nav [O'zbekcha tallaffuz] emas.": "uz110",
+    "Sarlavha qatoriga qarang: uni qaysi [English pronunciation] tag [O'zbekcha tallaffuz] o'rab turibdi?": "uz111",
+    "Inspektorga qarang: qaysi qismning ramkasi yo'q?": "uz112",
+    "Sayt oxirining [English pronunciation] tag [O'zbekcha tallaffuz]-ini harfma-harf o'qing.": "uz113",
+    "Oxirgi qatorga qarang: [English pronunciation] footer [O'zbekcha tallaffuz] to'liq yozilganmi?": "uz114",
+    "Ajoyib! Ikkala xato ham topildi. Siz saytlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz115",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz116",
+    "Gapni bo'laklab o'qing: u qaysi [English pronunciation] tag [O'zbekcha tallaffuz] haqida? Pastdagi kodga ham qarang.": "uz117",
+    "Saytning qismlari sahifa ko'rinishini o'zgartirmaydi, esingizdami? Ular faqat qaysi qism qayerda ekanini aytadi. [English pronunciation] head [O'zbekcha tallaffuz] esa ko'rinmas ma'lumot uchun bo'ladi. [English pronunciation] main [O'zbekcha tallaffuz] sahifada faqat bitta bo'ladi. Gap shunga mos keladimi?": "uz118",
+    "Barakalla!": "uz119",
+    "[English pronunciation] header tag [O'zbekcha tallaffuz]-i sayt tepasini rangli qiladi.": "uz120",
+    "[English pronunciation] header [O'zbekcha tallaffuz] ko'rinishni o'zgartirmaydi. U faqat bu sayt boshi ekanini aytadi.": "uz121",
+    "[English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] header [O'zbekcha tallaffuz] bitta [English pronunciation] tag [O'zbekcha tallaffuz] bo'ladi.": "uz122",
+    "[English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ko'rinmas ma'lumot, [English pronunciation] header [O'zbekcha tallaffuz] esa sahifaning ko'rinadigan tepasi bo'ladi.": "uz123",
+    "Sahifada [English pronunciation] main [O'zbekcha tallaffuz] bitta bo'ladi, [English pronunciation] section [O'zbekcha tallaffuz] esa bir nechta bo'lishi mumkin.": "uz124",
+    "[English pronunciation] main [O'zbekcha tallaffuz] sahifaning asosiy qismi, u bitta. Uning ichida esa bo'limlar ko'p bo'lishi mumkin.": "uz125",
+    "Hammasi to'g'ri! Siz saytning qismlarini yaxshi bilasiz.": "uz126",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men sayt tepasini [English pronunciation] header tag [O'zbekcha tallaffuz]-iga o'rab, u o'zi rangli bo'ladi deb o'ylagan edim? Afsuski, men adashibman. Qarang, sahifa umuman o'zgarmadi. [English pronunciation] header [O'zbekcha tallaffuz] faqat bu sayt boshi ekanini aytadi. Rang va chiroyni esa CSS beradi, uni keyingi kursda o'rganasiz.": "uz127",
+    "Qarang, bu sizning saytingiz! Unda sizning bo'limingiz va sizning sayt oxiringiz bor.": "uz128",
+    "[English pronunciation] header [O'zbekcha tallaffuz] sayt boshi bo'ladi.": "uz129",
+    "[English pronunciation] nav [O'zbekcha tallaffuz] menyu havolalari uchun bo'ladi.": "uz130",
+    "[English pronunciation] main [O'zbekcha tallaffuz] sahifaning yagona asosiy qismi bo'ladi.": "uz131",
+    "[English pronunciation] section [O'zbekcha tallaffuz] bitta mavzuli bo'lim bo'ladi.": "uz132",
+    "[English pronunciation] footer [O'zbekcha tallaffuz] esa sayt oxiri bo'ladi.": "uz133",
+    "Tabriklayman! Endi siz haqiqiy saytlar qanday tuzilganini bilasiz. Keyingi darsda hamma bilganlaringizni yig'ib, o'zingizning yakuniy loyihangizni yasaysiz. Ko'rishguncha!": "uz134",
+    "Voy, zo‘r!": "uz135",
+    "Ana! Chiqdi!": "uz136",
+    "Super!": "uz137",
+    "Qoyil!": "uz138",
+    "Ura!": "uz139",
+    "Zo‘r-ku!": "uz140",
+    "Yana bir bor urinib ko‘ring.": "uz141",
+    "Diqqat bilan qarang.": "uz142",
+    "Yaqin qoldingiz. Shoshilmang.": "uz143",
+    "Futbol, shaxmat va Minecraft.": "uz144",
+    "Osh va somsa.": "uz145",
+    "Nimaga kerak?": "uz146",
+    "To'g'rimi?": "uz147",
+    "To'g'ri yoki noto'g'ri?": "uz148",
+    "Salom, dunyo!": "uz149",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz150",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz151",
+  },
+  ru: {
+    "Привет! Мой сайт разросся: заголовок, меню, игры, рецепты, а в самом низу маленькая подпись. Но посмотри на код: всё лежит одной кучей. Где у сайта верх, где главная часть, где низ, не понять. Давай наведём в коде порядок. Нажми Превратить.": "ru001",
+    "Ого, смотри! Код разложен по частям: верх, меню, главная часть, разделы и низ. Теперь код читать гораздо проще.": "ru002",
+    "Посмотри на браузер: страница совсем не изменилась. А цветные рамки я включил Инспектором, на самом сайте их нет.": "ru003",
+    "Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта. Но сначала маленькая загадка. На другом своём сайте я обернул верх в тег [English pronunciation] header [Русское произношение]. По-моему, теперь верх сайта сам станет цветным и красивым. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "У каждого сайта три большие части: верх, главная часть и низ. Обернём их по очереди. Рамки показывает Инспектор, а сама страница не меняется.": "ru005",
+    "Заголовок и меню обернули в тег [English pronunciation] header [Русское произношение], то есть верх сайта. Обычно там название сайта и меню.": "ru006",
+    "Теперь игры и рецепты обернём в тег [English pronunciation] main [Русское произношение], то есть главный. Здесь самое важное на странице, и [English pronunciation] main [Русское произношение] на странице бывает только один.": "ru007",
+    "И в конце нижнюю подпись обернём в тег [English pronunciation] footer [Русское произношение], то есть низ сайта. Там обычно авторские права, контакты и дополнительные ссылки.": "ru008",
+    "Запомни: [English pronunciation] header [Русское произношение], верх сайта, [English pronunciation] main [Русское произношение], главная часть, [English pronunciation] footer [Русское произношение], низ. Они не меняют вид страницы, а только говорят, что это за часть.": "ru009",
+    "Теперь твоя очередь. В нижней строке у открывающего тега нет имени. Поэтому Инспектор не видит низ сайта. Впиши имя тега, который означает низ сайта, и нажми Проверить.": "ru010",
+    "Впиши имя тега между уголками.": "ru011",
+    "Скобки уже на месте. Здесь нужно только имя тега.": "ru012",
+    "Это для верха сайта. А нам нужен низ.": "ru013",
+    "Этот тег делает другое. Нужен тег для низа сайта.": "ru014",
+    "Такого тега нет, поэтому Инспектор не увидел низ сайта. Напиши имя буква в букву.": "ru015",
+    "Посмотри на закрывающий тег: имя написано там.": "ru016",
+    "Оно английское, нижняя часть. Начинается с буквы f.": "ru017",
+    "Имя тега, [English pronunciation] footer [Русское произношение]. Впиши его между уголками.": "ru018",
+    "Огонь! Инспектор увидел низ сайта. А страница не изменилась, так и должно быть.": "ru019",
+    "В Инспекторе загорается одна рамка. А ты нажми в коде строку, которая открывает или закрывает эту часть.": "ru020",
+    "В какой строке кода горящая часть?": "ru021",
+    "Теперь горит верх страницы. Где он в коде?": "ru022",
+    "Последняя. Теперь горит большая часть посередине. В какой она строке?": "ru023",
+    "Верно! Низ сайта делает строка [English pronunciation] footer [Русское произношение].": "ru024",
+    "Верно! Верх сайта лежит внутри [English pronunciation] header [Русское произношение].": "ru025",
+    "Верно! Главная часть, внутри [English pronunciation] main [Русское произношение], игры и рецепты тоже там.": "ru026",
+    "Эта строка от другой части. Посмотри на имя горящей рамки и найди в коде тег с таким именем.": "ru027",
+    "Какая рамка горит в Инспекторе? Прочитай ярлычок в её углу.": "ru028",
+    "На ярлычке написано имя тега. Часть начинается там, где этот тег открыт, и кончается там, где он закрыт.": "ru029",
+    "Молодец! Теперь ты знаешь, где в коде каждая часть страницы.": "ru030",
+    "В верху сайта есть меню: ссылки на другие страницы. Для них есть отдельный тег.": "ru031",
+    "Меню обернули в тег [English pronunciation] nav [Русское произношение], от английского navigation, то есть навигация. Здесь главные ссылки сайта. Смотри, [English pronunciation] nav [Русское произношение] встал внутрь [English pronunciation] header [Русское произношение].": "ru032",
+    "Обрати внимание: [English pronunciation] head [Русское произношение] и [English pronunciation] header [Русское произношение], разные теги. [English pronunciation] head [Русское произношение] мы видели на первом уроке, это невидимые сведения о странице. А [English pronunciation] header [Русское произношение], видимый верх страницы, и он стоит внутри [English pronunciation] body [Русское произношение].": "ru033",
+    "Значит, [English pronunciation] nav [Русское произношение], для меню, [English pronunciation] header [Русское произношение], для верха сайта, а [English pronunciation] head [Русское произношение], для невидимых сведений о странице.": "ru034",
+    "Теперь собери каркас сайта сам. Внутри [English pronunciation] body [Русское произношение] три пустых места: ставь части сверху вниз. А один кусок лишний.": "ru035",
+    "[English pronunciation] head [Русское произношение] не ставят внутрь [English pronunciation] body [Русское произношение]: это невидимые сведения о странице. Для верха сайта нужен другой тег.": "ru036",
+    "Начни сверху: первым идёт верх сайта.": "ru037",
+    "После верха сайта идёт главная часть.": "ru038",
+    "В конце, низ сайта.": "ru039",
+    "С чего начинается сайт?": "ru040",
+    "Сначала [English pronunciation] header [Русское произношение], потом [English pronunciation] main [Русское произношение].": "ru041",
+    "Порядок такой: [English pronunciation] header [Русское произношение], [English pronunciation] main [Русское произношение] и [English pronunciation] footer [Русское произношение]. [English pronunciation] head [Русское произношение] не нужен.": "ru042",
+    "Отлично! Каркас сайта готов: верх, главная часть и низ. И лишний [English pronunciation] head [Русское произношение] ты правильно не взял.": "ru043",
+    "Вот четыре схемы сайта. На каждой горит одна часть. Соедини каждый тег со своей частью. Сначала нажми тег, потом схему.": "ru044",
+    "Верно! [English pronunciation] header [Русское произношение], верх сайта.": "ru045",
+    "Верно! [English pronunciation] nav [Русское произношение], меню.": "ru046",
+    "Верно! [English pronunciation] main [Русское произношение], главная часть.": "ru047",
+    "Верно! [English pronunciation] footer [Русское произношение], низ сайта.": "ru048",
+    "[English pronunciation] header [Русское произношение], весь верх сайта: широкая полоса наверху.": "ru049",
+    "[English pronunciation] nav [Русское произношение], только меню: ссылки в верху сайта.": "ru050",
+    "[English pronunciation] main [Русское произношение], самая большая часть посередине.": "ru051",
+    "[English pronunciation] footer [Русское произношение], самая нижняя часть.": "ru052",
+    "Что горит на каждой схеме: верх, середина или низ?": "ru053",
+    "Широкий верх, [English pronunciation] header [Русское произношение], а маленькая часть внутри него, [English pronunciation] nav [Русское произношение].": "ru054",
+    "Верх, [English pronunciation] header [Русское произношение], меню в нём, [English pronunciation] nav [Русское произношение], середина, [English pronunciation] main [Русское произношение], низ, [English pronunciation] footer [Русское произношение].": "ru055",
+    "Класс! Ты знаешь все части сайта.": "ru056",
+    "Сначала нажми тег.": "ru057",
+    "В главной части два разных рассказа: про игры и про рецепты. Их тоже можно разделить.": "ru058",
+    "Часть про игры обернули в тег [English pronunciation] section [Русское произношение], то есть раздел. В одном разделе одна тема, и обычно он начинается со своего заголовка.": "ru059",
+    "Рецепты, тоже отдельный раздел. Обрати внимание: [English pronunciation] main [Русское произношение] на странице только один, а [English pronunciation] section [Русское произношение], сколько угодно.": "ru060",
+    "Запомни: [English pronunciation] section [Русское произношение], раздел на одну тему, внутри [English pronunciation] main [Русское произношение] их может быть несколько.": "ru061",
+    "У раздела с рецептами у открывающего тега нет имени. Поэтому Инспектор видит только один раздел. Впиши имя тега раздела и нажми Проверить.": "ru062",
+    "[English pronunciation] main [Русское произношение] на странице один, и он уже есть. Здесь нужен тег раздела.": "ru063",
+    "Этот тег делает другое. Нужен тег для раздела на одну тему.": "ru064",
+    "Такого тега нет, поэтому Инспектор не увидел раздел. Напиши имя буква в букву.": "ru065",
+    "С какого тега начинается раздел про игры?": "ru066",
+    "Имя тега, [English pronunciation] section [Русское произношение]. Впиши его между уголками.": "ru067",
+    "Огонь! Теперь в главной части два раздела: игры и рецепты.": "ru068",
+    "Теперь посмотри на два состояния: до и после. В код добавили один тег. Страница не изменилась, но в Инспекторе появилась новая рамка. Ну и какой тег добавили?": "ru069",
+    "Какой тег добавили?": "ru070",
+    "Верно! Вокруг меню появилась рамка [English pronunciation] nav [Русское произношение].": "ru071",
+    "Верно! Главная часть разделилась на два раздела.": "ru072",
+    "Верно! Нижняя подпись стала [English pronunciation] footer [Русское произношение].": "ru073",
+    "Смотри: новая рамка появилась вокруг ссылок меню. Меню оборачивает [English pronunciation] nav [Русское произношение].": "ru074",
+    "Смотри: внутри главной части появились две новые рамки. Разделы делает [English pronunciation] section [Русское произношение].": "ru075",
+    "Смотри: новая рамка появилась в самом низу. Низ сайта, это [English pronunciation] footer [Русское произношение].": "ru076",
+    "Сравни Инспектор До и После: где появилась новая рамка?": "ru077",
+    "Новая рамка обводит ссылки меню. Вспомни, какой тег оборачивает меню.": "ru078",
+    "Внутри главной части появились две новые рамки. Вспомни, какой тег делает разделы.": "ru079",
+    "Новая рамка появилась в самом низу страницы. Вспомни, какой тег обозначает низ сайта.": "ru080",
+    "Теперь по Инспектору ты понимаешь, какую часть добавили в код. Дальше посмотрим, зачем вообще нужны эти части.": "ru081",
+    "Если вид страницы не меняется, зачем эти теги? Давай посмотрим на сайт так, как его видит человек с плохим зрением. Ему страницу читает вслух специальная программа.": "ru082",
+    "Смотри, программа называет страницу по частям: верх сайта, меню, главная часть и низ. Всё это она узнаёт именно по этим тегам.": "ru083",
+    "Теперь человек одной кнопкой может перейти прямо к главной части. Не нужно каждый раз заново слушать меню.": "ru084",
+    "Поисковики вроде Google тоже лучше понимают главный текст внутри [English pronunciation] main [Русское произношение]. А другие программисты быстрее читают такой код.": "ru085",
+    "Значит, эти теги делают сайт понятным для людей, программ и поисковиков.": "ru086",
+    "Теперь сделай части своего сайта. Каркас готов: [English pronunciation] header [Русское произношение], [English pronunciation] main [Русское произношение] и [English pronunciation] footer [Русское произношение]. Сначала напиши подпись для низа сайта: например, год и название сайта. Потом нажми Готово.": "ru087",
+    "Огонь! Низ сайта готов. Теперь добавим свой раздел.": "ru088",
+    "Что обычно пишут в самом низу сайта? Это и напиши.": "ru089",
+    "Пиши только слова, теги [English pronunciation] footer [Русское произношение] на месте.": "ru090",
+    "Например: 2026, Мой сайт. Потом нажми Готово.": "ru091",
+    "Теперь добавь в главную часть свой раздел. О чём он будет? Впиши его заголовок в [English pronunciation] H two [Русское произношение]. Потом нажми Готово.": "ru092",
+    "Отлично! На твоём сайте появился новый раздел.": "ru093",
+    "О чём хочешь рассказать на сайте? Это и будет заголовком.": "ru094",
+    "Пиши только слова, теги на месте.": "ru095",
+    "Например: Мои любимые книги. Потом нажми Готово.": "ru096",
+    "Я правил верх твоего сайта и по ошибке написал другой тег. Страница как раньше, но Инспектор не видит верх сайта! Перетащи правильный тег в пустое место.": "ru097",
+    "[English pronunciation] head [Русское произношение], для невидимых сведений о странице, внутрь [English pronunciation] body [Русское произношение] его не ставят.": "ru098",
+    "[English pronunciation] H one [Русское произношение], это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.": "ru099",
+    "Посмотри на Инспектор: есть ли рамка у верха сайта? Какой тег должен обернуть заголовок и меню?": "ru100",
+    "Нам нужен видимый верх страницы, то есть заголовок и меню. А [English pronunciation] head [Русское произношение], для невидимых сведений о странице.": "ru101",
+    "Перетащи тег [English pronunciation] header [Русское произношение] в пустое место: он обозначает верх сайта.": "ru102",
+    "Вот теперь порядок! Инспектор снова видит верх сайта.": "ru103",
+    "Теперь проверь себя. Вот сайт и Инспектор, но в коде ошибка. Посмотри на Инспектор: какая рамка не на своём месте? Найди строку с ошибкой и нажми её.": "ru104",
+    "Класс, первая ошибка найдена! Теперь в Инспекторе одной рамки нет совсем. Что сломано здесь?": "ru105",
+    "Эта строка в порядке. Посмотри на Инспектор: какая рамка не на месте?": "ru106",
+    "Есть! [English pronunciation] nav [Русское произношение] обернули вокруг заголовка, а не меню. А меню осталось без [English pronunciation] nav [Русское произношение].": "ru107",
+    "Есть! В слове [English pronunciation] footer [Русское произношение] пропала буква. Браузер не знает такого тега, поэтому низа сайта не было видно.": "ru108",
+    "Посмотри на Инспектор: что обведено рамкой [English pronunciation] nav [Русское произношение]?": "ru109",
+    "[English pronunciation] nav [Русское произношение], для ссылок меню. А заголовок, не [English pronunciation] nav [Русское произношение].": "ru110",
+    "Посмотри на строку заголовка: какой тег вокруг него?": "ru111",
+    "Посмотри на Инспектор: у какой части нет рамки?": "ru112",
+    "Прочитай тег низа сайта буква за буквой.": "ru113",
+    "Посмотри на последнюю строку: [English pronunciation] footer [Русское произношение] написан полностью?": "ru114",
+    "Супер! Обе ошибки найдены. Ты проверяешь сайты как настоящий программист.": "ru115",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru116",
+    "Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.": "ru117",
+    "Вспомни: части сайта не меняют вид страницы, они только говорят, где какая часть. А [English pronunciation] head [Русское произношение], для невидимых сведений, и [English pronunciation] main [Русское произношение] на странице один. Фраза с этим совпадает?": "ru118",
+    "Точно!": "ru119",
+    "Тег [English pronunciation] header [Русское произношение] делает верх сайта цветным.": "ru120",
+    "[English pronunciation] header [Русское произношение] не меняет вид. Он только говорит, что это верх сайта.": "ru121",
+    "[English pronunciation] head [Русское произношение] и [English pronunciation] header [Русское произношение], один и тот же тег.": "ru122",
+    "[English pronunciation] head [Русское произношение], невидимые сведения о странице, а [English pronunciation] header [Русское произношение], видимый верх страницы.": "ru123",
+    "На странице один [English pronunciation] main [Русское произношение], а [English pronunciation] section [Русское произношение] может быть несколько.": "ru124",
+    "[English pronunciation] main [Русское произношение], главная часть страницы, она одна. А разделов внутри может быть много.": "ru125",
+    "Всё верно! Ты отлично знаешь части сайта.": "ru126",
+    "Вернёмся к загадке. Помнишь, я обернул верх сайта в [English pronunciation] header [Русское произношение] и думал, что он сам станет цветным? Увы, я ошибся. Смотри, страница совсем не изменилась. [English pronunciation] header [Русское произношение] только говорит, что это верх сайта. А цвет и красоту даёт CSS, его ты изучишь в следующем курсе.": "ru127",
+    "Смотри, это твой сайт! В нём твой раздел и твой низ сайта.": "ru128",
+    "[English pronunciation] header [Русское произношение], верх сайта.": "ru129",
+    "[English pronunciation] nav [Русское произношение], для ссылок меню.": "ru130",
+    "[English pronunciation] main [Русское произношение], единственная главная часть страницы.": "ru131",
+    "[English pronunciation] section [Русское произношение], раздел на одну тему.": "ru132",
+    "А [English pronunciation] footer [Русское произношение], низ сайта.": "ru133",
+    "Ура! Теперь ты знаешь, как устроены настоящие сайты. На следующем уроке соберёшь всё, что знаешь, в свой финальный проект. До встречи!": "ru134",
+    "Вау, классно!": "ru135",
+    "Есть! Получилось!": "ru136",
+    "Супер!": "ru137",
+    "Огонь!": "ru138",
+    "Ура!": "ru139",
+    "Вот это да!": "ru140",
+    "Попробуй ещё раз.": "ru141",
+    "Посмотри внимательно.": "ru142",
+    "Уже близко. Не спеши.": "ru143",
+    "Футбол, шахматы и Minecraft.": "ru144",
+    "Плов и самса.": "ru145",
+    "Зачем это?": "ru146",
+    "Верно или нет?": "ru147",
+    "Привет, мир!": "ru148",
+    "Здесь нужны только слова, без угловых скобок.": "ru149",
+    "Молодец!": "ru150",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru151",
+  },
+  en: {
+    "Hi! My site has grown: a heading, a menu, games, recipes, and a small line at the very bottom. But look at the code: it’s all one big pile. You can’t tell where the top of the site is, where the main part is, or where the bottom is. Let’s tidy up the code. Tap Transform.": "en001",
+    "Whoa, look! The code is split into parts: the top, the menu, the main part, sections and the bottom. Now the code is much easier to read.": "en002",
+    "Look at the browser: the page didn’t change at all. I turned on the colored frames with the Inspector; they aren’t part of the site.": "en003",
+    "Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site. But first, a little riddle. On my other site I wrapped the top in the header tag. I think the top of the site will now become colorful and pretty by itself. So what do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Every site has three big parts: the top, the main part and the bottom. Let’s wrap them one by one. The Inspector shows the frames; the page itself doesn’t change.": "en005",
+    "We wrapped the heading and the menu in the header tag. header means the top of the site. It usually holds the site’s name and the menu.": "en006",
+    "Now we wrap the games and the recipes in the main tag. main means the main part. The most important things on the page go here, and a page has only one main.": "en007",
+    "Finally we wrap the bottom line in the footer tag. footer means the bottom of the site. It usually has the copyright, contacts and extra links.": "en008",
+    "Remember: header is the top, main is the main part, and footer is the bottom. They don’t change how the page looks; they only say what each part is.": "en009",
+    "Now it’s your turn. In the bottom line the opening tag has no name, so the Inspector can’t see the bottom of the site. Type the name of the tag for the bottom of the site and tap Check.": "en010",
+    "Type the tag name between the brackets.": "en011",
+    "The brackets are already there. Only the tag name goes here.": "en012",
+    "That’s for the top of the site. We need the bottom.": "en013",
+    "That tag does something else. We need the tag for the bottom of the site.": "en014",
+    "There’s no such tag, so the Inspector didn’t see the bottom of the site. Type the name letter by letter.": "en015",
+    "Look at the closing tag: the name is written there.": "en016",
+    "It’s English for the bottom part. It starts with the letter f.": "en017",
+    "The tag name is footer. Type it between the brackets.": "en018",
+    "Awesome! The Inspector sees the bottom of the site. And the page didn’t change, which is exactly right.": "en019",
+    "One frame lights up in the Inspector. Tap the line in the code that opens or closes this part.": "en020",
+    "Which code line is the lit part on?": "en021",
+    "Now the top of the page is lit. Where is it in the code?": "en022",
+    "The last one. Now the big part in the middle is lit. Which line is it on?": "en023",
+    "Right! The footer line makes the bottom of the site.": "en024",
+    "Right! The top of the site is inside header.": "en025",
+    "Right! The main part is inside main, with the games and recipes.": "en026",
+    "This line belongs to another part. Look at the lit frame’s name and find the tag with that name in the code.": "en027",
+    "Which frame is lit in the Inspector? Read the label in its corner.": "en028",
+    "The label shows the tag name. The part starts where that tag opens and ends where it closes.": "en029",
+    "Well done! Now you know where each part of the page is in the code.": "en030",
+    "At the top of the site there’s a menu: links to other pages. There’s a special tag for them.": "en031",
+    "We wrapped the menu in the nav tag, from the word navigation. The site’s main links go here. Look, nav sits inside header.": "en032",
+    "Note: head and header are different tags. head is the part we saw in the first lesson: invisible information about the page. header is the visible top of the page, and it goes inside body.": "en033",
+    "So nav is for the menu, header is for the top of the site, and head is for invisible information about the page.": "en034",
+    "Now build the site’s frame yourself. There are three empty spots inside body: put the parts in from top to bottom. And one piece isn’t needed.": "en035",
+    "head doesn’t go inside body: it’s invisible information about the page. The top of the site needs a different tag.": "en036",
+    "Start at the top: the top of the site comes first.": "en037",
+    "After the top of the site comes the main part.": "en038",
+    "At the end comes the bottom of the site.": "en039",
+    "What does a site start with?": "en040",
+    "First header, then main.": "en041",
+    "The order is: header, main and footer. No head.": "en042",
+    "Great! The site’s frame is ready: the top, the main part and the bottom. And you were right to leave out the extra head.": "en043",
+    "Here are four diagrams of a site. One part is lit on each. Match each tag with its part. Tap a tag first, then a diagram.": "en044",
+    "Right! header is the top of the site.": "en045",
+    "Right! nav is the menu.": "en046",
+    "Right! main is the main part.": "en047",
+    "Right! footer is the bottom of the site.": "en048",
+    "header is the whole top of the site: the wide strip at the top.": "en049",
+    "nav is only the menu: the links at the top.": "en050",
+    "main is the biggest part in the middle.": "en051",
+    "footer is the part at the very bottom.": "en052",
+    "What’s lit on each diagram: the top, the middle or the bottom?": "en053",
+    "The wide top is header, and the small part inside it is nav.": "en054",
+    "The top is header, the menu in it is nav, the middle is main, and the bottom is footer.": "en055",
+    "Brilliant! You know every part of a site.": "en056",
+    "Tap a tag first.": "en057",
+    "The main part has two different topics: games and recipes. We can separate them too.": "en058",
+    "We wrapped the games part in the section tag. section means a section: one topic, usually starting with its own heading.": "en059",
+    "The recipes became a separate section too. Note: a page has only one main, but it can have as many sections as you like.": "en060",
+    "Remember: section is a part about one topic, and main can hold several of them.": "en061",
+    "The recipes section’s opening tag has no name, so the Inspector sees only one section. Type the section tag’s name and tap Check.": "en062",
+    "A page has only one main, and it’s already there. Here you need the section tag.": "en063",
+    "That tag does something else. You need the tag for a section about one topic.": "en064",
+    "There’s no such tag, so the Inspector didn’t see the section. Type the name letter by letter.": "en065",
+    "What tag does the games section start with?": "en066",
+    "The tag name is section. Type it between the brackets.": "en067",
+    "Awesome! Now the main part has two sections: games and recipes.": "en068",
+    "Now look at two states: before and after. One tag was added to the code. The page didn’t change, but a new frame appeared in the Inspector. So which tag was added?": "en069",
+    "Which tag was added?": "en070",
+    "Right! A nav frame appeared around the menu.": "en071",
+    "Right! The main part split into two sections.": "en072",
+    "Right! The bottom line became footer.": "en073",
+    "Look: the new frame appeared around the menu links. nav wraps the menu.": "en074",
+    "Look: two new frames appeared inside the main part. section makes sections.": "en075",
+    "Look: the new frame appeared at the very bottom. footer marks the bottom of the site.": "en076",
+    "Compare the Inspector Before and After: where did a new frame appear?": "en077",
+    "The new frame goes around the menu links. Remember which tag wraps the menu.": "en078",
+    "Two new frames appeared inside the main part. Remember which tag makes sections.": "en079",
+    "The new frame appeared at the very bottom of the page. Remember which tag marks the bottom of the site.": "en080",
+    "Now you can tell from the Inspector which part was added to the code. Next, let’s see why these parts are needed at all.": "en081",
+    "If the page doesn’t look any different, why do we need these tags? Let’s look at the site the way a person who can’t see well does. A special program reads the page aloud to them.": "en082",
+    "Look, the program names the page’s parts: the top, the menu, the main part and the bottom. It knows all of them from exactly these tags.": "en083",
+    "Now the person can jump straight to the main part with one key. They don’t have to listen to the menu from the start every time.": "en084",
+    "Search engines like Google also understand the main text inside main better. And other programmers can read the code faster.": "en085",
+    "So these tags make a site clear for people, programs and search engines.": "en086",
+    "Now make the parts of your own site. The frame is ready: header, main and footer. First write a line for the bottom of the site: for example, the year and your site’s name. Then tap Done.": "en087",
+    "Awesome! Your site’s bottom is ready. Now let’s add your own section.": "en088",
+    "What usually goes at the very bottom of a site? Write that.": "en089",
+    "Type only words: the footer tags are in place.": "en090",
+    "For example: 2026, My site. Then tap Done.": "en091",
+    "Now add your own section to the main part. What will it be about? Type its heading into H two. Then tap Done.": "en092",
+    "Great! A new section appeared on your site.": "en093",
+    "What do you want to write about on your site? Make that the heading.": "en094",
+    "Type only words: the tags are in place.": "en095",
+    "For example: My favorite books. Then tap Done.": "en096",
+    "I was editing the top of your site and wrote the wrong tag by mistake. The page looks the same, but the Inspector can’t see the top of the site! Drag the right tag into the empty spot.": "en097",
+    "head is for invisible information about the page and doesn’t go inside body.": "en098",
+    "H one is a heading, and it’s already inside. The whole top of the site needs a different tag.": "en099",
+    "Look at the Inspector: is there a frame around the top of the site? Which tag should wrap the heading and the menu?": "en100",
+    "We need the visible top of the page, that is, the heading and the menu. head is for invisible information about the page.": "en101",
+    "Drag the header tag into the empty spot: it marks the top of the site.": "en102",
+    "That’s it! The Inspector sees the top of the site again.": "en103",
+    "Now check yourself. Here’s the site and the Inspector, but the code has a bug. Look at the Inspector: which frame is in the wrong place? Find the line with the bug and tap it.": "en104",
+    "Great, the first bug is found! Now one frame is missing from the Inspector entirely. What’s broken here?": "en105",
+    "This line is fine. Look at the Inspector: which frame is out of place?": "en106",
+    "Found it! nav was wrapped around the heading instead of the menu. And the menu was left without nav.": "en107",
+    "Found it! A letter was missing from the word footer. The browser doesn’t know that tag, so the bottom of the site wasn’t visible.": "en108",
+    "Look at the Inspector: what does the nav frame go around?": "en109",
+    "nav is for the menu links. The heading isn’t nav.": "en110",
+    "Look at the heading line: which tag is around it?": "en111",
+    "Look at the Inspector: which part has no frame?": "en112",
+    "Read the bottom-of-the-site tag letter by letter.": "en113",
+    "Look at the last line: is footer spelled in full?": "en114",
+    "Super! Both bugs are found. You check sites like a real programmer.": "en115",
+    "The last test. I’ll say something, and you choose: true or false.": "en116",
+    "Read the sentence piece by piece: which tag is it about? Look at the code below too.": "en117",
+    "Remember: the parts of a site don’t change how the page looks; they only say which part is where. head is for invisible information, and a page has only one main. Does the sentence match that?": "en118",
+    "Exactly!": "en119",
+    "The header tag makes the top of the site colorful.": "en120",
+    "header doesn’t change how things look. It only says this is the top of the site.": "en121",
+    "head and header are the same tag.": "en122",
+    "head is invisible information about the page, and header is the visible top of the page.": "en123",
+    "A page has one main, but it can have several sections.": "en124",
+    "main is the page’s main part, and there’s only one. But it can hold many sections.": "en125",
+    "All correct! You know the parts of a site really well.": "en126",
+    "Back to our riddle. Remember, I wrapped the top of the site in header and thought it would become colorful by itself? Sadly, I was wrong. Look, the page didn’t change at all. header only says this is the top of the site. Color and style come from CSS, which you’ll learn in the next course.": "en127",
+    "Look, this is your site! It has your section and your bottom line.": "en128",
+    "header is the top of the site.": "en129",
+    "nav is for the menu links.": "en130",
+    "main is the page’s one main part.": "en131",
+    "section is a part about one topic.": "en132",
+    "And footer is the bottom of the site.": "en133",
+    "Hooray! Now you know how real websites are built. Next time you’ll put everything you know together into your own final project. See you!": "en134",
+    "Wow, awesome!": "en135",
+    "Yes! You did it!": "en136",
+    "Super!": "en137",
+    "Brilliant!": "en138",
+    "Hooray!": "en139",
+    "Amazing!": "en140",
+    "Try once more.": "en141",
+    "Take a closer look.": "en142",
+    "You are close. No rush.": "en143",
+    "Football, chess and Minecraft.": "en144",
+    "Plov and samsa.": "en145",
+    "Why bother?": "en146",
+    "True or false?": "en147",
+    "Hello, world!": "en148",
+    "Only words here, no angle brackets.": "en149",
+    "Well done!": "en150",
+    "Everything in the window lives inside body.": "en151",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

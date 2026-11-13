@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8023,15 +7574,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14134,3 +13678,1089 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c2-sheet .kz-br.c2-br { --brh: 21dvh !important; }
 }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 178, ru 178, en 178; всего знаков 72179. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Bu mening yangiliklar sahifam. Bitta yangilik juda muhim: ertaga futbol o'yini bor. Men faqat shu abzasni qizil qilmoqchiman. O'tgan darsda o'rgangandek, P uchun qoida yozdim. Bo'yash tugmasini bosing.", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Voy! Hamma abzaslar qizil bo'lib ketdi. Men faqat bittasini xohlagan edim.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] selektori P sahifadagi hamma abzaslarni tanlaydi. Bizga esa aynan kerakli elementni tanlash yo'li kerak.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun aynan kerakli elementni tanlashni o'rganasiz: [English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] bilan. Lekin oldin kichik topishmoq. Men muhim abzasga [English pronunciation] class [O'zbekcha tallaffuz] atributini qo'shdim va unga muhim deb nom berdim. CSSda esa muhim deb yozdim, keyin qavs ichiga qizil rangni qo'ydim. Menimcha, endi faqat shu abzas qizil bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ikki joyga qarang: [English pronunciation] HTML [O'zbekcha tallaffuz] ichida abzasga [English pronunciation] class [O'zbekcha tallaffuz] qo'shiladi, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida esa nuqta va o'sha nom yoziladi. Qaysi abzas bo'yaladi?", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] elementga nom beradi. [English pronunciation] CSS [O'zbekcha tallaffuz] ichida shu nomdan oldin nuqta qo'yiladi. Ikkala joyda nom harfma-harf bir xil bo'lishi kerak.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Konferensiyada kiyimga ism yozilgan belgi taqasiz. Kim chaqirilsa, belgisiga qarab topiladi. [English pronunciation] class [O'zbekcha tallaffuz] ham shunday belgi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, muhim abzasni alohida tanlaymiz. Buning uchun ikki joyda yozamiz: [English pronunciation] HTML [O'zbekcha tallaffuz] kodida va CSSda. Qarang.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] HTML [O'zbekcha tallaffuz] kodida kerakli abzasga [English pronunciation] class [O'zbekcha tallaffuz] atributini qo'shamiz va unga nom beramiz: muhim. Bu xuddi kiyimga yopishtirilgan nomli nishon kabi.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi CSSda [English pronunciation] class [O'zbekcha tallaffuz] nomining oldiga nuqta qo'yamiz. Nuqta brauzerga aytadi: bu [English pronunciation] tag [O'zbekcha tallaffuz] emas, [English pronunciation] class [O'zbekcha tallaffuz] nomi. Qarang, endi faqat muhim abzas qizil!", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida [English pronunciation] class [O'zbekcha tallaffuz] atributi, CSSda esa nuqta va o'sha nom. Ikkala joyda nom harfma-harf bir xil bo'ladi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Uchinchi abzasni yashil qilamiz. [English pronunciation] HTML [O'zbekcha tallaffuz] kodidan uning [English pronunciation] class [O'zbekcha tallaffuz] nomini toping va CSSdagi nuqtadan keyin yozing.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqtadan keyin [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta allaqachon turibdi. Faqat [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa [English pronunciation] class [O'zbekcha tallaffuz]: u boshqa abzasni bo'yadi. Bizga yangi classi kerak.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifada bunday [English pronunciation] class [O'zbekcha tallaffuz] yo'q, hech narsa bo'yalmadi. Nomni [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagidek, harfma-harf yozing.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi uchinchi abzasga qarang: uning [English pronunciation] class [O'zbekcha tallaffuz] atributida qanday nom bor?", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] CSSdagi nom [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomi bilan bir xil bo'lishi kerak.", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchi abzasning classi yangi. Nuqtadan keyin yangi deb yozing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Faqat yangi classli abzas yashil bo'ldi.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Bu qoida sport classli elementlarni ko'k qiladi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang va qaysi abzaslar ko'k bo'lishini toping. Ularni sahifada bosing.", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodida har bir abzasning [English pronunciation] class [O'zbekcha tallaffuz] atributiga qarang.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida faqat classi sport bo'lgan abzaslarni bo'yaydi. Boshqa classli yoki classsiz abzaslar o'zgarmaydi.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi va uchinchi abzasning classi sport. Ularni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu abzasning classi maktab. Qoida esa sport classi uchun, u bo'yalmaydi.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu abzasda [English pronunciation] class [O'zbekcha tallaffuz] yo'q. sport qoidasi unga ishlamaydi.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu abzasning classi sport.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Ikkala sport abzasi ham ko'k bo'ldi. Bitta [English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga berilishi mumkin.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida sarlavhaga [English pronunciation] id [O'zbekcha tallaffuz] qo'shilishiga, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida esa nomdan oldin panjara belgisiga qarang.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] id [O'zbekcha tallaffuz] faqat bitta elementga beriladi. [English pronunciation] CSS [O'zbekcha tallaffuz] ichida [English pronunciation] id [O'zbekcha tallaffuz] nomidan oldin panjara, [English pronunciation] class [O'zbekcha tallaffuz] nomidan oldin esa nuqta qo'yiladi.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir jamoadagilar bir xil forma kiyadi, bu [English pronunciation] class [O'zbekcha tallaffuz]. Pasport raqami esa har kimda bitta, bu [English pronunciation] id [O'zbekcha tallaffuz].", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga berilishi mumkin, xuddi jamoaning bir xil formasi kabi. [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bitta elementga beriladi, xuddi pasport raqami kabi. Qarang.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodida sarlavhaga [English pronunciation] id [O'zbekcha tallaffuz] atributini qo'shamiz va unga nom beramiz: bosh. Sahifada boshqa hech bir elementning [English pronunciation] id [O'zbekcha tallaffuz] si bosh bo'lmaydi.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] CSSda [English pronunciation] id [O'zbekcha tallaffuz] nomining oldiga panjara belgisi qo'yiladi. Qarang, sarlavha binafsha bo'ldi.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. [English pronunciation] class [O'zbekcha tallaffuz] ko'p elementga, [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bittasiga.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] si logo. Uni to'q sariq qilamiz. Selektor uchun ikki joy bo'sh: belgi va nom. Kerakli bo'laklarni tartib bilan bosing.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun bo'ladi. Bu yerda [English pronunciation] id [O'zbekcha tallaffuz] bor, unga panjara belgisi kerak.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin belgi turadi: [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. Keyin nom.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] H two [O'zbekcha tallaffuz] bu [English pronunciation] tag [O'zbekcha tallaffuz] nomi. Bizga sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] nomi kerak: logo.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] id [O'zbekcha tallaffuz] uchun oldin panjara belgisi, keyin [English pronunciation] id [O'zbekcha tallaffuz] nomi yoziladi.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan bo'lakni bosing: u navbatdagi bo'lak.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Sarlavha to'q sariq bo'ldi. Siz [English pronunciation] id [O'zbekcha tallaffuz] selektorini yozdingiz.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi selektorlarni ular nimani tanlashi bilan juftlang. Chapdan selektorni, o'ngdan uning ishini bosing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgisiz P bu [English pronunciation] tag [O'zbekcha tallaffuz] selektori. U sahifadagi hamma abzaslarni tanlaydi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta bilan boshlangan selektor [English pronunciation] class [O'zbekcha tallaffuz] bo'yicha tanlaydi.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara belgisi bilan boshlangan selektor [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha bitta elementni tanlaydi.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, P hamma abzaslarni tanlaydi.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, nuqta [English pronunciation] class [O'zbekcha tallaffuz] bo'yicha tanlaydi.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha tanlaydi.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdan selektorni tanlang.", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Selektorning boshiga qarang: belgi bormi?", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgisiz bo'lsa [English pronunciation] tag [O'zbekcha tallaffuz], nuqta bo'lsa [English pronunciation] class [O'zbekcha tallaffuz], panjara belgisi bo'lsa [English pronunciation] id [O'zbekcha tallaffuz].", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan juftlikni bosing.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi uchala selektorni farqlaysiz.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sport yangiliklariga va sarlavhaga qarang: bitta [English pronunciation] class [O'zbekcha tallaffuz] uchala yangilikni bo'yaydi, [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bitta sarlavhani.", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir xil narsalar ko'p bo'lsa, [English pronunciation] class [O'zbekcha tallaffuz] olinadi. Narsa sahifada bitta bo'lsa, [English pronunciation] id [O'zbekcha tallaffuz] olinadi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maktabda hamma o'quvchilarga bitta qo'ng'iroq chalinadi, bu [English pronunciation] class [O'zbekcha tallaffuz]. Direktor esa bitta, uni ismi bilan chaqirishadi, bu [English pronunciation] id [O'zbekcha tallaffuz].", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qachon [English pronunciation] class [O'zbekcha tallaffuz], qachon [English pronunciation] id [O'zbekcha tallaffuz] olinadi? Oddiy qoida bor. Bir xil narsalar ko'p bo'lsa, [English pronunciation] class [O'zbekcha tallaffuz] olinadi. Sahifada yagona narsa bo'lsa, [English pronunciation] id [O'zbekcha tallaffuz] olinadi. Qarang.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sport yangiliklari uchta. Ularning hammasiga bir xil sport classi berilgan, shuning uchun bitta qoida uchalasini ham ko'k qildi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayt sarlavhasi esa bitta. Unga logo degan [English pronunciation] id [O'zbekcha tallaffuz] berilgan, va qoida faqat uni to'q sariq qildi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, ko'p bir xil narsa uchun [English pronunciation] class [O'zbekcha tallaffuz], bitta yagona narsa uchun [English pronunciation] id [O'zbekcha tallaffuz].", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi hamma sport yangiliklarini yashil qiling. Bu safar selektorni to'liq, belgisi bilan birga o'zingiz yozing.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavsdan oldin selektorni yozing.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta yo'q. Nuqtasiz brauzer sport degan [English pronunciation] tag [O'zbekcha tallaffuz]-ni qidiradi. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldiga nuqta qo'ying.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] uchun. Sport yangiliklarida esa [English pronunciation] class [O'zbekcha tallaffuz] bor, unga nuqta kerak.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] P hamma abzaslarni bo'yadi, sport bo'lmaganini ham. Bizga faqat sport classi kerak.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu selektor sport yangiliklarini tanlamadi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomiga qarang.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi va nom o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sport yangiliklarida [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] selektori nuqta va [English pronunciation] class [O'zbekcha tallaffuz] nomidan iborat bo'ladi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta qo'ying va sport deb yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Uchala sport yangiligi yashil bo'ldi.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingiz tanlang. Men sahifadagi narsani aytaman, siz esa unga [English pronunciation] class [O'zbekcha tallaffuz] kerakmi yoki [English pronunciation] id [O'zbekcha tallaffuz] ekanini tanlaysiz.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'ylab ko'ring: bu narsa sahifada bittami yoki ko'pmi?", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ko'p bir xil narsa uchun [English pronunciation] class [O'zbekcha tallaffuz], bitta yagona narsa uchun [English pronunciation] id [O'zbekcha tallaffuz] olinadi.", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma sport yangiliklari", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sport yangiliklari ko'p, shuning uchun ularga bitta [English pronunciation] class [O'zbekcha tallaffuz] beriladi.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifaning yagona sarlavhasi", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha sahifada bitta, unga [English pronunciation] id [O'zbekcha tallaffuz] beriladi.", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir o'yin kartochkasi", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kartochkalar ko'p va bir xil ko'rinadi, demak [English pronunciation] class [O'zbekcha tallaffuz] kerak.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Saytning bitta menyusi", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Menyu sahifada bitta, shuning uchun unga [English pronunciation] id [O'zbekcha tallaffuz] berish mumkin.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Endi [English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] ni o'rnida tanlaysiz.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] si bosh. Uni binafsha qiling. Selektordan boshlang, belgini unutmang.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda teng belgisi turibdi. CSSda xususiyat va qiymat o'rtasida ikki nuqta turadi.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun. Sarlavhada esa [English pronunciation] id [O'zbekcha tallaffuz] bor, unga panjara belgisi kerak.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgi yo'q. [English pronunciation] id [O'zbekcha tallaffuz] nomi oldiga panjara belgisi qo'ying.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] H one [O'zbekcha tallaffuz] ham sarlavhani bo'yaydi, lekin vazifa [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha tanlash edi. Panjara belgisi va bosh ni yozing.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu selektor sarlavhani tanlamadi. Uning [English pronunciation] id [O'zbekcha tallaffuz] si bosh.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn rangini [English pronunciation] color [O'zbekcha tallaffuz] xususiyati o'zgartiradi.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bunday rangni bilmaydi. Binafsha inglizcha [English pronunciation] purple [O'zbekcha tallaffuz] bo'ladi.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rang. Bizga binafsha kerak, inglizcha [English pronunciation] purple [O'zbekcha tallaffuz].", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]? Belgi shunga qarab tanlanadi.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] id [O'zbekcha tallaffuz] selektori panjara belgisi va [English pronunciation] id [O'zbekcha tallaffuz] nomidan iborat. Keyin jingalak qavslar ichida [English pronunciation] color [O'zbekcha tallaffuz] va [English pronunciation] purple [O'zbekcha tallaffuz].", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Siz [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha qoidani butunlay o'zingiz yozdingiz.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Har safar ikki joydagi nomni solishtiring: [English pronunciation] HTML [O'zbekcha tallaffuz] va [English pronunciation] CSS [O'zbekcha tallaffuz] ichida harflar bir xilmi, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida nuqta yoki panjara to'g'rimi?", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom ikki joyda harfma-harf bir xil yoziladi. [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara qo'yiladi, [English pronunciation] HTML [O'zbekcha tallaffuz] ichida esa faqat nomning o'zi.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pochtachi xatni uy raqamiga qarab topadi. Raqam bitta xato bo'lsa, xat boshqa uyga ketadi. Brauzer ham elementni nomiga qarab topadi.", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] juda aniqlikni yaxshi ko'radi. Bitta belgi yoki harf xato bo'lsa, brauzer elementni topa olmaydi. Keling, uchta xatoni ko'ramiz.", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: CSSdagi nomda bitta harf boshqacha. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida muhim, CSSda esa muhum. Brauzer bunday classni topmadi va hech narsa bo'yalmadi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta o'rniga panjara belgisi yozildi. Brauzer endi muhim degan [English pronunciation] id [O'zbekcha tallaffuz] ni qidiradi, u esa yo'q.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi: nuqta [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga ham yozib qo'yildi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida nuqta kerak emas, u faqat CSSda turadi. Shuning uchun nomlar endi mos kelmaydi.", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, nomni harfma-harf bir xil yozing, [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi qo'ying, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida esa faqat nomning o'zi bo'ladi.", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Voy, mening qoidam ishlamayapti! [English pronunciation] HTML [O'zbekcha tallaffuz] kodida abzasning classi muhim, CSSda ham muhim deb yozdim. Lekin bitta belgi yetishmayapti. Nom oldidagi bo'sh joyga kerakli belgini yozing.", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom oldiga bitta belgi yozing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] uchun bo'ladi. Bu abzasda esa [English pronunciation] class [O'zbekcha tallaffuz] bor.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu belgi to'g'ri emas. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida nuqta turadi.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: abzasda [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] CSSda [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida qaysi belgi turardi, esingizdami?", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastdagi nuqta tugmasini bosing, keyin Tekshirishni bosing.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi faqat muhim abzas qizil.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. [English pronunciation] HTML [O'zbekcha tallaffuz] va sahifaga qarang va xato qoidani bosing.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchi xato topildi! Endi boshqa qoida buzildi. Qaysi biri?", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] HTML [O'zbekcha tallaffuz] kodida [English pronunciation] class [O'zbekcha tallaffuz] sport kichik harf bilan, CSSda esa katta harf bilan yozilgan. [English pronunciation] class [O'zbekcha tallaffuz] nomida harflarning katta-kichikligi ham farq qiladi.", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] logo bor, CSSda esa [English pronunciation] id [O'zbekcha tallaffuz] belgisi yozilgan. [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta kerak.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifaga qarang: nima bo'yalmay qoldi?", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sport abzaslari bo'yalmadi. [English pronunciation] HTML [O'zbekcha tallaffuz] va CSSdagi nomni harfma-harf, katta-kichik harflarigacha solishtiring.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sarlavha bo'yalmadi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida sarlavhaga [English pronunciation] class [O'zbekcha tallaffuz] berilganmi yoki [English pronunciation] id [O'zbekcha tallaffuz]? CSSdagi belgi shunga mosmi?", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato sport qoidasida: nom katta harf bilan boshlangan. O'sha qatorni bosing.", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato logo qoidasida: [English pronunciation] class [O'zbekcha tallaffuz] uchun [English pronunciation] id [O'zbekcha tallaffuz] belgisi turibdi. O'sha qatorni bosing.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkala xato ham topildi. Siz selektorlarni haqiqiy dasturchi kabi tekshiryapsiz.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z abzasingizga [English pronunciation] class [O'zbekcha tallaffuz] bering. Unga o'zingiz nom o'ylab toping va ikki joyga yozing: [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] atributiga va CSSdagi nuqtadan keyin. Nomlar bir xil bo'lsa, abzasingiz bo'yaladi. Keyin Tayyorni bosing.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkala joyga ham [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] nomida faqat lotin harflari, raqamlar va chiziqcha bo'ladi, raqam bilan boshlanmaydi. Masalan, mening yoki rang1.", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomiga nuqta kerak emas. Nuqta faqat CSSda turadi.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzasingizga qanday nom berasiz? O'zingiz o'ylab toping.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir xil nomni ikki joyga yozing: [English pronunciation] HTML [O'zbekcha tallaffuz] kodida nuqtasiz, CSSda nuqtadan keyin.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, ikkala joyga mening deb yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r! Abzasingiz o'z classi bilan bo'yaldi.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapni bo'laklab o'qing: u [English pronunciation] class [O'zbekcha tallaffuz], [English pronunciation] id [O'zbekcha tallaffuz] yoki [English pronunciation] tag [O'zbekcha tallaffuz] selektori haqidami?", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Dars esingizdami: [English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga, [English pronunciation] id [O'zbekcha tallaffuz] faqat bittasiga beriladi. CSSda [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. Gap shunga mos keladimi?", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bitta classni bir nechta elementga berish mumkin.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: masalan, ikki abzasning classi sport bo'lsa, qoida ikkalasini ham bo'yaydi.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] CSSda [English pronunciation] id [O'zbekcha tallaffuz] nomi oldiga nuqta qo'yiladi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi qo'yiladi. Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun.", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] CSSdagi [English pronunciation] class [O'zbekcha tallaffuz] nomi [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi bilan harfma-harf bir xil bo'lishi kerak.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: bitta harf boshqacha bo'lsa ham, brauzer elementni topa olmaydi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] P selektori faqat birinchi abzasni bo'yaydi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida P selektori sahifadagi hamma abzaslarni bo'yaydi.", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz selektorlarni yaxshi bilasiz.", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men CSSda muhim deb yozgan edim, nuqtasiz? Afsuski, men adashibman. Nuqta bo'lmasa, brauzer muhim degan [English pronunciation] tag [O'zbekcha tallaffuz]-ni qidiradi, bunday [English pronunciation] tag [O'zbekcha tallaffuz] esa yo'q. Shuning uchun abzas bo'yalmadi. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida doim nuqta turadi.", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning abzasingiz, o'z classingiz bilan!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] selektori shu tegdagi hamma elementlarni tanlaydi.", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] class [O'zbekcha tallaffuz] selektori nuqta bilan yoziladi va shu classli hamma elementlarni tanlaydi.", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] id [O'zbekcha tallaffuz] selektori panjara belgisi bilan yoziladi va bitta elementni tanlaydi.", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi siz istalgan elementni aniq tanlay olasiz. Keyingi darsda ranglarni chuqurroq o'rganamiz. Ko'rishguncha!", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun shaxmat to'garagi bor.", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Muhim: ertaga futbol o'yini!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi rasmlar qo'shildi.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Maktabda bayram bo'ladi.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yugurish musobaqasi shanba kuni.", required: true },
+    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu mening abzasim.", required: true },
+    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysilari bo'yaladi?", required: true },
+    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] class [O'zbekcha tallaffuz] yoki [English pronunciation] id [O'zbekcha tallaffuz]?", required: true },
+    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это моя страница новостей. Одна новость очень важная: завтра футбольный матч. Я хочу сделать красным только этот абзац. Как на прошлом уроке, я написал правило для P. Нажми Покрасить.", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! Все абзацы стали красными. А я хотел только один.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор тега P выбирает все абзацы на странице. А нам нужен способ выбрать именно нужный элемент.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься выбирать именно нужный элемент: с помощью [English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение]. Но сначала маленькая загадка. Я добавил важному абзацу атрибут [English pronunciation] class [Русское произношение] и назвал его muhim. А в [English pronunciation] CSS [Русское произношение] написал muhim и в скобках поставил красный цвет. По-моему, теперь красным станет только этот абзац. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на два места: в [English pronunciation] HTML [Русское произношение] абзацу добавляют [English pronunciation] class [Русское произношение], а в [English pronunciation] CSS [Русское произношение] пишут точку и то же имя. Какой абзац покрасится?", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] class [Русское произношение] даёт элементу имя. В [English pronunciation] CSS [Русское произношение] перед этим именем ставят точку. В обоих местах имя одинаковое, буква в букву.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На мероприятии носят бейджик с именем: по нему тебя и находят. [English pronunciation] class [Русское произношение], такой же бейджик.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Давай выберем важный абзац отдельно. Для этого пишем в двух местах: в [English pronunciation] HTML [Русское произношение] и в [English pronunciation] CSS [Русское произношение]. Смотри.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала в [English pronunciation] HTML [Русское произношение] добавляем нужному абзацу атрибут [English pronunciation] class [Русское произношение] и даём ему имя: muhim. Это как бейджик с именем на одежде.", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь в [English pronunciation] CSS [Русское произношение] ставим перед именем класса точку. Точка говорит браузеру: это не тег, а имя класса. Смотри, теперь красный только важный абзац!", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, в [English pronunciation] HTML [Русское произношение], атрибут [English pronunciation] class [Русское произношение], а в [English pronunciation] CSS [Русское произношение], точка и то же имя. В обоих местах имя одинаковое, буква в букву.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Сделаем зелёным третий абзац. Найди в [English pronunciation] HTML [Русское произношение]-коде имя его класса и впиши в [English pronunciation] CSS [Русское произношение] после точки.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя класса после точки.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Точка уже стоит. Впиши только имя класса.", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой класс: он покрасил другой абзац. Нам нужен класс yangi.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На странице нет такого класса, ничего не покрасилось. Напиши имя буква в букву, как в [English pronunciation] HTML [Русское произношение].", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на третий абзац в [English pronunciation] HTML [Русское произношение]: какое имя в его атрибуте [English pronunciation] class [Русское произношение]?", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя в [English pronunciation] CSS [Русское произношение] должно совпадать с именем класса в [English pronunciation] HTML [Русское произношение].", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс третьего абзаца, yangi. Впиши yangi после точки.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Зелёным стал только абзац с классом yangi.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Это правило красит в синий элементы с классом sport. Посмотри в [English pronunciation] HTML [Русское произношение] и найди, какие абзацы станут синими. Нажми их на странице.", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри в [English pronunciation] HTML [Русское произношение] на атрибут [English pronunciation] class [Русское произношение] у каждого абзаца.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило красит только абзацы с классом sport. Абзацы с другим классом или без класса не меняются.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У первого и третьего абзаца класс sport. Нажми их.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У этого абзаца класс maktab. А правило, для класса sport, он не покрасится.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У этого абзаца нет класса. Правило sport его не трогает.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, у этого абзаца класс sport.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Оба абзаца sport стали синими. Один класс можно дать нескольким элементам.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри, как в [English pronunciation] HTML [Русское произношение] заголовку добавляют [English pronunciation] id [Русское произношение], а в [English pronunciation] CSS [Русское произношение] перед именем ставят решётку.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] id [Русское произношение] дают только одному элементу. В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят решётку, а перед именем класса, точку.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У игроков одной команды одинаковая форма, это [English pronunciation] class [Русское произношение]. А номер паспорта у каждого свой, это [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс можно дать нескольким элементам, как одинаковую форму команды. А [English pronunciation] id [Русское произношение] дают только одному элементу, как номер паспорта. Смотри.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] HTML [Русское произношение] добавляем заголовку атрибут [English pronunciation] id [Русское произношение] с именем bosh. Ни у одного другого элемента на странице [English pronunciation] id [Русское произношение] bosh не будет.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят решётку. Смотри, заголовок стал фиолетовым.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, для класса, точка, для [English pronunciation] id [Русское произношение], решётка. Класс, для многих элементов, [English pronunciation] id [Русское произношение], только для одного.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У заголовка [English pronunciation] id [Русское произношение] logo. Сделаем его оранжевым. Для селектора два пустых места: знак и имя. Нажми нужные куски по порядку.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Точка, для класса. Здесь [English pronunciation] id [Русское произношение], ему нужна решётка.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала идёт знак: для [English pronunciation] id [Русское произношение] это решётка. Потом имя.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] H two [Русское произношение], это имя тега. Нам нужно имя [English pronunciation] id [Русское произношение] заголовка: logo.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в [English pronunciation] HTML [Русское произношение]: у заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] id [Русское произношение] сначала пишут решётку, потом имя [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящий кусок: он следующий.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Заголовок стал оранжевым. Ты написал селектор по [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соедини селекторы с тем, что они выбирают. Нажми селектор слева, потом его работу справа.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] P без знака, селектор тега. Он выбирает все абзацы на странице.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор с точкой выбирает по классу.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор с решёткой выбирает один элемент по [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, P выбирает все абзацы.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, точка выбирает по классу.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, решётка выбирает по [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери селектор слева.", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на начало селектора: есть ли знак?", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Без знака, тег, с точкой, класс, с решёткой, [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую пару.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Теперь ты различаешь все три селектора.", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на спортивные новости и заголовок: один [English pronunciation] class [Русское произношение] красит все три новости, а [English pronunciation] id [Русское произношение], только один заголовок.", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если одинаковых вещей много, берут [English pronunciation] class [Русское произношение]. Если вещь на странице одна, берут [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В школе звонок звенит всем ученикам, это [English pronunciation] class [Русское произношение]. А директор один, его зовут по имени, это [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда брать [English pronunciation] class [Русское произношение], а когда [English pronunciation] id [Русское произношение]? Есть простое правило. Если одинаковых вещей много, берут [English pronunciation] class [Русское произношение]. Если вещь на странице одна, берут [English pronunciation] id [Русское произношение]. Смотри.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спортивных новостей три. Всем им дан один класс sport, поэтому одно правило покрасило синим все три.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А заголовок сайта один. Ему дан [English pronunciation] id [Русское произношение] logo, и правило сделало оранжевым только его.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, для многих одинаковых вещей, [English pronunciation] class [Русское произношение], для одной-единственной, [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай все спортивные новости зелёными. В этот раз впиши селектор целиком, вместе со знаком.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши селектор перед скобкой.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет точки. Без неё браузер ищет тег sport. Поставь точку перед именем класса.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Решётка, для [English pronunciation] id [Русское произношение]. А у новостей sport класс, ему нужна точка.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] P покрасил все абзацы, и не спортивные тоже. Нам нужен только класс sport.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот селектор не выбрал новости sport. Посмотри на имя класса в [English pronunciation] HTML [Русское произношение]-коде.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между знаком и именем не нужен пробел: пиши слитно.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в [English pronunciation] HTML [Русское произношение]-код: у новостей sport [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор класса, это точка и имя класса.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поставь точку и напиши sport.", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Все три спортивные новости стали зелёными.", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь выбери сам. Я назову вещь на странице, а ты выбери, нужен ей [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Подумай: эта вещь на странице одна или их много?", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для многих одинаковых вещей берут [English pronunciation] class [Русское произношение], для одной-единственной, [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все спортивные новости", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Спортивных новостей много, поэтому им дают один класс.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Единственный заголовок страницы", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовок на странице один, ему дают [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждая карточка игры", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Карточек много, и они выглядят одинаково, значит, нужен класс.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Одно-единственное меню сайта", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Меню на странице одно, поэтому ему можно дать [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Теперь ты выбираешь [English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение] к месту.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком сам. У заголовка [English pronunciation] id [Русское произношение] bosh. Сделай его фиолетовым. Начни с селектора и не забудь знак.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь стоит знак равно. В [English pronunciation] CSS [Русское произношение] между свойством и значением стоит двоеточие.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Точка, для класса. А у заголовка [English pronunciation] id [Русское произношение], ему нужна решётка.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нет знака. Поставь решётку перед именем [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] H one [Русское произношение] тоже покрасит заголовок, но задание, выбрать по [English pronunciation] id [Русское произношение]. Напиши решётку и bosh.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот селектор не выбрал заголовок. Его [English pronunciation] id [Русское произношение], bosh.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвет текста меняет свойство [English pronunciation] color [Русское произношение].", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не знает такого цвета. Фиолетовый по-английски, [English pronunciation] purple [Русское произношение].", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другой цвет. Нам нужен фиолетовый, по-английски [English pronunciation] purple [Русское произношение].", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] У заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]? От этого зависит знак.", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор [English pronunciation] id [Русское произношение], это решётка и имя [English pronunciation] id [Русское произношение]. Потом в фигурных скобках [English pronunciation] color [Русское произношение] и [English pronunciation] purple [Русское произношение].", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Ты сам написал целое правило по [English pronunciation] id [Русское произношение].", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каждый раз сравни имя в двух местах: совпадают ли буквы в [English pronunciation] HTML [Русское произношение] и [English pronunciation] CSS [Русское произношение], верный ли знак в [English pronunciation] CSS [Русское произношение], точка или решётка?", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя в двух местах пишется буква в букву. Для класса, точка, для [English pronunciation] id [Русское произношение], решётка, а в [English pronunciation] HTML [Русское произношение], только само имя.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Почтальон находит дом по номеру. Ошибка в одной цифре, письмо уйдёт не туда. Браузер так же находит элемент по имени.", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение] любят точность. Ошибся в одном знаке или букве, и браузер не находит элемент. Посмотрим на три ошибки.", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: в имени в [English pronunciation] CSS [Русское произношение] одна буква другая. В [English pronunciation] HTML [Русское произношение], muhim, а в [English pronunciation] CSS [Русское произношение], muhum. Браузер не нашёл такой класс, и ничего не покрасилось.", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: для класса вместо точки написали решётку. Теперь браузер ищет [English pronunciation] id [Русское произношение] muhim, а такого нет.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья: точку написали и в [English pronunciation] HTML [Русское произношение]. В [English pronunciation] HTML [Русское произношение] точка не нужна, она стоит только в [English pronunciation] CSS [Русское произношение]. Поэтому имена теперь не совпадают.", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, пиши имя буква в букву, ставь точку для класса и решётку для [English pronunciation] id [Русское произношение], а в [English pronunciation] HTML [Русское произношение], только само имя.", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, моё правило не работает! В [English pronunciation] HTML [Русское произношение] у абзаца класс muhim, в [English pronunciation] CSS [Русское произношение] я тоже написал muhim. Но не хватает одного знака. Впиши нужный знак в пустое место перед именем.", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши один знак перед именем.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Решётка, для [English pronunciation] id [Русское произношение]. А у этого абзаца класс.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот знак не подходит. Перед именем класса стоит точка.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри в [English pronunciation] HTML [Русское произношение]: у абзаца [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Помнишь, какой знак стоит в [English pronunciation] CSS [Русское произношение] перед именем класса?", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми кнопку с точкой внизу, потом Проверить.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Теперь красный только важный абзац.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на [English pronunciation] HTML [Русское произношение] и страницу и нажми сломанное правило.", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая ошибка найдена! Теперь сломалось другое правило. Какое?", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: его цвет виден на странице. Что не покрасилось?", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! В [English pronunciation] HTML [Русское произношение] класс sport с маленькой буквы, а в [English pronunciation] CSS [Русское произношение], с большой. Для браузера большая и маленькая буквы, разные буквы.", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! У заголовка класс logo, а в [English pronunciation] CSS [Русское произношение] стоит знак [English pronunciation] id [Русское произношение]. Для класса нужна точка.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на страницу: что осталось не покрашенным?", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзацы sport не покрасились. Сравни имя в [English pronunciation] HTML [Русское произношение] и [English pronunciation] CSS [Русское произношение] буква в букву, вплоть до больших и маленьких букв.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Заголовок не покрасился. В [English pronunciation] HTML [Русское произношение] у заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]? Подходит ли знак в [English pronunciation] CSS [Русское произношение]?", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле sport: имя начинается с большой буквы. Нажми эту строку.", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в правиле logo: для класса стоит знак [English pronunciation] id [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе ошибки найдены. Ты проверяешь селекторы как настоящий программист.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь дай своему абзацу класс. Придумай ему имя и впиши в два места: в атрибут [English pronunciation] class [Русское произношение] в [English pronunciation] HTML [Русское произношение] и после точки в [English pronunciation] CSS [Русское произношение]. Если имена совпадут, твой абзац покрасится. Потом нажми Готово.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши имя класса в оба места.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В имени класса, только латинские буквы, цифры и дефис, и оно не начинается с цифры. Например, mening или rang1.", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В имени класса в [English pronunciation] HTML [Русское произношение] точка не нужна. Точка стоит только в [English pronunciation] CSS [Русское произношение].", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Как назовёшь свой абзац? Придумай сам.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши одно и то же имя в два места: в [English pronunciation] HTML [Русское произношение] без точки, в [English pronunciation] CSS [Русское произношение] после точки.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, впиши в оба места mening. Потом нажми Готово.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, класс! Твой абзац покрасился по своему классу.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прочитай фразу по частям: она о классе, [English pronunciation] id [Русское произношение] или селекторе тега?", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни урок: класс дают нескольким элементам, [English pronunciation] id [Русское произношение], только одному. В [English pronunciation] CSS [Русское произношение] для класса точка, для [English pronunciation] id [Русское произношение], решётка. Фраза с этим совпадает?", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Один класс можно дать нескольким элементам.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: например, если у двух абзацев класс sport, правило покрасит оба.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят точку.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле для [English pronunciation] id [Русское произношение] ставят решётку. Точка, для класса.", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Имя класса в [English pronunciation] CSS [Русское произношение] должно совпадать с [English pronunciation] HTML [Русское произношение] буква в букву.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: даже одна другая буква, и браузер не найдёт элемент.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор P красит только первый абзац.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле селектор P красит все абзацы на странице.", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично знаешь селекторы.", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я написал в [English pronunciation] CSS [Русское произношение] muhim, без точки? Увы, я ошибся. Без точки браузер ищет тег muhim, а такого тега нет. Поэтому абзац не покрасился. Перед именем класса всегда стоит точка.", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твой абзац со своим классом!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор тега выбирает все элементы с этим тегом.", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор класса пишут с точкой, он выбирает все элементы с этим классом.", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор [English pronunciation] id [Русское произношение] пишут с решёткой, он выбирает один элемент.", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь ты можешь точно выбрать любой элемент. На следующем уроке разберёмся с цветами глубже. До встречи!", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня кружок шахмат.", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Важно: завтра футбольный матч!", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Добавились новые фото.", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В школе будет праздник.", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Забег, в субботу.", required: true },
+    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это мой абзац.", required: true },
+    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какие покрасятся?", required: true },
+    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?", required: true },
+    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my news page. One piece of news is really important: there’s a football match tomorrow. I want to make only that paragraph red. Like last lesson, I wrote a rule for P. Tap Color it.", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops! All the paragraphs turned red. I wanted only one.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The P tag selector picks every paragraph on the page. We need a way to pick exactly the element we want.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to pick exactly the element you want: with class and id. But first, a little riddle. I added a class attribute to the important paragraph and named it muhim. In CSS I wrote muhim and put the red color in the braces. I think now only that paragraph will turn red. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at two places: in H T M L the paragraph gets a class, and in CSS you write a dot and the same name. Which paragraph gets colored?", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] class gives an element a name. In CSS a dot goes before that name. The name must match letter for letter in both places.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At an event you wear a name badge, and people find you by it. class is that kind of badge.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s pick the important paragraph on its own. We write in two places for that: in H T M L and in CSS. Watch.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First, in H T M L we add a class attribute to the paragraph and give it a name: muhim. It’s like a name badge on clothes.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now in CSS we put a dot before the class name. The dot tells the browser: this isn’t a tag, it’s a class name. Look, only the important paragraph is red now!", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So in H T M L it’s the class attribute, and in CSS a dot and the same name. The name is the same in both places, letter by letter.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Let’s make the third paragraph green. Find its class name in the H T M L code and type it after the dot in CSS.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the class name after the dot.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The dot is already there. Type only the class name.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different class: it colored another paragraph. We need the class yangi.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no such class on the page, so nothing got colored. Type the name letter by letter, as in H T M L.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the third paragraph in H T M L: what name is in its class attribute?", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name in CSS must match the class name in H T M L.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third paragraph’s class is yangi. Type yangi after the dot.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! Only the paragraph with the class yangi turned green.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. This rule makes elements with the class sport blue. Look at the H T M L and find which paragraphs will turn blue. Tap them on the page.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at each paragraph’s class attribute in the H T M L.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule colors only paragraphs with the class sport. Ones with another class or no class don’t change.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first and third paragraphs have the class sport. Tap them.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This paragraph’s class is maktab. The rule is for the class sport, so it won’t be colored.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This paragraph has no class. The sport rule doesn’t touch it.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, this paragraph’s class is sport.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Both sport paragraphs turned blue. One class can go on several elements.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Watch how in H T M L the heading gets an id, and in CSS a hash sign goes before the name.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] id is given to just one element. In CSS a hash sign goes before an id name, and a dot before a class name.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Players on one team wear the same uniform: that’s class. A passport number is unique to each person: that’s id.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A class can go on several elements, like a team’s matching uniform. An id goes on only one element, like a passport number. Watch.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In H T M L we add an id attribute to the heading named bosh. No other element on the page will have the id bosh.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS a hash sign goes before the id name. Look, the heading turned purple.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a dot for a class, a hash sign for an id. A class is for many elements, an id for just one.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The heading’s id is logo. Let’s make it orange. The selector has two empty spots: a sign and a name. Tap the right pieces in order.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A dot is for a class. This is an id, so it needs a hash sign.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The sign comes first: a hash sign for an id. Then the name.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H two is a tag name. We need the heading’s id name: logo.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the H T M L: does the heading have a class or an id?", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For an id you write the hash sign first, then the id name.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing piece: it’s the next one.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The heading turned orange. You wrote an id selector.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now match the selectors with what they pick. Tap a selector on the left, then its job on the right.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] P with no sign is a tag selector. It picks every paragraph on the page.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A selector starting with a dot picks by class.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A selector starting with a hash sign picks one element by id.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, P picks every paragraph.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, the dot picks by class.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, the hash sign picks by id.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First pick a selector on the left.", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the start of the selector: is there a sign?", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No sign means a tag, a dot means a class, a hash sign means an id.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing pair.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now you can tell all three selectors apart.", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the sports news and the heading: one class colors all three news items, while id colors just the one heading.", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If there are many of the same thing, use class. If something is the only one on the page, use id.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] At school the bell rings for all students: that’s class. There’s only one principal, called by name: that’s id.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When do you use a class, and when an id? There’s a simple rule. If there are many of the same thing, use a class. If something is the only one on the page, use an id. Watch.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are three sports news items. They all have the same class sport, so one rule made all three blue.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site heading is the only one. It has the id logo, and the rule made only it orange.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So a class for many of the same thing, an id for the one and only thing.", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make all the sports news green. This time type the whole selector yourself, sign included.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the selector before the brace.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No dot. Without it the browser looks for a tag called sport. Put a dot before the class name.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hash sign is for an id. The sport news items have a class, which needs a dot.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] P colored every paragraph, not just the sports ones. We need only the class sport.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This selector didn’t pick the sports news. Look at the class name in the H T M L code.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No space between the sign and the name: write them together.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the H T M L code: do the sports news items have a class or an id?", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A class selector is a dot and the class name.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put a dot and type sport.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! All three sports news items turned green.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you choose. I’ll name something on a page, and you choose whether it needs a class or an id.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Think: is this thing the only one on the page, or are there many?", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Use a class for many of the same thing, an id for the one and only.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All the sports news items", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are many sports news items, so they get one class.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The page’s only heading", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s only one heading on the page, so it gets an id.", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Every game card", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are many cards and they look the same, so a class is needed.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The site’s one and only menu", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s just one menu on the page, so it can get an id.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! Now you pick a class or an id where each fits.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. The heading’s id is bosh. Make it purple. Start with the selector and don’t forget the sign.", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value in curly braces.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s an equals sign here. In CSS a colon goes between the property and the value.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A dot is for a class. The heading has an id, which needs a hash sign.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No sign. Put a hash sign before the id name.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H one would color the heading too, but the task is to pick it by id. Type the hash sign and bosh.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This selector didn’t pick the heading. Its id is bosh.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The color property changes the text color.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser doesn’t know that color. Purple is purple.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different color. We need purple.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Does the heading have a class or an id? The sign depends on that.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An id selector is a hash sign and the id name. Then color and purple in curly braces.", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You wrote a whole id rule yourself.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Each time, compare the name in both places: do the letters match in H T M L and CSS, and is the CSS sign right, dot or hash?", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name is written letter for letter in both places. A dot for class, a hash for id, and in H T M L only the name itself.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A mail carrier finds a house by its number. One wrong digit and the letter goes elsewhere. The browser finds an element by its name the same way.", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] class and id love precision. One wrong sign or letter and the browser can’t find the element. Let’s look at three mistakes.", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: one letter in the CSS name is different. H T M L says muhim, CSS says muhum. The browser found no such class, so nothing got colored.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: a hash sign was written instead of a dot for a class. Now the browser looks for an id muhim, and there isn’t one.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third: the dot was also written in the H T M L. H T M L doesn’t need the dot; it only goes in CSS. So the names no longer match.", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So write the name letter by letter, use a dot for a class and a hash sign for an id, and in H T M L just the name itself.", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, my rule doesn’t work! In H T M L the paragraph’s class is muhim, and in CSS I wrote muhim too. But one sign is missing. Type the right sign in the empty spot before the name.", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type one sign before the name.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hash sign is for an id. This paragraph has a class.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That sign doesn’t fit. A dot goes before a class name.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the H T M L: does the paragraph have a class or an id?", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember which sign goes before a class name in CSS?", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the dot button below, then Check.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now only the important paragraph is red.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules in the code, but one doesn’t work. Look at the H T M L and the page and tap the broken rule.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first bug is found! Now another rule broke. Which one?", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: its color shows on the page. What didn’t get colored?", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! In H T M L the class sport is lowercase, but in CSS it starts with a capital. Letter case matters in a class name too.", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! The heading has the class logo, but CSS uses the id sign. A class needs a dot.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the page: what stayed uncolored?", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The sport paragraphs didn’t get colored. Compare the name in H T M L and CSS letter by letter, down to capital letters.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The heading didn’t get colored. Does the heading have a class or an id in H T M L? Does the sign in CSS match?", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the sport rule: the name starts with a capital. Tap that line.", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the logo rule: the id sign is used for a class. Tap that line.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both bugs are found. You check selectors like a real programmer.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now give your paragraph a class. Make up a name and type it in two places: in the class attribute in H T M L and after the dot in CSS. If the names match, your paragraph gets colored. Then tap Done.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the class name in both places.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A class name uses only Latin letters, digits and dashes, and doesn’t start with a digit. For example, mening or rang1.", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No dot in the class name in H T M L. The dot goes only in CSS.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What will you name your paragraph? Make it up yourself.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the same name in two places: in H T M L without a dot, in CSS after the dot.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type mening in both places. Then tap Done.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, great! Your paragraph got colored by its own class.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the sentence piece by piece: is it about a class, an id or a tag selector?", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the lesson: a class goes on several elements, an id on just one. In CSS a class gets a dot, an id a hash sign. Does the sentence match that?", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One class can be given to several elements.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: for example, if two paragraphs have the class sport, the rule colors both.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] In CSS a dot goes before an id name.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually an id gets a hash sign. The dot is for a class.", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The class name in CSS must match the H T M L letter by letter.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: even one different letter and the browser won’t find the element.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The P selector colors only the first paragraph.", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually the P selector colors every paragraph on the page.", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know selectors really well.", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I wrote muhim in CSS, with no dot? Sadly, I was wrong. Without the dot the browser looks for a tag called muhim, and there isn’t one. That’s why the paragraph didn’t get colored. A class name always has a dot before it.", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your paragraph with its own class!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A tag selector picks every element with that tag.", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A class selector is written with a dot and picks every element with that class.", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An id selector is written with a hash sign and picks one element.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now you can pick any element exactly. Next time we’ll dig deeper into colors. See you!", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Chess club is on today.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Important: football match tomorrow!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] New photos were added.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The school will have a party.", required: true },
+    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The race is on Saturday.", required: true },
+    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is my paragraph.", required: true },
+    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which will be colored?", required: true },
+    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] class or id?", required: true },
+    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "Salom! Bu mening yangiliklar sahifam. Bitta yangilik juda muhim: ertaga futbol o'yini bor. Men faqat shu abzasni qizil qilmoqchiman. O'tgan darsda o'rgangandek, P uchun qoida yozdim. Bo'yash tugmasini bosing.": "uz001",
+    "Voy! Hamma abzaslar qizil bo'lib ketdi. Men faqat bittasini xohlagan edim.": "uz002",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] selektori P sahifadagi hamma abzaslarni tanlaydi. Bizga esa aynan kerakli elementni tanlash yo'li kerak.": "uz003",
+    "Bugun aynan kerakli elementni tanlashni o'rganasiz: [English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] bilan. Lekin oldin kichik topishmoq. Men muhim abzasga [English pronunciation] class [O'zbekcha tallaffuz] atributini qo'shdim va unga muhim deb nom berdim. CSSda esa muhim deb yozdim, keyin qavs ichiga qizil rangni qo'ydim. Menimcha, endi faqat shu abzas qizil bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz004",
+    "Ikki joyga qarang: [English pronunciation] HTML [O'zbekcha tallaffuz] ichida abzasga [English pronunciation] class [O'zbekcha tallaffuz] qo'shiladi, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida esa nuqta va o'sha nom yoziladi. Qaysi abzas bo'yaladi?": "uz005",
+    "[English pronunciation] class [O'zbekcha tallaffuz] elementga nom beradi. [English pronunciation] CSS [O'zbekcha tallaffuz] ichida shu nomdan oldin nuqta qo'yiladi. Ikkala joyda nom harfma-harf bir xil bo'lishi kerak.": "uz006",
+    "Konferensiyada kiyimga ism yozilgan belgi taqasiz. Kim chaqirilsa, belgisiga qarab topiladi. [English pronunciation] class [O'zbekcha tallaffuz] ham shunday belgi.": "uz007",
+    "Keling, muhim abzasni alohida tanlaymiz. Buning uchun ikki joyda yozamiz: [English pronunciation] HTML [O'zbekcha tallaffuz] kodida va CSSda. Qarang.": "uz008",
+    "Oldin [English pronunciation] HTML [O'zbekcha tallaffuz] kodida kerakli abzasga [English pronunciation] class [O'zbekcha tallaffuz] atributini qo'shamiz va unga nom beramiz: muhim. Bu xuddi kiyimga yopishtirilgan nomli nishon kabi.": "uz009",
+    "Endi CSSda [English pronunciation] class [O'zbekcha tallaffuz] nomining oldiga nuqta qo'yamiz. Nuqta brauzerga aytadi: bu [English pronunciation] tag [O'zbekcha tallaffuz] emas, [English pronunciation] class [O'zbekcha tallaffuz] nomi. Qarang, endi faqat muhim abzas qizil!": "uz010",
+    "Demak, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida [English pronunciation] class [O'zbekcha tallaffuz] atributi, CSSda esa nuqta va o'sha nom. Ikkala joyda nom harfma-harf bir xil bo'ladi.": "uz011",
+    "Endi navbat sizga. Uchinchi abzasni yashil qilamiz. [English pronunciation] HTML [O'zbekcha tallaffuz] kodidan uning [English pronunciation] class [O'zbekcha tallaffuz] nomini toping va CSSdagi nuqtadan keyin yozing.": "uz012",
+    "Nuqtadan keyin [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.": "uz013",
+    "Nuqta allaqachon turibdi. Faqat [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.": "uz014",
+    "Bu boshqa [English pronunciation] class [O'zbekcha tallaffuz]: u boshqa abzasni bo'yadi. Bizga yangi classi kerak.": "uz015",
+    "Sahifada bunday [English pronunciation] class [O'zbekcha tallaffuz] yo'q, hech narsa bo'yalmadi. Nomni [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagidek, harfma-harf yozing.": "uz016",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi uchinchi abzasga qarang: uning [English pronunciation] class [O'zbekcha tallaffuz] atributida qanday nom bor?": "uz017",
+    "CSSdagi nom [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomi bilan bir xil bo'lishi kerak.": "uz018",
+    "Uchinchi abzasning classi yangi. Nuqtadan keyin yangi deb yozing.": "uz019",
+    "Zo'r! Faqat yangi classli abzas yashil bo'ldi.": "uz020",
+    "Endi o'zingizni sinab ko'ring. Bu qoida sport classli elementlarni ko'k qiladi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang va qaysi abzaslar ko'k bo'lishini toping. Ularni sahifada bosing.": "uz021",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodida har bir abzasning [English pronunciation] class [O'zbekcha tallaffuz] atributiga qarang.": "uz022",
+    "Qoida faqat classi sport bo'lgan abzaslarni bo'yaydi. Boshqa classli yoki classsiz abzaslar o'zgarmaydi.": "uz023",
+    "Birinchi va uchinchi abzasning classi sport. Ularni bosing.": "uz024",
+    "Bu abzasning classi maktab. Qoida esa sport classi uchun, u bo'yalmaydi.": "uz025",
+    "Bu abzasda [English pronunciation] class [O'zbekcha tallaffuz] yo'q. sport qoidasi unga ishlamaydi.": "uz026",
+    "To'g'ri, bu abzasning classi sport.": "uz027",
+    "Ajoyib! Ikkala sport abzasi ham ko'k bo'ldi. Bitta [English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga berilishi mumkin.": "uz028",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida sarlavhaga [English pronunciation] id [O'zbekcha tallaffuz] qo'shilishiga, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida esa nomdan oldin panjara belgisiga qarang.": "uz029",
+    "[English pronunciation] id [O'zbekcha tallaffuz] faqat bitta elementga beriladi. [English pronunciation] CSS [O'zbekcha tallaffuz] ichida [English pronunciation] id [O'zbekcha tallaffuz] nomidan oldin panjara, [English pronunciation] class [O'zbekcha tallaffuz] nomidan oldin esa nuqta qo'yiladi.": "uz030",
+    "Bir jamoadagilar bir xil forma kiyadi, bu [English pronunciation] class [O'zbekcha tallaffuz]. Pasport raqami esa har kimda bitta, bu [English pronunciation] id [O'zbekcha tallaffuz].": "uz031",
+    "[English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga berilishi mumkin, xuddi jamoaning bir xil formasi kabi. [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bitta elementga beriladi, xuddi pasport raqami kabi. Qarang.": "uz032",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodida sarlavhaga [English pronunciation] id [O'zbekcha tallaffuz] atributini qo'shamiz va unga nom beramiz: bosh. Sahifada boshqa hech bir elementning [English pronunciation] id [O'zbekcha tallaffuz] si bosh bo'lmaydi.": "uz033",
+    "CSSda [English pronunciation] id [O'zbekcha tallaffuz] nomining oldiga panjara belgisi qo'yiladi. Qarang, sarlavha binafsha bo'ldi.": "uz034",
+    "Demak, [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. [English pronunciation] class [O'zbekcha tallaffuz] ko'p elementga, [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bittasiga.": "uz035",
+    "Sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] si logo. Uni to'q sariq qilamiz. Selektor uchun ikki joy bo'sh: belgi va nom. Kerakli bo'laklarni tartib bilan bosing.": "uz036",
+    "Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun bo'ladi. Bu yerda [English pronunciation] id [O'zbekcha tallaffuz] bor, unga panjara belgisi kerak.": "uz037",
+    "Oldin belgi turadi: [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. Keyin nom.": "uz038",
+    "[English pronunciation] H two [O'zbekcha tallaffuz] bu [English pronunciation] tag [O'zbekcha tallaffuz] nomi. Bizga sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] nomi kerak: logo.": "uz039",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?": "uz040",
+    "[English pronunciation] id [O'zbekcha tallaffuz] uchun oldin panjara belgisi, keyin [English pronunciation] id [O'zbekcha tallaffuz] nomi yoziladi.": "uz041",
+    "Yonib turgan bo'lakni bosing: u navbatdagi bo'lak.": "uz042",
+    "Zo'r! Sarlavha to'q sariq bo'ldi. Siz [English pronunciation] id [O'zbekcha tallaffuz] selektorini yozdingiz.": "uz043",
+    "Endi selektorlarni ular nimani tanlashi bilan juftlang. Chapdan selektorni, o'ngdan uning ishini bosing.": "uz044",
+    "Belgisiz P bu [English pronunciation] tag [O'zbekcha tallaffuz] selektori. U sahifadagi hamma abzaslarni tanlaydi.": "uz045",
+    "Nuqta bilan boshlangan selektor [English pronunciation] class [O'zbekcha tallaffuz] bo'yicha tanlaydi.": "uz046",
+    "Panjara belgisi bilan boshlangan selektor [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha bitta elementni tanlaydi.": "uz047",
+    "To'g'ri, P hamma abzaslarni tanlaydi.": "uz048",
+    "To'g'ri, nuqta [English pronunciation] class [O'zbekcha tallaffuz] bo'yicha tanlaydi.": "uz049",
+    "To'g'ri, panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha tanlaydi.": "uz050",
+    "Oldin chapdan selektorni tanlang.": "uz051",
+    "Selektorning boshiga qarang: belgi bormi?": "uz052",
+    "Belgisiz bo'lsa [English pronunciation] tag [O'zbekcha tallaffuz], nuqta bo'lsa [English pronunciation] class [O'zbekcha tallaffuz], panjara belgisi bo'lsa [English pronunciation] id [O'zbekcha tallaffuz].": "uz053",
+    "Yonib turgan juftlikni bosing.": "uz054",
+    "Ajoyib! Endi uchala selektorni farqlaysiz.": "uz055",
+    "Sport yangiliklariga va sarlavhaga qarang: bitta [English pronunciation] class [O'zbekcha tallaffuz] uchala yangilikni bo'yaydi, [English pronunciation] id [O'zbekcha tallaffuz] esa faqat bitta sarlavhani.": "uz056",
+    "Bir xil narsalar ko'p bo'lsa, [English pronunciation] class [O'zbekcha tallaffuz] olinadi. Narsa sahifada bitta bo'lsa, [English pronunciation] id [O'zbekcha tallaffuz] olinadi.": "uz057",
+    "Maktabda hamma o'quvchilarga bitta qo'ng'iroq chalinadi, bu [English pronunciation] class [O'zbekcha tallaffuz]. Direktor esa bitta, uni ismi bilan chaqirishadi, bu [English pronunciation] id [O'zbekcha tallaffuz].": "uz058",
+    "Qachon [English pronunciation] class [O'zbekcha tallaffuz], qachon [English pronunciation] id [O'zbekcha tallaffuz] olinadi? Oddiy qoida bor. Bir xil narsalar ko'p bo'lsa, [English pronunciation] class [O'zbekcha tallaffuz] olinadi. Sahifada yagona narsa bo'lsa, [English pronunciation] id [O'zbekcha tallaffuz] olinadi. Qarang.": "uz059",
+    "Sport yangiliklari uchta. Ularning hammasiga bir xil sport classi berilgan, shuning uchun bitta qoida uchalasini ham ko'k qildi.": "uz060",
+    "Sayt sarlavhasi esa bitta. Unga logo degan [English pronunciation] id [O'zbekcha tallaffuz] berilgan, va qoida faqat uni to'q sariq qildi.": "uz061",
+    "Demak, ko'p bir xil narsa uchun [English pronunciation] class [O'zbekcha tallaffuz], bitta yagona narsa uchun [English pronunciation] id [O'zbekcha tallaffuz].": "uz062",
+    "Endi hamma sport yangiliklarini yashil qiling. Bu safar selektorni to'liq, belgisi bilan birga o'zingiz yozing.": "uz063",
+    "Qavsdan oldin selektorni yozing.": "uz064",
+    "Nuqta yo'q. Nuqtasiz brauzer sport degan [English pronunciation] tag [O'zbekcha tallaffuz]-ni qidiradi. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldiga nuqta qo'ying.": "uz065",
+    "Panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] uchun. Sport yangiliklarida esa [English pronunciation] class [O'zbekcha tallaffuz] bor, unga nuqta kerak.": "uz066",
+    "P hamma abzaslarni bo'yadi, sport bo'lmaganini ham. Bizga faqat sport classi kerak.": "uz067",
+    "Bu selektor sport yangiliklarini tanlamadi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomiga qarang.": "uz068",
+    "Belgi va nom o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.": "uz069",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: sport yangiliklarida [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?": "uz070",
+    "[English pronunciation] class [O'zbekcha tallaffuz] selektori nuqta va [English pronunciation] class [O'zbekcha tallaffuz] nomidan iborat bo'ladi.": "uz071",
+    "Nuqta qo'ying va sport deb yozing.": "uz072",
+    "Zo'r! Uchala sport yangiligi yashil bo'ldi.": "uz073",
+    "Endi o'zingiz tanlang. Men sahifadagi narsani aytaman, siz esa unga [English pronunciation] class [O'zbekcha tallaffuz] kerakmi yoki [English pronunciation] id [O'zbekcha tallaffuz] ekanini tanlaysiz.": "uz074",
+    "Barakalla!": "uz075",
+    "O'ylab ko'ring: bu narsa sahifada bittami yoki ko'pmi?": "uz076",
+    "Ko'p bir xil narsa uchun [English pronunciation] class [O'zbekcha tallaffuz], bitta yagona narsa uchun [English pronunciation] id [O'zbekcha tallaffuz] olinadi.": "uz077",
+    "Hamma sport yangiliklari": "uz078",
+    "Sport yangiliklari ko'p, shuning uchun ularga bitta [English pronunciation] class [O'zbekcha tallaffuz] beriladi.": "uz079",
+    "Sahifaning yagona sarlavhasi": "uz080",
+    "Sarlavha sahifada bitta, unga [English pronunciation] id [O'zbekcha tallaffuz] beriladi.": "uz081",
+    "Har bir o'yin kartochkasi": "uz082",
+    "Kartochkalar ko'p va bir xil ko'rinadi, demak [English pronunciation] class [O'zbekcha tallaffuz] kerak.": "uz083",
+    "Saytning bitta menyusi": "uz084",
+    "Menyu sahifada bitta, shuning uchun unga [English pronunciation] id [O'zbekcha tallaffuz] berish mumkin.": "uz085",
+    "Hammasi to'g'ri! Endi [English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] ni o'rnida tanlaysiz.": "uz086",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Sarlavhaning [English pronunciation] id [O'zbekcha tallaffuz] si bosh. Uni binafsha qiling. Selektordan boshlang, belgini unutmang.": "uz087",
+    "Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.": "uz088",
+    "Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.": "uz089",
+    "Bu yerda teng belgisi turibdi. CSSda xususiyat va qiymat o'rtasida ikki nuqta turadi.": "uz090",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz091",
+    "Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun. Sarlavhada esa [English pronunciation] id [O'zbekcha tallaffuz] bor, unga panjara belgisi kerak.": "uz092",
+    "Belgi yo'q. [English pronunciation] id [O'zbekcha tallaffuz] nomi oldiga panjara belgisi qo'ying.": "uz093",
+    "[English pronunciation] H one [O'zbekcha tallaffuz] ham sarlavhani bo'yaydi, lekin vazifa [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha tanlash edi. Panjara belgisi va bosh ni yozing.": "uz094",
+    "Bu selektor sarlavhani tanlamadi. Uning [English pronunciation] id [O'zbekcha tallaffuz] si bosh.": "uz095",
+    "Matn rangini [English pronunciation] color [O'zbekcha tallaffuz] xususiyati o'zgartiradi.": "uz096",
+    "Brauzer bunday rangni bilmaydi. Binafsha inglizcha [English pronunciation] purple [O'zbekcha tallaffuz] bo'ladi.": "uz097",
+    "Bu boshqa rang. Bizga binafsha kerak, inglizcha [English pronunciation] purple [O'zbekcha tallaffuz].": "uz098",
+    "Sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]? Belgi shunga qarab tanlanadi.": "uz099",
+    "[English pronunciation] id [O'zbekcha tallaffuz] selektori panjara belgisi va [English pronunciation] id [O'zbekcha tallaffuz] nomidan iborat. Keyin jingalak qavslar ichida [English pronunciation] color [O'zbekcha tallaffuz] va [English pronunciation] purple [O'zbekcha tallaffuz].": "uz100",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz101",
+    "Ajoyib! Siz [English pronunciation] id [O'zbekcha tallaffuz] bo'yicha qoidani butunlay o'zingiz yozdingiz.": "uz102",
+    "Har safar ikki joydagi nomni solishtiring: [English pronunciation] HTML [O'zbekcha tallaffuz] va [English pronunciation] CSS [O'zbekcha tallaffuz] ichida harflar bir xilmi, [English pronunciation] CSS [O'zbekcha tallaffuz] ichida nuqta yoki panjara to'g'rimi?": "uz103",
+    "Nom ikki joyda harfma-harf bir xil yoziladi. [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara qo'yiladi, [English pronunciation] HTML [O'zbekcha tallaffuz] ichida esa faqat nomning o'zi.": "uz104",
+    "Pochtachi xatni uy raqamiga qarab topadi. Raqam bitta xato bo'lsa, xat boshqa uyga ketadi. Brauzer ham elementni nomiga qarab topadi.": "uz105",
+    "[English pronunciation] class [O'zbekcha tallaffuz] va [English pronunciation] id [O'zbekcha tallaffuz] juda aniqlikni yaxshi ko'radi. Bitta belgi yoki harf xato bo'lsa, brauzer elementni topa olmaydi. Keling, uchta xatoni ko'ramiz.": "uz106",
+    "Birinchisi: CSSdagi nomda bitta harf boshqacha. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida muhim, CSSda esa muhum. Brauzer bunday classni topmadi va hech narsa bo'yalmadi.": "uz107",
+    "Ikkinchisi: [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta o'rniga panjara belgisi yozildi. Brauzer endi muhim degan [English pronunciation] id [O'zbekcha tallaffuz] ni qidiradi, u esa yo'q.": "uz108",
+    "Uchinchisi: nuqta [English pronunciation] HTML [O'zbekcha tallaffuz] kodiga ham yozib qo'yildi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida nuqta kerak emas, u faqat CSSda turadi. Shuning uchun nomlar endi mos kelmaydi.": "uz109",
+    "Demak, nomni harfma-harf bir xil yozing, [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi qo'ying, [English pronunciation] HTML [O'zbekcha tallaffuz] kodida esa faqat nomning o'zi bo'ladi.": "uz110",
+    "Voy, mening qoidam ishlamayapti! [English pronunciation] HTML [O'zbekcha tallaffuz] kodida abzasning classi muhim, CSSda ham muhim deb yozdim. Lekin bitta belgi yetishmayapti. Nom oldidagi bo'sh joyga kerakli belgini yozing.": "uz111",
+    "Nom oldiga bitta belgi yozing.": "uz112",
+    "Panjara belgisi [English pronunciation] id [O'zbekcha tallaffuz] uchun bo'ladi. Bu abzasda esa [English pronunciation] class [O'zbekcha tallaffuz] bor.": "uz113",
+    "Bu belgi to'g'ri emas. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida nuqta turadi.": "uz114",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodiga qarang: abzasda [English pronunciation] class [O'zbekcha tallaffuz] bormi yoki [English pronunciation] id [O'zbekcha tallaffuz]?": "uz115",
+    "CSSda [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida qaysi belgi turardi, esingizdami?": "uz116",
+    "Pastdagi nuqta tugmasini bosing, keyin Tekshirishni bosing.": "uz117",
+    "Ajoyib! Endi faqat muhim abzas qizil.": "uz118",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. [English pronunciation] HTML [O'zbekcha tallaffuz] va sahifaga qarang va xato qoidani bosing.": "uz119",
+    "Zo'r, birinchi xato topildi! Endi boshqa qoida buzildi. Qaysi biri?": "uz120",
+    "Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?": "uz121",
+    "Topdingiz! [English pronunciation] HTML [O'zbekcha tallaffuz] kodida [English pronunciation] class [O'zbekcha tallaffuz] sport kichik harf bilan, CSSda esa katta harf bilan yozilgan. [English pronunciation] class [O'zbekcha tallaffuz] nomida harflarning katta-kichikligi ham farq qiladi.": "uz122",
+    "Topdingiz! Sarlavhada [English pronunciation] class [O'zbekcha tallaffuz] logo bor, CSSda esa [English pronunciation] id [O'zbekcha tallaffuz] belgisi yozilgan. [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta kerak.": "uz123",
+    "Sahifaga qarang: nima bo'yalmay qoldi?": "uz124",
+    "Sport abzaslari bo'yalmadi. [English pronunciation] HTML [O'zbekcha tallaffuz] va CSSdagi nomni harfma-harf, katta-kichik harflarigacha solishtiring.": "uz125",
+    "Sarlavha bo'yalmadi. [English pronunciation] HTML [O'zbekcha tallaffuz] kodida sarlavhaga [English pronunciation] class [O'zbekcha tallaffuz] berilganmi yoki [English pronunciation] id [O'zbekcha tallaffuz]? CSSdagi belgi shunga mosmi?": "uz126",
+    "Xato sport qoidasida: nom katta harf bilan boshlangan. O'sha qatorni bosing.": "uz127",
+    "Xato logo qoidasida: [English pronunciation] class [O'zbekcha tallaffuz] uchun [English pronunciation] id [O'zbekcha tallaffuz] belgisi turibdi. O'sha qatorni bosing.": "uz128",
+    "Super! Ikkala xato ham topildi. Siz selektorlarni haqiqiy dasturchi kabi tekshiryapsiz.": "uz129",
+    "Endi o'z abzasingizga [English pronunciation] class [O'zbekcha tallaffuz] bering. Unga o'zingiz nom o'ylab toping va ikki joyga yozing: [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] atributiga va CSSdagi nuqtadan keyin. Nomlar bir xil bo'lsa, abzasingiz bo'yaladi. Keyin Tayyorni bosing.": "uz130",
+    "Ikkala joyga ham [English pronunciation] class [O'zbekcha tallaffuz] nomini yozing.": "uz131",
+    "[English pronunciation] class [O'zbekcha tallaffuz] nomida faqat lotin harflari, raqamlar va chiziqcha bo'ladi, raqam bilan boshlanmaydi. Masalan, mening yoki rang1.": "uz132",
+    "[English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi [English pronunciation] class [O'zbekcha tallaffuz] nomiga nuqta kerak emas. Nuqta faqat CSSda turadi.": "uz133",
+    "Abzasingizga qanday nom berasiz? O'zingiz o'ylab toping.": "uz134",
+    "Bir xil nomni ikki joyga yozing: [English pronunciation] HTML [O'zbekcha tallaffuz] kodida nuqtasiz, CSSda nuqtadan keyin.": "uz135",
+    "Masalan, ikkala joyga mening deb yozing. Keyin Tayyorni bosing.": "uz136",
+    "Voy, zo'r! Abzasingiz o'z classi bilan bo'yaldi.": "uz137",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz138",
+    "Gapni bo'laklab o'qing: u [English pronunciation] class [O'zbekcha tallaffuz], [English pronunciation] id [O'zbekcha tallaffuz] yoki [English pronunciation] tag [O'zbekcha tallaffuz] selektori haqidami?": "uz139",
+    "Dars esingizdami: [English pronunciation] class [O'zbekcha tallaffuz] bir nechta elementga, [English pronunciation] id [O'zbekcha tallaffuz] faqat bittasiga beriladi. CSSda [English pronunciation] class [O'zbekcha tallaffuz] uchun nuqta, [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi. Gap shunga mos keladimi?": "uz140",
+    "Bitta classni bir nechta elementga berish mumkin.": "uz141",
+    "To'g'ri: masalan, ikki abzasning classi sport bo'lsa, qoida ikkalasini ham bo'yaydi.": "uz142",
+    "CSSda [English pronunciation] id [O'zbekcha tallaffuz] nomi oldiga nuqta qo'yiladi.": "uz143",
+    "Aslida [English pronunciation] id [O'zbekcha tallaffuz] uchun panjara belgisi qo'yiladi. Nuqta [English pronunciation] class [O'zbekcha tallaffuz] uchun.": "uz144",
+    "CSSdagi [English pronunciation] class [O'zbekcha tallaffuz] nomi [English pronunciation] HTML [O'zbekcha tallaffuz] kodidagi bilan harfma-harf bir xil bo'lishi kerak.": "uz145",
+    "Shunday: bitta harf boshqacha bo'lsa ham, brauzer elementni topa olmaydi.": "uz146",
+    "P selektori faqat birinchi abzasni bo'yaydi.": "uz147",
+    "Aslida P selektori sahifadagi hamma abzaslarni bo'yaydi.": "uz148",
+    "Hammasi to'g'ri! Siz selektorlarni yaxshi bilasiz.": "uz149",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men CSSda muhim deb yozgan edim, nuqtasiz? Afsuski, men adashibman. Nuqta bo'lmasa, brauzer muhim degan [English pronunciation] tag [O'zbekcha tallaffuz]-ni qidiradi, bunday [English pronunciation] tag [O'zbekcha tallaffuz] esa yo'q. Shuning uchun abzas bo'yalmadi. [English pronunciation] class [O'zbekcha tallaffuz] nomi oldida doim nuqta turadi.": "uz150",
+    "Qarang, bu sizning abzasingiz, o'z classingiz bilan!": "uz151",
+    "[English pronunciation] tag [O'zbekcha tallaffuz] selektori shu tegdagi hamma elementlarni tanlaydi.": "uz152",
+    "[English pronunciation] class [O'zbekcha tallaffuz] selektori nuqta bilan yoziladi va shu classli hamma elementlarni tanlaydi.": "uz153",
+    "[English pronunciation] id [O'zbekcha tallaffuz] selektori panjara belgisi bilan yoziladi va bitta elementni tanlaydi.": "uz154",
+    "Tabriklayman! Endi siz istalgan elementni aniq tanlay olasiz. Keyingi darsda ranglarni chuqurroq o'rganamiz. Ko'rishguncha!": "uz155",
+    "Voy, zo‘r!": "uz156",
+    "Ana! Chiqdi!": "uz157",
+    "Super!": "uz158",
+    "Qoyil!": "uz159",
+    "Ura!": "uz160",
+    "Zo‘r-ku!": "uz161",
+    "Yana bir bor urinib ko‘ring.": "uz162",
+    "Diqqat bilan qarang.": "uz163",
+    "Yaqin qoldingiz. Shoshilmang.": "uz164",
+    "Bugun shaxmat to'garagi bor.": "uz165",
+    "Muhim: ertaga futbol o'yini!": "uz166",
+    "Yangi rasmlar qo'shildi.": "uz167",
+    "Maktabda bayram bo'ladi.": "uz168",
+    "Yugurish musobaqasi shanba kuni.": "uz169",
+    "Bu mening abzasim.": "uz170",
+    "Qaysilari bo'yaladi?": "uz171",
+    "[English pronunciation] class [O'zbekcha tallaffuz] yoki [English pronunciation] id [O'zbekcha tallaffuz]?": "uz172",
+    "To'g'rimi?": "uz173",
+    "To'g'ri yoki noto'g'ri?": "uz174",
+    "Salom, dunyo!": "uz175",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz176",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz177",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz178",
+  },
+  ru: {
+    "Привет! Это моя страница новостей. Одна новость очень важная: завтра футбольный матч. Я хочу сделать красным только этот абзац. Как на прошлом уроке, я написал правило для P. Нажми Покрасить.": "ru001",
+    "Ой! Все абзацы стали красными. А я хотел только один.": "ru002",
+    "Селектор тега P выбирает все абзацы на странице. А нам нужен способ выбрать именно нужный элемент.": "ru003",
+    "Сегодня ты научишься выбирать именно нужный элемент: с помощью [English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение]. Но сначала маленькая загадка. Я добавил важному абзацу атрибут [English pronunciation] class [Русское произношение] и назвал его muhim. А в [English pronunciation] CSS [Русское произношение] написал muhim и в скобках поставил красный цвет. По-моему, теперь красным станет только этот абзац. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru004",
+    "Посмотри на два места: в [English pronunciation] HTML [Русское произношение] абзацу добавляют [English pronunciation] class [Русское произношение], а в [English pronunciation] CSS [Русское произношение] пишут точку и то же имя. Какой абзац покрасится?": "ru005",
+    "[English pronunciation] class [Русское произношение] даёт элементу имя. В [English pronunciation] CSS [Русское произношение] перед этим именем ставят точку. В обоих местах имя одинаковое, буква в букву.": "ru006",
+    "На мероприятии носят бейджик с именем: по нему тебя и находят. [English pronunciation] class [Русское произношение], такой же бейджик.": "ru007",
+    "Давай выберем важный абзац отдельно. Для этого пишем в двух местах: в [English pronunciation] HTML [Русское произношение] и в [English pronunciation] CSS [Русское произношение]. Смотри.": "ru008",
+    "Сначала в [English pronunciation] HTML [Русское произношение] добавляем нужному абзацу атрибут [English pronunciation] class [Русское произношение] и даём ему имя: muhim. Это как бейджик с именем на одежде.": "ru009",
+    "А теперь в [English pronunciation] CSS [Русское произношение] ставим перед именем класса точку. Точка говорит браузеру: это не тег, а имя класса. Смотри, теперь красный только важный абзац!": "ru010",
+    "Значит, в [English pronunciation] HTML [Русское произношение], атрибут [English pronunciation] class [Русское произношение], а в [English pronunciation] CSS [Русское произношение], точка и то же имя. В обоих местах имя одинаковое, буква в букву.": "ru011",
+    "Теперь твоя очередь. Сделаем зелёным третий абзац. Найди в [English pronunciation] HTML [Русское произношение]-коде имя его класса и впиши в [English pronunciation] CSS [Русское произношение] после точки.": "ru012",
+    "Впиши имя класса после точки.": "ru013",
+    "Точка уже стоит. Впиши только имя класса.": "ru014",
+    "Это другой класс: он покрасил другой абзац. Нам нужен класс yangi.": "ru015",
+    "На странице нет такого класса, ничего не покрасилось. Напиши имя буква в букву, как в [English pronunciation] HTML [Русское произношение].": "ru016",
+    "Посмотри на третий абзац в [English pronunciation] HTML [Русское произношение]: какое имя в его атрибуте [English pronunciation] class [Русское произношение]?": "ru017",
+    "Имя в [English pronunciation] CSS [Русское произношение] должно совпадать с именем класса в [English pronunciation] HTML [Русское произношение].": "ru018",
+    "Класс третьего абзаца, yangi. Впиши yangi после точки.": "ru019",
+    "Огонь! Зелёным стал только абзац с классом yangi.": "ru020",
+    "Теперь проверь себя. Это правило красит в синий элементы с классом sport. Посмотри в [English pronunciation] HTML [Русское произношение] и найди, какие абзацы станут синими. Нажми их на странице.": "ru021",
+    "Посмотри в [English pronunciation] HTML [Русское произношение] на атрибут [English pronunciation] class [Русское произношение] у каждого абзаца.": "ru022",
+    "Правило красит только абзацы с классом sport. Абзацы с другим классом или без класса не меняются.": "ru023",
+    "У первого и третьего абзаца класс sport. Нажми их.": "ru024",
+    "У этого абзаца класс maktab. А правило, для класса sport, он не покрасится.": "ru025",
+    "У этого абзаца нет класса. Правило sport его не трогает.": "ru026",
+    "Верно, у этого абзаца класс sport.": "ru027",
+    "Отлично! Оба абзаца sport стали синими. Один класс можно дать нескольким элементам.": "ru028",
+    "Посмотри, как в [English pronunciation] HTML [Русское произношение] заголовку добавляют [English pronunciation] id [Русское произношение], а в [English pronunciation] CSS [Русское произношение] перед именем ставят решётку.": "ru029",
+    "[English pronunciation] id [Русское произношение] дают только одному элементу. В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят решётку, а перед именем класса, точку.": "ru030",
+    "У игроков одной команды одинаковая форма, это [English pronunciation] class [Русское произношение]. А номер паспорта у каждого свой, это [English pronunciation] id [Русское произношение].": "ru031",
+    "Класс можно дать нескольким элементам, как одинаковую форму команды. А [English pronunciation] id [Русское произношение] дают только одному элементу, как номер паспорта. Смотри.": "ru032",
+    "В [English pronunciation] HTML [Русское произношение] добавляем заголовку атрибут [English pronunciation] id [Русское произношение] с именем bosh. Ни у одного другого элемента на странице [English pronunciation] id [Русское произношение] bosh не будет.": "ru033",
+    "В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят решётку. Смотри, заголовок стал фиолетовым.": "ru034",
+    "Значит, для класса, точка, для [English pronunciation] id [Русское произношение], решётка. Класс, для многих элементов, [English pronunciation] id [Русское произношение], только для одного.": "ru035",
+    "У заголовка [English pronunciation] id [Русское произношение] logo. Сделаем его оранжевым. Для селектора два пустых места: знак и имя. Нажми нужные куски по порядку.": "ru036",
+    "Точка, для класса. Здесь [English pronunciation] id [Русское произношение], ему нужна решётка.": "ru037",
+    "Сначала идёт знак: для [English pronunciation] id [Русское произношение] это решётка. Потом имя.": "ru038",
+    "[English pronunciation] H two [Русское произношение], это имя тега. Нам нужно имя [English pronunciation] id [Русское произношение] заголовка: logo.": "ru039",
+    "Посмотри в [English pronunciation] HTML [Русское произношение]: у заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?": "ru040",
+    "Для [English pronunciation] id [Русское произношение] сначала пишут решётку, потом имя [English pronunciation] id [Русское произношение].": "ru041",
+    "Нажми горящий кусок: он следующий.": "ru042",
+    "Огонь! Заголовок стал оранжевым. Ты написал селектор по [English pronunciation] id [Русское произношение].": "ru043",
+    "Теперь соедини селекторы с тем, что они выбирают. Нажми селектор слева, потом его работу справа.": "ru044",
+    "P без знака, селектор тега. Он выбирает все абзацы на странице.": "ru045",
+    "Селектор с точкой выбирает по классу.": "ru046",
+    "Селектор с решёткой выбирает один элемент по [English pronunciation] id [Русское произношение].": "ru047",
+    "Верно, P выбирает все абзацы.": "ru048",
+    "Верно, точка выбирает по классу.": "ru049",
+    "Верно, решётка выбирает по [English pronunciation] id [Русское произношение].": "ru050",
+    "Сначала выбери селектор слева.": "ru051",
+    "Посмотри на начало селектора: есть ли знак?": "ru052",
+    "Без знака, тег, с точкой, класс, с решёткой, [English pronunciation] id [Русское произношение].": "ru053",
+    "Нажми горящую пару.": "ru054",
+    "Отлично! Теперь ты различаешь все три селектора.": "ru055",
+    "Посмотри на спортивные новости и заголовок: один [English pronunciation] class [Русское произношение] красит все три новости, а [English pronunciation] id [Русское произношение], только один заголовок.": "ru056",
+    "Если одинаковых вещей много, берут [English pronunciation] class [Русское произношение]. Если вещь на странице одна, берут [English pronunciation] id [Русское произношение].": "ru057",
+    "В школе звонок звенит всем ученикам, это [English pronunciation] class [Русское произношение]. А директор один, его зовут по имени, это [English pronunciation] id [Русское произношение].": "ru058",
+    "Когда брать [English pronunciation] class [Русское произношение], а когда [English pronunciation] id [Русское произношение]? Есть простое правило. Если одинаковых вещей много, берут [English pronunciation] class [Русское произношение]. Если вещь на странице одна, берут [English pronunciation] id [Русское произношение]. Смотри.": "ru059",
+    "Спортивных новостей три. Всем им дан один класс sport, поэтому одно правило покрасило синим все три.": "ru060",
+    "А заголовок сайта один. Ему дан [English pronunciation] id [Русское произношение] logo, и правило сделало оранжевым только его.": "ru061",
+    "Значит, для многих одинаковых вещей, [English pronunciation] class [Русское произношение], для одной-единственной, [English pronunciation] id [Русское произношение].": "ru062",
+    "Теперь сделай все спортивные новости зелёными. В этот раз впиши селектор целиком, вместе со знаком.": "ru063",
+    "Впиши селектор перед скобкой.": "ru064",
+    "Нет точки. Без неё браузер ищет тег sport. Поставь точку перед именем класса.": "ru065",
+    "Решётка, для [English pronunciation] id [Русское произношение]. А у новостей sport класс, ему нужна точка.": "ru066",
+    "P покрасил все абзацы, и не спортивные тоже. Нам нужен только класс sport.": "ru067",
+    "Этот селектор не выбрал новости sport. Посмотри на имя класса в [English pronunciation] HTML [Русское произношение]-коде.": "ru068",
+    "Между знаком и именем не нужен пробел: пиши слитно.": "ru069",
+    "Посмотри в [English pronunciation] HTML [Русское произношение]-код: у новостей sport [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?": "ru070",
+    "Селектор класса, это точка и имя класса.": "ru071",
+    "Поставь точку и напиши sport.": "ru072",
+    "Огонь! Все три спортивные новости стали зелёными.": "ru073",
+    "Теперь выбери сам. Я назову вещь на странице, а ты выбери, нужен ей [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение].": "ru074",
+    "Точно!": "ru075",
+    "Подумай: эта вещь на странице одна или их много?": "ru076",
+    "Для многих одинаковых вещей берут [English pronunciation] class [Русское произношение], для одной-единственной, [English pronunciation] id [Русское произношение].": "ru077",
+    "Все спортивные новости": "ru078",
+    "Спортивных новостей много, поэтому им дают один класс.": "ru079",
+    "Единственный заголовок страницы": "ru080",
+    "Заголовок на странице один, ему дают [English pronunciation] id [Русское произношение].": "ru081",
+    "Каждая карточка игры": "ru082",
+    "Карточек много, и они выглядят одинаково, значит, нужен класс.": "ru083",
+    "Одно-единственное меню сайта": "ru084",
+    "Меню на странице одно, поэтому ему можно дать [English pronunciation] id [Русское произношение].": "ru085",
+    "Всё верно! Теперь ты выбираешь [English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение] к месту.": "ru086",
+    "Теперь напиши правило целиком сам. У заголовка [English pronunciation] id [Русское произношение] bosh. Сделай его фиолетовым. Начни с селектора и не забудь знак.": "ru087",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru088",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru089",
+    "Здесь стоит знак равно. В [English pronunciation] CSS [Русское произношение] между свойством и значением стоит двоеточие.": "ru090",
+    "Между свойством и значением нет двоеточия.": "ru091",
+    "Точка, для класса. А у заголовка [English pronunciation] id [Русское произношение], ему нужна решётка.": "ru092",
+    "Нет знака. Поставь решётку перед именем [English pronunciation] id [Русское произношение].": "ru093",
+    "[English pronunciation] H one [Русское произношение] тоже покрасит заголовок, но задание, выбрать по [English pronunciation] id [Русское произношение]. Напиши решётку и bosh.": "ru094",
+    "Этот селектор не выбрал заголовок. Его [English pronunciation] id [Русское произношение], bosh.": "ru095",
+    "Цвет текста меняет свойство [English pronunciation] color [Русское произношение].": "ru096",
+    "Браузер не знает такого цвета. Фиолетовый по-английски, [English pronunciation] purple [Русское произношение].": "ru097",
+    "Это другой цвет. Нам нужен фиолетовый, по-английски [English pronunciation] purple [Русское произношение].": "ru098",
+    "У заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]? От этого зависит знак.": "ru099",
+    "Селектор [English pronunciation] id [Русское произношение], это решётка и имя [English pronunciation] id [Русское произношение]. Потом в фигурных скобках [English pronunciation] color [Русское произношение] и [English pronunciation] purple [Русское произношение].": "ru100",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru101",
+    "Отлично! Ты сам написал целое правило по [English pronunciation] id [Русское произношение].": "ru102",
+    "Каждый раз сравни имя в двух местах: совпадают ли буквы в [English pronunciation] HTML [Русское произношение] и [English pronunciation] CSS [Русское произношение], верный ли знак в [English pronunciation] CSS [Русское произношение], точка или решётка?": "ru103",
+    "Имя в двух местах пишется буква в букву. Для класса, точка, для [English pronunciation] id [Русское произношение], решётка, а в [English pronunciation] HTML [Русское произношение], только само имя.": "ru104",
+    "Почтальон находит дом по номеру. Ошибка в одной цифре, письмо уйдёт не туда. Браузер так же находит элемент по имени.": "ru105",
+    "[English pronunciation] class [Русское произношение] и [English pronunciation] id [Русское произношение] любят точность. Ошибся в одном знаке или букве, и браузер не находит элемент. Посмотрим на три ошибки.": "ru106",
+    "Первая: в имени в [English pronunciation] CSS [Русское произношение] одна буква другая. В [English pronunciation] HTML [Русское произношение], muhim, а в [English pronunciation] CSS [Русское произношение], muhum. Браузер не нашёл такой класс, и ничего не покрасилось.": "ru107",
+    "Вторая: для класса вместо точки написали решётку. Теперь браузер ищет [English pronunciation] id [Русское произношение] muhim, а такого нет.": "ru108",
+    "Третья: точку написали и в [English pronunciation] HTML [Русское произношение]. В [English pronunciation] HTML [Русское произношение] точка не нужна, она стоит только в [English pronunciation] CSS [Русское произношение]. Поэтому имена теперь не совпадают.": "ru109",
+    "Значит, пиши имя буква в букву, ставь точку для класса и решётку для [English pronunciation] id [Русское произношение], а в [English pronunciation] HTML [Русское произношение], только само имя.": "ru110",
+    "Ой, моё правило не работает! В [English pronunciation] HTML [Русское произношение] у абзаца класс muhim, в [English pronunciation] CSS [Русское произношение] я тоже написал muhim. Но не хватает одного знака. Впиши нужный знак в пустое место перед именем.": "ru111",
+    "Впиши один знак перед именем.": "ru112",
+    "Решётка, для [English pronunciation] id [Русское произношение]. А у этого абзаца класс.": "ru113",
+    "Этот знак не подходит. Перед именем класса стоит точка.": "ru114",
+    "Посмотри в [English pronunciation] HTML [Русское произношение]: у абзаца [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?": "ru115",
+    "Помнишь, какой знак стоит в [English pronunciation] CSS [Русское произношение] перед именем класса?": "ru116",
+    "Нажми кнопку с точкой внизу, потом Проверить.": "ru117",
+    "Отлично! Теперь красный только важный абзац.": "ru118",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на [English pronunciation] HTML [Русское произношение] и страницу и нажми сломанное правило.": "ru119",
+    "Класс, первая ошибка найдена! Теперь сломалось другое правило. Какое?": "ru120",
+    "Это правило работает: его цвет виден на странице. Что не покрасилось?": "ru121",
+    "Есть! В [English pronunciation] HTML [Русское произношение] класс sport с маленькой буквы, а в [English pronunciation] CSS [Русское произношение], с большой. Для браузера большая и маленькая буквы, разные буквы.": "ru122",
+    "Нашёл! У заголовка класс logo, а в [English pronunciation] CSS [Русское произношение] стоит знак [English pronunciation] id [Русское произношение]. Для класса нужна точка.": "ru123",
+    "Посмотри на страницу: что осталось не покрашенным?": "ru124",
+    "Абзацы sport не покрасились. Сравни имя в [English pronunciation] HTML [Русское произношение] и [English pronunciation] CSS [Русское произношение] буква в букву, вплоть до больших и маленьких букв.": "ru125",
+    "Заголовок не покрасился. В [English pronunciation] HTML [Русское произношение] у заголовка [English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]? Подходит ли знак в [English pronunciation] CSS [Русское произношение]?": "ru126",
+    "Ошибка в правиле sport: имя начинается с большой буквы. Нажми эту строку.": "ru127",
+    "Ошибка в правиле logo: для класса стоит знак [English pronunciation] id [Русское произношение]. Нажми эту строку.": "ru128",
+    "Супер! Обе ошибки найдены. Ты проверяешь селекторы как настоящий программист.": "ru129",
+    "Теперь дай своему абзацу класс. Придумай ему имя и впиши в два места: в атрибут [English pronunciation] class [Русское произношение] в [English pronunciation] HTML [Русское произношение] и после точки в [English pronunciation] CSS [Русское произношение]. Если имена совпадут, твой абзац покрасится. Потом нажми Готово.": "ru130",
+    "Впиши имя класса в оба места.": "ru131",
+    "В имени класса, только латинские буквы, цифры и дефис, и оно не начинается с цифры. Например, mening или rang1.": "ru132",
+    "В имени класса в [English pronunciation] HTML [Русское произношение] точка не нужна. Точка стоит только в [English pronunciation] CSS [Русское произношение].": "ru133",
+    "Как назовёшь свой абзац? Придумай сам.": "ru134",
+    "Впиши одно и то же имя в два места: в [English pronunciation] HTML [Русское произношение] без точки, в [English pronunciation] CSS [Русское произношение] после точки.": "ru135",
+    "Например, впиши в оба места mening. Потом нажми Готово.": "ru136",
+    "Ого, класс! Твой абзац покрасился по своему классу.": "ru137",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru138",
+    "Прочитай фразу по частям: она о классе, [English pronunciation] id [Русское произношение] или селекторе тега?": "ru139",
+    "Вспомни урок: класс дают нескольким элементам, [English pronunciation] id [Русское произношение], только одному. В [English pronunciation] CSS [Русское произношение] для класса точка, для [English pronunciation] id [Русское произношение], решётка. Фраза с этим совпадает?": "ru140",
+    "Один класс можно дать нескольким элементам.": "ru141",
+    "Верно: например, если у двух абзацев класс sport, правило покрасит оба.": "ru142",
+    "В [English pronunciation] CSS [Русское произношение] перед именем [English pronunciation] id [Русское произношение] ставят точку.": "ru143",
+    "На самом деле для [English pronunciation] id [Русское произношение] ставят решётку. Точка, для класса.": "ru144",
+    "Имя класса в [English pronunciation] CSS [Русское произношение] должно совпадать с [English pronunciation] HTML [Русское произношение] буква в букву.": "ru145",
+    "Так и есть: даже одна другая буква, и браузер не найдёт элемент.": "ru146",
+    "Селектор P красит только первый абзац.": "ru147",
+    "На самом деле селектор P красит все абзацы на странице.": "ru148",
+    "Всё верно! Ты отлично знаешь селекторы.": "ru149",
+    "Вернёмся к загадке. Помнишь, я написал в [English pronunciation] CSS [Русское произношение] muhim, без точки? Увы, я ошибся. Без точки браузер ищет тег muhim, а такого тега нет. Поэтому абзац не покрасился. Перед именем класса всегда стоит точка.": "ru150",
+    "Смотри, это твой абзац со своим классом!": "ru151",
+    "Селектор тега выбирает все элементы с этим тегом.": "ru152",
+    "Селектор класса пишут с точкой, он выбирает все элементы с этим классом.": "ru153",
+    "Селектор [English pronunciation] id [Русское произношение] пишут с решёткой, он выбирает один элемент.": "ru154",
+    "Ура! Теперь ты можешь точно выбрать любой элемент. На следующем уроке разберёмся с цветами глубже. До встречи!": "ru155",
+    "Вау, классно!": "ru156",
+    "Есть! Получилось!": "ru157",
+    "Супер!": "ru158",
+    "Огонь!": "ru159",
+    "Ура!": "ru160",
+    "Вот это да!": "ru161",
+    "Попробуй ещё раз.": "ru162",
+    "Посмотри внимательно.": "ru163",
+    "Уже близко. Не спеши.": "ru164",
+    "Сегодня кружок шахмат.": "ru165",
+    "Важно: завтра футбольный матч!": "ru166",
+    "Добавились новые фото.": "ru167",
+    "В школе будет праздник.": "ru168",
+    "Забег, в субботу.": "ru169",
+    "Это мой абзац.": "ru170",
+    "Какие покрасятся?": "ru171",
+    "[English pronunciation] class [Русское произношение] или [English pronunciation] id [Русское произношение]?": "ru172",
+    "Верно или нет?": "ru173",
+    "Привет, мир!": "ru174",
+    "Здесь нужны только слова, без угловых скобок.": "ru175",
+    "Молодец!": "ru176",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru177",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru178",
+  },
+  en: {
+    "Hi! This is my news page. One piece of news is really important: there’s a football match tomorrow. I want to make only that paragraph red. Like last lesson, I wrote a rule for P. Tap Color it.": "en001",
+    "Oops! All the paragraphs turned red. I wanted only one.": "en002",
+    "The P tag selector picks every paragraph on the page. We need a way to pick exactly the element we want.": "en003",
+    "Today you’ll learn to pick exactly the element you want: with class and id. But first, a little riddle. I added a class attribute to the important paragraph and named it muhim. In CSS I wrote muhim and put the red color in the braces. I think now only that paragraph will turn red. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en004",
+    "Look at two places: in H T M L the paragraph gets a class, and in CSS you write a dot and the same name. Which paragraph gets colored?": "en005",
+    "class gives an element a name. In CSS a dot goes before that name. The name must match letter for letter in both places.": "en006",
+    "At an event you wear a name badge, and people find you by it. class is that kind of badge.": "en007",
+    "Let’s pick the important paragraph on its own. We write in two places for that: in H T M L and in CSS. Watch.": "en008",
+    "First, in H T M L we add a class attribute to the paragraph and give it a name: muhim. It’s like a name badge on clothes.": "en009",
+    "Now in CSS we put a dot before the class name. The dot tells the browser: this isn’t a tag, it’s a class name. Look, only the important paragraph is red now!": "en010",
+    "So in H T M L it’s the class attribute, and in CSS a dot and the same name. The name is the same in both places, letter by letter.": "en011",
+    "Now it’s your turn. Let’s make the third paragraph green. Find its class name in the H T M L code and type it after the dot in CSS.": "en012",
+    "Type the class name after the dot.": "en013",
+    "The dot is already there. Type only the class name.": "en014",
+    "That’s a different class: it colored another paragraph. We need the class yangi.": "en015",
+    "There’s no such class on the page, so nothing got colored. Type the name letter by letter, as in H T M L.": "en016",
+    "Look at the third paragraph in H T M L: what name is in its class attribute?": "en017",
+    "The name in CSS must match the class name in H T M L.": "en018",
+    "The third paragraph’s class is yangi. Type yangi after the dot.": "en019",
+    "Awesome! Only the paragraph with the class yangi turned green.": "en020",
+    "Now check yourself. This rule makes elements with the class sport blue. Look at the H T M L and find which paragraphs will turn blue. Tap them on the page.": "en021",
+    "Look at each paragraph’s class attribute in the H T M L.": "en022",
+    "The rule colors only paragraphs with the class sport. Ones with another class or no class don’t change.": "en023",
+    "The first and third paragraphs have the class sport. Tap them.": "en024",
+    "This paragraph’s class is maktab. The rule is for the class sport, so it won’t be colored.": "en025",
+    "This paragraph has no class. The sport rule doesn’t touch it.": "en026",
+    "Right, this paragraph’s class is sport.": "en027",
+    "Great! Both sport paragraphs turned blue. One class can go on several elements.": "en028",
+    "Watch how in H T M L the heading gets an id, and in CSS a hash sign goes before the name.": "en029",
+    "id is given to just one element. In CSS a hash sign goes before an id name, and a dot before a class name.": "en030",
+    "Players on one team wear the same uniform: that’s class. A passport number is unique to each person: that’s id.": "en031",
+    "A class can go on several elements, like a team’s matching uniform. An id goes on only one element, like a passport number. Watch.": "en032",
+    "In H T M L we add an id attribute to the heading named bosh. No other element on the page will have the id bosh.": "en033",
+    "In CSS a hash sign goes before the id name. Look, the heading turned purple.": "en034",
+    "So a dot for a class, a hash sign for an id. A class is for many elements, an id for just one.": "en035",
+    "The heading’s id is logo. Let’s make it orange. The selector has two empty spots: a sign and a name. Tap the right pieces in order.": "en036",
+    "A dot is for a class. This is an id, so it needs a hash sign.": "en037",
+    "The sign comes first: a hash sign for an id. Then the name.": "en038",
+    "H two is a tag name. We need the heading’s id name: logo.": "en039",
+    "Look at the H T M L: does the heading have a class or an id?": "en040",
+    "For an id you write the hash sign first, then the id name.": "en041",
+    "Tap the glowing piece: it’s the next one.": "en042",
+    "Awesome! The heading turned orange. You wrote an id selector.": "en043",
+    "Now match the selectors with what they pick. Tap a selector on the left, then its job on the right.": "en044",
+    "P with no sign is a tag selector. It picks every paragraph on the page.": "en045",
+    "A selector starting with a dot picks by class.": "en046",
+    "A selector starting with a hash sign picks one element by id.": "en047",
+    "Right, P picks every paragraph.": "en048",
+    "Right, the dot picks by class.": "en049",
+    "Right, the hash sign picks by id.": "en050",
+    "First pick a selector on the left.": "en051",
+    "Look at the start of the selector: is there a sign?": "en052",
+    "No sign means a tag, a dot means a class, a hash sign means an id.": "en053",
+    "Tap the glowing pair.": "en054",
+    "Great! Now you can tell all three selectors apart.": "en055",
+    "Look at the sports news and the heading: one class colors all three news items, while id colors just the one heading.": "en056",
+    "If there are many of the same thing, use class. If something is the only one on the page, use id.": "en057",
+    "At school the bell rings for all students: that’s class. There’s only one principal, called by name: that’s id.": "en058",
+    "When do you use a class, and when an id? There’s a simple rule. If there are many of the same thing, use a class. If something is the only one on the page, use an id. Watch.": "en059",
+    "There are three sports news items. They all have the same class sport, so one rule made all three blue.": "en060",
+    "The site heading is the only one. It has the id logo, and the rule made only it orange.": "en061",
+    "So a class for many of the same thing, an id for the one and only thing.": "en062",
+    "Now make all the sports news green. This time type the whole selector yourself, sign included.": "en063",
+    "Type the selector before the brace.": "en064",
+    "No dot. Without it the browser looks for a tag called sport. Put a dot before the class name.": "en065",
+    "A hash sign is for an id. The sport news items have a class, which needs a dot.": "en066",
+    "P colored every paragraph, not just the sports ones. We need only the class sport.": "en067",
+    "This selector didn’t pick the sports news. Look at the class name in the H T M L code.": "en068",
+    "No space between the sign and the name: write them together.": "en069",
+    "Look at the H T M L code: do the sports news items have a class or an id?": "en070",
+    "A class selector is a dot and the class name.": "en071",
+    "Put a dot and type sport.": "en072",
+    "Awesome! All three sports news items turned green.": "en073",
+    "Now you choose. I’ll name something on a page, and you choose whether it needs a class or an id.": "en074",
+    "Exactly!": "en075",
+    "Think: is this thing the only one on the page, or are there many?": "en076",
+    "Use a class for many of the same thing, an id for the one and only.": "en077",
+    "All the sports news items": "en078",
+    "There are many sports news items, so they get one class.": "en079",
+    "The page’s only heading": "en080",
+    "There’s only one heading on the page, so it gets an id.": "en081",
+    "Every game card": "en082",
+    "There are many cards and they look the same, so a class is needed.": "en083",
+    "The site’s one and only menu": "en084",
+    "There’s just one menu on the page, so it can get an id.": "en085",
+    "All correct! Now you pick a class or an id where each fits.": "en086",
+    "Now write the whole rule yourself. The heading’s id is bosh. Make it purple. Start with the selector and don’t forget the sign.": "en087",
+    "Write the rule: first the selector, then the property and value in curly braces.": "en088",
+    "The rule needs curly braces: an opening one and a closing one.": "en089",
+    "There’s an equals sign here. In CSS a colon goes between the property and the value.": "en090",
+    "There’s no colon between the property and the value.": "en091",
+    "A dot is for a class. The heading has an id, which needs a hash sign.": "en092",
+    "No sign. Put a hash sign before the id name.": "en093",
+    "H one would color the heading too, but the task is to pick it by id. Type the hash sign and bosh.": "en094",
+    "This selector didn’t pick the heading. Its id is bosh.": "en095",
+    "The color property changes the text color.": "en096",
+    "The browser doesn’t know that color. Purple is purple.": "en097",
+    "That’s a different color. We need purple.": "en098",
+    "Does the heading have a class or an id? The sign depends on that.": "en099",
+    "An id selector is a hash sign and the id name. Then color and purple in curly braces.": "en100",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en101",
+    "Great! You wrote a whole id rule yourself.": "en102",
+    "Each time, compare the name in both places: do the letters match in H T M L and CSS, and is the CSS sign right, dot or hash?": "en103",
+    "The name is written letter for letter in both places. A dot for class, a hash for id, and in H T M L only the name itself.": "en104",
+    "A mail carrier finds a house by its number. One wrong digit and the letter goes elsewhere. The browser finds an element by its name the same way.": "en105",
+    "class and id love precision. One wrong sign or letter and the browser can’t find the element. Let’s look at three mistakes.": "en106",
+    "The first: one letter in the CSS name is different. H T M L says muhim, CSS says muhum. The browser found no such class, so nothing got colored.": "en107",
+    "The second: a hash sign was written instead of a dot for a class. Now the browser looks for an id muhim, and there isn’t one.": "en108",
+    "The third: the dot was also written in the H T M L. H T M L doesn’t need the dot; it only goes in CSS. So the names no longer match.": "en109",
+    "So write the name letter by letter, use a dot for a class and a hash sign for an id, and in H T M L just the name itself.": "en110",
+    "Oops, my rule doesn’t work! In H T M L the paragraph’s class is muhim, and in CSS I wrote muhim too. But one sign is missing. Type the right sign in the empty spot before the name.": "en111",
+    "Type one sign before the name.": "en112",
+    "A hash sign is for an id. This paragraph has a class.": "en113",
+    "That sign doesn’t fit. A dot goes before a class name.": "en114",
+    "Look at the H T M L: does the paragraph have a class or an id?": "en115",
+    "Remember which sign goes before a class name in CSS?": "en116",
+    "Tap the dot button below, then Check.": "en117",
+    "Great! Now only the important paragraph is red.": "en118",
+    "Now check yourself. There are three rules in the code, but one doesn’t work. Look at the H T M L and the page and tap the broken rule.": "en119",
+    "Great, the first bug is found! Now another rule broke. Which one?": "en120",
+    "This rule works: its color shows on the page. What didn’t get colored?": "en121",
+    "Found it! In H T M L the class sport is lowercase, but in CSS it starts with a capital. Letter case matters in a class name too.": "en122",
+    "Found it! The heading has the class logo, but CSS uses the id sign. A class needs a dot.": "en123",
+    "Look at the page: what stayed uncolored?": "en124",
+    "The sport paragraphs didn’t get colored. Compare the name in H T M L and CSS letter by letter, down to capital letters.": "en125",
+    "The heading didn’t get colored. Does the heading have a class or an id in H T M L? Does the sign in CSS match?": "en126",
+    "The bug is in the sport rule: the name starts with a capital. Tap that line.": "en127",
+    "The bug is in the logo rule: the id sign is used for a class. Tap that line.": "en128",
+    "Super! Both bugs are found. You check selectors like a real programmer.": "en129",
+    "Now give your paragraph a class. Make up a name and type it in two places: in the class attribute in H T M L and after the dot in CSS. If the names match, your paragraph gets colored. Then tap Done.": "en130",
+    "Type the class name in both places.": "en131",
+    "A class name uses only Latin letters, digits and dashes, and doesn’t start with a digit. For example, mening or rang1.": "en132",
+    "No dot in the class name in H T M L. The dot goes only in CSS.": "en133",
+    "What will you name your paragraph? Make it up yourself.": "en134",
+    "Type the same name in two places: in H T M L without a dot, in CSS after the dot.": "en135",
+    "For example, type mening in both places. Then tap Done.": "en136",
+    "Wow, great! Your paragraph got colored by its own class.": "en137",
+    "The last test. I’ll say something, and you choose: true or false.": "en138",
+    "Read the sentence piece by piece: is it about a class, an id or a tag selector?": "en139",
+    "Remember the lesson: a class goes on several elements, an id on just one. In CSS a class gets a dot, an id a hash sign. Does the sentence match that?": "en140",
+    "One class can be given to several elements.": "en141",
+    "Right: for example, if two paragraphs have the class sport, the rule colors both.": "en142",
+    "In CSS a dot goes before an id name.": "en143",
+    "Actually an id gets a hash sign. The dot is for a class.": "en144",
+    "The class name in CSS must match the H T M L letter by letter.": "en145",
+    "That’s right: even one different letter and the browser won’t find the element.": "en146",
+    "The P selector colors only the first paragraph.": "en147",
+    "Actually the P selector colors every paragraph on the page.": "en148",
+    "All correct! You know selectors really well.": "en149",
+    "Back to our riddle. Remember, I wrote muhim in CSS, with no dot? Sadly, I was wrong. Without the dot the browser looks for a tag called muhim, and there isn’t one. That’s why the paragraph didn’t get colored. A class name always has a dot before it.": "en150",
+    "Look, this is your paragraph with its own class!": "en151",
+    "A tag selector picks every element with that tag.": "en152",
+    "A class selector is written with a dot and picks every element with that class.": "en153",
+    "An id selector is written with a hash sign and picks one element.": "en154",
+    "Hooray! Now you can pick any element exactly. Next time we’ll dig deeper into colors. See you!": "en155",
+    "Wow, awesome!": "en156",
+    "Yes! You did it!": "en157",
+    "Super!": "en158",
+    "Brilliant!": "en159",
+    "Hooray!": "en160",
+    "Amazing!": "en161",
+    "Try once more.": "en162",
+    "Take a closer look.": "en163",
+    "You are close. No rush.": "en164",
+    "Chess club is on today.": "en165",
+    "Important: football match tomorrow!": "en166",
+    "New photos were added.": "en167",
+    "The school will have a party.": "en168",
+    "The race is on Saturday.": "en169",
+    "This is my paragraph.": "en170",
+    "Which will be colored?": "en171",
+    "class or id?": "en172",
+    "True or false?": "en173",
+    "Hello, world!": "en174",
+    "Only words here, no angle brackets.": "en175",
+    "Well done!": "en176",
+    "Everything in the window lives inside body.": "en177",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en178",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

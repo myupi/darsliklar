@@ -37,12 +37,9 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · ttsApiBase — база сервиса озвучки:
-//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
-//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
-//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
-//     lesson_id и lesson_name берутся из META урока (название — на языке
-//     ученика); student_uuid LMS уроку не передаёт
+//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -54,6 +51,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -935,643 +933,194 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
-let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
-// маркера — как есть) + lesson_id и lesson_name из META урока.
-const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
-const buildTtsUrl = (base, text, gender, lang) => {
-  if (!base) return '';
-  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
-  // voiceGender от LMS голос курса не меняет.
-  const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
-  const meta = typeof META !== 'undefined' && META ? META : null;
-  if (meta && meta.lessonId) {
-    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
-    const t = meta.lessonTitle || {};
-    const name = t[lang] || t.ru || '';
-    if (name) url += '&lesson_name=' + encodeURIComponent(name);
-  }
-  return url;
-};
-
-// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
-// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
-// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
-// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
-// звук. Для audio-led урока тишина хуже машинного голоса.
-const localVoiceOk = () =>
-  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-
-// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
-// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
-// по высоте. API пол не сообщает, поэтому опознаём по имени.
-// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
-// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
-// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
-// Поэтому оба алфавита.
-const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
-const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
-
-const pickLocalVoice = (lang, gender) => {
-  if (!localVoiceOk()) return null;
-  const all = window.speechSynthesis.getVoices() || [];
-  if (!all.length) return null;
-  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
-  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
-  // узбекской латинице ближе всего — читает заметно вернее английской.
-  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
-  let pool = [];
-  for (let i = 0; i < order.length && !pool.length; i += 1) {
-    pool = all.filter((v) => norm(v).startsWith(order[i]));
-  }
-  if (!pool.length) pool = all;
-  const want = gender === 'm' ? VOICE_M : VOICE_F;
-  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
-  const named = pool.find((v) => want.test(v.name || ''));
-  if (named) return named;
-  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
-  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
-};
-
-// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
-// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
-// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
-// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
-// звучал, то нет, и начинал работать стабильно, как только на объект держали
-// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
-// поэтому: локальная умирает вместе с вызовом.
-let _utter = null;
-let _keepAlive = null;
-
-// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
-// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
-// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
-// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
-// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
-// resume(). На неприостановленном движке resume() безвреден.
-// Таймер обязан останавливаться сам — иначе он переживёт урок.
-function keepSpeechAlive(synth) {
-  if (_keepAlive) clearInterval(_keepAlive);
-  _keepAlive = setInterval(() => {
-    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
-    try { synth.resume(); } catch (e) { /* no-op */ }
-  }, 250);
-}
-function stopSpeechKeepAlive() {
-  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
-}
-
-// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
-const speakLocal = (text, gender, lang, onDone) => {
-  if (!localVoiceOk()) return false;
-  try {
-    const synth = window.speechSynthesis;
-    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
-    // очереди в Chrome иногда гасит фразу, поставленную следом.
-    if (synth.speaking || synth.pending) synth.cancel();
-    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
-    // после загрузки страницы: speak() принимается, событий не приходит, звука
-    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
-    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
-    // resume() на неприостановленном движке безвреден.
-    try { synth.resume(); } catch (e) { /* no-op */ }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickLocalVoice(lang, gender);
-    if (v) u.voice = v;
-    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
-    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
-    // героев. Достался один на двоих — разводим их тембром сильнее.
-    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
-    // ставились, чтобы развести двух персонажей одним системным голосом; герой
-    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
-    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
-    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
-    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
-    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
-    _utter = u;              // см. комментарий выше — без этого речь пропадает
-    synth.speak(u);
-    keepSpeechAlive(synth);
-    return true;
-  } catch (e) { return false; }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudioEngine
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
-// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
-//
-// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
-// возможности его выключить. Взамен работает флаг failed: если голоса фактически
-// нет, экран обязан показать текст.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-
-// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
-// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
-// play() падает — тогда разблокировка молча не срабатывает.
-const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
 function useAudioEngine(ttsApiBase, lang) {
-  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
-  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
-  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
-  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const on = !muted;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
   const [playing, setPlaying] = useState(false);
-  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
-  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
-  // ради озвучки, обязан по этому флагу текст показать.
-  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
-  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
-  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
-  // до него реплика показывается ТЕКСТОМ, а после — произносится.
-  const [gestured, setGestured] = useState(false);
-  const elRef = useRef(null);
-  const onRef = useRef(true);
-  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
-  const timers = useRef([]);
-  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
-  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
-  useEffect(() => {
-    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
-  }, [ttsApiBase]);
-
-  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  // Список системных голосов приезжает асинхронно: первый getVoices() часто
-  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
-  useEffect(() => {
-    if (!localVoiceOk()) return undefined;
-    const synth = window.speechSynthesis;
-    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
-    warm();
-    if (synth.addEventListener) {
-      synth.addEventListener('voiceschanged', warm);
-      return () => synth.removeEventListener('voiceschanged', warm);
-    }
-    return undefined;
-  }, []);
-
-  const el = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
-    return elRef.current;
-  }, []);
-
-  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
-  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
-  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
-  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
-  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
-  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
-  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
-  const resumeRef = useRef(null);
-  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
-  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
-  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
-  // подхватить, а не оставить тишину до следующего экрана.
-  const unmuteRef = useRef(null);
-  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
-  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
-  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
-  // Здесь лежит обещание произнести её, как только касание случится.
-  const gestureWait = useRef(null);
-  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
-  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
-  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [gestured, setGestured] = useState(false);
   const [replayNonce, setReplayNonce] = useState(0);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      setSoundOff(next);
-      if (next) {
-        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
-        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
-        // «проживается» молча и экран идёт дальше, иначе выключенный звук
-        // запирал бы ребёнка на странице.
-        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
-        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
-      } else {
-        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
-        // после включения звук возвращался только со следующего экрана, и
-        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
-        // Дорожка сервиса просто продолжается с того места, где её приглушили.
-        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
-        // в адрес самой страницы, и play() на нём падает NotSupportedError.
-        const a = elRef.current;
-        if (a && a.readyState > 0 && a.paused && !a.ended) {
-          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
-        }
-        const fn = unmuteRef.current;
-        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-      }
-      return next;
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
     });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const a = elRef.current;
-    try {
-      if (next) { if (a) a.pause(); setPlaying(false); }
-      else if (a && a.readyState > 0 && !a.ended) {
-        const p = a.play();
-        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
-        else setPlaying(true);
-      }
-    } catch (e) { /* no-op */ }
-    if (localVoiceOk()) {
-      try {
-        if (next) {
-          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
-          // не гарантирована. Фразу запомнили — при продолжении произнесём
-          // заново (см. runLocal).
-          stopSpeechKeepAlive();
-          window.speechSynthesis.cancel();
-        } else if (resumeRef.current) {
-          const fn = resumeRef.current;
-          resumeRef.current = null;
-          fn();
-        }
-      } catch (e) { /* no-op */ }
-    }
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
   }, []);
-
-  const unlocked = useRef(false);
-  const unlock = useCallback(() => {
-    if (unlocked.current) return;
-    unlocked.current = true;
-    resumeSfx();
-    const a = el();
-    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
-    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
-    if (!a || (a.src && !a.paused)) return;
-    try {
-      a.src = SILENT_WAV;
-      const p = a.play();
-      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
-      if (p && p.catch) p.catch(() => { unlocked.current = false; });
-    } catch (e) { unlocked.current = false; }
-  }, [el]);
-
-  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
-  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
-  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
-  // остаётся ни с чем; после касания она произносится.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => {
-      setGestured(true);
-      unlock();
-      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
-      const fn = gestureWait.current;
-      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
-    };
-    const opt = { once: true, capture: true };
-    window.addEventListener('pointerdown', h, opt);
-    window.addEventListener('keydown', h, opt);
-    return () => {
-      window.removeEventListener('pointerdown', h, { capture: true });
-      window.removeEventListener('keydown', h, { capture: true });
-    };
-  }, [unlock]);
-
-  const flush = useCallback(() => {
-    const list = resolvers.current;
-    resolvers.current = [];
-    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
   }, []);
-
-  const stop = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    // резервный голос обрывается вместе с основным, иначе он договаривает
-    // реплику уже на следующем экране
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    setPlaying(false);
-    flush();
-  }, [flush]);
-
-  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
-  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
-  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
-  const abort = useCallback(() => {
-    const a = elRef.current;
-    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
-    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    resolvers.current = [];
-    pausedRef.current = false; setPaused(false); setPlaying(false);
-  }, []);
-
-  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
-  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
-  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
-  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
-  const gesturedRef = useRef(false);
-  gesturedRef.current = gestured;
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
-
-  const speak = useCallback((text, gender) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
-        // закрывает не только onended, но и страховочные таймеры, а они тикают
-        // и на паузе. Откладываем до снятия.
-        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
-        done = true;
-        unmuteRef.current = null;
-        resolvers.current = resolvers.current.filter((f) => f !== finish);
-        setPlaying(false);
-        resolve();
-      };
-      resolvers.current.push(finish);
-      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
-
-      let localSpoke = false;
-      let localStarted = false;      // одна реплика — один запуск резерва
-
-      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
-      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
-      // срабатывает, то оставляет движок в состоянии, из которого речь больше
-      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
-      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
-      // стоп — стало тихо, нажал продолжить — снова слышно.
-      //
-      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
-      // «стоп» и «без звука» оба выглядели сломанными:
-      //   · cancel() гасил речь, браузер присылал end,
-      //   · end закрывал реплику как СКАЗАННУЮ,
-      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
-      //     до следующего экрана.
-      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
-      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
-      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
-      let stopGuard = null;
-      const runLocal = () => {
-        if (done || localSpoke) return;
-        if (pausedRef.current) { resumeRef.current = runLocal; return; }
-        resumeRef.current = null;
-        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
-        speakLocal(clean, gender, lang, onLocalEnd);
-      };
-      const onLocalEnd = () => {
-        if (done) return;
-        if (mutedRef.current || pausedRef.current) {
-          setPlaying(false);
-          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
-          if (mutedRef.current) {
-            unmuteRef.current = () => { unmuteRef.current = null; again(); };
-            // Со включённым тумблером урок не запирается: если звук так и не
-            // вернули, реплика «проживается» и экран идёт дальше.
-            stopGuard = setTimeout(finish, est);
-            timers.current.push(stopGuard);
-          }
-          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
-          // месте, пока ребёнок сам не нажмёт «продолжить».
-          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
-          return;
-        }
-        localSpoke = true; setPlaying(false); finish();
-      };
-
-      const tryLocal = () => {
-        if (done) return false;
-        // Резерв уже ведёт эту реплику — это успех, а не отказ.
-        if (localStarted) return true;
-        if (!localVoiceOk()) return false;
-        localStarted = true;
-        runLocal();
-        const ok = true;
-        if (!ok) return false;
-        setPlaying(true);
-        setFailed(false);
-        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
-        // не по возврату speak() — иначе экран замрёт без звука и без текста.
-        timers.current.push(setTimeout(() => {
-          if (done || localSpoke) return;
-          const s = window.speechSynthesis;
-          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
-        }, 900));
-        return true;
-      };
-
-      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
-      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
-      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
-      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
-      // герой и есть робот, так что машинный голос попадает в образ.
-      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
-      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
-      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
-      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
-      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
-      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
-      if (mutedRef.current) {
-        setFailed(true);
-        unmuteRef.current = () => {
-          if (done) return;
-          unmuteRef.current = null;
-          setFailed(false);
-          if (localVoiceOk()) {
-            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
-            setPlaying(true);
-          }
-        };
-        waitThen(est);
-        return;
-      }
-      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
-      // и обычный путь, и отложенный запуск после первого касания.
-      const play = () => {
-        if (!ttsApiBase || !onRef.current) {
-          if (tryLocal()) return;
-          setFailed(true); waitThen(est); return;
-        }
-        const a = el();
-        if (!a) { setFailed(true); waitThen(est); return; }
-        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
-        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
-        let attempt = 0;
-        let pending = false;
-        const onFail = () => {
-          if (done || pending) return;
-          if (localStarted) return;
-          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
-          // стоять пустым, пока мы втихую пробуем ещё раз.
-          if (!localVoiceOk()) setFailed(true);
-          if (attempt < 2) {
-            pending = true;
-            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
-            return;
-          }
-          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
-          try {
-            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
-              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
-          } catch (e) { /* no-op */ }
-          if (tryLocal()) return;
-          setFailed(true);
-          waitThen(est);
-        };
-        const tryPlay = () => {
-          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
-          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
-          // через мгновение следующая реплика зовёт play() и снова её запускает.
-          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
-          attempt += 1;
-          try {
-            a.onended = null; a.onerror = null; a.pause();
-            // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
-            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
-            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
-            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
-            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
-            a.onended = finish;
-            a.onerror = onFail;
-            const p = a.play();
-            if (p && p.then) {
-              p.then(() => {
-                setPlaying(true);
-                // play() может «разрешиться», а звука не быть — так ведёт себя
-                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
-                // HTML-телом): ни reject, ни события error не приходит. Поэтому
-                // верим не обещанию, а прогрессу дорожки.
-                timers.current.push(setTimeout(() => {
-                  if (done) return;
-                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
-                  if (!silent) { setFailed(false); return; }
-                  try { a.pause(); } catch (e) { /* no-op */ }
-                  if (!tryLocal()) setFailed(true);
-                }, 900));
-                // страховка: если поток умер молча — не висим вечно.
-                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
-                // бы паузу за мёртвый поток и закрыла реплику.
-                timers.current.push(setTimeout(() => {
-                  if (pausedRef.current) return;
-                  if (a.paused || !a.duration) finish();
-                }, est + 4000));
-              }).catch(onFail);          // сюда попадает и блокировка автозапуска
-            } else {
-              setPlaying(true);
-              waitThen(est + 4000);
-            }
-          } catch (e) { onFail(); }
-        };
-        tryPlay();
-      };
-      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
-      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
-      // любому месту экрана — произносит её с начала. Раньше здесь стояло
-      // простое ожидание, и самая первая фраза урока не звучала вообще:
-      // ребёнок молча смотрел на текст, а голос включался только со второй.
-      // Страховочный таймер остаётся: если касания так и нет, реплика
-      // «проживается» и урок идёт дальше, а не запирается.
-      const waitGesture = () => {
-        setFailed(true);
-        const guard = setTimeout(finish, est);
-        timers.current.push(guard);
-        gestureWait.current = () => {
-          gestureWait.current = null;
-          if (done) return;
-          clearTimeout(guard);
-          setFailed(false);
-          play();
-        };
-      };
-      if (!gesturedRef.current) {
-        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
-        // Проба — на отдельном элементе: общую дорожку экран при открытии
-        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
-        // только отказ браузера (NotAllowedError), а не обрыв.
-        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
-        if (!a0) { waitGesture(); return; }
-        let settled = false;
-        const allowed = () => {
-          if (settled) return;
-          settled = true;
-          gesturedRef.current = true;
-          unlocked.current = true;
-          setGestured(true);
-          setFailed(false);
-          if (!done) play();
-        };
-        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
-        try {
-          a0.src = SILENT_WAV;
-          const pr = a0.play();
-          if (pr && pr.then) {
-            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
-            timers.current.push(setTimeout(blocked, 1500));
-          } else allowed();
-        } catch (e) { blocked(); }
-        return;
-      }
-      play();
-    });
-  }, [ttsApiBase, lang, el]);
-
-  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
-  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
-  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
-  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
-  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
-  // нажатию ребёнка звук уже готов.
-  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
-  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
-  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
-  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
-  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
-  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
-  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
-  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
-  const warmQ = useRef([]);
-  const warmBusy = useRef(0);
-  const warm = useCallback((texts) => {
-    if (!ttsApiBase || typeof fetch !== 'function') return;
-    warmQ.current.forEach((u) => warmed.current.delete(u));
-    warmQ.current = [];
-    (texts || []).forEach((t) => {
-      const clean = sanitizeForTts(t, lang);
-      if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
-      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
-    });
-    const pump = () => {
-      while (warmBusy.current < 2 && warmQ.current.length) {
-        const u = warmQ.current.shift();
-        warmBusy.current += 1;
-        const next = () => { warmBusy.current -= 1; pump(); };
-        const fail = () => { warmed.current.delete(u); next(); };
-        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
-      }
-    };
-    pump();
-  }, [ttsApiBase, lang]);
-
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
@@ -3769,6 +3318,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3806,8 +3356,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    if (typeof onFinished === 'function') onFinished(payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3876,7 +3426,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   }, []);
 
   const liveRef = useRef(null);
-  liveRef.current = { lang, setLang, audio, log, store, page };
+  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };
   const Shell = useMemo(() => function LessonShell({ children, css }) {
     const v = liveRef.current;
     return (
@@ -3890,6 +3440,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
                   <CelebrateLayer />
+                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3904,7 +3455,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -8011,15 +7562,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
-// бы их вслух — для него они убираются.
-if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
-  const BaseUtt = window.SpeechSynthesisUtterance;
-  window.__b16Utt = true;
-  window.SpeechSynthesisUtterance = function B16Utterance(t) {
-    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
-  };
-}
+// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -14110,3 +13654,1033 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c6-sheet .kz-scene .kz-br.c6-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c6-sheet .kz-scene .kz-br.c6-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
+// Реплик: uz 169, ru 169, en 168; всего знаков 57023. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+export const LESSON_AUDIO = {
+  schema: 1,
+  speeches: [
+    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'zgarmaydi", required: true },
+    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men sayohatdan surat joyladim. Lekin qarang, u juda katta: sahifaning yarmini egallab olgan, matn esa pastda qolib ketdi. Aylantirish tugmasini bosing.", required: true },
+    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Surat ixcham bo'ldi, abzas esa oynaning bir qismini egallaydi. Inspektor har bir elementning o'lchamini ko'rsatyapti.", required: true },
+    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Buni ikki xususiyat qildi: [English pronunciation] width [O'zbekcha tallaffuz], ya'ni kenglik degani, va [English pronunciation] height [O'zbekcha tallaffuz], ya'ni balandlik degani.", required: true },
+    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun elementlar o'lchamini boshqarishni o'rganasiz. Lekin oldin kichik topishmoq. Men uzun abzasga balandlik berdim: [English pronunciation] height [O'zbekcha tallaffuz] o'ttiz piksel. Menimcha, sig'magan matn shunchaki yashirinadi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.", required: true },
+    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektorga qarang: har bir element yonida eni va bo'yi yozilgan. Kodda [English pronunciation] width [O'zbekcha tallaffuz] soni o'zgarsa, Inspektordagi son ham o'zgaradi.", required: true },
+    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] width [O'zbekcha tallaffuz] elementning enini beradi. Rasmga faqat [English pronunciation] width [O'zbekcha tallaffuz] yozilsa, bo'yi o'zi moslashadi va rasm cho'zilmaydi.", required: true },
+    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefonda rasmni ikki barmoq bilan kichraytirganingizni eslang: u buzilmasdan kichrayadi. [English pronunciation] width [O'zbekcha tallaffuz] ham rasmni shunday kichraytiradi.", required: true },
+    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Inspektorga qarang: har bir elementning kengligi va balandligi yozilgan. Sarlavha odatda butun qatorni egallaydi. Uning kengligini [English pronunciation] width [O'zbekcha tallaffuz] bilan o'zgartiramiz.", required: true },
+    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] H one [O'zbekcha tallaffuz] uchun [English pronunciation] width [O'zbekcha tallaffuz] ikki yuz piksel. Qarang, sarlavha qisqardi: Inspektorda endi ikki yuz.", required: true },
+    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi suratga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz ellik piksel. Surat kichraydi, balandligi esa o'zi moslashdi: surat cho'zilmadi.", required: true },
+    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] width [O'zbekcha tallaffuz] kenglikni beradi. Suratga faqat [English pronunciation] width [O'zbekcha tallaffuz] yozsak, balandlik o'zi moslashadi.", required: true },
+    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga. Suratning kengligini ikki yuz piksel qiling: [English pronunciation] width [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat son yozildi. Brauzer uni tashlab yuboradi: son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, orasida bo'sh joysiz.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa kenglik. Surat ikki yuz piksel bo'lishi kerak.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu foiz. Bu yerda piksel kerak: son va [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", required: true },
+    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat son va o'lcham birligidan iborat.", required: true },
+    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son ikki yuz, birlik [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 200[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Surat ikki yuz piksel, Inspektor ham shuni ko'rsatyapti.", required: true },
+    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kengliklarni chiziqlar bilan juftlang. Chapdan kenglikni, o'ngdan esa shu kenglikdagi chiziqni bosing.", required: true },
+    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oltmish piksel eng qisqa kenglik. Eng qisqa chiziqni toping.", required: true },
+    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir yuz yigirma piksel o'rtacha: qisqasining ikki barobari.", required: true },
+    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir yuz sakson piksel eng uzun kenglik. Eng uzun chiziqni toping.", required: true },
+    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu eng qisqasi.", required: true },
+    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu o'rtachasi.", required: true },
+    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri, bu eng uzuni.", required: true },
+    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin chapdan kenglikni tanlang.", required: true },
+    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son qancha katta bo'lsa, chiziq shuncha uzun.", required: true },
+    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 60[English pronunciation] px [O'zbekcha tallaffuz] eng qisqa, 180[English pronunciation] px [O'zbekcha tallaffuz] eng uzun, 120[English pronunciation] px [O'zbekcha tallaffuz] o'rtada.", required: true },
+    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan juftlikni bosing.", required: true },
+    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Kenglikni ko'z bilan ham chamalaysiz.", required: true },
+    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas va sarlavhaga qarang, keyin oyna torayganda nima bo'lishini kuzating: kimdir torayadi, kimdir o'zgarmaydi.", required: true },
+    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Foiz oynaning qancha qismini olishni aytadi: yuz foiz butun oyna, ellik foiz yarmi. Piksel esa doim bir xil.", required: true },
+    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pitsaning yarmi katta pitsada ham, kichik pitsada ham yarmi bo'ladi. Ellik foiz ham shunday: oyna qanday bo'lsa, uning yarmi.", required: true },
+    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglikni foizda ham yozish mumkin, ya'ni oynaning qancha qismi degani. Yuz foiz butun oyna, ellik foiz esa yarmi.", required: true },
+    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzasga [English pronunciation] width [O'zbekcha tallaffuz] ellik foiz. Qarang, u oynaning yarmini egalladi.", required: true },
+    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaga esa ikki yuz piksel beramiz, solishtirish uchun.", required: true },
+    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi oynani toraytiramiz. Qarang: abzas ham qisqardi, chunki u oynaning yarmi. Sarlavha esa o'sha ikki yuz pikselligicha qoldi.", required: true },
+    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, piksel o'zgarmaydi, foiz esa oyna bilan birga o'zgaradi.", required: true },
+    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Abzas oynaning yarmini egallasin: [English pronunciation] width [O'zbekcha tallaffuz] uchun foizdagi qiymatni yozing.", required: true },
+    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat yozing: son va foiz belgisi.", required: true },
+    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat son yozildi. Son yoniga foiz belgisini qo'shing.", required: true },
+    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu piksel. Oynaning yarmi uchun foiz kerak.", required: true },
+    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va foiz belgisini bo'sh joysiz yozing.", required: true },
+    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa qism. Yarmi degani ellik foiz.", required: true },
+    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va foiz belgisi o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", required: true },
+    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Butun oyna yuz foiz. Yarmi qancha?", required: true },
+    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yarmi ellik foiz: son ellik va foiz belgisi.", required: true },
+    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ellik sonini yozing, yoniga foiz belgisini qo'ying va Tekshirishni bosing.", required: true },
+    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Abzas oynaning roppa-rosa yarmida.", required: true },
+    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men kodni ko'rsataman, siz esa oyna torayganda element o'zgaradimi yoki yo'qmi, shuni tanlang.", required: true },
+    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Birlikka qarang: [English pronunciation] px [O'zbekcha tallaffuz] mi yoki foiz mi?", required: true },
+    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz esa oynaga qarab o'zgaradi.", required: true },
+    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki yuz piksel doim ikki yuz piksel, oyna qanday bo'lmasin.", required: true },
+    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ellik foiz oynaning yarmi: oyna torayadi, u ham torayadi.", required: true },
+    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuz foiz butun oyna, oyna bilan birga o'zgaradi.", required: true },
+    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sakson piksel o'zgarmaydi.", required: true },
+    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Piksel va foizni adashtirmaysiz.", required: true },
+    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavha va rasmga qarang: [English pronunciation] height [O'zbekcha tallaffuz] qo'shilganda ular balandroq yoki pastroq bo'ladi. Oxirida rasm shakliga qarang.", required: true },
+    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] height [O'zbekcha tallaffuz] elementning bo'yini beradi. Rasmga bittasini yozsangiz, ikkinchisi o'zi moslashadi. Ikkalasini yozsangiz, rasm cho'zilib qolishi mumkin.", required: true },
+    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rezinadek cho'zilgan suratni ko'rganmisiz? Rasmga ham eni, ham bo'yini o'zingiz yozsangiz, shunday bo'lishi mumkin.", required: true },
+    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglikdan tashqari balandlik ham bor: [English pronunciation] height [O'zbekcha tallaffuz]. U ham piksellarda yoziladi.", required: true },
+    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaga [English pronunciation] height [O'zbekcha tallaffuz] sakson piksel. Sarlavha balandroq bo'ldi, matn esa uning tepasida qoldi.", required: true },
+    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suratga faqat [English pronunciation] height [O'zbekcha tallaffuz] oltmish piksel. Surat kichraydi, kengligi esa o'zi moslashdi.", required: true },
+    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi suratga ham [English pronunciation] width [O'zbekcha tallaffuz], ham [English pronunciation] height [O'zbekcha tallaffuz] beramiz: ikki yuz va oltmish. Qarang, surat yassilanib qoldi. Ikkalasini birga yozsak, surat cho'ziladi.", required: true },
+    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, [English pronunciation] height [O'zbekcha tallaffuz] balandlikni beradi. Suratga bittasini yozsangiz, ikkinchisi o'zi moslashadi.", required: true },
+    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sarlavhaning balandligini sakson piksel qiling: [English pronunciation] height [O'zbekcha tallaffuz] uchun qiymatni yozing.", required: true },
+    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Faqat son yozildi. Son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.", required: true },
+    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.", required: true },
+    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa balandlik. Sarlavha sakson piksel bo'lishi kerak.", required: true },
+    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiymat son va [English pronunciation] px [O'zbekcha tallaffuz] dan iborat.", required: true },
+    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son sakson, birlik [English pronunciation] px [O'zbekcha tallaffuz].", required: true },
+    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] 80[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Sarlavha sakson piksel baland.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Men to'rtburchakni ko'rsataman, siz esa uni qaysi kod chizganini tanlang.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'rtburchak keng va pastmi yoki tor va balandmi?", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] width [O'zbekcha tallaffuz] kenglik, ya'ni yonga qancha; [English pronunciation] height [O'zbekcha tallaffuz] balandlik, ya'ni tepaga qancha.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'rtburchak keng va past: kengligi bir yuz oltmish, balandligi qirq.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tor va baland: kengligi oltmish, balandligi bir yuz yigirma.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kengligi va balandligi teng, demak bu kvadrat: yuz va yuz.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Kenglik va balandlikni adashtirmaysiz.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har safar kodga qarang: son va uning yonida nima turibdi? Keyin rasmga qarang: o'zgardimi yoki yo'qmi.", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer faqat to'g'ri yozuvni tushunadi: son va birlik bo'sh joysiz yoziladi. Birlik bo'lmasa yoki bo'sh joy bo'lsa, qoida tashlab yuboriladi.", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Telefon raqamini terayotganda bitta raqamni tushirib qoldirsangiz, qo'ng'iroq bo'lmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] da ham bitta belgi yetishmasa, qoida ishlamaydi.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'lchamni yozishda ham xatolar bo'ladi. Keling, uchtasini ko'ramiz.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchisi: ikki yuz sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Brauzer qoidani tashlab yubordi, surat yana katta.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkinchisi: son va foiz belgisi orasida bo'sh joy. Bu ham ishlamaydi.", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchinchisi xato emas, lekin chiroyli ham emas: suratga ikki yuzga ikki yuz berdik, u kvadrat bo'lib cho'zildi.", required: true },
+    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, son va birlik bo'sh joysiz yoziladi, suratga esa odatda faqat kenglik beriladi.", required: true },
+    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, men surat kengligini yozdim, lekin u ishlamayapti! Maydondagi qiymatga qarang va uni tuzating.", required: true },
+    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] orasida hali ham bo'sh joy bor. Uni olib tashlang.", required: true },
+    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer bu qiymatni tanimadi. Hammasini o'chirib, 160[English pronunciation] px [O'zbekcha tallaffuz] deb qo'shib yozing.", required: true },
+    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglik o'zgarib ketdi. Bir yuz oltmish piksel qolsin, faqat bo'sh joyni olib tashlang.", required: true },
+    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] px [O'zbekcha tallaffuz] yo'qolib qoldi. 160[English pronunciation] px [O'zbekcha tallaffuz] deb yozing.", required: true },
+    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Maydondagi qiymatni diqqat bilan o'qing: nima ortiqcha?", required: true },
+    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor. Brauzer buni tanimaydi.", required: true },
+    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Strelkali tugma bilan maydondagi hamma narsani o'chiring va 160[English pronunciation] px [O'zbekcha tallaffuz] ni qo'shib yozing. Namuna kod ostida.", required: true },
+    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura, ishladi! Surat bir yuz oltmish piksel.", required: true },
+    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Inspektorga qarang va buzilgan qoidani bosing.", required: true },
+    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?", required: true },
+    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu qoida ishlayapti: Inspektor shu o'lchamni ko'rsatyapti. Qaysi element o'zgarmay qoldi?", required: true },
+    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Bir yuz ellik sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.", required: true },
+    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! Qirq va foiz belgisi orasida bo'sh joy bor edi.", required: true },
+    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Inspektorga qarang: qaysi element kod aytgandek emas?", required: true },
+    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sarlavha butun qatorni egallab turibdi. Uning kengligi yonida birlik bormi?", required: true },
+    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Surat kichraymadi. Uning kengligi qanday yozilgan?", required: true },
+    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato birinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.", required: true },
+    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xato ikkinchi qoidada: bo'sh joy. O'sha qatorni bosing.", required: true },
+    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super! Ikkalasi ham topildi. Siz o'lchamlarni haqiqiy dizayner kabi tekshiryapsiz.", required: true },
+    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi qoidani boshidan oxirigacha o'zingiz yozing. Surat butun oyna kengligida bo'lsin: [English pronunciation] img [O'zbekcha tallaffuz] uchun [English pronunciation] width [O'zbekcha tallaffuz] xususiyatini foizda yozing.", required: true },
+    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", required: true },
+    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", required: true },
+    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", required: true },
+    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Surat uchun [English pronunciation] img [O'zbekcha tallaffuz] selektori kerak.", required: true },
+    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglikni [English pronunciation] width [O'zbekcha tallaffuz] xususiyati beradi.", required: true },
+    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Surat butun oynani egallamadi. Butun oyna degani yuz foiz.", required: true },
+    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Surat qaysi selektor bilan tanlanadi? Butun oyna necha foiz?", required: true },
+    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor [English pronunciation] img [O'zbekcha tallaffuz], xususiyat [English pronunciation] width [O'zbekcha tallaffuz], qiymat yuz foiz.", required: true },
+    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", required: true },
+    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Surat butun oyna kengligida. Qoidani o'zingiz yozdingiz.", required: true },
+    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'z otkritkangizni yasang. Surat uchun istalgan kenglikni yozing, abzas uchun ham. Piksel yoki foiz, o'zingiz tanlang. Keyin Tayyorni bosing.", required: true },
+    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Surat qanchalik katta bo'lsin? Abzas-chi?", required: true },
+    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kenglik son va [English pronunciation] px [O'zbekcha tallaffuz] yoki son va foiz belgisi bilan yoziladi.", required: true },
+    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan, suratga bir yuz oltmish piksel, abzasga esa yetmish foiz yozing. Keyin Tayyorni bosing.", required: true },
+    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qanday chiroyli! Bu sizning otkritkangiz.", required: true },
+    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", required: true },
+    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Gapda qaysi birlik haqida gap ketyapti: [English pronunciation] px [O'zbekcha tallaffuz] mi yoki foiz mi?", required: true },
+    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Dars esingizdami: [English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz oyna bilan o'zgaradi, son va birlik birga yoziladi, suratga bitta o'lcham bersak, ikkinchisi moslashadi.", required: true },
+    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ellik foizli kenglik elementni oynaning yarmi qiladi.", required: true },
+    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'g'ri: ellik foiz yarmi degani.", required: true },
+    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyna torayganda 200[English pronunciation] px [O'zbekcha tallaffuz] kenglik ham torayadi.", required: true },
+    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida piksel o'zgarmaydi: ikki yuz piksel doim ikki yuz.", required: true },
+    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suratga faqat [English pronunciation] width [O'zbekcha tallaffuz] bersak, balandligi o'zi moslashadi.", required: true },
+    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shunday: surat cho'zilmaydi, pastki tomoni o'zi moslashadi.", required: true },
+    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] width [O'zbekcha tallaffuz]: 200 ham ishlaydi, [English pronunciation] px [O'zbekcha tallaffuz] shart emas.", required: true },
+    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Aslida [English pronunciation] px [O'zbekcha tallaffuz] kerak. Usiz brauzer qoidani tashlab yuboradi.", required: true },
+    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi to'g'ri! Siz o'lchamlarni yaxshi bilasiz.", required: true },
+    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [embarrassed] Endi topishmoqqa qaytamiz. Esingizdami, men uzun abzasga [English pronunciation] height [O'zbekcha tallaffuz] o'ttiz piksel bergan edim va ortiqcha matn yashirinadi deb o'ylagan edim? Qarang, afsuski, men adashibman. Matn yashirinmadi, u ramkadan chiqib, pastga tushib ketdi. Brauzer matnni o'zi yashirmaydi.", required: true },
+    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu sizning otkritkangiz, o'zingiz tanlagan o'lchamlar bilan!", required: true },
+    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] width [O'zbekcha tallaffuz] kenglikni, [English pronunciation] height [O'zbekcha tallaffuz] esa balandlikni beradi.", required: true },
+    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz esa oyna bilan birga o'zgaradi.", required: true },
+    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Suratga odatda faqat [English pronunciation] width [O'zbekcha tallaffuz] beriladi, shunda u cho'zilmaydi.", required: true },
+    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Endi elementlar siz xohlagan o'lchamda. Keyingi darsda elementlar atrofidagi bo'shliqlar va chegaralarni o'rganamiz. Ko'rishguncha!", required: true },
+    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
+    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
+    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
+    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
+    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
+    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
+    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
+    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
+    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
+    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu suratni tog'da oldim.", required: true },
+    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biz ertalab tog'ga chiqdik, kun bo'yi yurdik va kechqurun gulxan yoqdik. Bu eng zo'r kun edi!", required: true },
+    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'zgaradimi?", required: true },
+    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Oyna torayganda nima bo'ladi?", required: true },
+    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi kod?", required: true },
+    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Bu to'rtburchakni qaysi kod beradi?", required: true },
+    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'rimi?", required: true },
+    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] To'g'ri yoki noto'g'ri?", required: true },
+    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
+    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
+    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.", required: true },
+    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не меняется", required: true },
+    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я выложил фото из поездки. Но смотри, оно огромное: заняло полстраницы, а текст уехал вниз. Нажми Превратить.", required: true },
+    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот! Фото стало аккуратным, а абзац занимает часть окна. Инспектор показывает размер каждого элемента.", required: true },
+    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это сделали два свойства: [English pronunciation] width [Русское произношение], то есть ширина, и [English pronunciation] height [Русское произношение], то есть высота.", required: true },
+    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты научишься управлять размерами элементов. Но сначала маленькая загадка. Я дал длинному абзацу высоту: [English pronunciation] height [Русское произношение] тридцать пикселей. По-моему, текст, который не влез, просто спрячется. Как думаешь, я прав? Ответ найдём вместе в конце урока.", required: true },
+    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Меняется число [English pronunciation] width [Русское произношение] в коде, меняется и число в Инспекторе.", required: true },
+    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] width [Русское произношение] задаёт ширину элемента. Если у фото написать только [English pronunciation] width [Русское произношение], высота подстроится сама, и фото не растянется.", required: true },
+    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни, как на телефоне уменьшаешь фото двумя пальцами: оно уменьшается, не искажаясь. [English pronunciation] width [Русское произношение] уменьшает фото так же.", required: true },
+    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Заголовок обычно занимает всю строку. Его ширину меняют через [English pronunciation] width [Русское произношение].", required: true },
+    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для [English pronunciation] H one width [Русское произношение] двести пикселей. Смотри, заголовок стал короче: в Инспекторе теперь двести.", required: true },
+    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь фото: [English pronunciation] width [Русское произношение] сто пятьдесят пикселей. Фото уменьшилось, а высота подстроилась сама: фото не растянулось.", required: true },
+    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] width [Русское произношение] задаёт ширину. Если у фото написать только [English pronunciation] width [Русское произношение], высота подстроится сама.", required: true },
+    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь. Сделай ширину фото двести пикселей: впиши значение для [English pronunciation] width [Русское произношение].", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написано только число. Браузер его выбрасывает: добавь к числу [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение] без пробела.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая ширина. Фото должно быть двести пикселей.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это проценты. Здесь нужны пиксели: число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: пиши слитно.", required: true },
+    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение, число и единица.", required: true },
+    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число двести, единица [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши 200[English pronunciation] px [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь! Фото двести пикселей, и Инспектор это показывает.", required: true },
+    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь соедини ширины с полосками. Нажми ширину слева, а потом полоску такой ширины справа.", required: true },
+    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Шестьдесят пикселей, самая короткая ширина. Найди самую короткую полоску.", required: true },
+    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сто двадцать пикселей, средняя: вдвое длиннее короткой.", required: true },
+    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сто восемьдесят пикселей, самая длинная. Найди самую длинную полоску.", required: true },
+    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это самая короткая.", required: true },
+    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это средняя.", required: true },
+    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно, это самая длинная.", required: true },
+    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери ширину слева.", required: true },
+    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Чем больше число, тем длиннее полоска.", required: true },
+    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] 60[English pronunciation] px [Русское произношение], самая короткая, 180[English pronunciation] px [Русское произношение], самая длинная, 120[English pronunciation] px [Русское произношение], посередине.", required: true },
+    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми горящую пару.", required: true },
+    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Ты прикидываешь ширину на глаз.", required: true },
+    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на абзац и заголовок, а потом следи, что будет, когда окно сузится: кто-то станет уже, а кто-то нет.", required: true },
+    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Проценты говорят, какую часть окна занять: сто процентов, всё окно, пятьдесят, половина. А пиксели всегда одинаковые.", required: true },
+    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Половина пиццы, это половина и большой, и маленькой пиццы. Пятьдесят процентов так же: половина того окна, какое есть.", required: true },
+    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширину можно писать и в процентах, то есть какую часть окна занять. Сто процентов, всё окно, пятьдесят, половина.", required: true },
+    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Абзацу [English pronunciation] width [Русское произношение] пятьдесят процентов. Смотри, он занял половину окна.", required: true },
+    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А заголовку дадим двести пикселей, для сравнения.", required: true },
+    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сузим окно. Смотри: абзац тоже стал уже, ведь он, половина окна. А заголовок остался теми же двумястами пикселями.", required: true },
+    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, пиксели не меняются, а проценты меняются вместе с окном.", required: true },
+    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пусть абзац занимает половину окна: впиши для [English pronunciation] width [Русское произношение] значение в процентах.", required: true },
+    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши значение: число и знак процента.", required: true },
+    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написано только число. Добавь к числу знак процента.", required: true },
+    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это пиксели. Для половины окна нужны проценты.", required: true },
+    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и знак процента без пробела.", required: true },
+    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая часть. Половина, это пятьдесят процентов.", required: true },
+    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и знаком процента не нужен пробел: пиши слитно.", required: true },
+    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Всё окно, сто процентов. Сколько половина?", required: true },
+    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Половина, пятьдесят процентов: число пятьдесят и знак процента.", required: true },
+    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши число пятьдесят, поставь рядом знак процента и нажми Проверить.", required: true },
+    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец! Абзац ровно на половину окна.", required: true },
+    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Теперь проверь себя. Я покажу код, а ты выбери: изменится ли элемент, когда окно сузится?", required: true },
+    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на единицу: [English pronunciation] px [Русское произношение] или процент?", required: true },
+    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] px [Русское произношение] не меняется, а процент меняется вслед за окном.", required: true },
+    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Двести пикселей, всегда двести, какое бы ни было окно.", required: true },
+    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пятьдесят процентов, половина окна: окно уже, и он уже.", required: true },
+    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сто процентов, всё окно, меняется вместе с ним.", required: true },
+    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Восемьдесят пикселей не меняются.", required: true },
+    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно!", required: true },
+    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь пиксели и проценты.", required: true },
+    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на заголовок и фото: с [English pronunciation] height [Русское произношение] они становятся выше или ниже. В конце посмотри на форму фото.", required: true },
+    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] height [Русское произношение] задаёт высоту элемента. Если у фото написать одно, второе подстроится само. Если написать оба, фото может растянуться.", required: true },
+    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Бывает, что фото растянуто, как резинка. Так случается, если самому задать фото и ширину, и высоту.", required: true },
+    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Кроме ширины есть и высота: [English pronunciation] height [Русское произношение]. Её тоже пишут в пикселях.", required: true },
+    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заголовку [English pronunciation] height [Русское произношение] восемьдесят пикселей. Заголовок стал выше, а текст остался вверху.", required: true },
+    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фото, только [English pronunciation] height [Русское произношение] шестьдесят пикселей. Фото уменьшилось, а ширина подстроилась сама.", required: true },
+    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь дадим фото и [English pronunciation] width [Русское произношение], и [English pronunciation] height [Русское произношение]: двести и шестьдесят. Смотри, фото сплющилось. Если написать оба, фото растягивается.", required: true },
+    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, [English pronunciation] height [Русское произношение] задаёт высоту. Если у фото написать одно, второе подстроится само.", required: true },
+    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сделай высоту заголовка восемьдесят пикселей: впиши значение для [English pronunciation] height [Русское произношение].", required: true },
+    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Написано только число. Добавь к числу [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая высота. Заголовок должен быть восемьдесят пикселей.", required: true },
+    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значение, число и [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Число восемьдесят, единица [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Впиши 80[English pronunciation] px [Русское произношение] и нажми Проверить.", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Заголовок высотой восемьдесят пикселей.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. Я покажу прямоугольник, а ты выбери, какой код его нарисовал.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Прямоугольник широкий и низкий или узкий и высокий?", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] width [Русское произношение], ширина, то есть насколько вбок; [English pronunciation] height [Русское произношение], высота, то есть насколько вверх.", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прямоугольник широкий и низкий: ширина сто шестьдесят, высота сорок.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Этот узкий и высокий: ширина шестьдесят, высота сто двадцать.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина и высота равны, значит, это квадрат: сто и сто.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты не путаешь ширину и высоту.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждый раз смотри на код: что стоит рядом с числом? Потом на фото: изменилось оно или нет.", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер понимает только верную запись: число и единица пишутся слитно. Нет единицы или есть пробел, правило выбрасывается.", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Если при наборе номера телефона пропустить одну цифру, звонок не пройдёт. В [English pronunciation] CSS [Русское произношение] так же: не хватает одного знака, правило не работает.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В размерах тоже бывают ошибки. Давай посмотрим на три.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая: после двухсот нет [English pronunciation] px [Русское произношение]. Браузер выбросил правило, фото снова большое.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вторая: между числом и знаком процента пробел. Тоже не работает.", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Третья, не ошибка, но и не красиво: дали фото двести на двести, и оно растянулось в квадрат.", required: true },
+    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Значит, число и единица пишутся без пробела, а фото обычно задают только ширину.", required: true },
+    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, я написал ширину фото, но она не работает! Посмотри на значение в поле и исправь его.", required: true },
+    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и [English pronunciation] px [Русское произношение] всё ещё пробел. Убери его.", required: true },
+    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Браузер не узнал это значение. Сотри всё и впиши 160[English pronunciation] px [Русское произношение] слитно.", required: true },
+    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина поменялась. Пусть остаётся сто шестьдесят пикселей, просто убери пробел.", required: true },
+    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Пропал [English pronunciation] px [Русское произношение]. Впиши 160[English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Внимательно прочитай значение в поле: что лишнее?", required: true },
+    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между числом и [English pronunciation] px [Русское произношение] пробел. Браузер такое не узнаёт.", required: true },
+    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сотри всё в поле кнопкой со стрелкой и впиши 160[English pronunciation] px [Русское произношение] слитно, без пробела. Образец, под кодом.", required: true },
+    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура, заработало! Фото сто шестьдесят пикселей.", required: true },
+    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на Инспектор и нажми сломанное правило.", required: true },
+    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс, первая найдена! Теперь сломалось другое. Какое правило?", required: true },
+    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Это правило работает: Инспектор показывает этот размер. Какой элемент не изменился?", required: true },
+    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! После ста пятидесяти не было [English pronunciation] px [Русское произношение].", required: true },
+    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нашёл! Между сорока и знаком процента был пробел.", required: true },
+    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на Инспектор: какой элемент не такой, как в коде?", required: true },
+    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Заголовок занимает всю строку. Есть ли единица у его ширины?", required: true },
+    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Фото не уменьшилось. Как записана его ширина?", required: true },
+    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка в первом правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.", required: true },
+    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибка во втором правиле: пробел. Нажми эту строку.", required: true },
+    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер! Обе найдены. Ты проверяешь размеры как настоящий дизайнер.", required: true },
+    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши правило целиком сам. Пусть фото будет во всю ширину окна: напиши для [English pronunciation] img [Русское произношение] свойство [English pronunciation] width [Русское произношение] в процентах.", required: true },
+    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.", required: true },
+    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правилу нужны фигурные скобки: открывающая и закрывающая.", required: true },
+    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между свойством и значением нет двоеточия.", required: true },
+    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для фото нужен селектор [English pronunciation] img [Русское произношение].", required: true },
+    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширину задаёт свойство [English pronunciation] width [Русское произношение].", required: true },
+    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фото не заняло всё окно. Всё окно, это сто процентов.", required: true },
+    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Каким селектором выбирают фото? Сколько процентов всё окно?", required: true },
+    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор [English pronunciation] img [Русское произношение], свойство [English pronunciation] width [Русское произношение], значение сто процентов.", required: true },
+    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец появился под кодом. Перепиши его в поле и нажми Проверить.", required: true },
+    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Фото во всю ширину окна. Ты сам написал правило.", required: true },
+    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сделай свою открытку. Впиши любую ширину для фото и для абзаца. Пиксели или проценты, выбирай сам. Потом нажми Готово.", required: true },
+    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Насколько большим будет фото? А абзац?", required: true },
+    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина, число и [English pronunciation] px [Русское произношение] или число и знак процента.", required: true },
+    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например, впиши сто шестьдесят пикселей для фото и семьдесят процентов для абзаца. Потом нажми Готово.", required: true },
+    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, как красиво! Это твоя открытка.", required: true },
+    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.", required: true },
+    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] О какой единице фраза: [English pronunciation] px [Русское произношение] или процент?", required: true },
+    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вспомни урок: [English pronunciation] px [Русское произношение] не меняется, процент меняется с окном, число и единица пишутся вместе, если у фото один размер, второй подстраивается.", required: true },
+    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ширина в пятьдесят процентов делает элемент на половину окна.", required: true },
+    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно: пятьдесят процентов, половина.", required: true },
+    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Когда окно сужается, ширина 200[English pronunciation] px [Русское произношение] тоже сужается.", required: true },
+    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле пиксели не меняются: двести, всегда двести.", required: true },
+    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если дать фото только [English pronunciation] width [Русское произношение], высота подстроится сама.", required: true },
+    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Так и есть: фото не растягивается, высота подстраивается сама.", required: true },
+    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] width [Русское произношение]: 200 тоже работает, [English pronunciation] px [Русское произношение] не обязателен.", required: true },
+    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На самом деле [English pronunciation] px [Русское произношение] нужен. Без него браузер выбрасывает правило.", required: true },
+    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё верно! Ты отлично разбираешься в размерах.", required: true },
+    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вернёмся к загадке. Помнишь, я дал длинному абзацу [English pronunciation] height [Русское произношение] тридцать пикселей и думал, что лишний текст спрячется? Смотри, увы, я ошибся. Текст не спрятался, он вылез из рамки и свисает вниз. Браузер сам текст не прячет.", required: true },
+    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри, это твоя открытка с размерами, которые ты выбрал сам!", required: true },
+    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] width [Русское произношение] задаёт ширину, а [English pronunciation] height [Русское произношение], высоту.", required: true },
+    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] px [Русское произношение] не меняется, а проценты меняются вместе с окном.", required: true },
+    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Фото обычно задают только [English pronunciation] width [Русское произношение], тогда оно не растягивается.", required: true },
+    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Теперь элементы такого размера, как ты хочешь. На следующем уроке узнаем про отступы и рамки вокруг элементов. До встречи!", required: true },
+    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
+    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
+    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
+    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
+    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
+    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
+    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
+    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
+    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
+    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это фото я сделал в горах.", required: true },
+    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Мы утром поднялись в горы, шли весь день, а вечером разожгли костёр. Это был лучший день!", required: true },
+    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Меняется ли?", required: true },
+    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что будет, когда окно сузится?", required: true },
+    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код?", required: true },
+    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой код даёт этот прямоугольник?", required: true },
+    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно или нет?", required: true },
+    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
+    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
+    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.", required: true },
+    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Stays the same", required: true },
+    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I posted a photo from my trip. But look, it’s huge: it takes up half the page, and the text got pushed down. Tap Transform.", required: true },
+    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There! The photo is neat now, and the paragraph takes part of the window. The Inspector shows each element’s size.", required: true },
+    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two properties did it: width, meaning the width, and height, meaning the height.", required: true },
+    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll learn to control element sizes. But first, a little riddle. I gave a long paragraph a height: height thirty pixels. I think the text that doesn’t fit will just hide. What do you think, am I right? We’ll find the answer together at the end of the lesson.", required: true },
+    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the Inspector: every element shows its width and height. When the width number changes in the code, the Inspector number changes too.", required: true },
+    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] width sets an element’s width. If a photo gets only width, its height adjusts by itself and the photo isn’t stretched.", required: true },
+    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember shrinking a photo on a phone with two fingers: it gets smaller without distorting. width shrinks a photo the same way.", required: true },
+    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the Inspector: each element shows its width and height. A heading normally takes the whole line. We change its width with width.", required: true },
+    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For H one, width two hundred pixels. Look, the heading got shorter: the Inspector now says two hundred.", required: true },
+    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the photo: width one hundred fifty pixels. The photo got smaller, and the height adjusted by itself: the photo didn’t stretch.", required: true },
+    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So width sets the width. If a photo has only width, the height adjusts by itself.", required: true },
+    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now it’s your turn. Make the photo two hundred pixels wide: type the value for width.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: a number and px.", required: true },
+    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number. The browser throws it away: add px to the number.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and px with no space.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different width. The photo should be two hundred pixels.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s percent. Here you need pixels: a number and px.", required: true },
+    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No space between the number and px: write them together.", required: true },
+    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value is a number and a unit.", required: true },
+    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is two hundred, the unit is px.", required: true },
+    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type 200px and tap Check.", required: true },
+    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome! The photo is two hundred pixels, and the Inspector shows it.", required: true },
+    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now match the widths with the bars. Tap a width on the left, then the bar of that width on the right.", required: true },
+    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sixty pixels is the shortest width. Find the shortest bar.", required: true },
+    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One hundred twenty pixels is medium: twice the short one.", required: true },
+    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] One hundred eighty pixels is the longest. Find the longest bar.", required: true },
+    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the shortest.", required: true },
+    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the medium one.", required: true },
+    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right, that’s the longest.", required: true },
+    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] First pick a width on the left.", required: true },
+    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bigger the number, the longer the bar.", required: true },
+    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] 60px is the shortest, 180px the longest, 120px in between.", required: true },
+    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the glowing pair.", required: true },
+    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! You can estimate width by eye.", required: true },
+    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the paragraph and the heading, then watch what happens when the window narrows: one gets narrower, one doesn’t.", required: true },
+    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Percent says what part of the window to take: a hundred percent is the whole window, fifty is half. Pixels always stay the same.", required: true },
+    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Half a pizza is half of a big pizza and half of a small one. Fifty percent works the same: half of whatever window there is.", required: true },
+    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You can also write width in percent, meaning how much of the window to take. A hundred percent is the whole window, fifty is half.", required: true },
+    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Width fifty percent for the paragraph. Look, it took half the window.", required: true },
+    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And we give the heading two hundred pixels, to compare.", required: true },
+    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s narrow the window. Look: the paragraph got narrower too, because it’s half the window. The heading stayed at the same two hundred pixels.", required: true },
+    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So pixels stay the same, and percent changes with the window.", required: true },
+    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let the paragraph take half the window: type a percent value for width.", required: true },
+    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the value: a number and the percent sign.", required: true },
+    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number. Add the percent sign to the number.", required: true },
+    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s pixels. Half the window needs percent.", required: true },
+    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write the number and the percent sign with no space.", required: true },
+    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different part. Half is fifty percent.", required: true },
+    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] No space between the number and the percent sign: write them together.", required: true },
+    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The whole window is a hundred percent. What’s half?", required: true },
+    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Half is fifty percent: the number fifty and the percent sign.", required: true },
+    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type the number fifty, put the percent sign next to it and tap Check.", required: true },
+    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done! The paragraph is exactly half the window.", required: true },
+    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now check yourself. I’ll show some code, and you choose: will the element change when the window gets narrower?", required: true },
+    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the unit: px or percent?", required: true },
+    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] px stays the same, and percent changes with the window.", required: true },
+    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two hundred pixels is always two hundred, whatever the window.", required: true },
+    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fifty percent is half the window: the window narrows, so does it.", required: true },
+    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A hundred percent is the whole window and changes with it.", required: true },
+    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Eighty pixels stays the same.", required: true },
+    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly!", required: true },
+    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up pixels and percent.", required: true },
+    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the heading and the photo: with height they get taller or shorter. At the end, look at the photo’s shape.", required: true },
+    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] height sets an element’s height. Give a photo just one and the other adjusts by itself. Give both, and the photo can get stretched.", required: true },
+    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Ever seen a photo stretched like a rubber band? That can happen when you set both the width and the height yourself.", required: true },
+    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Besides width there’s also height: height. It’s written in pixels too.", required: true },
+    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Height eighty pixels for the heading. The heading got taller, and the text stayed at the top.", required: true },
+    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For the photo, only height sixty pixels. The photo got smaller, and the width adjusted by itself.", required: true },
+    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now we give the photo both width and height: two hundred and sixty. Look, the photo got squashed. With both, the photo stretches.", required: true },
+    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So height sets the height. If you write one for a photo, the other adjusts by itself.", required: true },
+    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Make the heading eighty pixels tall: type the value for height.", required: true },
+    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only a number. Add px to the number.", required: true },
+    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Write a number and px.", required: true },
+    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different height. The heading should be eighty pixels.", required: true },
+    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The value is a number and px.", required: true },
+    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number is eighty, the unit is px.", required: true },
+    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Type 80px and tap Check.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The heading is eighty pixels tall.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. I’ll show a rectangle, and you pick the code that drew it.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Is the rectangle wide and short, or narrow and tall?", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] width is the width, meaning how far sideways; height is the height, meaning how far up.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rectangle is wide and short: width one hundred sixty, height forty.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This one is narrow and tall: width sixty, height one hundred twenty.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The width and height are equal, so it’s a square: a hundred by a hundred.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You don’t mix up width and height.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Each time, look at the code: what’s next to the number? Then look at the photo: did it change or not?", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser only understands the right spelling: the number and the unit go together. No unit or a space, and the rule is thrown away.", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you miss one digit when dialing a phone number, the call won’t go through. In CSS too: miss one symbol and the rule doesn’t work.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sizes can have mistakes too. Let’s look at three.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first: there’s no px after two hundred. The browser threw the rule away, and the photo is big again.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The second: a space between the number and the percent sign. That doesn’t work either.", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The third isn’t an error, but it isn’t pretty either: we gave the photo two hundred by two hundred, and it stretched into a square.", required: true },
+    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] So the number and unit go together with no space, and a photo usually gets only a width.", required: true },
+    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, I wrote the photo’s width, but it doesn’t work! Look at the value in the field and fix it.", required: true },
+    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s still a space between the number and px. Remove it.", required: true },
+    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The browser didn’t recognize that value. Erase everything and type 160px together.", required: true },
+    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The width changed. Keep one hundred sixty pixels; just remove the space.", required: true },
+    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The px went missing. Type 160px.", required: true },
+    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Read the value in the field carefully: what’s extra?", required: true },
+    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s a space between the number and px. The browser doesn’t recognize that.", required: true },
+    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Erase everything in the field with the arrow button and type 160px together, with no space. The example is under the code.", required: true },
+    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes, it works! The photo is one hundred sixty pixels.", required: true },
+    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now check yourself. There are three rules, but one doesn’t work. Look at the Inspector and tap the broken rule.", required: true },
+    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, the first one is found! Now something else broke. Which rule?", required: true },
+    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] This rule works: the Inspector shows that size. Which element didn’t change?", required: true },
+    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was no px after one hundred fifty.", required: true },
+    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Found it! There was a space between forty and the percent sign.", required: true },
+    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the Inspector: which element doesn’t match the code?", required: true },
+    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The heading takes the whole line. Does its width have a unit?", required: true },
+    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] The photo didn’t get smaller. How is its width written?", required: true },
+    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the first rule: no px. Tap that line.", required: true },
+    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The bug is in the second rule: a space. Tap that line.", required: true },
+    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super! Both are found. You check sizes like a real designer.", required: true },
+    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now write the whole rule yourself. Let the photo fill the whole width of the window: write the width property for img in percent.", required: true },
+    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Write the rule: first the selector, then the property and value in curly braces.", required: true },
+    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule needs curly braces: an opening one and a closing one.", required: true },
+    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s no colon between the property and the value.", required: true },
+    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The photo needs the img selector.", required: true },
+    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The width property sets the width.", required: true },
+    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The photo didn’t fill the whole window. The whole window is a hundred percent.", required: true },
+    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which selector picks the photo? How many percent is the whole window?", required: true },
+    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is img, the property width, the value a hundred percent.", required: true },
+    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] An example appeared under the code. Copy it into the field and tap Check.", required: true },
+    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! The photo fills the window width. You wrote the rule yourself.", required: true },
+    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now make your own postcard. Type any width for the photo and for the paragraph. Pixels or percent, you choose. Then tap Done.", required: true },
+    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How big should the photo be? And the paragraph?", required: true },
+    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A width is a number with px, or a number with the percent sign.", required: true },
+    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example, type one hundred sixty pixels for the photo and seventy percent for the paragraph. Then tap Done.", required: true },
+    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, how pretty! That’s your postcard.", required: true },
+    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The last test. I’ll say something, and you choose: true or false.", required: true },
+    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which unit is the sentence about: px or percent?", required: true },
+    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember the lesson: px stays the same, percent changes with the window, the number and unit go together, and if a photo has one size, the other adjusts.", required: true },
+    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A width of fifty percent makes the element half the window.", required: true },
+    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right: fifty percent means half.", required: true },
+    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] When the window narrows, a 200px width narrows too.", required: true },
+    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually pixels don’t change: two hundred is always two hundred.", required: true },
+    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If we give a photo only width, the height adjusts by itself.", required: true },
+    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s right: the photo doesn’t stretch, the height adjusts by itself.", required: true },
+    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] width: 200 works too; px isn’t needed.", required: true },
+    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Actually px is needed. Without it the browser throws the rule away.", required: true },
+    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All correct! You know sizes really well.", required: true },
+    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Back to our riddle. Remember, I gave a long paragraph height thirty pixels and thought the extra text would hide? Look, sadly, I was wrong. The text didn’t hide; it came out of the frame and hangs down below. The browser doesn’t hide text by itself.", required: true },
+    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look, this is your postcard with the sizes you picked yourself!", required: true },
+    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] width sets the width, and height sets the height.", required: true },
+    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A photo usually gets only width, so it doesn’t stretch.", required: true },
+    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Now elements are the size you want. Next time we’ll learn about the spacing and borders around elements. See you!", required: true },
+    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
+    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
+    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
+    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
+    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
+    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
+    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
+    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
+    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
+    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] I took this photo in the mountains.", required: true },
+    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] We climbed the mountains in the morning, walked all day and made a campfire in the evening. It was the best day!", required: true },
+    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Does it change?", required: true },
+    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What happens when the window narrows?", required: true },
+    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code?", required: true },
+    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which code makes this rectangle?", required: true },
+    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] True or false?", required: true },
+    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
+    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
+    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.", required: true },
+  ]
+};
+// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
+const SPEECH_INDEX = {
+  uz: {
+    "O'zgarmaydi": "uz001",
+    "Salom! Men sayohatdan surat joyladim. Lekin qarang, u juda katta: sahifaning yarmini egallab olgan, matn esa pastda qolib ketdi. Aylantirish tugmasini bosing.": "uz002",
+    "Mana! Surat ixcham bo'ldi, abzas esa oynaning bir qismini egallaydi. Inspektor har bir elementning o'lchamini ko'rsatyapti.": "uz003",
+    "Buni ikki xususiyat qildi: [English pronunciation] width [O'zbekcha tallaffuz], ya'ni kenglik degani, va [English pronunciation] height [O'zbekcha tallaffuz], ya'ni balandlik degani.": "uz004",
+    "Bugun elementlar o'lchamini boshqarishni o'rganasiz. Lekin oldin kichik topishmoq. Men uzun abzasga balandlik berdim: [English pronunciation] height [O'zbekcha tallaffuz] o'ttiz piksel. Menimcha, sig'magan matn shunchaki yashirinadi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.": "uz005",
+    "Inspektorga qarang: har bir element yonida eni va bo'yi yozilgan. Kodda [English pronunciation] width [O'zbekcha tallaffuz] soni o'zgarsa, Inspektordagi son ham o'zgaradi.": "uz006",
+    "[English pronunciation] width [O'zbekcha tallaffuz] elementning enini beradi. Rasmga faqat [English pronunciation] width [O'zbekcha tallaffuz] yozilsa, bo'yi o'zi moslashadi va rasm cho'zilmaydi.": "uz007",
+    "Telefonda rasmni ikki barmoq bilan kichraytirganingizni eslang: u buzilmasdan kichrayadi. [English pronunciation] width [O'zbekcha tallaffuz] ham rasmni shunday kichraytiradi.": "uz008",
+    "Inspektorga qarang: har bir elementning kengligi va balandligi yozilgan. Sarlavha odatda butun qatorni egallaydi. Uning kengligini [English pronunciation] width [O'zbekcha tallaffuz] bilan o'zgartiramiz.": "uz009",
+    "[English pronunciation] H one [O'zbekcha tallaffuz] uchun [English pronunciation] width [O'zbekcha tallaffuz] ikki yuz piksel. Qarang, sarlavha qisqardi: Inspektorda endi ikki yuz.": "uz010",
+    "Endi suratga [English pronunciation] width [O'zbekcha tallaffuz] bir yuz ellik piksel. Surat kichraydi, balandligi esa o'zi moslashdi: surat cho'zilmadi.": "uz011",
+    "Demak, [English pronunciation] width [O'zbekcha tallaffuz] kenglikni beradi. Suratga faqat [English pronunciation] width [O'zbekcha tallaffuz] yozsak, balandlik o'zi moslashadi.": "uz012",
+    "Endi navbat sizga. Suratning kengligini ikki yuz piksel qiling: [English pronunciation] width [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz013",
+    "Qiymat yozing: son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz014",
+    "Faqat son yozildi. Brauzer uni tashlab yuboradi: son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.": "uz015",
+    "Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing, orasida bo'sh joysiz.": "uz016",
+    "Bu boshqa kenglik. Surat ikki yuz piksel bo'lishi kerak.": "uz017",
+    "Bu foiz. Bu yerda piksel kerak: son va [English pronunciation] px [O'zbekcha tallaffuz].": "uz018",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.": "uz019",
+    "Qiymat son va o'lcham birligidan iborat.": "uz020",
+    "Son ikki yuz, birlik [English pronunciation] px [O'zbekcha tallaffuz].": "uz021",
+    "200[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz022",
+    "Zo'r! Surat ikki yuz piksel, Inspektor ham shuni ko'rsatyapti.": "uz023",
+    "Endi kengliklarni chiziqlar bilan juftlang. Chapdan kenglikni, o'ngdan esa shu kenglikdagi chiziqni bosing.": "uz024",
+    "Oltmish piksel eng qisqa kenglik. Eng qisqa chiziqni toping.": "uz025",
+    "Bir yuz yigirma piksel o'rtacha: qisqasining ikki barobari.": "uz026",
+    "Bir yuz sakson piksel eng uzun kenglik. Eng uzun chiziqni toping.": "uz027",
+    "To'g'ri, bu eng qisqasi.": "uz028",
+    "To'g'ri, bu o'rtachasi.": "uz029",
+    "To'g'ri, bu eng uzuni.": "uz030",
+    "Oldin chapdan kenglikni tanlang.": "uz031",
+    "Son qancha katta bo'lsa, chiziq shuncha uzun.": "uz032",
+    "60[English pronunciation] px [O'zbekcha tallaffuz] eng qisqa, 180[English pronunciation] px [O'zbekcha tallaffuz] eng uzun, 120[English pronunciation] px [O'zbekcha tallaffuz] o'rtada.": "uz033",
+    "Yonib turgan juftlikni bosing.": "uz034",
+    "Ajoyib! Kenglikni ko'z bilan ham chamalaysiz.": "uz035",
+    "Abzas va sarlavhaga qarang, keyin oyna torayganda nima bo'lishini kuzating: kimdir torayadi, kimdir o'zgarmaydi.": "uz036",
+    "Foiz oynaning qancha qismini olishni aytadi: yuz foiz butun oyna, ellik foiz yarmi. Piksel esa doim bir xil.": "uz037",
+    "Pitsaning yarmi katta pitsada ham, kichik pitsada ham yarmi bo'ladi. Ellik foiz ham shunday: oyna qanday bo'lsa, uning yarmi.": "uz038",
+    "Kenglikni foizda ham yozish mumkin, ya'ni oynaning qancha qismi degani. Yuz foiz butun oyna, ellik foiz esa yarmi.": "uz039",
+    "Abzasga [English pronunciation] width [O'zbekcha tallaffuz] ellik foiz. Qarang, u oynaning yarmini egalladi.": "uz040",
+    "Sarlavhaga esa ikki yuz piksel beramiz, solishtirish uchun.": "uz041",
+    "Endi oynani toraytiramiz. Qarang: abzas ham qisqardi, chunki u oynaning yarmi. Sarlavha esa o'sha ikki yuz pikselligicha qoldi.": "uz042",
+    "Demak, piksel o'zgarmaydi, foiz esa oyna bilan birga o'zgaradi.": "uz043",
+    "Abzas oynaning yarmini egallasin: [English pronunciation] width [O'zbekcha tallaffuz] uchun foizdagi qiymatni yozing.": "uz044",
+    "Qiymat yozing: son va foiz belgisi.": "uz045",
+    "Faqat son yozildi. Son yoniga foiz belgisini qo'shing.": "uz046",
+    "Bu piksel. Oynaning yarmi uchun foiz kerak.": "uz047",
+    "Brauzer bu qiymatni tanimadi. Son va foiz belgisini bo'sh joysiz yozing.": "uz048",
+    "Bu boshqa qism. Yarmi degani ellik foiz.": "uz049",
+    "Son va foiz belgisi o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.": "uz050",
+    "Butun oyna yuz foiz. Yarmi qancha?": "uz051",
+    "Yarmi ellik foiz: son ellik va foiz belgisi.": "uz052",
+    "Ellik sonini yozing, yoniga foiz belgisini qo'ying va Tekshirishni bosing.": "uz053",
+    "Barakalla! Abzas oynaning roppa-rosa yarmida.": "uz054",
+    "Endi o'zingizni sinab ko'ring. Men kodni ko'rsataman, siz esa oyna torayganda element o'zgaradimi yoki yo'qmi, shuni tanlang.": "uz055",
+    "Birlikka qarang: [English pronunciation] px [O'zbekcha tallaffuz] mi yoki foiz mi?": "uz056",
+    "[English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz esa oynaga qarab o'zgaradi.": "uz057",
+    "Ikki yuz piksel doim ikki yuz piksel, oyna qanday bo'lmasin.": "uz058",
+    "Ellik foiz oynaning yarmi: oyna torayadi, u ham torayadi.": "uz059",
+    "Yuz foiz butun oyna, oyna bilan birga o'zgaradi.": "uz060",
+    "Sakson piksel o'zgarmaydi.": "uz061",
+    "Barakalla!": "uz062",
+    "Hammasi to'g'ri! Piksel va foizni adashtirmaysiz.": "uz063",
+    "Sarlavha va rasmga qarang: [English pronunciation] height [O'zbekcha tallaffuz] qo'shilganda ular balandroq yoki pastroq bo'ladi. Oxirida rasm shakliga qarang.": "uz064",
+    "[English pronunciation] height [O'zbekcha tallaffuz] elementning bo'yini beradi. Rasmga bittasini yozsangiz, ikkinchisi o'zi moslashadi. Ikkalasini yozsangiz, rasm cho'zilib qolishi mumkin.": "uz065",
+    "Rezinadek cho'zilgan suratni ko'rganmisiz? Rasmga ham eni, ham bo'yini o'zingiz yozsangiz, shunday bo'lishi mumkin.": "uz066",
+    "Kenglikdan tashqari balandlik ham bor: [English pronunciation] height [O'zbekcha tallaffuz]. U ham piksellarda yoziladi.": "uz067",
+    "Sarlavhaga [English pronunciation] height [O'zbekcha tallaffuz] sakson piksel. Sarlavha balandroq bo'ldi, matn esa uning tepasida qoldi.": "uz068",
+    "Suratga faqat [English pronunciation] height [O'zbekcha tallaffuz] oltmish piksel. Surat kichraydi, kengligi esa o'zi moslashdi.": "uz069",
+    "Endi suratga ham [English pronunciation] width [O'zbekcha tallaffuz], ham [English pronunciation] height [O'zbekcha tallaffuz] beramiz: ikki yuz va oltmish. Qarang, surat yassilanib qoldi. Ikkalasini birga yozsak, surat cho'ziladi.": "uz070",
+    "Demak, [English pronunciation] height [O'zbekcha tallaffuz] balandlikni beradi. Suratga bittasini yozsangiz, ikkinchisi o'zi moslashadi.": "uz071",
+    "Sarlavhaning balandligini sakson piksel qiling: [English pronunciation] height [O'zbekcha tallaffuz] uchun qiymatni yozing.": "uz072",
+    "Faqat son yozildi. Son yoniga [English pronunciation] px [O'zbekcha tallaffuz] qo'shing.": "uz073",
+    "Brauzer bu qiymatni tanimadi. Son va [English pronunciation] px [O'zbekcha tallaffuz] yozing.": "uz074",
+    "Bu boshqa balandlik. Sarlavha sakson piksel bo'lishi kerak.": "uz075",
+    "Qiymat son va [English pronunciation] px [O'zbekcha tallaffuz] dan iborat.": "uz076",
+    "Son sakson, birlik [English pronunciation] px [O'zbekcha tallaffuz].": "uz077",
+    "80[English pronunciation] px [O'zbekcha tallaffuz] deb yozing va Tekshirishni bosing.": "uz078",
+    "Ajoyib! Sarlavha sakson piksel baland.": "uz079",
+    "Endi o'zingizni sinab ko'ring. Men to'rtburchakni ko'rsataman, siz esa uni qaysi kod chizganini tanlang.": "uz080",
+    "To'rtburchak keng va pastmi yoki tor va balandmi?": "uz081",
+    "[English pronunciation] width [O'zbekcha tallaffuz] kenglik, ya'ni yonga qancha; [English pronunciation] height [O'zbekcha tallaffuz] balandlik, ya'ni tepaga qancha.": "uz082",
+    "To'rtburchak keng va past: kengligi bir yuz oltmish, balandligi qirq.": "uz083",
+    "Bu tor va baland: kengligi oltmish, balandligi bir yuz yigirma.": "uz084",
+    "Kengligi va balandligi teng, demak bu kvadrat: yuz va yuz.": "uz085",
+    "Hammasi to'g'ri! Kenglik va balandlikni adashtirmaysiz.": "uz086",
+    "Har safar kodga qarang: son va uning yonida nima turibdi? Keyin rasmga qarang: o'zgardimi yoki yo'qmi.": "uz087",
+    "Brauzer faqat to'g'ri yozuvni tushunadi: son va birlik bo'sh joysiz yoziladi. Birlik bo'lmasa yoki bo'sh joy bo'lsa, qoida tashlab yuboriladi.": "uz088",
+    "Telefon raqamini terayotganda bitta raqamni tushirib qoldirsangiz, qo'ng'iroq bo'lmaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] da ham bitta belgi yetishmasa, qoida ishlamaydi.": "uz089",
+    "O'lchamni yozishda ham xatolar bo'ladi. Keling, uchtasini ko'ramiz.": "uz090",
+    "Birinchisi: ikki yuz sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q. Brauzer qoidani tashlab yubordi, surat yana katta.": "uz091",
+    "Ikkinchisi: son va foiz belgisi orasida bo'sh joy. Bu ham ishlamaydi.": "uz092",
+    "Uchinchisi xato emas, lekin chiroyli ham emas: suratga ikki yuzga ikki yuz berdik, u kvadrat bo'lib cho'zildi.": "uz093",
+    "Demak, son va birlik bo'sh joysiz yoziladi, suratga esa odatda faqat kenglik beriladi.": "uz094",
+    "Voy, men surat kengligini yozdim, lekin u ishlamayapti! Maydondagi qiymatga qarang va uni tuzating.": "uz095",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] orasida hali ham bo'sh joy bor. Uni olib tashlang.": "uz096",
+    "Brauzer bu qiymatni tanimadi. Hammasini o'chirib, 160[English pronunciation] px [O'zbekcha tallaffuz] deb qo'shib yozing.": "uz097",
+    "Kenglik o'zgarib ketdi. Bir yuz oltmish piksel qolsin, faqat bo'sh joyni olib tashlang.": "uz098",
+    "[English pronunciation] px [O'zbekcha tallaffuz] yo'qolib qoldi. 160[English pronunciation] px [O'zbekcha tallaffuz] deb yozing.": "uz099",
+    "Maydondagi qiymatni diqqat bilan o'qing: nima ortiqcha?": "uz100",
+    "Son va [English pronunciation] px [O'zbekcha tallaffuz] o'rtasida bo'sh joy bor. Brauzer buni tanimaydi.": "uz101",
+    "Strelkali tugma bilan maydondagi hamma narsani o'chiring va 160[English pronunciation] px [O'zbekcha tallaffuz] ni qo'shib yozing. Namuna kod ostida.": "uz102",
+    "Ura, ishladi! Surat bir yuz oltmish piksel.": "uz103",
+    "Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Inspektorga qarang va buzilgan qoidani bosing.": "uz104",
+    "Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida?": "uz105",
+    "Bu qoida ishlayapti: Inspektor shu o'lchamni ko'rsatyapti. Qaysi element o'zgarmay qoldi?": "uz106",
+    "Topdingiz! Bir yuz ellik sonidan keyin [English pronunciation] px [O'zbekcha tallaffuz] yo'q edi.": "uz107",
+    "Topdingiz! Qirq va foiz belgisi orasida bo'sh joy bor edi.": "uz108",
+    "Inspektorga qarang: qaysi element kod aytgandek emas?": "uz109",
+    "Sarlavha butun qatorni egallab turibdi. Uning kengligi yonida birlik bormi?": "uz110",
+    "Surat kichraymadi. Uning kengligi qanday yozilgan?": "uz111",
+    "Xato birinchi qoidada: [English pronunciation] px [O'zbekcha tallaffuz] yo'q. O'sha qatorni bosing.": "uz112",
+    "Xato ikkinchi qoidada: bo'sh joy. O'sha qatorni bosing.": "uz113",
+    "Super! Ikkalasi ham topildi. Siz o'lchamlarni haqiqiy dizayner kabi tekshiryapsiz.": "uz114",
+    "Endi qoidani boshidan oxirigacha o'zingiz yozing. Surat butun oyna kengligida bo'lsin: [English pronunciation] img [O'zbekcha tallaffuz] uchun [English pronunciation] width [O'zbekcha tallaffuz] xususiyatini foizda yozing.": "uz115",
+    "Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.": "uz116",
+    "Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.": "uz117",
+    "Xususiyat va qiymat o'rtasida ikki nuqta yo'q.": "uz118",
+    "Surat uchun [English pronunciation] img [O'zbekcha tallaffuz] selektori kerak.": "uz119",
+    "Kenglikni [English pronunciation] width [O'zbekcha tallaffuz] xususiyati beradi.": "uz120",
+    "Surat butun oynani egallamadi. Butun oyna degani yuz foiz.": "uz121",
+    "Surat qaysi selektor bilan tanlanadi? Butun oyna necha foiz?": "uz122",
+    "Selektor [English pronunciation] img [O'zbekcha tallaffuz], xususiyat [English pronunciation] width [O'zbekcha tallaffuz], qiymat yuz foiz.": "uz123",
+    "Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.": "uz124",
+    "Ajoyib! Surat butun oyna kengligida. Qoidani o'zingiz yozdingiz.": "uz125",
+    "Endi o'z otkritkangizni yasang. Surat uchun istalgan kenglikni yozing, abzas uchun ham. Piksel yoki foiz, o'zingiz tanlang. Keyin Tayyorni bosing.": "uz126",
+    "Surat qanchalik katta bo'lsin? Abzas-chi?": "uz127",
+    "Kenglik son va [English pronunciation] px [O'zbekcha tallaffuz] yoki son va foiz belgisi bilan yoziladi.": "uz128",
+    "Masalan, suratga bir yuz oltmish piksel, abzasga esa yetmish foiz yozing. Keyin Tayyorni bosing.": "uz129",
+    "Voy, qanday chiroyli! Bu sizning otkritkangiz.": "uz130",
+    "Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.": "uz131",
+    "Gapda qaysi birlik haqida gap ketyapti: [English pronunciation] px [O'zbekcha tallaffuz] mi yoki foiz mi?": "uz132",
+    "Dars esingizdami: [English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz oyna bilan o'zgaradi, son va birlik birga yoziladi, suratga bitta o'lcham bersak, ikkinchisi moslashadi.": "uz133",
+    "Ellik foizli kenglik elementni oynaning yarmi qiladi.": "uz134",
+    "To'g'ri: ellik foiz yarmi degani.": "uz135",
+    "Oyna torayganda 200[English pronunciation] px [O'zbekcha tallaffuz] kenglik ham torayadi.": "uz136",
+    "Aslida piksel o'zgarmaydi: ikki yuz piksel doim ikki yuz.": "uz137",
+    "Suratga faqat [English pronunciation] width [O'zbekcha tallaffuz] bersak, balandligi o'zi moslashadi.": "uz138",
+    "Shunday: surat cho'zilmaydi, pastki tomoni o'zi moslashadi.": "uz139",
+    "[English pronunciation] width [O'zbekcha tallaffuz]: 200 ham ishlaydi, [English pronunciation] px [O'zbekcha tallaffuz] shart emas.": "uz140",
+    "Aslida [English pronunciation] px [O'zbekcha tallaffuz] kerak. Usiz brauzer qoidani tashlab yuboradi.": "uz141",
+    "Hammasi to'g'ri! Siz o'lchamlarni yaxshi bilasiz.": "uz142",
+    "Endi topishmoqqa qaytamiz. Esingizdami, men uzun abzasga [English pronunciation] height [O'zbekcha tallaffuz] o'ttiz piksel bergan edim va ortiqcha matn yashirinadi deb o'ylagan edim? Qarang, afsuski, men adashibman. Matn yashirinmadi, u ramkadan chiqib, pastga tushib ketdi. Brauzer matnni o'zi yashirmaydi.": "uz143",
+    "Qarang, bu sizning otkritkangiz, o'zingiz tanlagan o'lchamlar bilan!": "uz144",
+    "[English pronunciation] width [O'zbekcha tallaffuz] kenglikni, [English pronunciation] height [O'zbekcha tallaffuz] esa balandlikni beradi.": "uz145",
+    "[English pronunciation] px [O'zbekcha tallaffuz] o'zgarmaydi, foiz esa oyna bilan birga o'zgaradi.": "uz146",
+    "Suratga odatda faqat [English pronunciation] width [O'zbekcha tallaffuz] beriladi, shunda u cho'zilmaydi.": "uz147",
+    "Tabriklayman! Endi elementlar siz xohlagan o'lchamda. Keyingi darsda elementlar atrofidagi bo'shliqlar va chegaralarni o'rganamiz. Ko'rishguncha!": "uz148",
+    "Voy, zo‘r!": "uz149",
+    "Ana! Chiqdi!": "uz150",
+    "Super!": "uz151",
+    "Qoyil!": "uz152",
+    "Ura!": "uz153",
+    "Zo‘r-ku!": "uz154",
+    "Yana bir bor urinib ko‘ring.": "uz155",
+    "Diqqat bilan qarang.": "uz156",
+    "Yaqin qoldingiz. Shoshilmang.": "uz157",
+    "Bu suratni tog'da oldim.": "uz158",
+    "Biz ertalab tog'ga chiqdik, kun bo'yi yurdik va kechqurun gulxan yoqdik. Bu eng zo'r kun edi!": "uz159",
+    "O'zgaradimi?": "uz160",
+    "Oyna torayganda nima bo'ladi?": "uz161",
+    "Qaysi kod?": "uz162",
+    "Bu to'rtburchakni qaysi kod beradi?": "uz163",
+    "To'g'rimi?": "uz164",
+    "To'g'ri yoki noto'g'ri?": "uz165",
+    "Salom, dunyo!": "uz166",
+    "Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.": "uz167",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz168",
+    "Harflar kirillchada yozilganga o'xshaydi. [English pronunciation] CSS [O'zbekcha tallaffuz] lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.": "uz169",
+  },
+  ru: {
+    "Не меняется": "ru001",
+    "Привет! Я выложил фото из поездки. Но смотри, оно огромное: заняло полстраницы, а текст уехал вниз. Нажми Превратить.": "ru002",
+    "Вот! Фото стало аккуратным, а абзац занимает часть окна. Инспектор показывает размер каждого элемента.": "ru003",
+    "Это сделали два свойства: [English pronunciation] width [Русское произношение], то есть ширина, и [English pronunciation] height [Русское произношение], то есть высота.": "ru004",
+    "Сегодня ты научишься управлять размерами элементов. Но сначала маленькая загадка. Я дал длинному абзацу высоту: [English pronunciation] height [Русское произношение] тридцать пикселей. По-моему, текст, который не влез, просто спрячется. Как думаешь, я прав? Ответ найдём вместе в конце урока.": "ru005",
+    "Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Меняется число [English pronunciation] width [Русское произношение] в коде, меняется и число в Инспекторе.": "ru006",
+    "[English pronunciation] width [Русское произношение] задаёт ширину элемента. Если у фото написать только [English pronunciation] width [Русское произношение], высота подстроится сама, и фото не растянется.": "ru007",
+    "Вспомни, как на телефоне уменьшаешь фото двумя пальцами: оно уменьшается, не искажаясь. [English pronunciation] width [Русское произношение] уменьшает фото так же.": "ru008",
+    "Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Заголовок обычно занимает всю строку. Его ширину меняют через [English pronunciation] width [Русское произношение].": "ru009",
+    "Для [English pronunciation] H one width [Русское произношение] двести пикселей. Смотри, заголовок стал короче: в Инспекторе теперь двести.": "ru010",
+    "Теперь фото: [English pronunciation] width [Русское произношение] сто пятьдесят пикселей. Фото уменьшилось, а высота подстроилась сама: фото не растянулось.": "ru011",
+    "Значит, [English pronunciation] width [Русское произношение] задаёт ширину. Если у фото написать только [English pronunciation] width [Русское произношение], высота подстроится сама.": "ru012",
+    "Теперь твоя очередь. Сделай ширину фото двести пикселей: впиши значение для [English pronunciation] width [Русское произношение].": "ru013",
+    "Впиши значение: число и [English pronunciation] px [Русское произношение].": "ru014",
+    "Написано только число. Браузер его выбрасывает: добавь к числу [English pronunciation] px [Русское произношение].": "ru015",
+    "Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение] без пробела.": "ru016",
+    "Это другая ширина. Фото должно быть двести пикселей.": "ru017",
+    "Это проценты. Здесь нужны пиксели: число и [English pronunciation] px [Русское произношение].": "ru018",
+    "Между числом и [English pronunciation] px [Русское произношение] не нужен пробел: пиши слитно.": "ru019",
+    "Значение, число и единица.": "ru020",
+    "Число двести, единица [English pronunciation] px [Русское произношение].": "ru021",
+    "Впиши 200[English pronunciation] px [Русское произношение] и нажми Проверить.": "ru022",
+    "Огонь! Фото двести пикселей, и Инспектор это показывает.": "ru023",
+    "Теперь соедини ширины с полосками. Нажми ширину слева, а потом полоску такой ширины справа.": "ru024",
+    "Шестьдесят пикселей, самая короткая ширина. Найди самую короткую полоску.": "ru025",
+    "Сто двадцать пикселей, средняя: вдвое длиннее короткой.": "ru026",
+    "Сто восемьдесят пикселей, самая длинная. Найди самую длинную полоску.": "ru027",
+    "Верно, это самая короткая.": "ru028",
+    "Верно, это средняя.": "ru029",
+    "Верно, это самая длинная.": "ru030",
+    "Сначала выбери ширину слева.": "ru031",
+    "Чем больше число, тем длиннее полоска.": "ru032",
+    "60[English pronunciation] px [Русское произношение], самая короткая, 180[English pronunciation] px [Русское произношение], самая длинная, 120[English pronunciation] px [Русское произношение], посередине.": "ru033",
+    "Нажми горящую пару.": "ru034",
+    "Отлично! Ты прикидываешь ширину на глаз.": "ru035",
+    "Посмотри на абзац и заголовок, а потом следи, что будет, когда окно сузится: кто-то станет уже, а кто-то нет.": "ru036",
+    "Проценты говорят, какую часть окна занять: сто процентов, всё окно, пятьдесят, половина. А пиксели всегда одинаковые.": "ru037",
+    "Половина пиццы, это половина и большой, и маленькой пиццы. Пятьдесят процентов так же: половина того окна, какое есть.": "ru038",
+    "Ширину можно писать и в процентах, то есть какую часть окна занять. Сто процентов, всё окно, пятьдесят, половина.": "ru039",
+    "Абзацу [English pronunciation] width [Русское произношение] пятьдесят процентов. Смотри, он занял половину окна.": "ru040",
+    "А заголовку дадим двести пикселей, для сравнения.": "ru041",
+    "Теперь сузим окно. Смотри: абзац тоже стал уже, ведь он, половина окна. А заголовок остался теми же двумястами пикселями.": "ru042",
+    "Значит, пиксели не меняются, а проценты меняются вместе с окном.": "ru043",
+    "Пусть абзац занимает половину окна: впиши для [English pronunciation] width [Русское произношение] значение в процентах.": "ru044",
+    "Впиши значение: число и знак процента.": "ru045",
+    "Написано только число. Добавь к числу знак процента.": "ru046",
+    "Это пиксели. Для половины окна нужны проценты.": "ru047",
+    "Браузер не узнал это значение. Напиши число и знак процента без пробела.": "ru048",
+    "Это другая часть. Половина, это пятьдесят процентов.": "ru049",
+    "Между числом и знаком процента не нужен пробел: пиши слитно.": "ru050",
+    "Всё окно, сто процентов. Сколько половина?": "ru051",
+    "Половина, пятьдесят процентов: число пятьдесят и знак процента.": "ru052",
+    "Впиши число пятьдесят, поставь рядом знак процента и нажми Проверить.": "ru053",
+    "Молодец! Абзац ровно на половину окна.": "ru054",
+    "Теперь проверь себя. Я покажу код, а ты выбери: изменится ли элемент, когда окно сузится?": "ru055",
+    "Посмотри на единицу: [English pronunciation] px [Русское произношение] или процент?": "ru056",
+    "[English pronunciation] px [Русское произношение] не меняется, а процент меняется вслед за окном.": "ru057",
+    "Двести пикселей, всегда двести, какое бы ни было окно.": "ru058",
+    "Пятьдесят процентов, половина окна: окно уже, и он уже.": "ru059",
+    "Сто процентов, всё окно, меняется вместе с ним.": "ru060",
+    "Восемьдесят пикселей не меняются.": "ru061",
+    "Точно!": "ru062",
+    "Всё верно! Ты не путаешь пиксели и проценты.": "ru063",
+    "Посмотри на заголовок и фото: с [English pronunciation] height [Русское произношение] они становятся выше или ниже. В конце посмотри на форму фото.": "ru064",
+    "[English pronunciation] height [Русское произношение] задаёт высоту элемента. Если у фото написать одно, второе подстроится само. Если написать оба, фото может растянуться.": "ru065",
+    "Бывает, что фото растянуто, как резинка. Так случается, если самому задать фото и ширину, и высоту.": "ru066",
+    "Кроме ширины есть и высота: [English pronunciation] height [Русское произношение]. Её тоже пишут в пикселях.": "ru067",
+    "Заголовку [English pronunciation] height [Русское произношение] восемьдесят пикселей. Заголовок стал выше, а текст остался вверху.": "ru068",
+    "Фото, только [English pronunciation] height [Русское произношение] шестьдесят пикселей. Фото уменьшилось, а ширина подстроилась сама.": "ru069",
+    "А теперь дадим фото и [English pronunciation] width [Русское произношение], и [English pronunciation] height [Русское произношение]: двести и шестьдесят. Смотри, фото сплющилось. Если написать оба, фото растягивается.": "ru070",
+    "Значит, [English pronunciation] height [Русское произношение] задаёт высоту. Если у фото написать одно, второе подстроится само.": "ru071",
+    "Сделай высоту заголовка восемьдесят пикселей: впиши значение для [English pronunciation] height [Русское произношение].": "ru072",
+    "Написано только число. Добавь к числу [English pronunciation] px [Русское произношение].": "ru073",
+    "Браузер не узнал это значение. Напиши число и [English pronunciation] px [Русское произношение].": "ru074",
+    "Это другая высота. Заголовок должен быть восемьдесят пикселей.": "ru075",
+    "Значение, число и [English pronunciation] px [Русское произношение].": "ru076",
+    "Число восемьдесят, единица [English pronunciation] px [Русское произношение].": "ru077",
+    "Впиши 80[English pronunciation] px [Русское произношение] и нажми Проверить.": "ru078",
+    "Отлично! Заголовок высотой восемьдесят пикселей.": "ru079",
+    "Теперь проверь себя. Я покажу прямоугольник, а ты выбери, какой код его нарисовал.": "ru080",
+    "Прямоугольник широкий и низкий или узкий и высокий?": "ru081",
+    "[English pronunciation] width [Русское произношение], ширина, то есть насколько вбок; [English pronunciation] height [Русское произношение], высота, то есть насколько вверх.": "ru082",
+    "Прямоугольник широкий и низкий: ширина сто шестьдесят, высота сорок.": "ru083",
+    "Этот узкий и высокий: ширина шестьдесят, высота сто двадцать.": "ru084",
+    "Ширина и высота равны, значит, это квадрат: сто и сто.": "ru085",
+    "Всё верно! Ты не путаешь ширину и высоту.": "ru086",
+    "Каждый раз смотри на код: что стоит рядом с числом? Потом на фото: изменилось оно или нет.": "ru087",
+    "Браузер понимает только верную запись: число и единица пишутся слитно. Нет единицы или есть пробел, правило выбрасывается.": "ru088",
+    "Если при наборе номера телефона пропустить одну цифру, звонок не пройдёт. В [English pronunciation] CSS [Русское произношение] так же: не хватает одного знака, правило не работает.": "ru089",
+    "В размерах тоже бывают ошибки. Давай посмотрим на три.": "ru090",
+    "Первая: после двухсот нет [English pronunciation] px [Русское произношение]. Браузер выбросил правило, фото снова большое.": "ru091",
+    "Вторая: между числом и знаком процента пробел. Тоже не работает.": "ru092",
+    "Третья, не ошибка, но и не красиво: дали фото двести на двести, и оно растянулось в квадрат.": "ru093",
+    "Значит, число и единица пишутся без пробела, а фото обычно задают только ширину.": "ru094",
+    "Ой, я написал ширину фото, но она не работает! Посмотри на значение в поле и исправь его.": "ru095",
+    "Между числом и [English pronunciation] px [Русское произношение] всё ещё пробел. Убери его.": "ru096",
+    "Браузер не узнал это значение. Сотри всё и впиши 160[English pronunciation] px [Русское произношение] слитно.": "ru097",
+    "Ширина поменялась. Пусть остаётся сто шестьдесят пикселей, просто убери пробел.": "ru098",
+    "Пропал [English pronunciation] px [Русское произношение]. Впиши 160[English pronunciation] px [Русское произношение].": "ru099",
+    "Внимательно прочитай значение в поле: что лишнее?": "ru100",
+    "Между числом и [English pronunciation] px [Русское произношение] пробел. Браузер такое не узнаёт.": "ru101",
+    "Сотри всё в поле кнопкой со стрелкой и впиши 160[English pronunciation] px [Русское произношение] слитно, без пробела. Образец, под кодом.": "ru102",
+    "Ура, заработало! Фото сто шестьдесят пикселей.": "ru103",
+    "Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на Инспектор и нажми сломанное правило.": "ru104",
+    "Класс, первая найдена! Теперь сломалось другое. Какое правило?": "ru105",
+    "Это правило работает: Инспектор показывает этот размер. Какой элемент не изменился?": "ru106",
+    "Нашёл! После ста пятидесяти не было [English pronunciation] px [Русское произношение].": "ru107",
+    "Нашёл! Между сорока и знаком процента был пробел.": "ru108",
+    "Посмотри на Инспектор: какой элемент не такой, как в коде?": "ru109",
+    "Заголовок занимает всю строку. Есть ли единица у его ширины?": "ru110",
+    "Фото не уменьшилось. Как записана его ширина?": "ru111",
+    "Ошибка в первом правиле: нет [English pronunciation] px [Русское произношение]. Нажми эту строку.": "ru112",
+    "Ошибка во втором правиле: пробел. Нажми эту строку.": "ru113",
+    "Супер! Обе найдены. Ты проверяешь размеры как настоящий дизайнер.": "ru114",
+    "Теперь напиши правило целиком сам. Пусть фото будет во всю ширину окна: напиши для [English pronunciation] img [Русское произношение] свойство [English pronunciation] width [Русское произношение] в процентах.": "ru115",
+    "Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.": "ru116",
+    "Правилу нужны фигурные скобки: открывающая и закрывающая.": "ru117",
+    "Между свойством и значением нет двоеточия.": "ru118",
+    "Для фото нужен селектор [English pronunciation] img [Русское произношение].": "ru119",
+    "Ширину задаёт свойство [English pronunciation] width [Русское произношение].": "ru120",
+    "Фото не заняло всё окно. Всё окно, это сто процентов.": "ru121",
+    "Каким селектором выбирают фото? Сколько процентов всё окно?": "ru122",
+    "Селектор [English pronunciation] img [Русское произношение], свойство [English pronunciation] width [Русское произношение], значение сто процентов.": "ru123",
+    "Образец появился под кодом. Перепиши его в поле и нажми Проверить.": "ru124",
+    "Отлично! Фото во всю ширину окна. Ты сам написал правило.": "ru125",
+    "Теперь сделай свою открытку. Впиши любую ширину для фото и для абзаца. Пиксели или проценты, выбирай сам. Потом нажми Готово.": "ru126",
+    "Насколько большим будет фото? А абзац?": "ru127",
+    "Ширина, число и [English pronunciation] px [Русское произношение] или число и знак процента.": "ru128",
+    "Например, впиши сто шестьдесят пикселей для фото и семьдесят процентов для абзаца. Потом нажми Готово.": "ru129",
+    "Ого, как красиво! Это твоя открытка.": "ru130",
+    "Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.": "ru131",
+    "О какой единице фраза: [English pronunciation] px [Русское произношение] или процент?": "ru132",
+    "Вспомни урок: [English pronunciation] px [Русское произношение] не меняется, процент меняется с окном, число и единица пишутся вместе, если у фото один размер, второй подстраивается.": "ru133",
+    "Ширина в пятьдесят процентов делает элемент на половину окна.": "ru134",
+    "Верно: пятьдесят процентов, половина.": "ru135",
+    "Когда окно сужается, ширина 200[English pronunciation] px [Русское произношение] тоже сужается.": "ru136",
+    "На самом деле пиксели не меняются: двести, всегда двести.": "ru137",
+    "Если дать фото только [English pronunciation] width [Русское произношение], высота подстроится сама.": "ru138",
+    "Так и есть: фото не растягивается, высота подстраивается сама.": "ru139",
+    "[English pronunciation] width [Русское произношение]: 200 тоже работает, [English pronunciation] px [Русское произношение] не обязателен.": "ru140",
+    "На самом деле [English pronunciation] px [Русское произношение] нужен. Без него браузер выбрасывает правило.": "ru141",
+    "Всё верно! Ты отлично разбираешься в размерах.": "ru142",
+    "Вернёмся к загадке. Помнишь, я дал длинному абзацу [English pronunciation] height [Русское произношение] тридцать пикселей и думал, что лишний текст спрячется? Смотри, увы, я ошибся. Текст не спрятался, он вылез из рамки и свисает вниз. Браузер сам текст не прячет.": "ru143",
+    "Смотри, это твоя открытка с размерами, которые ты выбрал сам!": "ru144",
+    "[English pronunciation] width [Русское произношение] задаёт ширину, а [English pronunciation] height [Русское произношение], высоту.": "ru145",
+    "[English pronunciation] px [Русское произношение] не меняется, а проценты меняются вместе с окном.": "ru146",
+    "Фото обычно задают только [English pronunciation] width [Русское произношение], тогда оно не растягивается.": "ru147",
+    "Ура! Теперь элементы такого размера, как ты хочешь. На следующем уроке узнаем про отступы и рамки вокруг элементов. До встречи!": "ru148",
+    "Вау, классно!": "ru149",
+    "Есть! Получилось!": "ru150",
+    "Супер!": "ru151",
+    "Огонь!": "ru152",
+    "Ура!": "ru153",
+    "Вот это да!": "ru154",
+    "Попробуй ещё раз.": "ru155",
+    "Посмотри внимательно.": "ru156",
+    "Уже близко. Не спеши.": "ru157",
+    "Это фото я сделал в горах.": "ru158",
+    "Мы утром поднялись в горы, шли весь день, а вечером разожгли костёр. Это был лучший день!": "ru159",
+    "Меняется ли?": "ru160",
+    "Что будет, когда окно сузится?": "ru161",
+    "Какой код?": "ru162",
+    "Какой код даёт этот прямоугольник?": "ru163",
+    "Верно или нет?": "ru164",
+    "Привет, мир!": "ru165",
+    "Здесь нужны только слова, без угловых скобок.": "ru166",
+    "Молодец!": "ru167",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru168",
+    "Похоже, буквы набраны по-русски. В [English pronunciation] CSS [Русское произношение] пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.": "ru169",
+  },
+  en: {
+    "Stays the same": "en001",
+    "Hi! I posted a photo from my trip. But look, it’s huge: it takes up half the page, and the text got pushed down. Tap Transform.": "en002",
+    "There! The photo is neat now, and the paragraph takes part of the window. The Inspector shows each element’s size.": "en003",
+    "Two properties did it: width, meaning the width, and height, meaning the height.": "en004",
+    "Today you’ll learn to control element sizes. But first, a little riddle. I gave a long paragraph a height: height thirty pixels. I think the text that doesn’t fit will just hide. What do you think, am I right? We’ll find the answer together at the end of the lesson.": "en005",
+    "Look at the Inspector: every element shows its width and height. When the width number changes in the code, the Inspector number changes too.": "en006",
+    "width sets an element’s width. If a photo gets only width, its height adjusts by itself and the photo isn’t stretched.": "en007",
+    "Remember shrinking a photo on a phone with two fingers: it gets smaller without distorting. width shrinks a photo the same way.": "en008",
+    "Look at the Inspector: each element shows its width and height. A heading normally takes the whole line. We change its width with width.": "en009",
+    "For H one, width two hundred pixels. Look, the heading got shorter: the Inspector now says two hundred.": "en010",
+    "Now the photo: width one hundred fifty pixels. The photo got smaller, and the height adjusted by itself: the photo didn’t stretch.": "en011",
+    "So width sets the width. If a photo has only width, the height adjusts by itself.": "en012",
+    "Now it’s your turn. Make the photo two hundred pixels wide: type the value for width.": "en013",
+    "Type the value: a number and px.": "en014",
+    "Only a number. The browser throws it away: add px to the number.": "en015",
+    "The browser didn’t recognize that value. Write a number and px with no space.": "en016",
+    "That’s a different width. The photo should be two hundred pixels.": "en017",
+    "That’s percent. Here you need pixels: a number and px.": "en018",
+    "No space between the number and px: write them together.": "en019",
+    "The value is a number and a unit.": "en020",
+    "The number is two hundred, the unit is px.": "en021",
+    "Type 200px and tap Check.": "en022",
+    "Awesome! The photo is two hundred pixels, and the Inspector shows it.": "en023",
+    "Now match the widths with the bars. Tap a width on the left, then the bar of that width on the right.": "en024",
+    "Sixty pixels is the shortest width. Find the shortest bar.": "en025",
+    "One hundred twenty pixels is medium: twice the short one.": "en026",
+    "One hundred eighty pixels is the longest. Find the longest bar.": "en027",
+    "Right, that’s the shortest.": "en028",
+    "Right, that’s the medium one.": "en029",
+    "Right, that’s the longest.": "en030",
+    "First pick a width on the left.": "en031",
+    "The bigger the number, the longer the bar.": "en032",
+    "60px is the shortest, 180px the longest, 120px in between.": "en033",
+    "Tap the glowing pair.": "en034",
+    "Great! You can estimate width by eye.": "en035",
+    "Look at the paragraph and the heading, then watch what happens when the window narrows: one gets narrower, one doesn’t.": "en036",
+    "Percent says what part of the window to take: a hundred percent is the whole window, fifty is half. Pixels always stay the same.": "en037",
+    "Half a pizza is half of a big pizza and half of a small one. Fifty percent works the same: half of whatever window there is.": "en038",
+    "You can also write width in percent, meaning how much of the window to take. A hundred percent is the whole window, fifty is half.": "en039",
+    "Width fifty percent for the paragraph. Look, it took half the window.": "en040",
+    "And we give the heading two hundred pixels, to compare.": "en041",
+    "Now let’s narrow the window. Look: the paragraph got narrower too, because it’s half the window. The heading stayed at the same two hundred pixels.": "en042",
+    "So pixels stay the same, and percent changes with the window.": "en043",
+    "Let the paragraph take half the window: type a percent value for width.": "en044",
+    "Type the value: a number and the percent sign.": "en045",
+    "Only a number. Add the percent sign to the number.": "en046",
+    "That’s pixels. Half the window needs percent.": "en047",
+    "The browser didn’t recognize that value. Write the number and the percent sign with no space.": "en048",
+    "That’s a different part. Half is fifty percent.": "en049",
+    "No space between the number and the percent sign: write them together.": "en050",
+    "The whole window is a hundred percent. What’s half?": "en051",
+    "Half is fifty percent: the number fifty and the percent sign.": "en052",
+    "Type the number fifty, put the percent sign next to it and tap Check.": "en053",
+    "Well done! The paragraph is exactly half the window.": "en054",
+    "Now check yourself. I’ll show some code, and you choose: will the element change when the window gets narrower?": "en055",
+    "Look at the unit: px or percent?": "en056",
+    "px stays the same, and percent changes with the window.": "en057",
+    "Two hundred pixels is always two hundred, whatever the window.": "en058",
+    "Fifty percent is half the window: the window narrows, so does it.": "en059",
+    "A hundred percent is the whole window and changes with it.": "en060",
+    "Eighty pixels stays the same.": "en061",
+    "Exactly!": "en062",
+    "All correct! You don’t mix up pixels and percent.": "en063",
+    "Look at the heading and the photo: with height they get taller or shorter. At the end, look at the photo’s shape.": "en064",
+    "height sets an element’s height. Give a photo just one and the other adjusts by itself. Give both, and the photo can get stretched.": "en065",
+    "Ever seen a photo stretched like a rubber band? That can happen when you set both the width and the height yourself.": "en066",
+    "Besides width there’s also height: height. It’s written in pixels too.": "en067",
+    "Height eighty pixels for the heading. The heading got taller, and the text stayed at the top.": "en068",
+    "For the photo, only height sixty pixels. The photo got smaller, and the width adjusted by itself.": "en069",
+    "Now we give the photo both width and height: two hundred and sixty. Look, the photo got squashed. With both, the photo stretches.": "en070",
+    "So height sets the height. If you write one for a photo, the other adjusts by itself.": "en071",
+    "Make the heading eighty pixels tall: type the value for height.": "en072",
+    "Only a number. Add px to the number.": "en073",
+    "The browser didn’t recognize that value. Write a number and px.": "en074",
+    "That’s a different height. The heading should be eighty pixels.": "en075",
+    "The value is a number and px.": "en076",
+    "The number is eighty, the unit is px.": "en077",
+    "Type 80px and tap Check.": "en078",
+    "Great! The heading is eighty pixels tall.": "en079",
+    "Now check yourself. I’ll show a rectangle, and you pick the code that drew it.": "en080",
+    "Is the rectangle wide and short, or narrow and tall?": "en081",
+    "width is the width, meaning how far sideways; height is the height, meaning how far up.": "en082",
+    "The rectangle is wide and short: width one hundred sixty, height forty.": "en083",
+    "This one is narrow and tall: width sixty, height one hundred twenty.": "en084",
+    "The width and height are equal, so it’s a square: a hundred by a hundred.": "en085",
+    "All correct! You don’t mix up width and height.": "en086",
+    "Each time, look at the code: what’s next to the number? Then look at the photo: did it change or not?": "en087",
+    "The browser only understands the right spelling: the number and the unit go together. No unit or a space, and the rule is thrown away.": "en088",
+    "If you miss one digit when dialing a phone number, the call won’t go through. In CSS too: miss one symbol and the rule doesn’t work.": "en089",
+    "Sizes can have mistakes too. Let’s look at three.": "en090",
+    "The first: there’s no px after two hundred. The browser threw the rule away, and the photo is big again.": "en091",
+    "The second: a space between the number and the percent sign. That doesn’t work either.": "en092",
+    "The third isn’t an error, but it isn’t pretty either: we gave the photo two hundred by two hundred, and it stretched into a square.": "en093",
+    "So the number and unit go together with no space, and a photo usually gets only a width.": "en094",
+    "Oops, I wrote the photo’s width, but it doesn’t work! Look at the value in the field and fix it.": "en095",
+    "There’s still a space between the number and px. Remove it.": "en096",
+    "The browser didn’t recognize that value. Erase everything and type 160px together.": "en097",
+    "The width changed. Keep one hundred sixty pixels; just remove the space.": "en098",
+    "The px went missing. Type 160px.": "en099",
+    "Read the value in the field carefully: what’s extra?": "en100",
+    "There’s a space between the number and px. The browser doesn’t recognize that.": "en101",
+    "Erase everything in the field with the arrow button and type 160px together, with no space. The example is under the code.": "en102",
+    "Yes, it works! The photo is one hundred sixty pixels.": "en103",
+    "Now check yourself. There are three rules, but one doesn’t work. Look at the Inspector and tap the broken rule.": "en104",
+    "Great, the first one is found! Now something else broke. Which rule?": "en105",
+    "This rule works: the Inspector shows that size. Which element didn’t change?": "en106",
+    "Found it! There was no px after one hundred fifty.": "en107",
+    "Found it! There was a space between forty and the percent sign.": "en108",
+    "Look at the Inspector: which element doesn’t match the code?": "en109",
+    "The heading takes the whole line. Does its width have a unit?": "en110",
+    "The photo didn’t get smaller. How is its width written?": "en111",
+    "The bug is in the first rule: no px. Tap that line.": "en112",
+    "The bug is in the second rule: a space. Tap that line.": "en113",
+    "Super! Both are found. You check sizes like a real designer.": "en114",
+    "Now write the whole rule yourself. Let the photo fill the whole width of the window: write the width property for img in percent.": "en115",
+    "Write the rule: first the selector, then the property and value in curly braces.": "en116",
+    "The rule needs curly braces: an opening one and a closing one.": "en117",
+    "There’s no colon between the property and the value.": "en118",
+    "The photo needs the img selector.": "en119",
+    "The width property sets the width.": "en120",
+    "The photo didn’t fill the whole window. The whole window is a hundred percent.": "en121",
+    "Which selector picks the photo? How many percent is the whole window?": "en122",
+    "The selector is img, the property width, the value a hundred percent.": "en123",
+    "An example appeared under the code. Copy it into the field and tap Check.": "en124",
+    "Great! The photo fills the window width. You wrote the rule yourself.": "en125",
+    "Now make your own postcard. Type any width for the photo and for the paragraph. Pixels or percent, you choose. Then tap Done.": "en126",
+    "How big should the photo be? And the paragraph?": "en127",
+    "A width is a number with px, or a number with the percent sign.": "en128",
+    "For example, type one hundred sixty pixels for the photo and seventy percent for the paragraph. Then tap Done.": "en129",
+    "Wow, how pretty! That’s your postcard.": "en130",
+    "The last test. I’ll say something, and you choose: true or false.": "en131",
+    "Which unit is the sentence about: px or percent?": "en132",
+    "Remember the lesson: px stays the same, percent changes with the window, the number and unit go together, and if a photo has one size, the other adjusts.": "en133",
+    "A width of fifty percent makes the element half the window.": "en134",
+    "Right: fifty percent means half.": "en135",
+    "When the window narrows, a 200px width narrows too.": "en136",
+    "Actually pixels don’t change: two hundred is always two hundred.": "en137",
+    "If we give a photo only width, the height adjusts by itself.": "en138",
+    "That’s right: the photo doesn’t stretch, the height adjusts by itself.": "en139",
+    "width: 200 works too; px isn’t needed.": "en140",
+    "Actually px is needed. Without it the browser throws the rule away.": "en141",
+    "All correct! You know sizes really well.": "en142",
+    "Back to our riddle. Remember, I gave a long paragraph height thirty pixels and thought the extra text would hide? Look, sadly, I was wrong. The text didn’t hide; it came out of the frame and hangs down below. The browser doesn’t hide text by itself.": "en143",
+    "Look, this is your postcard with the sizes you picked yourself!": "en144",
+    "width sets the width, and height sets the height.": "en145",
+    "A photo usually gets only width, so it doesn’t stretch.": "en146",
+    "Hooray! Now elements are the size you want. Next time we’ll learn about the spacing and borders around elements. See you!": "en147",
+    "Wow, awesome!": "en148",
+    "Yes! You did it!": "en149",
+    "Super!": "en150",
+    "Brilliant!": "en151",
+    "Hooray!": "en152",
+    "Amazing!": "en153",
+    "Try once more.": "en154",
+    "Take a closer look.": "en155",
+    "You are close. No rush.": "en156",
+    "I took this photo in the mountains.": "en157",
+    "We climbed the mountains in the morning, walked all day and made a campfire in the evening. It was the best day!": "en158",
+    "Does it change?": "en159",
+    "What happens when the window narrows?": "en160",
+    "Which code?": "en161",
+    "Which code makes this rectangle?": "en162",
+    "True or false?": "en163",
+    "Hello, world!": "en164",
+    "Only words here, no angle brackets.": "en165",
+    "Well done!": "en166",
+    "Everything in the window lives inside body.": "en167",
+    "Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.": "en168",
+  }
+};
+// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──
