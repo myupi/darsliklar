@@ -22,7 +22,7 @@ const startKey = lines.slice(0, 2).join('\n');
 const endKey = lines[lines.length - 1];
 
 const dir = `${root}lessons/${course}/`;
-const files = readdirSync(dir).filter((f) => /^\d+.*\.jsx$/.test(f));
+const files = readdirSync(dir).filter((f) => /^\d+.*\.jsx$/.test(f) && !/^\d+t\d/.test(f));   // тесты (NNtK-…) — без канона
 let bad = 0;
 for (const f of files) {
   const src = readFileSync(dir + f, 'utf8');

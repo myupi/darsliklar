@@ -7,7 +7,7 @@
 // так канон гарантированно совпадает с источником. Результат —
 // canon/html/canon-v1.jsx; его дословно копирует каждый урок курса.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -117,6 +117,12 @@ swapNoBubble();
 // swapTapWait() выключен (заказчик, 28.10.2026: «в других уроках не нужно нажимать, делай как
 // раньше»): урок снова не ждёт касания — как в других уроках; функция оставлена ниже.
 // swapTapWait();
+// ПОДГОТОВЛЕННАЯ ОЗВУЧКА И КОНТРАКТ v1 (заказчик, 13.11.2026: «во всех уроках… на трёх языках… v1 да, вариант а;
+// для нашего просмотрщика оставь голос браузера»). Урок говорит только через useAudio из '@lesson/runtime'
+// записями LESSON_AUDIO (их пишет в урок tools/ovoz/ovoz.mjs); свой сервис ttsApiBase, <audio> и голос браузера
+// убраны. В просмотрщике эмуляция useAudio играет те же записи голосом браузера.
+swapPreparedVoice();
+swapContractV1();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -175,6 +181,9 @@ writeFileSync(root + 'canon/html/canon-v1.jsx', text);
 // Курс CSS строится на том же каноне, что HTML (заказчик, 05.11.2026: «как html редактор возьмём»):
 // canon/css/canon-v1.jsx — дословная копия, чтобы sync-canon / check-canon работали и для уроков CSS.
 writeFileSync(root + 'canon/css/canon-v1.jsx', text);
+// Модуль «ИИ» — на каноне CSS (11.11.2026); своя папка нужна, чтобы sync-canon / check-canon работали и для него.
+mkdirSync(root + 'canon/ai', { recursive: true });
+writeFileSync(root + 'canon/ai/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
@@ -966,4 +975,235 @@ function swapTapWait() {
   .kodi-tap-wait .speaker-av .kodi-av::before, .kodi-tap-wait .kodi-dot .kodi-av::before { animation: none; opacity: .9; transform: scale(1.12); }
   .kodi-tap-wait .speaker-av .kodi-av::after, .kodi-tap-wait .kodi-dot .kodi-av::after { display: none; }
 }`);
+}
+
+// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (13.11.2026) ──────────────────────────────────────────────────────────
+function swapPreparedVoice() {
+  const cutT = (from, to, repl, what) => {
+    const a = text.indexOf(from); const b = text.indexOf(to, a + 1);
+    if (a < 0 || b < 0) throw new Error('Не найден участок: ' + what);
+    text = text.slice(0, a) + repl + text.slice(b);
+  };
+  swap("import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';",
+    "import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';\n" +
+    "import { useAudio as useLessonAudio } from '@lesson/runtime';");
+  swap(`//   · ttsApiBase — база сервиса озвучки:
+//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке
+//     ученика); student_uuid LMS уроку не передаёт
+`, `//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
+//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
+//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
+`);
+  swap("let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль\n", '');
+  cutT('// КУРС HTML: адрес — ровно как у эталона математики', '// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА', '', 'адрес сервиса озвучки');
+  cutT('// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА', '// Реплики экрана для прогрева', String.raw`// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
+// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
+// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
+// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
+// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
+// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
+const AudioCtx = createContext(null);
+const useAudio = () => useContext(AudioCtx);
+const AudioProvider = AudioCtx.Provider;
+function speechIndexOf(lang) {
+  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
+  return (all && (all[lang] || all.ru)) || {};
+}
+function speechIdsOf(clean, lang) {
+  const idx = speechIndexOf(lang);
+  if (idx[clean]) return [idx[clean]];
+  const keys = Object.keys(idx);
+  const ids = [];
+  let rest = clean;
+  while (rest) {
+    let best = null;
+    keys.forEach((c) => {
+      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
+    });
+    if (!best) return null;
+    ids.push(idx[best]);
+    rest = rest.slice(best.length).trim();
+  }
+  return ids.length ? ids : null;
+}
+function useAudioEngine(ttsApiBase, lang) {
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
+  const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const [gestured, setGestured] = useState(false);
+  const [replayNonce, setReplayNonce] = useState(0);
+  const [queue, setQueue] = useState([]);
+  const pending = useRef(null);
+  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
+  const lessonAudio = useLessonAudio(queue);
+  const audioRef = useRef(lessonAudio);
+  audioRef.current = lessonAudio;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => setGestured(true);
+    window.addEventListener('pointerdown', h, { once: true, capture: true });
+    window.addEventListener('keydown', h, { once: true, capture: true });
+    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
+  }, []);
+
+  const settle = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
+    clearTimeout(p.timer);
+    pending.current = null;
+    setPlaying(false);
+    p.resolve();
+  }, []);
+
+  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
+  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return undefined;
+    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
+    if (!p.started) return undefined;
+    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
+    return () => clearTimeout(t);
+  }, [isPlaying, settle]);
+
+  const speak = useCallback((text) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    if (pending.current) settle();
+    const ids = speechIdsOf(clean, lang);
+    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      const p = { resolve, started: false, timer: null, ids };
+      pending.current = p;
+      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
+      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
+      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
+    });
+  }, [lang, settle]);
+
+  const stop = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    setQueue([]);
+    settle();
+  }, [settle]);
+  const abort = useCallback(() => {
+    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
+    const p = pending.current;
+    if (p) clearTimeout(p.timer);
+    pending.current = null;
+    setQueue([]);
+    pausedRef.current = false; setPaused(false); setPlaying(false);
+  }, []);
+  const toggle = useCallback(() => {
+    const next = !pausedRef.current;
+    pausedRef.current = next;
+    setPaused(next);
+    const p = pending.current;
+    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
+    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
+  }, []);
+  const toggleMute = useCallback(() => {
+    setMuted((m) => { setSoundOff(!m); return !m; });
+    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
+  }, []);
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const unlock = useCallback(() => { resumeSfx(); }, []);
+  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
+  useEffect(() => () => stop(), [stop]);
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+}
+
+`, 'движок озвучки');
+}
+
+// ── КОНТРАКТ ЗАВЕРШЕНИЯ v1 (13.11.2026) ──────────────────────────────────────────────────────────
+// await onFinished({ contractVersion: 1, passed, results, analytics, meta }). Пока ответа нет —
+// «saqlanmoqda», сбой — «Qayta yuborish» с тем же результатом; успех — только после ответа. Состояние отправки
+// своё у каждого открытия урока (makeV1 в useLessonRoot). Экран отправки рисует оболочка урока (LessonShell).
+function swapContractV1() {
+  swap('// Реплики экрана для прогрева', String.raw`// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
+const V1_UI = {
+  saving: { uz: 'Natija saqlanmoqda…', ru: 'Сохраняем результат…', en: 'Saving your result…' },
+  saved: { uz: 'Natija saqlandi. Barakalla!', ru: 'Результат сохранён. Молодец!', en: 'Result saved. Well done!' },
+  failed: { uz: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.", ru: 'Не удалось сохранить результат. Проверь интернет и отправь ещё раз.', en: 'Couldn’t save your result. Check the internet and send it again.' },
+  retry: { uz: 'Qayta yuborish', ru: 'Отправить ещё раз', en: 'Send again' }
+};
+const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
+function toContractV1(old) {
+  const o = old || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const custom = {};
+  Object.keys(o).forEach((k) => {
+    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
+  });
+  return jsonSafe({
+    contractVersion: 1,
+    passed: true,
+    results: { custom: Object.assign({ screensDone: true }, custom) },
+    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
+    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
+  });
+}
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
+  };
+}
+function V1Status({ v1, lang }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
+  if (s.phase === 'idle') return null;
+  const L = V1_UI.saving[lang] ? lang : 'ru';
+  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
+  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
+  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
+  return (
+    <div style={box} role="status" aria-live="polite" className="v1-status">
+      <div style={card}>
+        <div>{V1_UI[s.phase][L]}</div>
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry[L]}</button> : null}
+      </div>
+    </div>
+  );
+}
+
+// Реплики экрана для прогрева`);
+  swap('  const finished = useRef(false);\n',
+    '  const finished = useRef(false);\n  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока (контракт v1)\n');
+  swap("\n    if (typeof onFinished === 'function') onFinished(payload);\n", '\n    v1.submit(onFinished, payload);\n');
+  swap('  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);',
+    '  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);');
+  swap('  liveRef.current = { lang, setLang, audio, log, store, page };', '  liveRef.current = { lang, setLang, audio, log, store, page, v1, done };');
+  swap('                  <CelebrateLayer />\n', '                  <CelebrateLayer />\n                  {v.done ? <V1Status v1={v.v1} lang={v.lang} /> : null}\n');
+  swap('  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };',
+    '  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };');
 }

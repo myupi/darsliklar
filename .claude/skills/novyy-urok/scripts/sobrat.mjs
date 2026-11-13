@@ -92,8 +92,15 @@ if (out.indexOf('==  У Р О К  ==', cAt + canon.length) < 0) throw new Error(
 const lesson = out.slice(cAt + canon.length);
 const imports = (lesson.match(/^\s*import .+$/gm) || []);
 if (imports.length) throw new Error('Импорты ниже канона запрещены: ' + imports.join(' | '));
-if (/from ['"](?!react['"])/.test(out.replace(/^import React[^\n]*$/m, ''))) throw new Error('Есть импорт не из react');
+// Кроме react — только '@lesson/runtime' (подготовленная озвучка платформы в каноне, 13.11.2026).
+if (/from ['"](?!react['"]|@lesson\/runtime['"])/.test(out.replace(/^import React[^\n]*$/m, ''))) throw new Error('Есть импорт не из react / @lesson/runtime');
 if ((out.match(/export default /g) || []).length !== 1) throw new Error('Нужен ровно один export default');
 
 writeFileSync(resolve(outArg), out);
 console.log(`Собран ${outArg}: ${out.split('\n').length} строк, ${Math.round(out.length / 1024)} КБ; канон ${course} дословно, пометка «УРОК» на месте.`);
+// Подготовленная озвучка (13.11.2026): реплики урока на трёх языках — в LESSON_AUDIO в конце файла.
+if (out.indexOf('function speechIdsOf(') >= 0 && /lessons\/(html|css|ai)\/\d\d(p)?-[^/]+\.jsx$/.test(resolve(outArg))) {
+  const { applyOvoz } = await import(new URL('../../../../tools/ovoz/ovoz.mjs', import.meta.url).href);
+  const r = await applyOvoz(resolve(outArg));
+  console.log(`Озвучка: ${r.counts} реплик, ${r.chars} знаков (LESSON_AUDIO).`);
+}

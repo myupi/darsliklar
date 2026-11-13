@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "canon": "node tools/build-canon.mjs && node tools/sync-canon.mjs && node tools/sync-canon.mjs css && node tools/check-canon.mjs && node tools/check-canon.mjs css",
+    "canon": "node tools/build-canon.mjs && node tools/sync-canon.mjs && node tools/sync-canon.mjs css && node tools/sync-canon.mjs ai && node tools/check-canon.mjs && node tools/check-canon.mjs css && node tools/check-canon.mjs ai",
     "canon:check": "node tools/check-canon.mjs"
   },
   "dependencies": {
