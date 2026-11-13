@@ -5,9 +5,9 @@
 // Практика идёт в плане сразу после своего урока, если в _course.js стоит
 // practice: true (финальному проекту — final: true — практика только со своим practiceTitle).
 // Название практики — practiceTitle в строке урока, иначе просто «Практика».
-//   lessons/<курс>/<NN>t-<slug>.jsx — тест к уроку NN (буква t после номера; модуль «ИИ» — тесты вместо практики,
-//   заказчик 12.11.2026). Тест идёт в плане сразу после урока (и его практики), если в _course.js стоит tests: true
-//   (финальному проекту — только со своим testTitle). Название — testTitle в строке урока, иначе «Тест».
+//   lessons/<курс>/<NN>t<K>-<slug>.jsx — тест K (1…5) к уроку NN: один вопрос в формате CRM «JSX savol / test»
+//   (модуль «ИИ» — тесты вместо практики, заказчик 12–13.11.2026). Пять тестов идут в плане сразу после урока (и его
+//   практики), если в _course.js стоит tests: true (финальному проекту — только со своим testTitle).
 // Файл без пары в плане тоже попадает в каталог — с пометкой «вне плана».
 
 const COURSE_DEFS = import.meta.glob('/lessons/*/_course.js', { eager: true, import: 'default' });
@@ -38,19 +38,21 @@ const practiceOf = (id, l) => ({
   expected: `lessons/${id}/${pad2(l.n)}p-${l.slug || 'urok'}.jsx`,
 });
 
-const testOf = (id, l) => ({
-  key: `${id}/#${l.n}t`,
+const TESTS_PER_LESSON = 5;
+const testOf = (id, l, k) => ({
+  key: `${id}/#${l.n}t${k}`,
   n: l.n,
+  tk: k,
   kind: 'test',
   slug: l.slug,
   course: id,
-  title: l.testTitle || 'Тест',
+  title: `Тест ${k}/${TESTS_PER_LESSON}`,
   testTitle: l.testTitle || null,
   lessonTitle: l.title,
   topics: l.topics || [],
   file: null,
   status: 'planned',
-  expected: `lessons/${id}/${pad2(l.n)}t-${l.slug || 'urok'}.jsx`,
+  expected: `lessons/${id}/${pad2(l.n)}t${k}-${l.slug || 'urok'}.jsx`,
 });
 
 function normalizeCourse(id, def) {
@@ -68,7 +70,7 @@ function normalizeCourse(id, def) {
       expected: `lessons/${id}/${pad2(l.n)}-${l.slug || 'urok'}.jsx`,
     });
     if (d.practice && (!l.final || l.practiceTitle)) plan.push(practiceOf(id, l));   // финальному — только если задана своя практика
-    if (d.tests && (!l.final || l.testTitle)) plan.push(testOf(id, l));   // тест — так же
+    if (d.tests && (!l.final || l.testTitle)) for (let k = 1; k <= TESTS_PER_LESSON; k += 1) plan.push(testOf(id, l, k));   // тесты — так же
   });
   return {
     id,
@@ -95,11 +97,12 @@ export function buildCatalog() {
     const [, cid, base] = m;
     if (!courses.has(cid)) courses.set(cid, normalizeCourse(cid, null));
     const course = courses.get(cid);
-    const num = /^(\d+)(p|t)?(?=[-_]|$)/i.exec(base);
+    const num = /^(\d+)(p|t(\d)?)?(?=[-_]|$)/i.exec(base);
     const n = num ? Number(num[1]) : null;
-    const kind = num && num[2] ? (num[2].toLowerCase() === 't' ? 'test' : 'practice') : 'lesson';
+    const kind = num && num[2] ? (num[2][0].toLowerCase() === 't' ? 'test' : 'practice') : 'lesson';
+    const tk = kind === 'test' ? Number(num[3] || 1) : null;
     const fileId = `${cid}/${base}`;
-    const slot = n != null ? course.lessons.find((l) => l.n === n && l.kind === kind && l.status === 'planned') : null;
+    const slot = n != null ? course.lessons.find((l) => l.n === n && l.kind === kind && (kind !== 'test' || l.tk === tk) && l.status === 'planned') : null;
     if (slot) {
       slot.file = fileId;
       slot.status = 'ready';
@@ -114,7 +117,7 @@ export function buildCatalog() {
   const list = [...courses.values()];
   list.forEach((c) => {
     // Практика стоит сразу после своего урока, тест — за ней.
-    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : l.kind === 'test' ? 0.7 : 0);
+    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : l.kind === 'test' ? 0.6 + (l.tk || 1) * 0.01 : 0);
     c.lessons.sort((a, b) => pos(a) - pos(b) || String(a.key).localeCompare(String(b.key)));
     // Счётчики курса — по урокам; практика и тесты считаются отдельно.
     const lessons = c.lessons.filter((l) => l.kind !== 'practice' && l.kind !== 'test');

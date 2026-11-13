@@ -25,8 +25,9 @@ export default function App() {
     const q = new URLSearchParams({ file, lang: prefs.lang, voice: prefs.voice });
     if (prefs.name) q.set('name', prefs.name);
     if (prefs.start !== '') q.set('start', prefs.start);
+    if (sel && sel.lesson.kind === 'test' && prefs.quizBar === false) q.set('bar', '0');
     return q.toString();
-  }, [file, prefs.lang, prefs.voice, prefs.name, prefs.start]);
+  }, [file, sel, prefs.lang, prefs.voice, prefs.name, prefs.start, prefs.quizBar]);
   const src = file ? `/player.html?${playerQuery}&run=${run}` : null;
 
   // ── Журнал: всё, что урок делает с платформой ───────────────────────────

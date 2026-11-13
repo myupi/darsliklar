@@ -8,6 +8,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.jsx';
+import QuizShell from './QuizShell.jsx';
 import { reportError } from './report.js';
 import { configureRuntime, emit } from '../runtime/bridge.js';
 import { parseLine } from '../runtime/speech.js';
@@ -150,10 +151,12 @@ async function boot() {
   if (mod.LESSON_AUDIO) configureRuntime({ lessonAudio: mod.LESSON_AUDIO });
   const props = { studentName: name, lang, ttsApiBase, onFinished };
   if (start !== null) { props.startAt = start; props.startScreen = start; }
-  emit('loaded', { file, ms: Math.round(performance.now() - t0), component: Lesson.name || 'Lesson', props: Object.keys(props) });
+  // Тест (вид «тест»): кнопку «Tekshirish» держит платформа — плеер рисует её сам (QuizShell).
+  const isTest = (found && found.lesson.kind === 'test') || /(^|\/)\d+t\d/.test(file);
+  emit('loaded', { file, ms: Math.round(performance.now() - t0), component: Lesson.name || 'Lesson', props: isTest ? ['lang', 'mode', 'onReady', 'registerCheck', 'onSubmit'] : Object.keys(props) });
   root.render(
     <ErrorBoundary>
-      <Lesson {...props} />
+      {isTest ? <QuizShell Lesson={Lesson} lang={lang} onFinished={onFinished} bar={q.get('bar') !== '0'} /> : <Lesson {...props} />}
     </ErrorBoundary>
   );
 }

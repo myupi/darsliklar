@@ -85,7 +85,7 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
           <span className="course-chip" style={{ '--chip': course.color }}>{course.short}</span>
           <h1>
             {lesson.n != null ? <span className="tb-n">{pad2(lesson.n)}</span> : null}
-            {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.kind === 'test' && lesson.lessonTitle ? `Тест · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
+            {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.kind === 'test' && lesson.lessonTitle ? `${lesson.title} · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
           </h1>
           <span className={'pill is-' + lesson.status}>
             {lesson.status === 'ready' ? 'готов' : lesson.status === 'extra' ? 'вне плана' : 'не создан'}
@@ -139,6 +139,14 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
               <RotateCw size={15} />
             </button>
           </div>
+          {lesson.kind === 'test' ? (
+            <div className="ctl">
+              <span className="ctl-label" title="Кнопку «Tekshirish» держит платформа — своей у теста нет. Здесь её рисует просмотрщик (эмуляция платформы); «Нет» — тест как есть, без кнопки">Кнопка платформы</span>
+              <Segmented label="Кнопка платформы «Tekshirish»" value={prefs.quizBar === false ? 'off' : 'on'}
+                options={[{ v: 'on', label: 'Есть', hint: 'Полоса платформы внизу: «Tekshirish», после проверки — «Keyingisi»' }, { v: 'off', label: 'Нет', hint: 'Тест как есть — только вопрос, без кнопки платформы' }]}
+                onChange={(v) => set({ quizBar: v === 'on' })} />
+            </div>
+          ) : null}
           <div className="ctl">
             <span className="ctl-label">Голос</span>
             <Segmented label="Озвучка" value={prefs.voice} options={VOICES} onChange={(voice) => set({ voice })} />

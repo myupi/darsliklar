@@ -12,6 +12,7 @@ export const DEFAULTS = {
   voice: 'browser',
   start: '',
   logOpen: true,
+  quizBar: true, // тесты: полоса платформы с «Tekshirish» (эмуляция платформы в плеере)
 };
 
 const URL_KEYS = ['lesson', 'lang', 'device', 'voice', 'start', 'name'];

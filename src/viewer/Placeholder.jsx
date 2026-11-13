@@ -11,7 +11,7 @@ export function Placeholder({ sel }) {
     <div className="placeholder">
       <div className="ph-card">
         <div className="ph-num" style={{ '--chip': course.color }}>{pad2(lesson.n)}</div>
-        <h2>{lesson.kind === 'practice' ? `Практика к уроку «${lesson.lessonTitle || pad2(lesson.n)}»` : lesson.kind === 'test' ? `Тест к уроку «${lesson.lessonTitle || pad2(lesson.n)}»` : lesson.title}</h2>
+        <h2>{lesson.kind === 'practice' ? `Практика к уроку «${lesson.lessonTitle || pad2(lesson.n)}»` : lesson.kind === 'test' ? `${lesson.title} к уроку «${lesson.lessonTitle || pad2(lesson.n)}»` : lesson.title}</h2>
         {lesson.topics.length ? (
           <div className="topics">
             {lesson.topics.map((t) => <code key={t} className="topic">{t}</code>)}
@@ -27,7 +27,7 @@ export function Placeholder({ sel }) {
         </div>
         <p className="ph-hint">
           {lesson.kind === 'test'
-            ? <>Тест находится по номеру урока с буквой t: <b>{pad2(lesson.n)}t-</b> в начале имени файла; остальную часть имени можно менять.</>
+            ? <>Тест находится по номеру урока, букве t и номеру теста: <b>{pad2(lesson.n)}t{lesson.tk || 1}-</b> в начале имени файла; остальную часть имени можно менять.</>
             : lesson.kind === 'practice'
             ? <>Практика находится по номеру урока с буквой p: <b>{pad2(lesson.n)}p-</b> в начале имени файла; остальную часть имени можно менять.</>
             : <>Урок находится по номеру <b>{pad2(lesson.n)}-</b> в начале имени файла; остальную часть имени можно менять.</>}
