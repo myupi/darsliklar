@@ -9631,7 +9631,8 @@ function cpHlLines(lines) {
       const seg = j < 0 ? line.slice(i) : line.slice(i, i + j);
       prelude += seg;
       if (/^\s*@/.test(seg)) {
-        const m = /^(\s*)(@[\w-]+)(.*)$/.exec(seg);
+        // «@» без слова (ученик ещё печатает @keyframes) — тоже at-правило, иначе подсветка падала (13.11.2026).
+        const m = /^(\s*)(@[\w-]*)(.*)$/.exec(seg);
         push('cp-t', m[1]); push('cp-at', m[2]); push('cp-mq', m[3]);
       } else push(mode === 'k' ? 'cp-nu' : 'cp-se', seg);
       i += seg.length;
