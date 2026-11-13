@@ -14136,4 +14136,16 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c1-sheet .kz-scene > .kz-col:has(> .kz-br) { flex: 1 1 auto; display: flex; flex-direction: column; }
 .is-kbd .r28 .c1-sheet .kz-scene .kz-br.c1-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c1-sheet .kz-scene .kz-br.c1-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
+
+/* После верного ответа («Barakalla!») окно браузера на телефоне не прячется — ученик видит результат (13.11.2026:
+   раньше окно до 799 px высотой пряталось при любой панели, и результат верного ответа на телефоне не был виден).
+   Прячется оно только при подсказке и ошибке; при «Barakalla!» — низкое, над панелью. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c1-sheet .kz-br.c1-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c1-sheet .kz-br.c1-br { display: flex !important; --brh: 14dvh !important; }
+}
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c1-sheet .kz-br.c1-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c1-sheet .kz-br.c1-br { --brh: 21dvh !important; }
+}
 `;

@@ -9456,6 +9456,7 @@ function CssPage({ els, rules, insp = true, scroll = null }) {
   const [boxes, setBoxes] = useState([]);
   const [ph, setPh] = useState(0);
   const key = JSON.stringify([els, R.map((r) => [r.sel, r.decls])]);
+  const hlDone = useRef(null);
   // Страница — обычный поток (static), как body: «absolute» без родителя-якоря считается от страницы окна.
   // Координаты «Инспектора» — от страницы окна с её прокруткой.
   useLayoutEffect(() => {
@@ -9464,9 +9465,14 @@ function CssPage({ els, rules, insp = true, scroll = null }) {
     if (!d || !page) return undefined;
     const measure = () => {
       setPh((old) => (old === page.clientHeight ? old : page.clientHeight));
-      if (scroll == null) {
+      // К подсвеченному — один раз на каждую новую страницу (13.11.2026: раньше это шло и на каждую прокрутку, и окно
+      // возвращалось назад — страницу на телефоне нельзя было листать пальцем).
+      if (scroll == null && hlDone.current !== key) {
         const h = d.querySelector('.is-hl');
-        if (page.scrollHeight > page.clientHeight + 1 && h && getComputedStyle(h).position !== 'fixed') page.scrollTop = Math.max(0, h.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - 30);
+        if (page.scrollHeight > page.clientHeight + 1 && h && getComputedStyle(h).position !== 'fixed') {
+          page.scrollTop = Math.max(0, h.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - 30);
+          hlDone.current = key;
+        } else if (!h) hlDone.current = key;
       }
       if (!insp) return;
       const o = page.getBoundingClientRect();
@@ -14386,4 +14392,20 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c12-sheet .kz-scene > .kz-col:has(> .kz-br) { flex: 1 1 auto; display: flex; flex-direction: column; }
 .is-kbd .r28 .c12-sheet .kz-scene .kz-br.c12-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c12-sheet .kz-scene .kz-br.c12-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
+
+/* Страница не сжимается до высоты окна (13.11.2026): на телефоне окно низкое, а слой fixed «прилипает» только в
+   пределах страницы — при прокрутке кнопка с position: fixed уезжала из угла окна. */
+.r28 .kz-br.c12-br .kz-br-page > .c12-doc { flex-shrink: 0; }
+
+/* После верного ответа («Barakalla!») окно браузера на телефоне не прячется — ученик видит результат (13.11.2026:
+   раньше окно до 799 px высотой пряталось при любой панели, и результат верного ответа на телефоне не был виден).
+   Прячется оно только при подсказке и ошибке; при «Barakalla!» — низкое, над панелью. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c12-sheet .kz-br.c12-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c12-sheet .kz-br.c12-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c12-sheet .kz-br.c12-br { display: flex !important; --brh: 14dvh !important; }
+}
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c12-sheet .kz-br.c12-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c12-sheet .kz-br.c12-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c12-sheet .kz-br.c12-br { --brh: 21dvh !important; }
+}
 `;

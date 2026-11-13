@@ -283,6 +283,7 @@ function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null
   const [boxes, setBoxes] = useState([]);
   const [ph, setPh] = useState(0);
   const key = JSON.stringify([els, R.map((r) => [r.sel, r.decls]), hv, hk, aim, mouse]);
+  const hlDone = useRef(null);
   // Страница — обычный поток (static), как body: «absolute» без родителя-якоря считается от страницы окна.
   // Координаты «Инспектора» — от страницы окна с её прокруткой.
   useLayoutEffect(() => {
@@ -304,9 +305,14 @@ function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null
           setMpos((old) => (old && old.x === np.x && old.y === np.y && old.hand === np.hand ? old : np));
         }
       } else setMpos(null);
-      if (scroll == null) {
+      // К подсвеченному — один раз на каждую новую страницу (13.11.2026: раньше это шло и на каждую прокрутку, и окно
+      // возвращалось назад — страницу на телефоне нельзя было листать пальцем).
+      if (scroll == null && hlDone.current !== key) {
         const h = d.querySelector('.is-hl');
-        if (page.scrollHeight > page.clientHeight + 1 && h && getComputedStyle(h).position !== 'fixed') page.scrollTop = Math.max(0, h.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - 30);
+        if (page.scrollHeight > page.clientHeight + 1 && h && getComputedStyle(h).position !== 'fixed') {
+          page.scrollTop = Math.max(0, h.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - 30);
+          hlDone.current = key;
+        } else if (!h) hlDone.current = key;
       }
       if (!insp) return;
       const o = page.getBoundingClientRect();
