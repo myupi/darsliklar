@@ -126,7 +126,14 @@
     shot: function (name) { QA.shots.push(String(name)); },
     events: function (type) { return state.events.filter(function (e) { return !type || e.type === type; }); },
     finished: function () { return QA.events('finished'); },
-    payload: function () { var f = QA.finished(); return f.length ? f[f.length - 1].data.payload : null; },
+    // Контракт v1 (13.11.2026): поля урока лежат в results.custom, журнал заданий — в analytics.custom.tasks.
+    // Сценарии читают их как раньше (pl.artifact, pl.answers), сам payload v1 — в pl.v1.
+    payload: function () {
+      var f = QA.finished(); var p = f.length ? f[f.length - 1].data.payload : null;
+      if (!p || p.contractVersion !== 1) return p;
+      var o = Object.assign({}, (p.results && p.results.custom) || {}, { answers: (p.analytics && p.analytics.custom && p.analytics.custom.tasks) || [], lessonId: p.meta && p.meta.lessonId, lang: p.meta && p.meta.lang, v1: p });
+      return o;
+    },
     loaded: function () { return QA.events('loaded').length > 0; }
   };
   window.__ltqa = QA;

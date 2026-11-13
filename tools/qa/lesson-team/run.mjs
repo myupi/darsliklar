@@ -210,7 +210,15 @@ async function main() {
     const d = p.exceptionDetails || {};
     errors.push({ t: Date.now(), kind: 'exception', text: String((d.exception && d.exception.description) || d.text || '').slice(0, 800) });
   });
+  // Подготовленная озвучка (13.11.2026): реплика без записи в LESSON_AUDIO — канон пишет console.warn «[ovoz] …».
+  const ovozMiss = new Set();
   pg.on('Runtime.consoleAPICalled', (p) => {
+    if (p.type === 'warning') {
+      const t = (p.args || []).map((a) => (a.value !== undefined ? a.value : '')).join(' ');
+      const m = /^\[ovoz\] LESSON_AUDIO da yozuv yo'q: ([\s\S]*)$/.exec(t);
+      if (m) ovozMiss.add(m[1]);
+      return;
+    }
     if (p.type !== 'error' && p.type !== 'assert') return;
     const text = (p.args || []).map((a) => (a.value !== undefined ? a.value : a.description || '')).join(' ').slice(0, 800);
     if (/^\[vite\]/.test(text)) { warnings.push('окружение: ' + text); return; }
@@ -493,6 +501,7 @@ async function main() {
     add(check('runner', { title: 'Работа раннера', status: 'blocked', reason: 'сбой прогона: ' + e.message }));
   } finally {
     if (warnings.length) report.notes.push(...[...new Set(warnings)].slice(0, 20));
+    if (ovozMiss.size) report.ovozMiss = [...ovozMiss];
     try { pg.close(); } catch { /* no-op */ }
     chrome.close();
   }

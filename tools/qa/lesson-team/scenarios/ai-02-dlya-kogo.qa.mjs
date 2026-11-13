@@ -52,7 +52,7 @@ const STEPS = [
   step('fin: вывод', `
     await qa.platform.next();
     await qa.waitFor(() => qa.platform.nextEnabled(), 180000, '«Завершить урок»');
-    qa.expect(qa.qa('.a1-pin').length >= (document.documentElement.clientWidth < 760 ? 2 : 3), 'метки «откуда что» на своём сайте (в узком окне — две)');`),
+    qa.expect(qa.qa('.a1-pin').length >= 2, 'метки «откуда что» на своём сайте (в окне сайта на итоге — не больше двух, правило урока)');`),
   step('fin: завершение один раз', `
     await qa.platform.next();
     await qa.waitFor(() => qa.finished().length >= 1, 10000, 'onFinished');

@@ -39,9 +39,12 @@ const STEPS = [
     for (const [i, t] of [['1', 'p'], [null, 'body'], ['0', 'h1']]) {
       await qa.platform.ready(30000);
       await qa.waitFor(() => qa.q('.c4-doc.is-tap'), 30000, 'страница нажимается');
+      // Счётчик раунда «N/3»: после верного ответа ждём, пока раунд сменится (или откроется «Дальше»),
+      // а не фиксированную паузу — поле снова кликабельно чуть раньше смены раунда (13.11.2026).
+      const round = () => { const e = qa.q('.kz-ask-n'); return e ? e.textContent.trim() : ''; };
+      const r0 = round();
       if (i === null) qa.q('.c4-doc').click(); else qa.q('.c4-doc .c4-blk[data-i="' + i + '"]').click();
-      await qa.waitFor(() => !qa.q('.c4-doc.is-tap') || qa.platform.nextEnabled(), 8000, 'ответ принят: ' + t);
-      await qa.sleep(1500);
+      await qa.waitFor(() => round() !== r0 || qa.platform.nextEnabled(), 12000, 'ответ принят: ' + t);
     }
     await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
   } },
