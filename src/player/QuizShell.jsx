@@ -28,11 +28,11 @@ export default function QuizShell({ Lesson, lang, onFinished, bar = true }) {
   };
   const btn = { minHeight: 46, padding: '0 26px', border: 0, borderRadius: 12, font: 'inherit', fontSize: 16, fontWeight: 700, color: '#fff', cursor: 'pointer' };
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, "Segoe UI", Roboto, system-ui, sans-serif' }}>
-      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', background: '#F4F5F7' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, "Segoe UI", Roboto, system-ui, sans-serif' }}>
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', background: '#F4F5F7', '--aq-h': '100%' }}>
         <Lesson lang={lang} mode="answer" onReady={onReady} registerCheck={registerCheck} onSubmit={onSubmit} />
       </div>
-      {bar ? <div className="quiz-shell-bar" style={{ position: 'sticky', bottom: 0, background: '#fff', borderTop: '1px solid #DCE3EE' }}>
+      {bar ? <div className="quiz-shell-bar" style={{ flex: 'none', background: '#fff', borderTop: '1px solid #DCE3EE' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', maxWidth: 760, margin: '0 auto', padding: '12px 16px' }}>
           {result
             ? <button type="button" className="quiz-shell-next" onClick={next} style={{ ...btn, background: result.correct ? '#4CAF6A' : '#C62828', boxShadow: 'inset 0 -3px 0 rgba(0,0,0,.16)' }}>{U.next}</button>

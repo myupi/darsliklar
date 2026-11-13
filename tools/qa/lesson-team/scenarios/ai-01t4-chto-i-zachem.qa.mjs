@@ -8,7 +8,7 @@ const STEPS = [
     qa.expect(!!qa.q('.quiz-shell-check:disabled'), '«Tekshirish» платформы закрыта до выбора');
     await qa.click('.aq-opt[data-v="1"]', 'вариант B');
     await qa.waitFor(() => qa.q('.quiz-shell-check:not(:disabled)'), 5000, '«Tekshirish» открылась (onReady)');
-    qa.expect(!qa.q('.aq button:not(.aq-opt)'), 'своей кнопки у теста нет');
+    qa.expect(!qa.qa('.aq button').some((b) => !b.matches('.aq-opt') && !b.closest('.aq-doc')), 'своей кнопки у теста нет (кнопки сайта в окне не в счёт)');
     await qa.click('.quiz-shell-check', 'Tekshirish');
     await qa.waitFor(() => qa.q('.aq-fb'), 5000, 'ответ засчитан');
     qa.expect(!!qa.q('.aq-fb.is-bad') && !!qa.q('.aq-opt[data-v="1"].is-bad'), '«Maslahat», выбранный — красный');

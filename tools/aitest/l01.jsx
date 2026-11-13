@@ -15,9 +15,16 @@ const QS = [
     en: { ctx: 'We tell the AI what to make.', q: 'Which fits the “What?” line best?', opts: ['A site', 'A football tournament site', 'Something cool', 'Make something'],
       ok: '“A football tournament site” names a real thing: exactly what site is needed.', hint: 'Which answer tells the AI exactly what site is needed? It needs a topic and a kind of site.', alt: 'An empty “What?” line in a prompt' } },
   { id: 'ai-01t2', target: 'ai-01', tag: 'nega', correct: 2,
-    vis: (L) => <AqSite title={L === 'ru' ? 'Шахматный турнир' : L === 'en' ? 'Chess tournament' : 'Shaxmat turniri'} sub={L === 'ru' ? 'Запишись прямо сейчас!' : L === 'en' ? 'Sign up now!' : "Hoziroq ro'yxatdan o'ting!"}
-      btn={L === 'ru' ? 'Записаться' : L === 'en' ? 'Sign up' : "Ro'yxatdan o'tish"} color="#334155"
-      form={{ h: L === 'ru' ? 'Запись' : L === 'en' ? 'Sign up' : "Ro'yxatdan o'tish", fields: [L === 'ru' ? 'Твоё имя' : L === 'en' ? 'Your name' : 'Ismingiz', L === 'ru' ? 'Твой класс' : L === 'en' ? 'Your class' : 'Sinfingiz'], btn: L === 'ru' ? 'Отправить' : L === 'en' ? 'Send' : 'Yuborish' }} />,
+    // Сайт — как его собрал бы ИИ урока 1 из «Shaxmat turniri sayti» + «o'yinchilar turnirga yozilsin» (тема шахмат, вид «турнир»);
+    // карточки не показаны: форма записи — главная подсказка вопроса — должна быть видна сразу под баннером.
+    vis: (L) => { const T3 = (uz, ru, en) => (L === 'ru' ? ru : L === 'en' ? en : uz); return <AqSite site={{
+      title: T3('Shaxmat turniri', 'Шахматный турнир', 'Chess tournament'), em: '♟️', focus: '.goal', c: '#334155', c2: '#0F172A', bg: '#E2E8F0',
+      nav: [T3('Jadval', 'Расписание', 'Schedule'), T3('Jamoalar', 'Команды', 'Teams'), T3('Sovrinlar', 'Призы', 'Prizes')],
+      badge: T3('Bahor turniri · 2026', 'Весенний турнир · 2026', 'Spring tournament · 2026'),
+      sub: T3("Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", 'Запишись прямо сейчас: мест немного!', 'Sign up now: places are limited!'),
+      cta: T3("Ro'yxatdan o'tish", 'Записаться', 'Sign up'),
+      goal: { h: T3("Ro'yxatdan o'tish", 'Запись', 'Sign up'), fields: [T3('Ismingiz', 'Твоё имя', 'Your name'), T3('Sinfingiz', 'Твой класс', 'Your class')], btn: T3('Yuborish', 'Отправить', 'Send') },
+      foot: T3('Barcha huquqlar himoyalangan.', 'Все права защищены.', 'All rights reserved.') }} />; },
     uz: { ctx: "Sun'iy intellekt shu saytni yaratdi.", q: "Qaysi «Nega?» qatori shu saytni bergan?", opts: ['odamlar turnir qachon va qayerdaligini bilsin', "odamlar bizga qo'ng'iroq qilsin", "o'yinchilar turnirga yozilsin", "sayt chiroyli bo'lsin"],
       ok: "Saytda ro'yxatdan o'tish tugmasi va formasi bor: maqsad yozilish.", hint: "Saytdagi katta tugmaga va formaga qarang: ular odamlardan nima qilishni so'rayapti?", alt: "Ro'yxatdan o'tish tugmasi va formasi bor sayt" },
     ru: { ctx: 'ИИ сделал такой сайт.', q: 'Какая строка «Зачем?» дала этот сайт?', opts: ['чтобы люди узнали, когда и где турнир', 'чтобы люди нам звонили', 'чтобы игроки записывались на турнир', 'чтобы сайт был красивым'],

@@ -34,15 +34,18 @@ const AQ_FORMULA = [
 ];
 
 // ── КАРТИНКИ ВОПРОСА (лёгкие, без движка уроков) ──
-// Поле промпта: rows — [{ q: номер вопроса формулы, t: текст | null (пустая строка «…») }].
+// Короткая запись текста на трёх языках в данных вопроса: const T = aqL(L); T('uz', 'ru', 'en').
+const aqL = (L) => (uz, ru, en) => (L === 'ru' ? ru : L === 'en' ? en : uz);
+// Поле промпта: rows — [{ q: номер вопроса формулы, t: текст | null (пустая строка «…») }]
+// или своя метка { lab, c, bg, t } — например, «1-prompt», «2-prompt» урока 7.
 function AqPrompt({ L, rows }) {
   return (
     <div className="aq-prompt">
       {rows.map((r, i) => {
-        const f = AQ_FORMULA[r.q];
+        const f = r.lab ? { c: r.c || '#475569', bg: r.bg || '#F1F5F9' } : AQ_FORMULA[r.q];
         return (
           <div key={i} className="aq-pl">
-            <span className="aq-pq" style={{ background: f.c }}>{f[L] || f.ru}</span>
+            <span className="aq-pq" style={{ background: f.c }}>{r.lab || f[L] || f.ru}</span>
             {r.t ? <span className="aq-pv" style={{ background: f.bg, color: f.c }}>{r.t}</span> : <span className="aq-pe">…</span>}
           </div>
         );
@@ -50,21 +53,146 @@ function AqPrompt({ L, rows }) {
     </div>
   );
 }
-// Сайт в окне браузера: title, sub, btn (текст главной кнопки | null), form (поля записи), color, guess (метка «Taxmin»).
-function AqSite({ title, sub, btn, form, color, guess }) {
+// Окно браузера — как в уроках модуля (Chrome: вкладка с названием, кнопки окна, адресная строка index.html).
+// Сайт внутри — того же вида, что собирает ИИ в уроках (aiSite, tools/ai1/ai1-kit.jsx): меню, баннер с градиентом,
+// главная кнопка, карточки, раздел цели, подвал. Страница рисуется в ширину 800 px (на телефоне — 390 px, мобильная
+// версия, 480 px) и уменьшается под окно, как в уроках; сайт виден целиком, без прокрутки внутри окна.
+// site: { title, em, nav: [3], badge, sub, cta, cards: [{ ic, h, p }], goal: { h, fields: [], btn } | null, foot, noFoot, focus, c, c2, bg }
+function AqBrowser({ title, children, phone, innerRef, style }) {
   return (
-    <div className="aq-br">
-      <div className="aq-br-bar"><i /><i /><i /><span className="aq-br-tab">{title}</span></div>
-      <div className="aq-site">
-        <div className="aq-hero" style={{ background: color || '#7C3AED' }}>
-          <b>{title}</b>
-          {sub ? <span>{sub}</span> : null}
-          {btn ? <em>{btn}</em> : null}
-          {guess ? <i className="aq-guess">{guess}</i> : null}
-        </div>
-        {form ? <div className="aq-form"><b>{form.h}</b>{form.fields.map((x, i) => <span key={i}>{x}</span>)}<em style={{ background: color || '#7C3AED' }}>{form.btn}</em></div> : null}
+    <div ref={innerRef} style={style} className={'aq-br' + (phone ? ' is-phone' : '')}>
+      <div className="aq-br-bar">
+        <span className="aq-br-tab"><i className="aq-br-fav" /><span className="aq-br-tt">{title}</span><i className="aq-br-x" /></span>
+        <i className="aq-br-plus" />
+        <span className="aq-br-win"><i className="aq-w-min" /><i className="aq-w-max" /><i className="aq-br-x" /></span>
       </div>
+      <div className="aq-br-tool"><span className="aq-br-ar">‹ ›</span><span className="aq-br-url"><i className="aq-br-lock" />index.html</span></div>
+      <div className="aq-br-body">{children}</div>
     </div>
+  );
+}
+// Расширения сайта для вопросов уроков 2–7 (всё необязательно):
+//   font — свой шрифт; dark — тёмная страница; radius / shadow ('big' | 'none') — форма карточек; heroBg — свой фон баннера;
+//   btn / btnFg — свой цвет кнопок (второй цвет «Ko'rinishi?»); oneBtn — одна кнопка (без кнопки в меню); mobile — телефон (390 px, ☰), bottomBtn — кнопка внизу экрана телефона;
+//   info — строка сведений под баннером [{ t, guess }]; blocks — блоки [{ h, items: [{ t, p, guess }], mark }];
+//   extras — что ИИ добавил сам { popup, sale, chat }; cursor — 'hover' | 'click' над главной кнопкой; ctaHot — вид
+//   кнопки под мышкой { bg, scale }; ctaBig — кнопка всегда огромная; toast — сообщение после нажатия;
+//   marks — метки { hero: { t, c }, cta: { t, c }, info: { t, c }, extras: { t, c } }; у блока — свой mark.
+function AqPin({ m }) { return m ? <i className="pin" style={{ background: m.c || '#475569' }}>{m.t}</i> : null; }
+function AqCursor({ click }) {
+  return (
+    <span className={'cur' + (click ? ' is-click' : '')} aria-hidden="true">
+      {click ? <i className="ring" /> : null}
+      <svg viewBox="0 0 24 24"><path d="M5 2.5v17.2l4.6-4.4 3 6.6 2.9-1.3-3-6.5h6.4z" fill="#fff" stroke="#111827" strokeWidth="1.6" strokeLinejoin="round" /></svg>
+    </span>
+  );
+}
+// Свободная высота под картинку вопроса: высота .aq-main без отступов и без всех остальных частей (заголовок, варианты,
+// плашка). Экран теста не прокручивается (заказчик, 13.11.2026: «нигде не должен быть скрола»): картинка берёт, что осталось.
+function aqFree(el) {
+  const vis = el && el.closest('.aq-vis'); const main = el && el.closest('.aq-main');
+  if (!vis || !main) return null;
+  const px = (v) => parseFloat(v) || 0;
+  const cs = getComputedStyle(main);
+  let free = main.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom);
+  const vs = getComputedStyle(vis);
+  free -= px(vs.marginTop) + px(vs.marginBottom);
+  if (cs.display !== 'grid') {
+    for (const ch of main.children) {
+      if (ch === vis || ch.tagName === 'STYLE') continue;
+      const c = getComputedStyle(ch);
+      if (c.display === 'none' || c.position === 'absolute') continue;
+      free -= ch.offsetHeight + px(c.marginTop) + px(c.marginBottom);
+    }
+  }
+  return { free: Math.max(0, Math.floor(free)), width: vis.clientWidth, wide: cs.display === 'grid' };
+}
+// Пересчёт при смене размера окна и когда появляется плашка ответа.
+function useAqFit(ref, deps) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const main = ref.current && ref.current.closest('.aq-main');
+    if (!main) return undefined;
+    let raf = 0;
+    const bump = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setTick((t) => t + 1)); };
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(bump) : null;
+    if (ro) { ro.observe(main); Array.prototype.forEach.call(main.children, (c) => ro.observe(c)); }
+    const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(() => { if (ro) Array.prototype.forEach.call(main.children, (c) => ro.observe(c)); bump(); }) : null;
+    if (mo) mo.observe(main, { childList: true });
+    window.addEventListener('resize', bump);
+    return () => { cancelAnimationFrame(raf); if (ro) ro.disconnect(); if (mo) mo.disconnect(); window.removeEventListener('resize', bump); };
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+  return tick;
+}
+// Сайт в окне. Масштаб — по ширине и по свободной высоте; если по высоте сайт стал бы мельче читаемого, окно показывает
+// его часть — от элемента S.focus (селектор внутри страницы: '.blk', '.info', '.goal', '.cards' …), как в уроках на телефоне.
+function AqSite({ site }) {
+  const S = site;
+  const frame = useRef(null);
+  const docRef = useRef(null);
+  const tick = useAqFit(frame, [site]);
+  const [fit, setFit] = useState(null);
+  useEffect(() => {
+    const f = aqFree(frame.current); const doc = docRef.current;
+    if (!f || !doc) return;
+    const phone = !!S.mobile;
+    const narrow = !f.wide && f.width < 560;
+    const vw = phone ? 390 : narrow ? 480 : 800;
+    const maxW = phone ? Math.min(f.width, 300) : Math.min(f.width, f.wide ? 640 : 520);
+    const chrome = frame.current.offsetHeight - (frame.current.querySelector('.aq-page') || frame.current).offsetHeight;
+    const docH = doc.offsetHeight;
+    const kW = maxW / vw, kH = (f.free - chrome) / docH;
+    const kMin = Math.min(kW, phone ? 0.62 : narrow ? 0.6 : 0.42);   // мельче — текст сайта не прочитать
+    const k = Math.max(Math.min(kW, kH), kMin);
+    const fullH = Math.round(docH * k);
+    const viewH = Math.max(0, Math.min(fullH, f.free - chrome));
+    let off = 0;
+    if (viewH < fullH && S.focus) {
+      const el = doc.querySelector(S.focus);
+      if (el) off = Math.min(fullH - viewH, Math.max(0, Math.round((el.offsetTop - 8) * k)));
+    }
+    const next = { vw, k, viewH, off, hide: viewH < 70 };
+    setFit((p) => (p && p.vw === next.vw && Math.abs(p.k - next.k) < 0.002 && p.viewH === next.viewH && p.off === next.off && p.hide === next.hide ? p : next));
+  }, [tick, site, fit && fit.vw]); // eslint-disable-line react-hooks/exhaustive-deps
+  const vw = fit ? fit.vw : (S.mobile ? 390 : 800);
+  const k = fit ? fit.k : 0;
+  const vars = { '--c': S.c, '--c2': S.c2, '--bg': S.bg, '--rad': (S.radius != null ? S.radius : 16) + 'px' };
+  if (S.font) vars.fontFamily = S.font;
+  if (S.heroBg) vars['--hero'] = S.heroBg;
+  if (S.btn) { vars['--btn'] = S.btn; vars['--btnfg'] = S.btnFg || '#1F2937'; }
+  const M = S.marks || {};
+  const cls = 'aq-doc' + (vw < 600 ? ' is-m' : '') + (S.dark ? ' is-dark' : '') + (S.shadow === 'big' ? ' sh-big' : S.shadow === 'none' ? ' sh-none' : '') + (S.heroBg ? ' has-hero' : '') + (S.btn ? ' has-btn' : '');
+  const hot = S.cursor === 'hover' && S.ctaHot ? { background: S.ctaHot.bg || undefined, color: S.ctaHot.fg || undefined, transform: 'scale(' + (S.ctaHot.scale || 1) + ')' } : null;
+  return (
+    <AqBrowser title={S.title} phone={!!S.mobile} innerRef={frame} style={fit ? { width: Math.round(vw * k), visibility: fit.hide ? 'hidden' : 'visible', height: fit.hide ? 0 : undefined } : { visibility: 'hidden' }}>
+      <div className="aq-page" style={{ height: fit ? fit.viewH : 1 }}>
+        <div className="aq-scale" style={{ transform: fit ? 'translateY(' + -fit.off + 'px)' : undefined }}>
+          <div ref={docRef} className={cls} style={Object.assign({ width: vw, transform: 'scale(' + (k || 1) + ')' }, vars)}>
+            <div className="nav"><span className="logo">{S.em + ' ' + S.title.split(/\s+/).slice(0, 2).join(' ')}</span>
+              {S.mobile ? <span className="burger">☰</span> : <><div className="links">{S.nav.map((x, i) => <span key={i}>{x}</span>)}</div>{S.oneBtn ? <span /> : <span className="navbtn">{S.cta}</span>}</>}</div>
+            <div className="hero">
+              {S.badge ? <span className="badge">{S.badge}</span> : null}<h1 className="title">{S.title}</h1>{S.sub ? <p className="sub">{S.sub}</p> : null}
+              <span className="cta-w"><button type="button" tabIndex={-1} className={'cta' + (S.ctaBig ? ' is-big' : '')} style={hot || undefined}>{S.cta}</button>{S.cursor ? <AqCursor click={S.cursor === 'click'} /> : null}<AqPin m={M.cta} /></span>
+              {S.toast ? <div className="toast">{S.toast}</div> : null}
+              {S.extras && S.extras.sale ? <span className="sale">{S.extras.sale}</span> : null}
+              <AqPin m={M.hero} />
+            </div>
+            {S.info && S.info.length ? <div className="info">{S.info.map((x, i) => <span key={i} className={x.guess ? 'is-guess' : ''}>{x.t}{x.guess ? <i className="tx">{x.guess}</i> : null}</span>)}<AqPin m={M.info} /></div> : null}
+            {S.cards && S.cards.length ? <div className="cards">{S.cards.map((c, i) => <div key={i} className="card"><div className="ic">{c.ic}</div><h3 className="ch">{c.h}</h3><p className="cp">{c.p}</p></div>)}</div> : null}
+            {(S.blocks || []).map((b, i) => (
+              <div key={i} className="blk"><h2 className="bh">{b.h}</h2>
+                <div className="row3">{b.items.map((x, j) => <div key={j} className={'it' + (x.wide ? ' wide' : '')}>{x.ic ? <div className="ic">{x.ic}</div> : null}{x.t}{x.p ? <p className="pr">{x.p}{x.guess ? <i className="tx">{x.guess}</i> : null}</p> : x.guess ? <i className="tx">{x.guess}</i> : null}</div>)}</div>
+                <AqPin m={b.mark} /></div>
+            ))}
+            {S.goal ? <div className="goal"><h2 className="gh">{S.goal.h}</h2>{S.goal.fields.map((x, i) => <div key={i} className="inp">{x}</div>)}<button type="button" tabIndex={-1} className="btn2">{S.goal.btn}</button></div> : null}
+            {S.bottomBtn ? <div className="bottom"><span>{S.bottomBtn}</span></div> : null}
+            {S.noFoot ? null : <div className="foot">{'© 2026 ' + S.title + '. ' + S.foot}</div>}
+            {S.extras && S.extras.popup ? <div className="popup"><b>{S.extras.popup}</b><span className="inp">✉ email</span><AqPin m={M.extras} /></div> : null}
+            {S.extras && S.extras.chat ? <span className="chat">💬</span> : null}
+          </div>
+        </div>
+      </div>
+    </AqBrowser>
   );
 }
 // Сообщение клиента — облачко.
@@ -96,16 +224,17 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
   };
   useEffect(() => { if (onReady) onReady(answering && sel !== null && !checked); return () => { if (onReady) onReady(false); }; }, [sel, checked, answering, onReady]);
   useEffect(() => { if (!registerCheck) return undefined; registerCheck(check); return () => registerCheck(null); }); // eslint-disable-line react-hooks/exhaustive-deps
+  // Экран не прокручивается: если вопрос с картинкой-промптом всё же не влез (очень низкий телефон), картинка прячется,
+  // а вопрос, варианты и плашка остаются целиком. Окно сайта подгоняет себя само (AqSite).
+  const mainRef = useRef(null);
+  const [tight, setTight] = useState(false);
+  const fitTick = useAqFit(mainRef, []);
   useEffect(() => {
-    if (!checked || !fbRef.current || typeof window === 'undefined') return;
-    // Плашка под вариантами должна быть видна целиком — с запасом под нижнюю полосу платформы с кнопкой.
-    const el = fbRef.current;
-    requestAnimationFrame(() => {
-      const low = window.innerHeight - 84;
-      const d = el.getBoundingClientRect().bottom - low;
-      if (d > 0) window.scrollBy(0, d);
-    });
-  }, [checked]);
+    const m = mainRef.current;
+    if (!m) return;
+    if (m.querySelector('.aq-br')) { if (tight) setTight(false); return; }
+    if (!tight && m.scrollHeight > m.clientHeight + 1) setTight(true);
+  }, [fitTick, checked, tight]);
   const fb = checked ? (
     <div ref={fbRef} className={'aq-fb ' + (ok ? 'is-ok' : 'is-bad')} aria-live="polite">
       <div className="aq-fb-in">
@@ -116,9 +245,9 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
     </div>
   ) : null;
   return (
-    <section className="aq" lang={L}>
+    <section className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
       <style>{AQ_CSS}</style>
-      <div className="aq-main">
+      <div className="aq-main" ref={mainRef}>
         <span className="aq-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v13M3 18.5V5.5a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3 3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 1.5 3 3 0 0 0-3-1.5H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{U.chip}</span>
         <div className="aq-head">
           <h1 className="aq-q">{T.q}</h1>
@@ -144,17 +273,19 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
 }
 
 const AQ_CSS = `
-.aq { box-sizing: border-box; min-height: 100%; width: 100%; color: #1E1B39; font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, Arial, sans-serif; -webkit-text-size-adjust: 100%;
+.aq { box-sizing: border-box; display: flex; flex-direction: column; height: var(--aq-h, 100dvh); overflow: hidden; width: 100%; color: #1E1B39; font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, Arial, sans-serif; -webkit-text-size-adjust: 100%;
   background-color: #F4F5F7; background-image: radial-gradient(circle, #D5DAE1 1px, transparent 1.4px); background-size: 20px 20px; background-position: -10px -10px; }
 .aq * { box-sizing: border-box; }
-.aq { flex: 1 0 auto; } /* в полосе платформы — до самой кнопки снизу */
-.aq-main { width: 100%; max-width: 760px; margin: 0 auto; padding: 56px 16px 24px; flex: 1 0 auto; }
-.aq-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 999px; background: #E1F5FF; color: #009BE7; font-size: 12px; font-weight: 600; white-space: nowrap; }
+/* Экран теста — ровно в высоту окна, без прокрутки (заказчик, 13.11.2026). Картинка берёт оставшееся место. */
+.aq-main { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; max-width: 760px; margin: 0 auto; padding: 16px 16px 12px; }
+.aq-main > * { flex: none; }
+.aq.is-tight .aq-vis { display: none; }
+.aq-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 999px; background: #E1F5FF; color: #009BE7; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .aq-chip svg { width: 16px; height: 16px; flex: none; }
 .aq-head { display: flex; flex-direction: column; margin-top: 16px; }
 .aq-q { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.3; color: #000; overflow-wrap: break-word; }
 .aq-ctx { margin: 8px 0 0; font-size: 14px; font-weight: 500; line-height: 1.4; color: #6E6A85; overflow-wrap: break-word; }
-.aq-vis { display: flex; justify-content: center; margin-top: 18px; }
+.aq-main > .aq-vis { flex: 0 1 auto; min-height: 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; margin-top: 14px; }
 .aq-opts { display: flex; flex-wrap: wrap; margin-top: 18px; }
 .aq-opt { display: flex; align-items: center; width: 100%; min-height: 56px; margin: 5px 0; padding: 8px 16px; background: #fff; border: solid #E9E7EF; border-width: 2px 2px 4px; border-radius: 14px;
   font: inherit; font-size: 16px; font-weight: 500; line-height: 1.3; color: #1E1B39; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -189,40 +320,135 @@ const AQ_CSS = `
 .aq-pq { flex: none; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .aq-pv { min-width: 0; padding: 2px 8px; border-radius: 6px; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .aq-pe { display: inline-block; min-width: 72px; padding: 0 10px; border: 1.5px dashed #CBD5E1; border-radius: 6px; color: #94A3B8; text-align: center; font-weight: 700; }
-.aq-br { width: min(100%, 420px); border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px #D9DEE6, 0 8px 22px rgba(15, 23, 42, .08); }
-.aq-br-bar { display: flex; align-items: center; gap: 5px; padding: 7px 10px; background: #E9EDF2; }
-.aq-br-bar i { width: 8px; height: 8px; border-radius: 50%; background: #C7CDD6; }
-.aq-br-tab { margin-left: 8px; padding: 2px 10px; border-radius: 8px 8px 0 0; background: #fff; font-size: 11px; font-weight: 600; color: #334155; }
-.aq-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 12px; color: #fff; text-align: center; }
-.aq-hero b { font-size: 18px; font-weight: 800; }
-.aq-hero span { font-size: 12px; opacity: .92; }
-.aq-hero em { margin-top: 4px; padding: 5px 14px; border-radius: 8px; background: #fff; color: #1E1B39; font-size: 12px; font-weight: 800; font-style: normal; }
-.aq-guess { position: absolute; right: 8px; top: 8px; padding: 1px 8px; border-radius: 999px; background: #475569; color: #fff; font-size: 10.5px; font-weight: 700; font-style: normal; }
-.aq-form { display: flex; flex-direction: column; gap: 5px; margin: 10px 12px 12px; padding: 10px; border-radius: 10px; background: #F5F3FF; }
-.aq-form b { font-size: 12.5px; font-weight: 800; color: #1E1B39; }
-.aq-form span { padding: 4px 8px; border: 1px solid #CBD5E1; border-radius: 6px; background: #fff; color: #94A3B8; font-size: 11px; }
-.aq-form em { align-self: flex-start; padding: 4px 12px; border-radius: 6px; color: #fff; font-size: 11px; font-weight: 700; font-style: normal; }
+/* Окно браузера — как в уроках (Chrome). */
+.aq-br { width: min(100%, 480px); border-radius: 10px; overflow: hidden; background: #DEE1E6; box-shadow: inset 0 0 0 1px #C7CBD1, 0 10px 26px rgba(15, 23, 42, .10); }
+.aq-br-bar { display: flex; align-items: flex-end; gap: 6px; height: 31px; padding: 0 0 0 10px; }
+.aq-br-tab { display: flex; align-items: center; gap: 7px; max-width: 62%; height: 25px; padding: 0 10px; border-radius: 8px 8px 0 0; background: #fff; color: #202124; font-size: 12px; font-weight: 500; }
+.aq-br-fav { flex: none; width: 11px; height: 11px; border-radius: 3px; background: #E44D26; }
+.aq-br-tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aq-br-x { flex: none; position: relative; width: 9px; height: 9px; opacity: .6; }
+.aq-br-x::before, .aq-br-x::after { content: ''; position: absolute; left: 4px; top: -1px; width: 1.5px; height: 11px; background: #202124; rotate: 45deg; }
+.aq-br-x::after { rotate: -45deg; }
+.aq-br-plus { position: relative; flex: none; align-self: center; width: 12px; height: 12px; margin-top: 4px; }
+.aq-br-plus::before, .aq-br-plus::after { content: ''; position: absolute; left: 5px; top: 0; width: 2px; height: 12px; background: #5F6368; }
+.aq-br-plus::after { rotate: 90deg; }
+.aq-br-win { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 14px; padding-right: 12px; margin-top: 2px; }
+.aq-w-min { width: 10px; height: 1.5px; background: #202124; opacity: .8; }
+.aq-w-max { width: 9px; height: 9px; border: 1px solid #202124; border-radius: 1px; opacity: .8; }
+.aq-br-tool { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px; background: #fff; box-shadow: inset 0 -1px 0 #DADCE0; }
+.aq-br-ar { flex: none; color: #5F6368; font-size: 15px; letter-spacing: 6px; line-height: 1; }
+.aq-br-url { flex: 1; display: flex; align-items: center; gap: 7px; height: 21px; padding: 0 12px; border-radius: 999px; background: #F1F3F4; color: #202124; font-size: 12px; }
+.aq-br-lock { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1.6px #5F6368; }
+.aq-br-body { background: #fff; }
+.aq-page { overflow: hidden; background: #F8FAFC; } /* сайт виден целиком — без прокрутки внутри окна */
+.aq-scale { position: relative; overflow: hidden; }
+/* Сайт — те же правила, что у сайта ИИ в уроках (aiSite). */
+.aq-doc { transform-origin: 0 0; background-color: #F8FAFC; font-family: Inter, system-ui, sans-serif; color: #0F172A; text-align: left; }
+.aq-doc .nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 32px; background-color: white; box-shadow: 0 1px 0 #E2E8F0; }
+.aq-doc .logo { font-weight: 800; font-size: 18px; color: var(--c2); }
+.aq-doc .links { display: flex; gap: 22px; font-size: 14px; color: #475569; }
+.aq-doc .navbtn { background-color: var(--c); color: white; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.aq-doc .hero { padding: 34px 28px; background-image: linear-gradient(135deg, var(--c), var(--c2)); color: white; text-align: center; }
+.aq-doc .badge { display: inline-block; padding: 5px 14px; border-radius: 999px; background-color: rgba(255, 255, 255, 0.2); font-size: 13px; font-weight: 600; }
+.aq-doc .title { margin: 10px 0 8px; font-size: 38px; font-weight: 800; line-height: 1.1; }
+.aq-doc .sub { margin: 0 0 16px; font-size: 17px; opacity: 0.92; }
+.aq-doc .cta { background-color: white; color: var(--c2); padding: 12px 24px; border: none; border-radius: 12px; font: inherit; font-size: 17px; font-weight: 800; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); }
+.aq-doc .cards { display: flex; gap: 14px; padding: 18px 28px 6px; }
+.aq-doc .card { flex: 1; background-color: white; border-radius: 16px; padding: 14px; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08); }
+.aq-doc .ic { font-size: 28px; }
+.aq-doc .ch { margin: 8px 0 4px; font-size: 18px; font-weight: 700; }
+.aq-doc .cp { margin: 0; font-size: 14px; color: #64748B; }
+.aq-doc .goal { margin: 14px 28px 6px; padding: 16px 18px; border-radius: 18px; background-color: var(--bg); }
+.aq-doc .gh { margin: 0 0 12px; font-size: 22px; font-weight: 800; color: var(--c2); }
+.aq-doc .inp { background-color: white; border: 1px solid #CBD5E1; border-radius: 10px; padding: 11px 14px; color: #94A3B8; margin: 0 0 10px; font-size: 15px; }
+.aq-doc .btn2 { background-color: var(--c); color: white; padding: 12px 22px; border: none; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700; }
+.aq-doc .foot { padding: 14px 28px; color: #64748B; font-size: 13px; text-align: center; }
+.aq-br.is-phone { width: min(100%, 300px); }
+.aq-doc { position: relative; }
+.aq-doc .cards .card, .aq-doc .it, .aq-doc .goal { border-radius: var(--rad); }
+.aq-doc.sh-big .card, .aq-doc.sh-big .it { box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22); }
+.aq-doc.sh-none .card, .aq-doc.sh-none .it { box-shadow: none; border: 2px solid #CBD5E1; }
+.aq-doc.has-hero .hero { background-image: var(--hero); }
+.aq-doc.has-btn .navbtn, .aq-doc.has-btn .btn2, .aq-doc.has-btn .cta { background-color: var(--btn); color: var(--btnfg); }
+.aq-doc.is-dark { background-color: #0B1020; color: #E2E8F0; }
+.aq-doc.is-dark .nav { background-color: #0F172A; box-shadow: 0 1px 0 #1E293B; }
+.aq-doc.is-dark .links { color: #94A3B8; }
+.aq-doc.is-dark .card, .aq-doc.is-dark .it { background-color: #111827; color: #E2E8F0; }
+.aq-doc.is-dark .foot { color: #64748B; }
+.aq-doc .burger { font-size: 26px; color: var(--c2); }
+.aq-doc.is-dark .burger { color: #E2E8F0; }
+.aq-doc .cta-w { position: relative; display: inline-block; }
+.aq-doc .cta.is-big { padding: 30px 64px; font-size: 30px; }
+.aq-doc .cur { position: absolute; right: -34px; bottom: -34px; width: 40px; height: 40px; }
+.aq-doc .cur svg { width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.aq-doc .cur .ring { position: absolute; left: -14px; top: -14px; width: 36px; height: 36px; border-radius: 50%; border: 4px solid #FBBF24; }
+.aq-doc .hero { position: relative; }
+.aq-doc .sale { position: absolute; left: 24px; top: 20px; padding: 8px 16px; border-radius: 12px; background-color: #DC2626; color: white; font-size: 22px; font-weight: 800; rotate: -6deg; }
+.aq-doc .info { position: relative; display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; padding: 14px 24px; background-color: white; box-shadow: 0 1px 0 #E2E8F0; font-size: 16px; font-weight: 600; color: #0F172A; }
+.aq-doc .info .is-guess { color: #64748B; }
+.aq-doc .blk { position: relative; margin: 14px 28px 4px; }
+.aq-doc .bh { margin: 0 0 8px; font-size: 20px; font-weight: 800; color: var(--c2); }
+.aq-doc.is-dark .bh { color: var(--c); }
+.aq-doc .row3 { display: flex; flex-wrap: wrap; gap: 12px; }
+.aq-doc .it { flex: 1; background-color: white; padding: 10px 14px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07); font-size: 15px; font-weight: 600; }
+.aq-doc .it .ic { font-size: 26px; margin-bottom: 2px; }
+.aq-doc .wide { flex-basis: 100%; }
+.aq-doc .pr { margin: 4px 0 0; font-size: 20px; font-weight: 800; color: var(--c2); }
+.aq-doc .tx { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background-color: #475569; color: white; font-size: 13px; font-weight: 700; font-style: normal; vertical-align: middle; }
+.aq-doc .pin { position: absolute; right: 10px; top: 10px; z-index: 3; padding: 4px 12px; border-radius: 999px; color: white; font-size: 16px; font-weight: 800; font-style: normal; white-space: nowrap; box-shadow: 0 3px 8px rgba(0, 0, 0, .2); }
+.aq-doc .cta-w .pin { right: auto; left: calc(100% + 14px); top: 50%; translate: 0 -50%; }
+.aq-doc .info .pin { top: 50%; translate: 0 -50%; }
+.aq-doc .popup { position: absolute; left: 20px; bottom: 20px; z-index: 2; display: flex; flex-direction: column; gap: 8px; width: 250px; padding: 16px; border-radius: 16px; background-color: white; box-shadow: 0 16px 40px rgba(15, 23, 42, .3); font-size: 15px; }
+.aq-doc .popup .pin { top: -16px; }
+.aq-doc .popup .inp { margin: 0; }
+.aq-doc .chat { position: absolute; right: 20px; bottom: 20px; z-index: 2; width: 62px; height: 62px; border-radius: 50%; background-color: #16A34A; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
+.aq-doc .toast { display: block; width: fit-content; margin: 16px auto 0; padding: 12px 22px; border-radius: 14px; background-color: #0F172A; color: white; font-size: 17px; font-weight: 700; white-space: nowrap; box-shadow: 0 12px 28px rgba(0, 0, 0, .3); }
+.aq-doc .bottom { padding: 14px 18px; background-color: rgba(255, 255, 255, .95); box-shadow: 0 -1px 0 #E2E8F0; }
+.aq-doc .bottom span { display: block; padding: 14px; border-radius: 12px; background-color: var(--c); color: white; text-align: center; font-size: 17px; font-weight: 800; }
+.aq-doc.is-m .blk { margin: 12px 20px 4px; } .aq-doc.is-m .it { flex: 1 1 28%; padding: 12px 14px; }
+.aq-doc.is-m .links { display: none; } .aq-doc.is-m .nav { padding: 12px 18px; } .aq-doc.is-m .hero { padding: 28px 20px; } .aq-doc.is-m .title { font-size: 32px; }
+.aq-doc.is-m .cards { gap: 10px; padding: 14px 20px 4px; } .aq-doc.is-m .card { padding: 12px; } .aq-doc.is-m .ch { font-size: 16px; } .aq-doc.is-m .cp { font-size: 13px; } .aq-doc.is-m .goal { margin: 12px 20px 6px; } .aq-doc.is-m .btn2 { white-space: nowrap; }
 .aq-msg { display: flex; flex-direction: column; gap: 4px; width: min(100%, 480px); padding: 12px 16px; border-radius: 18px 18px 18px 4px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
 .aq-msg b { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #7C3AED; }
 .aq-msg span { font-size: 15px; font-weight: 600; line-height: 1.4; color: #1E1B39; }
 /* Ноутбук: варианты по два в ряд, вопрос крупнее, строка контекста — над вопросом (как в макете). */
 @media (min-width: 720px) {
-  .aq-main { padding: 40px 24px 32px; }
+  .aq-main { padding: 28px 24px 20px; }
   .aq-chip { height: 34px; padding: 0 16px; font-size: 13px; }
   .aq-head { flex-direction: column-reverse; margin-top: 18px; }
   .aq-ctx { margin: 0 0 6px; font-size: 16px; }
   .aq-q { font-size: 28px; line-height: 1.3; letter-spacing: -.3px; color: #1E1B39; }
-  .aq-vis { margin-top: 22px; }
+  .aq-main > .aq-vis { margin-top: 20px; }
   .aq-opts { margin: 18px -6px -6px; }
   .aq-opt { width: calc(50% - 12px); margin: 6px; min-height: 64px; font-size: 18px; border-radius: 16px; }
   .aq-fb-in { padding: 18px 24px; }
 }
-@media (max-width: 719px) and (max-height: 680px) {
-  .aq-q { font-size: 20px; }
-  .aq-vis { margin-top: 12px; }
+/* Телефон: плотнее, окно сайта — без адресной строки и кнопок окна (как в уроках модуля на телефоне). */
+@media (max-width: 719px) {
+  .aq-br-tool, .aq-br-win, .aq-br-plus { display: none; }
+  .aq-chip { height: 28px; padding: 0 12px; font-size: 11.5px; }
+  .aq-head { margin-top: 10px; }
+  .aq-q { font-size: 19px; line-height: 1.28; }
+  .aq-ctx { margin-top: 4px; font-size: 13.5px; line-height: 1.35; }
+  .aq-main > .aq-vis { margin-top: 10px; }
   .aq-opts { margin-top: 10px; }
-  .aq-opt { min-height: 48px; margin: 4px 0; padding: 6px 12px; font-size: 15px; }
-  .aq-badge { flex-basis: 30px; width: 30px; height: 30px; margin-right: 10px; font-size: 14px; }
+  .aq-opt { min-height: 46px; margin: 3px 0; padding: 6px 12px; font-size: 15px; border-radius: 12px; }
+  .aq-badge { flex-basis: 28px; width: 28px; height: 28px; margin-right: 10px; font-size: 13px; border-radius: 8px; }
+  .aq-fb { margin-top: 10px; border-radius: 16px; }
+  .aq-fb-in { padding: 10px 12px; gap: 10px; }
+  .aq-fb-ic { flex-basis: 30px; width: 30px; height: 30px; }
+  .aq-fb-tx b { font-size: 16px; }
+  .aq-fb-tx p { margin-top: 2px; font-size: 13.5px; line-height: 1.35; }
+  .aq-prompt { padding: 10px 12px; gap: 6px; }
+  .aq-msg { padding: 10px 14px; }
+  .aq-msg span { font-size: 14px; }
+}
+@media (max-width: 719px) and (max-height: 680px) {
+  .aq-main { padding-top: 12px; }
+  .aq-q { font-size: 17.5px; }
+  .aq-ctx { font-size: 13px; }
+  .aq-opt { min-height: 42px; margin: 2px 0; padding: 5px 10px; font-size: 14px; }
+  .aq-badge { flex-basis: 26px; width: 26px; height: 26px; margin-right: 9px; font-size: 12.5px; }
 }
 `;
 
@@ -243,9 +469,16 @@ const QS = [
     en: { ctx: 'We tell the AI what to make.', q: 'Which fits the “What?” line best?', opts: ['A site', 'A football tournament site', 'Something cool', 'Make something'],
       ok: '“A football tournament site” names a real thing: exactly what site is needed.', hint: 'Which answer tells the AI exactly what site is needed? It needs a topic and a kind of site.', alt: 'An empty “What?” line in a prompt' } },
   { id: 'ai-01t2', target: 'ai-01', tag: 'nega', correct: 2,
-    vis: (L) => <AqSite title={L === 'ru' ? 'Шахматный турнир' : L === 'en' ? 'Chess tournament' : 'Shaxmat turniri'} sub={L === 'ru' ? 'Запишись прямо сейчас!' : L === 'en' ? 'Sign up now!' : "Hoziroq ro'yxatdan o'ting!"}
-      btn={L === 'ru' ? 'Записаться' : L === 'en' ? 'Sign up' : "Ro'yxatdan o'tish"} color="#334155"
-      form={{ h: L === 'ru' ? 'Запись' : L === 'en' ? 'Sign up' : "Ro'yxatdan o'tish", fields: [L === 'ru' ? 'Твоё имя' : L === 'en' ? 'Your name' : 'Ismingiz', L === 'ru' ? 'Твой класс' : L === 'en' ? 'Your class' : 'Sinfingiz'], btn: L === 'ru' ? 'Отправить' : L === 'en' ? 'Send' : 'Yuborish' }} />,
+    // Сайт — как его собрал бы ИИ урока 1 из «Shaxmat turniri sayti» + «o'yinchilar turnirga yozilsin» (тема шахмат, вид «турнир»);
+    // карточки не показаны: форма записи — главная подсказка вопроса — должна быть видна сразу под баннером.
+    vis: (L) => { const T3 = (uz, ru, en) => (L === 'ru' ? ru : L === 'en' ? en : uz); return <AqSite site={{
+      title: T3('Shaxmat turniri', 'Шахматный турнир', 'Chess tournament'), em: '♟️', focus: '.goal', c: '#334155', c2: '#0F172A', bg: '#E2E8F0',
+      nav: [T3('Jadval', 'Расписание', 'Schedule'), T3('Jamoalar', 'Команды', 'Teams'), T3('Sovrinlar', 'Призы', 'Prizes')],
+      badge: T3('Bahor turniri · 2026', 'Весенний турнир · 2026', 'Spring tournament · 2026'),
+      sub: T3("Hoziroq ro'yxatdan o'ting: joylar soni cheklangan!", 'Запишись прямо сейчас: мест немного!', 'Sign up now: places are limited!'),
+      cta: T3("Ro'yxatdan o'tish", 'Записаться', 'Sign up'),
+      goal: { h: T3("Ro'yxatdan o'tish", 'Запись', 'Sign up'), fields: [T3('Ismingiz', 'Твоё имя', 'Your name'), T3('Sinfingiz', 'Твой класс', 'Your class')], btn: T3('Yuborish', 'Отправить', 'Send') },
+      foot: T3('Barcha huquqlar himoyalangan.', 'Все права защищены.', 'All rights reserved.') }} />; },
     uz: { ctx: "Sun'iy intellekt shu saytni yaratdi.", q: "Qaysi «Nega?» qatori shu saytni bergan?", opts: ['odamlar turnir qachon va qayerdaligini bilsin', "odamlar bizga qo'ng'iroq qilsin", "o'yinchilar turnirga yozilsin", "sayt chiroyli bo'lsin"],
       ok: "Saytda ro'yxatdan o'tish tugmasi va formasi bor: maqsad yozilish.", hint: "Saytdagi katta tugmaga va formaga qarang: ular odamlardan nima qilishni so'rayapti?", alt: "Ro'yxatdan o'tish tugmasi va formasi bor sayt" },
     ru: { ctx: 'ИИ сделал такой сайт.', q: 'Какая строка «Зачем?» дала этот сайт?', opts: ['чтобы люди узнали, когда и где турнир', 'чтобы люди нам звонили', 'чтобы игроки записывались на турнир', 'чтобы сайт был красивым'],
