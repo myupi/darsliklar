@@ -1,0 +1,126 @@
+CSS — промпты для проверки (задания для компилятора, 14.11.2026). Полные задания — docs/kompilyator-amaliy-css.txt.
+
+1. Amaliy ish. CSS nima va u saytni qanday o'zgartiradi
+Use a <style> tag.
+Use <h1>, <p> and a list with <li>.
+Use color for h1, for p and for li inside <style>; the three colors are different.
+Every property is written as property: value; inside the braces { }.
+Text content and the exact colors do not matter.
+
+2. Amaliy ish. Bezash uchun elementni qanday tanlash
+Use the element selector a { } with color.
+Use a class selector that matches several links.
+Use an id selector that matches one link which also has that class.
+The class rule and the id rule both set background-color, with different values.
+Class names, id names, colors and text content do not matter.
+
+3. Amaliy ish. Ranglar
+Use color written as a color name, as a hex color and with rgb(), each in a different class rule.
+Each class rule matches an element with that class.
+The exact colors, class names and text content do not matter.
+
+4. Amaliy ish. Fon
+Use background-color on body.
+Use background-image with url() on an element inside body.
+On that element use background-repeat: no-repeat and background-size: cover.
+On that element also set background-color (a fallback color).
+Use color on the heading inside that element.
+The image address does not matter; the image does not have to load.
+
+5. Amaliy ish. Matn va shriftlar
+Use font-size and text-align: center on the main heading.
+Use font-family with a fallback font (for example Georgia, serif).
+Use font-weight together with color in one rule.
+Use text-decoration: none on <a>.
+Use text-align: right on another element.
+Fonts, colors and text content do not matter.
+
+6. Amaliy ish. Elementlar o'lchami
+Use <img> with width and height in px.
+Use width and height in px on an outer element.
+Use width in % and height: 100% on an element inside it.
+The outer and the inner element have different background-color.
+Exact values, colors, the image address and text content do not matter; the image does not have to load.
+
+7. Amaliy ish. Box Model
+Use <form> with <input> inside it.
+Use width and padding with two values (for example padding: 20px 24px) on the form.
+Use border and box-sizing: border-box on the form.
+Use margin on the form.
+Use width: 100%, padding, margin and box-sizing: border-box on <input>.
+Exact values, colors and text content do not matter.
+
+8. Amaliy ish. Chiroyli kartochkalar
+Use a <div> with a class, with <h2> and <p> inside it.
+On that element use width, padding and border-radius.
+On that element use box-shadow and a border on one side only (border-top, border-right, border-bottom or border-left).
+Use border-radius, padding and background-color on another element inside the card.
+Exact values, colors and text content do not matter.
+
+9. Amaliy ish. Elementlar sahifada qanday turadi
+Use <span> with display: inline-block, width and height.
+Use background-color and border-radius on these spans.
+Use display: inline-block, padding and border on other spans.
+Use display: none on an element.
+Use display: block and text-align: center on <a>.
+Class names, values and text content do not matter.
+
+10. Amaliy ish. Flexbox: elementlarni joylashtirish
+Use display: flex with flex-direction: row on an element.
+Inside it, use display: flex with flex-direction: column on another element.
+Use display: flex on another element (the numbers row).
+Use width, height and border-radius on an image or a block for the photo.
+Class names, values and text content do not matter.
+
+11. Amaliy ish. Flexbox: tekislash
+Use display: flex with justify-content: space-between and align-items: center on one element.
+Use display: flex with flex-wrap: wrap, gap and justify-content: center on another element.
+Use display: flex with justify-content: center and gap on another element.
+Class names, values and text content do not matter.
+
+12. Amaliy ish. Pozitsiyalash
+Use position: relative on an element (the image block).
+Inside it, use position: absolute with top and left on one element and with top and right on another.
+Use position: relative on another element and position: absolute on an element inside it (the cart number).
+Use position: fixed with bottom and right on another element.
+Exact values, colors and text content do not matter.
+
+13. Amaliy ish. Hover va transform
+Use cursor: pointer.
+Use :hover with transform: translate() on a card.
+Use :hover with transform: scale() on a button.
+Use :hover with transform: scale() and color on another element.
+Use display: inline-block and :hover with transform: rotate() on another element.
+Values, class names and text content do not matter.
+
+14. Amaliy ish. Silliq effektlar
+Use display: flex and gap on the element that holds the cards.
+Use transition with all, a time in s and ease on the cards.
+On :hover of a card change transform and box-shadow.
+Use transition with a time in ms and linear on a button.
+On :hover of that button change background-color.
+Values, class names and text content do not matter.
+
+15. Amaliy ish. CSS animatsiyalar
+Use @keyframes with a name.
+Use from and to with transform: translate() inside it.
+Use animation with the same name and a time on an element with display: inline-block.
+Use infinite and alternate in animation.
+Names, values and text content do not matter.
+
+16. Amaliy ish. Moslashuvchan sayt
+Use display: flex on an element with child cards.
+Use width in % on the cards.
+Use @media with max-width.
+Inside @media use flex-direction: column on the element with the cards.
+Inside @media use width: 100% on the cards.
+Values, class names and text content do not matter.
+
+17. Yakuniy loyiha
+Use <header> with <nav> inside it; use display: flex with justify-content on <header>.
+Use display: flex with gap on the element that holds the cards.
+Use border-radius and box-shadow on the cards.
+Use :hover with transform, and transition on the same element.
+Use position: absolute on an element inside a card that has position: relative.
+Use @media with max-width that changes flex-direction to column.
+Values, colors, class names and text content do not matter.

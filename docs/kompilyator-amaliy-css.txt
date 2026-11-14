@@ -1,0 +1,334 @@
+Курс: Dasturlash kursi
+Модуль: CSS
+Задания для компилятора (ученик пишет HTML и CSS сам, с пустого редактора). Составлено 14.11.2026: по одному
+на каждый урок 1–17 нашего курса CSS; файл заказчика CSS_practice_prompts.txt и его слайды — образец облика и формата.
+Облик — как прежние слайды «Amaliy vazifa»: одна строка темы и 4–5 условий, свойства выделены (в тексте — `…`);
+справа — как должна выглядеть страница. Каждое задание — настоящая часть сайта (заказчик, 14.11.2026: «как в сайтах
+нужно»): шапка с меню, баннер, карточка товара, форма входа, тарифы, подвал — на разных темах (пицца, киберспорт,
+путешествия, магазин, видео, музыка, новости, кино). В каждом задании свойства своего урока вместе со свойствами
+прошлых уроков, несколько свойств на одном элементе, связь элементов («внутри», «на том же элементе», «внутри @media»).
+Только свойства своего и прошлых уроков. Промпт — короткие строки «Use …» по условиям, без количества тегов;
+текст ученика, значения и цвета не проверяются. Пример решения — public/kompilyator/css/<NN>/index.html.
+
+======================================================================
+
+1. НАЗВАНИЕ УРОКА: Amaliy ish. CSS nima va u saytni qanday o'zgartiradi
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Pitsa 30 daqiqada» sayti matnlarini rangli qiling.
+- CSS qoidalarini <style> tegi ichiga yozing
+- Sarlavha <h1> ga `color`
+- Taklif matni <p> ga boshqa `color`
+- Menyu ro'yxati <li> ga yana boshqa `color`
+(RU: Сделай цветными тексты сайта «Пицца за 30 минут»: правила CSS напиши внутри тега <style>; заголовку <h1> — `color`;
+тексту предложения <p> — другой `color`; списку меню <li> — ещё один `color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use a <style> tag.
+Use <h1>, <p> and a list with <li>.
+Use color for h1, for p and for li inside <style>; the three colors are different.
+Every property is written as property: value; inside the braces { }.
+Text content and the exact colors do not matter.
+
+======================================================================
+
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Bezash uchun elementni qanday tanlash
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Kibersport jamoasi sayti uchun menyu yasang.
+- Menyu havolalari <a> ga `a` selektori bilan rang bering
+- Hamma havolalarga class="menyu", `.menyu` ga `background-color`
+- Hozir ochiq sahifa havolasiga id="hozir" ham qo'shing
+- `#hozir` boshqa `background-color` bilan ajralib tursin
+(RU: Сделай меню сайта киберспортивной команды: ссылкам меню <a> дай цвет селектором `a`; всем ссылкам — class="menyu", для `.menyu` — `background-color`;
+ссылке на открытую сейчас страницу добавь ещё id="hozir"; `#hozir` выделяется другим `background-color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the element selector a { } with color.
+Use a class selector that matches several links.
+Use an id selector that matches one link which also has that class.
+The class rule and the id rule both set background-color, with different values.
+Class names, id names, colors and text content do not matter.
+
+======================================================================
+
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Ranglar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Ob-havo sayti uchun haroratlarni rang bilan ko'rsating.
+- Har bir kun — o'z class i bilan
+- Issiq kun +35°: `color` rang nomi bilan, masalan `orangered`
+- Salqin kun +18°: `color` hex bilan, masalan `#1E88E5`
+- Sovuq kun −5°: `color` `rgb()` bilan
+(RU: Покажи температуру цветом на сайте погоды: у каждого дня свой class; жаркий день +35° — `color` названием, например `orangered`;
+прохладный день +18° — `color` в hex, например `#1E88E5`; холодный день −5° — `color` через `rgb()`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use color written as a color name, as a hex color and with rgb(), each in a different class rule.
+Each class rule matches an element with that class.
+The exact colors, class names and text content do not matter.
+
+======================================================================
+
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Fon
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sayohat sayti uchun bosh bannerni yasang.
+- body ga `background-color`
+- <div class="banner"> ga `background-image`: url("dengiz.svg")
+- Rasm bannerni to'ldirsin: `no-repeat` va `cover`
+- Rasm yuklanmasa: bannerga zaxira `background-color`
+- Banner ichidagi sarlavha va matnga `color`
+(RU: Сделай главный баннер сайта путешествий: body — `background-color`; <div class="banner"> — `background-image`: url("dengiz.svg");
+картинка заполняет баннер — `no-repeat` и `cover`; если картинка не загрузится — баннеру запасной `background-color`; заголовку и тексту в баннере — `color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use background-color on body.
+Use background-image with url() on an element inside body.
+On that element use background-repeat: no-repeat and background-size: cover.
+On that element also set background-color (a fallback color).
+Use color on the heading inside that element.
+The image address does not matter; the image does not have to load.
+
+======================================================================
+
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Matn va shriftlar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+O'yin yangiliklari blogi uchun maqola sahifasini bezang.
+- Maqola sarlavhasi <h1> ga `font-size` va `text-align: center`
+- Maqola matniga `font-family` zaxira shrift bilan: Georgia, serif
+- Muallif ismiga `font-weight: bold` va `color`
+- «Batafsil» havolasiga `text-decoration: none`
+- Sanaga `text-align: right`
+(RU: Оформи страницу статьи блога игровых новостей: заголовку статьи <h1> — `font-size` и `text-align: center`; тексту статьи — `font-family` с запасным шрифтом: Georgia, serif;
+имени автора — `font-weight: bold` и `color`; ссылке «Batafsil» — `text-decoration: none`; дате — `text-align: right`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use font-size and text-align: center on the main heading.
+Use font-family with a fallback font (for example Georgia, serif).
+Use font-weight together with color in one rule.
+Use text-decoration: none on <a>.
+Use text-align: right on another element.
+Fonts, colors and text content do not matter.
+
+======================================================================
+
+6. НАЗВАНИЕ УРОКА: Amaliy ish. Elementlar o'lchami
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Onlayn kurslar sayti uchun «Mening kurslarim» sahifasini yasang.
+- Kurs rasmi <img> ga `width` va `height`: px da
+- Progress polosasi: tashqi <div> ga `width` va `height`: px da
+- O'tilgan qism: ichki <div> ga `width`: % da va `height: 100%`
+- Tashqi va ichki <div> ga har xil `background-color`
+(RU: Сделай страницу «Мои курсы» сайта онлайн-курсов: картинке курса <img> — `width` и `height` в px; полоске прогресса — внешнему <div> `width` и `height` в px;
+пройденной части — внутреннему <div> `width` в % и `height: 100%`; внешнему и внутреннему <div> — разный `background-color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <img> with width and height in px.
+Use width and height in px on an outer element.
+Use width in % and height: 100% on an element inside it.
+The outer and the inner element have different background-color.
+Exact values, colors, the image address and text content do not matter; the image does not have to load.
+
+======================================================================
+
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Box Model
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sayt uchun «Kirish» oynasini yasang.
+- Oyna <form> ga `width` va ikki qiymatli `padding`: 20px 24px
+- Oynaga `border` va `box-sizing: border-box`
+- Oyna atrofida `margin`
+- Maydonlar <input> ga `width: 100%`, `padding` va `margin`
+- <input> larga ham `box-sizing: border-box`
+(RU: Сделай окно «Вход» для сайта: окну <form> — `width` и `padding` двумя значениями: 20px 24px; окну — `border` и `box-sizing: border-box`;
+вокруг окна — `margin`; полям <input> — `width: 100%`, `padding` и `margin`; полям <input> тоже — `box-sizing: border-box`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <form> with <input> inside it.
+Use width and padding with two values (for example padding: 20px 24px) on the form.
+Use border and box-sizing: border-box on the form.
+Use margin on the form.
+Use width: 100%, padding, margin and box-sizing: border-box on <input>.
+Exact values, colors and text content do not matter.
+
+======================================================================
+
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Chiroyli kartochkalar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Krossovka do'koni uchun mahsulot kartasini yasang.
+- <div class="karta"> ichida rasm, <h2>, <p> va narx
+- Kartaga `width`, `padding` va `border-radius`
+- Kartaga `box-shadow` va bitta tomonda chiziq: `border-top`
+- Narx belgisiga `border-radius`, `padding` va `background-color`
+(RU: Сделай карточку товара для магазина кроссовок: в <div class="karta"> — картинка, <h2>, <p> и цена; карточке — `width`, `padding` и `border-radius`;
+карточке — `box-shadow` и полоса с одной стороны: `border-top`; метке цены — `border-radius`, `padding` и `background-color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use a <div> with a class, with <h2> and <p> inside it.
+On that element use width, padding and border-radius.
+On that element use box-shadow and a border on one side only (border-top, border-right, border-bottom or border-left).
+Use border-radius, padding and background-color on another element inside the card.
+Exact values, colors and text content do not matter.
+
+======================================================================
+
+9. НАЗВАНИЕ УРОКА: Amaliy ish. Elementlar sahifada qanday turadi
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Do'kon uchun futbolka sahifasini yasang.
+- Ranglar <span>: `display: inline-block`, `width`, `height`
+- Ranglarga `background-color` va `border-radius`
+- O'lchamlar <span>: `display: inline-block`, `padding`, `border`
+- Tugagan XL o'lchamiga `display: none`
+- «Savatga» <a>: `display: block`, `text-align: center`
+(RU: Сделай страницу футболки для магазина: цвета <span> — `display: inline-block`, `width`, `height`; цветам — `background-color` и `border-radius`;
+размеры <span> — `display: inline-block`, `padding`, `border`; закончившемуся размеру XL — `display: none`; «Savatga» <a> — `display: block`, `text-align: center`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <span> with display: inline-block, width and height.
+Use background-color and border-radius on these spans.
+Use display: inline-block, padding and border on other spans.
+Use display: none on an element.
+Use display: block and text-align: center on <a>.
+Class names, values and text content do not matter.
+
+======================================================================
+
+10. НАЗВАНИЕ УРОКА: Amaliy ish. Flexbox: elementlarni joylashtirish
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Ijtimoiy tarmoq uchun profil sahifasini yasang.
+- Profil: rasm chapda, ma'lumot o'ngda — `display: flex` va `flex-direction: row`
+- Ma'lumot: ism, nik va bio ustma-ust — `display: flex` va `flex-direction: column`
+- Raqamlar (postlar, obunachilar) yonma-yon — `display: flex`
+- Profil rasmiga `width`, `height` va `border-radius`
+(RU: Сделай страницу профиля для соцсети: профиль — фото слева, данные справа — `display: flex` и `flex-direction: row`; данные — имя, ник и био друг под другом — `display: flex` и `flex-direction: column`;
+цифры (посты, подписчики) рядом — `display: flex`; фото профиля — `width`, `height` и `border-radius`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use display: flex with flex-direction: row on an element.
+Inside it, use display: flex with flex-direction: column on another element.
+Use display: flex on another element (the numbers row).
+Use width, height and border-radius on an image or a block for the photo.
+Class names, values and text content do not matter.
+
+======================================================================
+
+11. НАЗВАНИЕ УРОКА: Amaliy ish. Flexbox: tekislash
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Internet do'kon katalogi sahifasini yasang.
+- Yuqori qator: «12 ta mahsulot» chapda, «Saralash» o'ngda — `justify-content: space-between`
+- Yuqori qatorga `align-items: center`
+- Mahsulotlar: `display: flex`, `flex-wrap: wrap` va `gap`
+- Mahsulotlarni o'rtaga: `justify-content: center`
+- Sahifa raqamlari 1 2 3: `display: flex`, `justify-content: center`, `gap`
+(RU: Сделай страницу каталога интернет-магазина: верхняя строка — «12 товаров» слева, «Сортировка» справа — `justify-content: space-between`; верхней строке — `align-items: center`;
+товарам — `display: flex`, `flex-wrap: wrap` и `gap`; товары по центру — `justify-content: center`; номерам страниц 1 2 3 — `display: flex`, `justify-content: center`, `gap`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use display: flex with justify-content: space-between and align-items: center on one element.
+Use display: flex with flex-wrap: wrap, gap and justify-content: center on another element.
+Use display: flex with justify-content: center and gap on another element.
+Class names, values and text content do not matter.
+
+======================================================================
+
+12. НАЗВАНИЕ УРОКА: Amaliy ish. Pozitsiyalash
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Internet do'kon uchun mahsulot kartasi va savatni yasang.
+- Mahsulot rasmi blokiga `position: relative`
+- «−50%» belgisi rasm burchagida: `position: absolute`, `top` va `left`
+- Sevimlilar ❤ tugmasi: `position: absolute`, `top` va `right`
+- Savatdagi son «3»: savatga `relative`, songa `absolute`
+- «Yordam» chati: `position: fixed`, `bottom` va `right`
+(RU: Сделай карточку товара и корзину интернет-магазина: блоку картинки товара — `position: relative`; метка «−50%» в углу картинки — `position: absolute`, `top` и `left`;
+кнопка «Избранное» ❤ — `position: absolute`, `top` и `right`; число «3» в корзине — корзине `relative`, числу `absolute`; чат «Yordam» — `position: fixed`, `bottom` и `right`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use position: relative on an element (the image block).
+Inside it, use position: absolute with top and left on one element and with top and right on another.
+Use position: relative on another element and position: absolute on an element inside it (the cart number).
+Use position: fixed with bottom and right on another element.
+Exact values, colors and text content do not matter.
+
+======================================================================
+
+13. НАЗВАНИЕ УРОКА: Amaliy ish. Hover va transform
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Musiqa sayti albomlarini sichqoncha bilan jonlantiring.
+- Kartalar va tugmalarga `cursor: pointer`
+- Albom kartasi `:hover` da yuqoriga ko'tarilsin: `translate()`
+- ▶ tugmasi `:hover` da kattalashsin: `scale()`
+- ❤ `:hover` da kattalashib qizarsin: `scale()` va `color`
+- 🔄 ga `display: inline-block`, `:hover` da aylansin: `rotate()`
+(RU: Оживи альбомы музыкального сайта под мышкой: карточкам и кнопкам — `cursor: pointer`; карточка альбома при `:hover` поднимается — `translate()`;
+кнопка ▶ при `:hover` увеличивается — `scale()`; ❤ при `:hover` увеличивается и краснеет — `scale()` и `color`; 🔄 — `display: inline-block`, при `:hover` поворачивается — `rotate()`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use cursor: pointer.
+Use :hover with transform: translate() on a card.
+Use :hover with transform: scale() on a button.
+Use :hover with transform: scale() and color on another element.
+Use display: inline-block and :hover with transform: rotate() on another element.
+Values, class names and text content do not matter.
+
+======================================================================
+
+14. НАЗВАНИЕ УРОКА: Amaliy ish. Silliq effektlar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Onlayn kinoteatr sayti uchun tariflar blokini yasang.
+- Tarif kartalari yonma-yon: `display: flex` va `gap`
+- Kartalarga `transition: all`, vaqt `s` da, `ease`
+- Karta `:hover` da ko'tarilsin: `transform` va `box-shadow`
+- «Tanlash» tugmasiga o'z `transition` i: vaqt `ms` da, `linear`
+- Tugma `:hover` da `background-color` o'zgarsin
+(RU: Сделай блок тарифов сайта онлайн-кинотеатра: карточки тарифов рядом — `display: flex` и `gap`; карточкам — `transition: all`, время в `s`, `ease`;
+карточка при `:hover` поднимается — `transform` и `box-shadow`; кнопке «Tanlash» — свой `transition`, время в `ms`, `linear`; кнопка при `:hover` меняет `background-color`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use display: flex and gap on the element that holds the cards.
+Use transition with all, a time in s and ease on the cards.
+On :hover of a card change transform and box-shadow.
+Use transition with a time in ms and linear on a button.
+On :hover of that button change background-color.
+Values, class names and text content do not matter.
+
+======================================================================
+
+15. НАЗВАНИЕ УРОКА: Amaliy ish. CSS animatsiyalar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sayt bosh sahifasidagi «Pastga» strelkasini sakratib qo'ying.
+- Nomli `@keyframes` yozing, masalan `sakrash`
+- `from` da `transform: translate(0px, 0px)`, `to` da pastroq
+- Strelka ↓ ga `display: inline-block` va `animation`: nom va vaqt
+- `animation` ga `infinite` va `alternate` qo'shing
+(RU: Заставь стрелку «Вниз» на главной странице сайта прыгать: напиши `@keyframes` с именем, например `sakrash`; в `from` — `transform: translate(0px, 0px)`, в `to` — ниже;
+стрелке ↓ — `display: inline-block` и `animation`: имя и время; в `animation` добавь `infinite` и `alternate`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use @keyframes with a name.
+Use from and to with transform: translate() inside it.
+Use animation with the same name and a time on an element with display: inline-block.
+Use infinite and alternate in animation.
+Names, values and text content do not matter.
+
+======================================================================
+
+16. НАЗВАНИЕ УРОКА: Amaliy ish. Moslashuvchan sayt
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+To'garaklar sayti: kompyuterda kartalar yonma-yon, telefonda — ustma-ust.
+- Kartalar qutisiga `display: flex`, kartalarga `width: 30%`
+- Telefon uchun qoidalar: `@media (max-width: 600px)`
+- `@media` ichida qutiga `flex-direction: column`
+- `@media` ichida kartalarga `width: 100%`
+(RU: Сайт кружков — на компьютере карточки рядом, на телефоне — друг под другом: коробке карточек — `display: flex`, карточкам — `width: 30%`;
+правила для телефона — `@media (max-width: 600px)`; внутри `@media` коробке — `flex-direction: column`; внутри `@media` карточкам — `width: 100%`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use display: flex on an element with child cards.
+Use width in % on the cards.
+Use @media with max-width.
+Inside @media use flex-direction: column on the element with the cards.
+Inside @media use width: 100% on the cards.
+Values, class names and text content do not matter.
+
+======================================================================
+
+17. НАЗВАНИЕ УРОКА: Yakuniy loyiha
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+O'z o'yin do'koningiz saytini yarating.
+- <header> va <nav>: `display: flex`, `justify-content: space-between`
+- Kartalar qutisi: `display: flex` va `gap`
+- Karta: `border-radius`, `box-shadow`, `position: relative`
+- «−30%» belgisi: `position: absolute`
+- Karta `:hover` da `transform` va `transition`
+- Telefonda `@media`: `flex-direction: column`
+(RU: Сделай сайт своего магазина игр: <header> и <nav> — `display: flex`, `justify-content: space-between`; коробка карточек — `display: flex` и `gap`;
+карточка — `border-radius`, `box-shadow`, `position: relative`; метка «−30%» — `position: absolute`; карточка при `:hover` — `transform` и `transition`;
+на телефоне — `@media`: `flex-direction: column`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <header> with <nav> inside it; use display: flex with justify-content on <header>.
+Use display: flex with gap on the element that holds the cards.
+Use border-radius and box-shadow on the cards.
+Use :hover with transform, and transition on the same element.
+Use position: absolute on an element inside a card that has position: relative.
+Use @media with max-width that changes flex-direction to column.
+Values, colors, class names and text content do not matter.

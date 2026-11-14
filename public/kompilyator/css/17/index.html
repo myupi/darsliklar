@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>O'yin do'koni</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background-color: #12141C; color: white; }
+      header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+      a { color: #B0BEC5; text-decoration: none; margin-left: 14px; }
+      .banner {
+        padding: 36px 20px;
+        background-color: #3949AB;
+        background-image: url("banner.svg");
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
+      .kartalar { display: flex; gap: 14px; padding: 20px; }
+      .karta {
+        position: relative;
+        width: 33%;
+        padding: 14px;
+        border-radius: 14px;
+        background-color: #232838;
+        box-shadow: 0px 6px 14px black;
+        transition: transform 0.3s ease;
+      }
+      .karta:hover { transform: scale(1.05); }
+      .chegirma { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 8px; background-color: #FA4F28; font-size: 12px; }
+      .rasm { font-size: 40px; }
+      @media (max-width: 600px) {
+        .kartalar { flex-direction: column; }
+        .karta { width: 100%; box-sizing: border-box; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <b>🎮 O'yinlar dunyosi</b>
+      <nav><a href="#">Do'kon</a><a href="#">Kutubxona</a><a href="#">Kirish</a></nav>
+    </header>
+    <div class="banner">
+      <h1>Kuzgi chegirmalar!</h1>
+      <p>Eng yaxshi o'yinlar −30% gacha arzon</p>
+    </div>
+    <div class="kartalar">
+      <div class="karta"><div class="rasm">🏎</div><b>Kosmik poyga</b><p>120 000 so'm</p><span class="chegirma">−30%</span></div>
+      <div class="karta"><div class="rasm">🐉</div><b>Ajdar qal'asi</b><p>95 000 so'm</p></div>
+      <div class="karta"><div class="rasm">⚽</div><b>Futbol 26</b><p>150 000 so'm</p></div>
+    </div>
+  </body>
+</html>

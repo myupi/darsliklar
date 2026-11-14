@@ -70,7 +70,10 @@ export default function Sidebar({ catalog, selectedKey, onPick, mode = 'lessons'
                         <span className="lesson-n">{x.n != null ? pad2(x.n) : '··'}</span>
                         <span className="lesson-body">
                           <span className="lesson-title">{x.title.replace(/^Amaliy ish\.\s*/, '')}</span>
-                          {x.n != null ? <span className="lesson-topics">{(x.check.match(/<[a-z0-9]+>/g) || []).filter((t, i, a) => a.indexOf(t) === i).slice(0, 5).join(' ')}</span> : null}
+                          {x.n != null ? <span className="lesson-topics">{(x.module === 'css'
+                            // CSS: выделенные в задании свойства (`…`), без значений после двоеточия
+                            ? (x.steps.join(' ').match(/`[^`]+`/g) || []).map((t) => t.slice(1, -1).split(':')[0])
+                            : (x.check.match(/<[a-z0-9]+>/g) || [])).filter((t, i, a) => a.indexOf(t) === i).slice(0, 5).join(' ')}</span> : null}
                         </span>
                       </button>
                     </li>

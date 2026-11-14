@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Musiqa sayti</title>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .albomlar { display: flex; gap: 10px; }
+      .albom { width: 50%; padding: 10px; border-radius: 12px; background-color: #EDE7F6; cursor: pointer; }
+      .albom:hover { transform: translate(0px, -8px); }
+      .muqova { font-size: 40px; text-align: center; border-radius: 8px; background-color: #7E57C2; }
+      button { padding: 6px 12px; border: 0; border-radius: 16px; background-color: #1DB954; cursor: pointer; }
+      button:hover { transform: scale(1.2); }
+      .yurak { display: inline-block; font-size: 20px; color: gray; cursor: pointer; }
+      .yurak:hover { transform: scale(1.3); color: red; }
+      .yangilash { display: inline-block; cursor: pointer; }
+      .yangilash:hover { transform: rotate(180deg); }
+    </style>
+  </head>
+  <body>
+    <h3>Siz uchun <span class="yangilash">🔄</span></h3>
+    <div class="albomlar">
+      <div class="albom"><div class="muqova">💿</div><b>Yozgi hitlar</b><p><button>▶</button> <span class="yurak">❤</span></p></div>
+      <div class="albom"><div class="muqova">🎸</div><b>Rok kechasi</b><p><button>▶</button> <span class="yurak">❤</span></p></div>
+    </div>
+  </body>
+</html>

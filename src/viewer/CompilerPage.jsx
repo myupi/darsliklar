@@ -9,8 +9,10 @@ import { MenuButton } from './Toolbar.jsx';
 const exampleUrl = (it) => '/kompilyator/' + it.module + '/' + String(it.n).padStart(2, '0') + '/index.html';
 
 // Теги и атрибуты в условии — красным, как на прежних слайдах «Amaliy vazifa».
+// Свойства CSS в тексте задания отмечены обратными кавычками: `width` (кавычки не показываются).
 function hl(text) {
-  return String(text).split(/(<\/?!?[A-Za-z][^<>]*>|\b[a-z]+="")/g).map((x, i) => (i % 2 ? <span key={i} className="cmp-tag">{x}</span> : x));
+  return String(text).split(/(`[^`]+`|<\/?!?[A-Za-z][^<>]*>|\b[a-z]+="")/g)
+    .map((x, i) => (i % 2 ? <span key={i} className="cmp-tag">{x.replace(/^`|`$/g, '')}</span> : x));
 }
 // Русский перевод: «Тема: условие; условие; условие.» → тема и пункты.
 function ruParts(ru) {
@@ -29,6 +31,7 @@ function StudentView({ it, lang }) {
   const frame = useRef(null);
   const view = useRef(null);
   const tries = useRef(0);
+  const sFloor = useRef(Infinity);
   const slideRef = useRef(null);
   const [busy, setBusy] = useState('');
   const url = exampleUrl(it);
@@ -41,11 +44,15 @@ function StudentView({ it, lang }) {
     const ch = Math.ceil(d.documentElement.getBoundingClientRect().height);
     const slide = v.closest('.cmp-slide');
     const maxH = (slide ? slide.clientWidth : 1000) * 0.3;   // рамка помещается в карточку кадра
-    const s = Math.min(v.clientWidth / PAGE_W, maxH / ch);
+    let s = Math.min(v.clientWidth / PAGE_W, maxH / ch);
     // Уменьшили — страница шире и короче: меряем ещё раз в следующем кадре, пока масштаб не устоится.
     // Не больше 8 пересчётов на страницу — чтобы масштаб и высота не раскачивали друг друга.
+    // С 4-го пересчёта масштаб только уменьшается: у страницы с @media ширина пересекает порог туда-обратно
+    // (раскладка и высота прыгают) — так она пересечёт его один раз и устоится, ничего не обрежется.
     tries.current += 1;
     if (tries.current > 8) return;
+    if (tries.current > 3) s = Math.min(s, sFloor.current);
+    sFloor.current = s;
     setFit((o) => (o && Math.abs(o.s - s) < 0.004 && o.ch === ch ? o : { s, ch }));
   };
   useEffect(() => { setFit(null); tries.current = 0; }, [url]);
@@ -65,7 +72,7 @@ function StudentView({ it, lang }) {
     <div ref={slideRef} className="cmp-slide" aria-label="Как задание видит ученик">
       <div className="cmp-slide-circle" aria-hidden="true" />
       <img className="cmp-slide-hero" src="/kompilyator/bola.webp" alt="" aria-hidden="true" />
-      <div className="cmp-slide-top">HTML</div>
+      <div className="cmp-slide-top">{String(it.module).toUpperCase()}</div>
       <div className="cmp-slide-junior">JUNIOR</div>
       <div className="cmp-slide-title">Amaliy vazifa</div>
       <div className="cmp-slide-card">

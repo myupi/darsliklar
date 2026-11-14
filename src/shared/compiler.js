@@ -35,11 +35,13 @@ function parse(text) {
   return { head, items, notes: tail };
 }
 
-// { html: { file, head, items, notes } }
+// { html: { file, head, items, notes }, css: … } — модули в порядке курсов (файлы читаются по алфавиту).
+const ORDER = ['html', 'css', 'js', 'ai'];
+const rank = (id) => (ORDER.indexOf(id) < 0 ? 99 : ORDER.indexOf(id));
 export const COMPILER = Object.fromEntries(Object.entries(RAW).map(([path, text]) => {
   const id = /kompilyator-amaliy-([a-z0-9]+)\.txt$/.exec(path)[1];
   return [id, Object.assign({ file: path.slice(1) }, parse(text))];
-}));
+}).sort((a, b) => rank(a[0]) - rank(b[0])));
 
 // Плоский список для боковой панели режима «Компилятор»: задания модуля по порядку, в конце — сверка со старыми.
 export function compilerItems() {
