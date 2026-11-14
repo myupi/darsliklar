@@ -6300,7 +6300,11 @@ const FB = {
 // Дополнительная задача после образца третьей ступени.
 const CP_DRILL = {
   say: L3("Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", 'Здорово! А теперь ещё маленькая задача: то же самое для другого случая.', 'Great! Now one more small task: the same thing for another case.'),
-  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.')
+  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.'),
+  // Помощь в дополнительной задаче — те же три ступени (отзыв, 14.11.2026: «в Bonus лампочка не даёт образец»):
+  // 1 — направление (общее), 2 — что именно нужно (C.tN.drillNo), 3 — образец под кодом и эта строка.
+  hint1: L3("Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", 'Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.', 'This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.'),
+  hint3: L3("Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", 'Образец под кодом. Напиши такое же правило для этой задачи и нажми «Проверить».', 'The example is under the code. Write the same rule for this task and tap Check.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7623,8 +7627,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -9482,6 +9486,8 @@ function useCpTabs(all) {
 // done — можно дальше (после дополнительной задачи, если была); drill — { st, checks, done }; first.
 // ─────────────────────────────────────────────────────────────────────────────
 const CP_AUTO_HINT = 2;   // со второй неудачи подряд — ступень подсказки сама (заказчик, 15.10.2026)
+// Ступень подсказки дополнительной задачи: 1 — общее направление, 2 — что нужно (drillNo), 3 — к образцу.
+const cpDrillHint = (cfg, lv) => (lv <= 0 ? null : lv === 1 ? CP_DRILL.hint1 : lv === 2 ? (cfg.C.drillNo || CP_DRILL.hint1) : CP_DRILL.hint3);
 function useCpTask(cfg, frameRef) {
   const store = useStore();
   const log = useLog();
@@ -9505,6 +9511,11 @@ function useCpTask(cfg, frameRef) {
     if (pulse === p0.current) return;
     p0.current = pulse;
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача — свои ступени
+      const dl = cur.drill.lv || 0;
+      if (dl < 3) row(put({ drill: Object.assign({}, cur.drill, { lv: dl + 1 }) }));
+      return;
+    }
     if (cur.solved || cur.lv >= 3) return;
     row(put({ lv: cur.lv + 1 }));
   }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -9517,6 +9528,19 @@ function useCpTask(cfg, frameRef) {
     setMark(at == null ? null : at);
     sfx('soft', true);
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача: со второй неудачи подряд — следующая ступень сама
+      const df = (cur.drill.fails || 0) + 1, dl = cur.drill.lv || 0;
+      if (df >= CP_AUTO_HINT && dl < 3) {
+        const h = cpDrillHint(cfg, dl + 1);
+        const both = h === m ? m : joinL(m, h);   // разбор и ступень 2 — часто одна строка drillNo
+        row(put({ drill: Object.assign({}, cur.drill, { fails: df, lv: dl + 1 }) }));
+        setMsg(both); sayNow(both, 'think');
+        return;
+      }
+      put({ drill: Object.assign({}, cur.drill, { fails: df }) });
+      setMsg(m); sayNow(m, 'think');
+      return;
+    }
     const fails = (cur.fails || 0) + 1;
     if (fails >= CP_AUTO_HINT && cur.lv < 3 && !cur.solved) {
       const lv = cur.lv + 1;
@@ -9612,6 +9636,7 @@ function CpTaskScreen({ p, cfg }) {
   const st = drilling ? rec.drill.st : rec.st;
   const tabs = useCpTabs(false);
   const lv = rec.solved ? 0 : rec.lv;
+  const dlv = drilling ? (rec.drill.lv || 0) : 0;   // ступень подсказки дополнительной задачи
   const slot = spec.slot;
   const sv = slot ? String(st.v == null ? slot.v0 : st.v) : '';
   const empty = slot ? !sv.trim() : !String(st.code || '').trim();
@@ -9621,9 +9646,9 @@ function CpTaskScreen({ p, cfg }) {
   // Во время дополнительной задачи решённое оформление остаётся на странице (если страница та же).
   const css = given.join('\n') + '\n' + (drilling && !cfg.drill.page ? rec.st.code + '\n' : '') + st.code;
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : cfg.C.ask;
-  const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const hint = t.msg || (drilling ? cpDrillHint(cfg, dlv) : !rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
   const workRef = useRef(null);
-  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, lv);
+  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, drilling ? dlv : lv);
   const htmlAid = spec.htmlAid || cfg.htmlAid;
   // Условия «готово» своей работы — видны сразу и загораются по живой странице.
   const [marks, setMarks] = useState([]);
@@ -9644,7 +9669,7 @@ function CpTaskScreen({ p, cfg }) {
       .filter((c) => !(c === '@' && /@/.test(String(spec.code0 || ''))))));
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
+      hint={(drilling ? cpDrillHint(cfg, Math.min(3, dlv + 1)) : cfg.C.hints[Math.min(3, lv + 1) - 1]) || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'cp-sheet cp-' + cfg.id + (cfg.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
         <ViewToggle vt={vt} />
@@ -9665,12 +9690,12 @@ function CpTaskScreen({ p, cfg }) {
           <div className="cp-main">
             {slot ? (
               <CpSlotEditor key={drilling ? 'd' : 'm'} before={['<style>'].concat(given)} after={['</style>']} slot={slot} value={sv}
-                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2} onEnter={t.check} />
+                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2 || dlv === 2} onEnter={t.check} />
             ) : (
               <CpEditor before={['<style>'].concat(given)} after={['</style>']} value={st.code} onChange={(code) => setCode({ code })}
-                inputRef={inRef} led={led || lv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
+                inputRef={inRef} led={led || lv === 2 || dlv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
             )}
-            {!rec.solved && lv >= 3 && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
+            {((!rec.solved && lv >= 3) || (drilling && dlv >= 3)) && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
             {!rec.done ? <CpKeys inputRef={inRef} onCheck={t.check} ready={!empty} syms={syms} /> : null}
           </div>
         </div>
@@ -13375,14 +13400,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    две строки, длинный код и длинный образец прокручиваются в своих рамках. */
 @media (min-width: 760px) {
   .r28 .cp-main:has(.cp-sample) .cp-ed.is-big .cp-edit { min-height: 2.9em; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 30dvh; overflow: auto; }
   .r28 .cp-main:has(.cp-sample) .cp-sample-code { max-height: 26dvh; overflow: auto !important; }
 }
-@media (min-width: 760px) {
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big { max-height: 26dvh; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-single, .r28 .cp-main:has(.cp-sample) .cp-sed { max-height: 26dvh; }
-}
-@media (min-width: 760px) { .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 26dvh; } }
+/* Редактор при открытом образце не ограничивается по высоте и не прокручивается внутри (отзыв, 14.11.2026:
+   «в других уроках редактор растёт в высоту без прокрутки, а в 15p — прокрутка»): весь код виден, а прокручивается
+   рабочая часть экрана (.stage-content:has(.cp-sample) ниже), образец поднимает useRevealSample. */
 
 /* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
    на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
@@ -13430,10 +13452,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side { align-self: stretch; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
+/* Своя страница с условиями «готово» и HTML страницы (08p, 12p: класс виден на экране, отзыв 14.11.2026):
+   на невысоком телефоне у HTML — две строки (в них класс), остальное прокручивается. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .cp-side:has(.cp-list) .cp-html-code { max-height: 2.65em; }
+}
 `;
 
 // ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
-// Реплик: uz 88, ru 88, en 88; всего знаков 31599. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+// Реплик: uz 90, ru 90, en 90; всего знаков 32377. Голос — agoC45V78njTIxYzwmSb (один на все языки).
 export const LESSON_AUDIO = {
   schema: 1,
   speeches: [
@@ -13521,10 +13548,12 @@ export const LESSON_AUDIO = {
     { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
     { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
     { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
-    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yilning eng zo'r filmi!", required: true },
-    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun zalda mening sevimli filmim!", required: true },
-    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
-    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yilning eng zo'r filmi!", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun zalda mening sevimli filmim!", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
     { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего кинотеатра. Наведи мышку на кнопку или нажми на неё: она не прыгает, а плавно растёт. Это сделал transition. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
     { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! Код с эффектами стёрся. Кнопки больше не оживают под мышкой, а вкладки погасли.", required: true },
     { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Цвета и кнопки на месте, пропала только живость. На прошлом уроке мы разобрали transition: какое свойство меняется плавно и за сколько секунд. Правила с hover я вернул, а плавность вернёшь ты. Пятая страница будет твоей.", required: true },
@@ -13609,10 +13638,12 @@ export const LESSON_AUDIO = {
     { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
     { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
     { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
-    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Лучший фильм года!", required: true },
-    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня в зале мой любимый фильм!", required: true },
-    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
-    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Лучший фильм года!", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня в зале мой любимый фильм!", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
     { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my cinema’s website. Move the mouse over the button or tap it: it doesn’t jump, it grows smoothly. transition did that. The site has five pages. I’m about to update it, tap Refresh.", required: true },
     { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The effects code got erased. The buttons don’t come alive under the mouse anymore, and the tabs went dark.", required: true },
     { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The colors and buttons are fine, only the life is gone. Last lesson we learned transition: which property changes smoothly and in how many seconds. I’ve put the hover rules back, and you’ll bring back the smoothness. The fifth page will be yours.", required: true },
@@ -13697,10 +13728,12 @@ export const LESSON_AUDIO = {
     { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
     { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
     { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
-    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The best film of the year!", required: true },
-    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My favorite film is on today!", required: true },
-    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
-    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example is under the code. Write the same rule for this task and tap Check.", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The best film of the year!", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] My favorite film is on today!", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
   ]
 };
 // Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
@@ -13790,10 +13823,12 @@ const SPEECH_INDEX = {
     "Salom!": "uz082",
     "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz083",
     "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz084",
-    "Yilning eng zo'r filmi!": "uz085",
-    "Bugun zalda mening sevimli filmim!": "uz086",
-    "Barakalla!": "uz087",
-    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz088",
+    "Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.": "uz085",
+    "Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.": "uz086",
+    "Yilning eng zo'r filmi!": "uz087",
+    "Bugun zalda mening sevimli filmim!": "uz088",
+    "Barakalla!": "uz089",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz090",
   },
   ru: {
     "Привет! Это сайт моего кинотеатра. Наведи мышку на кнопку или нажми на неё: она не прыгает, а плавно растёт. Это сделал transition. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
@@ -13880,10 +13915,12 @@ const SPEECH_INDEX = {
     "Привет!": "ru082",
     "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru083",
     "Отлично, теперь это точно твоё! Идём дальше.": "ru084",
-    "Лучший фильм года!": "ru085",
-    "Сегодня в зале мой любимый фильм!": "ru086",
-    "Молодец!": "ru087",
-    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru088",
+    "Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.": "ru085",
+    "Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.": "ru086",
+    "Лучший фильм года!": "ru087",
+    "Сегодня в зале мой любимый фильм!": "ru088",
+    "Молодец!": "ru089",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru090",
   },
   en: {
     "Hi! This is my cinema’s website. Move the mouse over the button or tap it: it doesn’t jump, it grows smoothly. transition did that. The site has five pages. I’m about to update it, tap Refresh.": "en001",
@@ -13970,10 +14007,12 @@ const SPEECH_INDEX = {
     "Hello!": "en082",
     "Great! Now one more small task: the same thing for another case.": "en083",
     "Great, now you’ve really got it! Let’s move on.": "en084",
-    "The best film of the year!": "en085",
-    "My favorite film is on today!": "en086",
-    "Well done!": "en087",
-    "Everything in the window lives inside body.": "en088",
+    "This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.": "en085",
+    "The example is under the code. Write the same rule for this task and tap Check.": "en086",
+    "The best film of the year!": "en087",
+    "My favorite film is on today!": "en088",
+    "Well done!": "en089",
+    "Everything in the window lives inside body.": "en090",
   }
 };
 // ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

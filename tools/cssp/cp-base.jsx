@@ -87,7 +87,11 @@ const FB = {
 // Дополнительная задача после образца третьей ступени.
 const CP_DRILL = {
   say: L3("Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", 'Здорово! А теперь ещё маленькая задача: то же самое для другого случая.', 'Great! Now one more small task: the same thing for another case.'),
-  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.')
+  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.'),
+  // Помощь в дополнительной задаче — те же три ступени (отзыв, 14.11.2026: «в Bonus лампочка не даёт образец»):
+  // 1 — направление (общее), 2 — что именно нужно (C.tN.drillNo), 3 — образец под кодом и эта строка.
+  hint1: L3("Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", 'Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.', 'This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.'),
+  hint3: L3("Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", 'Образец под кодом. Напиши такое же правило для этой задачи и нажми «Проверить».', 'The example is under the code. Write the same rule for this task and tap Check.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

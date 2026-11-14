@@ -423,14 +423,11 @@
    две строки, длинный код и длинный образец прокручиваются в своих рамках. */
 @media (min-width: 760px) {
   .r28 .cp-main:has(.cp-sample) .cp-ed.is-big .cp-edit { min-height: 2.9em; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 30dvh; overflow: auto; }
   .r28 .cp-main:has(.cp-sample) .cp-sample-code { max-height: 26dvh; overflow: auto !important; }
 }
-@media (min-width: 760px) {
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big { max-height: 26dvh; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-single, .r28 .cp-main:has(.cp-sample) .cp-sed { max-height: 26dvh; }
-}
-@media (min-width: 760px) { .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 26dvh; } }
+/* Редактор при открытом образце не ограничивается по высоте и не прокручивается внутри (отзыв, 14.11.2026:
+   «в других уроках редактор растёт в высоту без прокрутки, а в 15p — прокрутка»): весь код виден, а прокручивается
+   рабочая часть экрана (.stage-content:has(.cp-sample) ниже), образец поднимает useRevealSample. */
 
 /* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
    на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
@@ -477,4 +474,9 @@
   .r28 .cp-fin .cp-work { align-items: stretch; }
   .r28 .cp-fin .cp-side { align-self: stretch; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
+}
+/* Своя страница с условиями «готово» и HTML страницы (08p, 12p: класс виден на экране, отзыв 14.11.2026):
+   на невысоком телефоне у HTML — две строки (в них класс), остальное прокручивается. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .cp-side:has(.cp-list) .cp-html-code { max-height: 2.65em; }
 }

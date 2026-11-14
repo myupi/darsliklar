@@ -7604,8 +7604,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -9447,15 +9447,17 @@ function ruleLines(k, d, text, extra, slots) {
   return [head].concat(body, [codeLine(k + 'z', [P('z', 'c15-punc', '}')], Object.assign({ d }, lc('c15-kf', extra)))]);
 }
 // Экран «впиши»: tpl — правила и блоки @keyframes, в одном из них метка ▢ (поле). Пустое поле — этого правила ещё нет.
-function CodeFill({ p, c, F, tpl, want, keys }) {
+function CodeFill({ p, c, F, tpl, want, keys, dense }) {
   const pick = usePick();
   const v = F.T.okNow ? want : noSemi(F.ty.val);
   const items = tpl.map((t) => (t.indexOf('▢') >= 0 ? (v ? t.replace('▢', v) : null) : t)).filter(Boolean);
-  const slot = F.T.okNow ? P('v', 'c15-val', want) : <Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />;
+  // Поле на месте метки кадра (50%, from, to) — цвета метки, как 0% и 100% рядом, а не цвета значения (отзыв, 14.11.2026).
+  const kfSel = /^(\d+%|from|to)$/.test(want);
+  const slot = F.T.okNow ? P('v', kfSel ? 'c15-sel' : 'c15-val', want) : <Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} cls={kfSel ? 'c15-slot-sel' : undefined} />;
   const lines = baseL().concat(...tpl.map((t, i) => ruleLines('t' + i, 1, t, { cls: t.indexOf('▢') >= 0 ? (F.T.okNow ? 'is-new' : 'is-hl') : '' }, { '▢': slot })));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={F.speaker} done={F.canGo} hint={hintAt(Math.min(3, F.T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, F.canGo)}>
-      <Sheet cls="c15-sheet c15-fill">
+      <Sheet cls={"c15-sheet c15-fill" + (dense ? " c15-dense" : "")}>
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c15-s5 c15-pair">
           <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
@@ -9678,7 +9680,7 @@ function S6({ p }) {
     if (/^\d+(\.\d+)?%$/.test(v)) return c.msgs.otherPct;
     return c.msgs.other;
   });
-  return <CodeFill p={p} c={c} F={Fl} tpl={['@keyframes sakra { 0% { transform: translate(0px, 0px); } ▢ { transform: translate(0px, -20px); } 100% { transform: translate(0px, 0px); } }', AN('sakra 1s infinite')]} want="50%" keys={['%']} />;
+  return <CodeFill p={p} c={c} F={Fl} tpl={['@keyframes sakra { 0% { transform: translate(0px, 0px); } ▢ { transform: translate(0px, -20px); } 100% { transform: translate(0px, 0px); } }', AN('sakra 1s infinite')]} want="50%" keys={['%']} dense />;
 }
 
 // S7. СКОЛЬКО РАЗ? (Sort по одному) — строка animation → один раз, два раза или без конца.
@@ -14305,6 +14307,12 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c15-sheet .kz-br.c15-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c15-sheet .kz-br.c15-br,
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c15-sheet .kz-br.c15-br { --brh: 21dvh !important; }
+}
+/* Экран «Средний кадр» (50 %): код длинный — строки плотнее, иначе на ноутбуке он налезал на строку задания
+   и кнопки (отзыв, 14.11.2026). Только этот экран (dense у CodeFill). */
+@media (min-width: 760px) {
+  .r28 .c15-sheet.c15-dense .kz-code { gap: 2px; }
+  .r28 .c15-sheet.c15-dense .kz-line { min-height: 28px; }
 }
 `;
 

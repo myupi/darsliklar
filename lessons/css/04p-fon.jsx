@@ -6300,7 +6300,11 @@ const FB = {
 // Дополнительная задача после образца третьей ступени.
 const CP_DRILL = {
   say: L3("Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", 'Здорово! А теперь ещё маленькая задача: то же самое для другого случая.', 'Great! Now one more small task: the same thing for another case.'),
-  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.')
+  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.'),
+  // Помощь в дополнительной задаче — те же три ступени (отзыв, 14.11.2026: «в Bonus лампочка не даёт образец»):
+  // 1 — направление (общее), 2 — что именно нужно (C.tN.drillNo), 3 — образец под кодом и эта строка.
+  hint1: L3("Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", 'Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.', 'This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.'),
+  hint3: L3("Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", 'Образец под кодом. Напиши такое же правило для этой задачи и нажми «Проверить».', 'The example is under the code. Write the same rule for this task and tap Check.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6470,9 +6474,11 @@ const PR = {
     }),
     // Т3 · правило целиком: звёзды yulduz.png на фон body (тёмный цвет фона — готовое правило); плиткой — сами.
     (pk) => cpTask(3, {
-      kind: 'write-rule', code0: '', answer: 'body {\n  background-image: url("yulduz.png");\n}', syms: ['{', '}', ':', ';', '(', ')', '"'],
+      // body уже есть — картинка фона дописывается в него же, второго body нет (отзыв, 14.11.2026).
+      kind: 'write-rule', code0: 'body {\n  background-color: midnightblue;\n  \n}',
+      answer: 'body {\n  background-color: midnightblue;\n  background-image: url("yulduz.png");\n}', syms: ['{', '}', ':', ';', '(', ')', '"'],
       page: p4Page(P4.star, P4.star1, P4.star2),
-      given: ['body { background-color: midnightblue; }', 'h1 { color: white; }', 'p { color: white; }'],
+      given: ['h1 { color: white; }', 'p { color: white; }'],
       goal: (D) => {
         const f = p4File(D, 'body');
         if (f === 'yulduz.png') return null;
@@ -6570,15 +6576,15 @@ const C = {
   },
   t3: {
     eyebrow: L3("Yulduzli tun", 'Звёздная ночь', 'Starry night'),
-    say: L3("Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. Qoidani boshidan oxirigacha o'zingiz yozing.",
-      'Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Напиши правило целиком, от начала до конца.',
-      'Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. Write the whole rule yourself.'),
+    say: L3("Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. body qoidasi bor, unga bitta qator qo'shing.",
+      'Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Правило body уже есть, допиши в него одну строку.',
+      'Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. The body rule is already there, add one line to it.'),
     ask: L3("Fonga yulduzlarni qo'ying: yulduz.png", 'Поставь звёзды на фон: yulduz.png', 'Put the stars on the background: yulduz.png'),
     ok: L3("Qoyil! Osmon yulduzlarga to'ldi. Kichik rasm o'zi takrorlanib, butun fonni egalladi.", 'Вот это да! Небо в звёздах. Маленькая картинка сама повторилась и заняла весь фон.', 'Wow! The sky is full of stars. The small picture repeated by itself and filled the whole background.'),
     hints: [
-      L3("Qoida uch qismdan iborat: butun sahifa, fon rasmi xususiyati va fayl nomi.", 'Правило — три части: вся страница, свойство картинки фона и имя файла.', 'The rule has three parts: the whole page, the background picture property and the file name.'),
-      L3("Selektor body, xususiyat background-image. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", 'Селектор body, свойство background-image. Значение — слово url, а в скобках yulduz.png в кавычках.', 'The selector is body, the property background-image. The value is the word url with yulduz.png in quotes inside brackets.'),
-      L3("Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qoida yozing, faqat yulduz.png bilan.", 'Образец под кодом ставит на фон мяч. Напиши такое же правило, только с yulduz.png.', 'The example under the code puts a ball on the background. Write the same rule, only with yulduz.png.')
+      L3("body qoidasi allaqachon bor. Uning ichiga yana bitta xususiyat qo'shiladi: fon rasmi va fayl nomi.", 'Правило body уже есть. В него добавляется ещё одно свойство: картинка фона и имя файла.', 'The body rule is already there. One more property goes inside it: the background picture and the file name.'),
+      L3("Bo'sh qatorga background-image xususiyatini yozing. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", 'В пустую строку напиши свойство background-image. Значение — слово url, а в скобках yulduz.png в кавычках.', 'On the empty line, write the property background-image. The value is the word url with yulduz.png in quotes inside brackets.'),
+      L3("Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qatorni body ichiga yozing, faqat yulduz.png bilan.", 'Образец под кодом ставит на фон мяч. Напиши такую же строку внутри body, только с yulduz.png.', 'The example under the code puts a ball on the background. Write the same line inside body, only with yulduz.png.')
     ],
     noImg: L3("Fonda rasm yo'q. Rasm uchun background-image kerak, qiymati esa url va qavs ichida fayl nomi.", 'На фоне нет картинки. Нужен background-image, а значение — url и имя файла в скобках.', 'There’s no picture on the background. You need background-image, with url and the file name in brackets.'),
     noFile: L3("Brauzer bunday faylni topmadi. Fayl nomini harfma-harf tekshiring: yulduz.png.", 'Браузер не нашёл такой файл. Проверь имя файла буква за буквой: yulduz.png.', 'The browser didn’t find that file. Check the file name letter by letter: yulduz.png.'),
@@ -7583,8 +7589,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -9442,6 +9448,8 @@ function useCpTabs(all) {
 // done — можно дальше (после дополнительной задачи, если была); drill — { st, checks, done }; first.
 // ─────────────────────────────────────────────────────────────────────────────
 const CP_AUTO_HINT = 2;   // со второй неудачи подряд — ступень подсказки сама (заказчик, 15.10.2026)
+// Ступень подсказки дополнительной задачи: 1 — общее направление, 2 — что нужно (drillNo), 3 — к образцу.
+const cpDrillHint = (cfg, lv) => (lv <= 0 ? null : lv === 1 ? CP_DRILL.hint1 : lv === 2 ? (cfg.C.drillNo || CP_DRILL.hint1) : CP_DRILL.hint3);
 function useCpTask(cfg, frameRef) {
   const store = useStore();
   const log = useLog();
@@ -9465,6 +9473,11 @@ function useCpTask(cfg, frameRef) {
     if (pulse === p0.current) return;
     p0.current = pulse;
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача — свои ступени
+      const dl = cur.drill.lv || 0;
+      if (dl < 3) row(put({ drill: Object.assign({}, cur.drill, { lv: dl + 1 }) }));
+      return;
+    }
     if (cur.solved || cur.lv >= 3) return;
     row(put({ lv: cur.lv + 1 }));
   }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -9477,6 +9490,19 @@ function useCpTask(cfg, frameRef) {
     setMark(at == null ? null : at);
     sfx('soft', true);
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача: со второй неудачи подряд — следующая ступень сама
+      const df = (cur.drill.fails || 0) + 1, dl = cur.drill.lv || 0;
+      if (df >= CP_AUTO_HINT && dl < 3) {
+        const h = cpDrillHint(cfg, dl + 1);
+        const both = h === m ? m : joinL(m, h);   // разбор и ступень 2 — часто одна строка drillNo
+        row(put({ drill: Object.assign({}, cur.drill, { fails: df, lv: dl + 1 }) }));
+        setMsg(both); sayNow(both, 'think');
+        return;
+      }
+      put({ drill: Object.assign({}, cur.drill, { fails: df }) });
+      setMsg(m); sayNow(m, 'think');
+      return;
+    }
     const fails = (cur.fails || 0) + 1;
     if (fails >= CP_AUTO_HINT && cur.lv < 3 && !cur.solved) {
       const lv = cur.lv + 1;
@@ -9572,6 +9598,7 @@ function CpTaskScreen({ p, cfg }) {
   const st = drilling ? rec.drill.st : rec.st;
   const tabs = useCpTabs(false);
   const lv = rec.solved ? 0 : rec.lv;
+  const dlv = drilling ? (rec.drill.lv || 0) : 0;   // ступень подсказки дополнительной задачи
   const slot = spec.slot;
   const sv = slot ? String(st.v == null ? slot.v0 : st.v) : '';
   const empty = slot ? !sv.trim() : !String(st.code || '').trim();
@@ -9581,9 +9608,9 @@ function CpTaskScreen({ p, cfg }) {
   // Во время дополнительной задачи решённое оформление остаётся на странице (если страница та же).
   const css = given.join('\n') + '\n' + (drilling && !cfg.drill.page ? rec.st.code + '\n' : '') + st.code;
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : cfg.C.ask;
-  const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const hint = t.msg || (drilling ? cpDrillHint(cfg, dlv) : !rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
   const workRef = useRef(null);
-  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, lv);
+  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, drilling ? dlv : lv);
   const htmlAid = spec.htmlAid || cfg.htmlAid;
   // Условия «готово» своей работы — видны сразу и загораются по живой странице.
   const [marks, setMarks] = useState([]);
@@ -9604,7 +9631,7 @@ function CpTaskScreen({ p, cfg }) {
       .filter((c) => !(c === '@' && /@/.test(String(spec.code0 || ''))))));
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
+      hint={(drilling ? cpDrillHint(cfg, Math.min(3, dlv + 1)) : cfg.C.hints[Math.min(3, lv + 1) - 1]) || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'cp-sheet cp-' + cfg.id + (cfg.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
         <ViewToggle vt={vt} />
@@ -9625,12 +9652,12 @@ function CpTaskScreen({ p, cfg }) {
           <div className="cp-main">
             {slot ? (
               <CpSlotEditor key={drilling ? 'd' : 'm'} before={['<style>'].concat(given)} after={['</style>']} slot={slot} value={sv}
-                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2} onEnter={t.check} />
+                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2 || dlv === 2} onEnter={t.check} />
             ) : (
               <CpEditor before={['<style>'].concat(given)} after={['</style>']} value={st.code} onChange={(code) => setCode({ code })}
-                inputRef={inRef} led={led || lv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
+                inputRef={inRef} led={led || lv === 2 || dlv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
             )}
-            {!rec.solved && lv >= 3 && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
+            {((!rec.solved && lv >= 3) || (drilling && dlv >= 3)) && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
             {!rec.done ? <CpKeys inputRef={inRef} onCheck={t.check} ready={!empty} syms={syms} /> : null}
           </div>
         </div>
@@ -13335,14 +13362,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    две строки, длинный код и длинный образец прокручиваются в своих рамках. */
 @media (min-width: 760px) {
   .r28 .cp-main:has(.cp-sample) .cp-ed.is-big .cp-edit { min-height: 2.9em; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 30dvh; overflow: auto; }
   .r28 .cp-main:has(.cp-sample) .cp-sample-code { max-height: 26dvh; overflow: auto !important; }
 }
-@media (min-width: 760px) {
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big { max-height: 26dvh; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-single, .r28 .cp-main:has(.cp-sample) .cp-sed { max-height: 26dvh; }
-}
-@media (min-width: 760px) { .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 26dvh; } }
+/* Редактор при открытом образце не ограничивается по высоте и не прокручивается внутри (отзыв, 14.11.2026:
+   «в других уроках редактор растёт в высоту без прокрутки, а в 15p — прокрутка»): весь код виден, а прокручивается
+   рабочая часть экрана (.stage-content:has(.cp-sample) ниже), образец поднимает useRevealSample. */
 
 /* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
    на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
@@ -13390,10 +13414,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side { align-self: stretch; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
+/* Своя страница с условиями «готово» и HTML страницы (08p, 12p: класс виден на экране, отзыв 14.11.2026):
+   на невысоком телефоне у HTML — две строки (в них класс), остальное прокручивается. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .cp-side:has(.cp-list) .cp-html-code { max-height: 2.65em; }
+}
 `;
 
 // ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
-// Реплик: uz 84, ru 84, en 84; всего знаков 29755. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+// Реплик: uz 86, ru 86, en 86; всего знаков 30860. Голос — agoC45V78njTIxYzwmSb (один на все языки).
 export const LESSON_AUDIO = {
   schema: 1,
   speeches: [
@@ -13410,11 +13439,11 @@ export const LESSON_AUDIO = {
     { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Rasmning o'lchami haqida o'ylang: uni kattalashtirib, butun fonga yoyadigan qiymat esingizdami?", required: true },
     { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Fon rasmining o'lchamini background-size beradi, butun fonni qoplash esa cover. Ularni ikki nuqta bilan yozing, oxirida nuqtali vergul.", required: true },
     { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u maydon rasmini butun fonga yoyadi. Xuddi shu qatorni osmon qoidasiga qo'shing.", required: true },
-    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. Qoidani boshidan oxirigacha o'zingiz yozing.", required: true },
+    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. [English pronunciation] body [O'zbekcha tallaffuz] qoidasi bor, unga bitta qator qo'shing.", required: true },
     { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Osmon yulduzlarga to'ldi. Kichik rasm o'zi takrorlanib, butun fonni egalladi.", required: true },
-    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qoida uch qismdan iborat: butun sahifa, fon rasmi xususiyati va fayl nomi.", required: true },
-    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Selektor [English pronunciation] body [O'zbekcha tallaffuz], xususiyat background-image. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", required: true },
-    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qoida yozing, faqat yulduz.png bilan.", required: true },
+    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] body [O'zbekcha tallaffuz] qoidasi allaqachon bor. Uning ichiga yana bitta xususiyat qo'shiladi: fon rasmi va fayl nomi.", required: true },
+    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bo'sh qatorga background-image xususiyatini yozing. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", required: true },
+    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qatorni [English pronunciation] body [O'zbekcha tallaffuz] ichiga yozing, faqat yulduz.png bilan.", required: true },
     { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu boshqa rasm. Yulduzlar yulduz.png faylida.", required: true },
     { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Uchta sahifa tayyor! To'rtinchisi: to'p o'yini. Bu yerda fonda bitta to'p turishi kerak edi. Lekin kodni shoshib yozgan ekanman, unda ikkita joy buzilgan. Brauzer buzilgan yozuvni tashlab yuboradi, shuning uchun to'p yo'q. Ikkala joyni toping va tuzating.", required: true },
     { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, tuzaldi! Fonda bitta to'p turibdi. O'yin boshlansin!", required: true },
@@ -13475,12 +13504,14 @@ export const LESSON_AUDIO = {
     { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
     { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
     { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
-    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shanba: futbol!", required: true },
-    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayrga chiqamiz!", required: true },
-    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nechtasini topasiz?", required: true },
-    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'pni unutmang!", required: true },
-    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
-    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", required: true },
+    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", required: true },
+    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shanba: futbol!", required: true },
+    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sayrga chiqamiz!", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nechtasini topasiz?", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'pni unutmang!", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
     { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт про мой выходной. Смотри: сзади зелёное футбольное поле, под заголовком жёлтый фон, а под текстом белый. Всё это сделали свойства фона. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
     { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS-код стёрся. Пропали и поле, и цвета, а вкладки погасли.", required: true },
     { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] на месте, пропал только фон. На прошлом уроке мы разобрали фон: background-color красит любой элемент, а background-image ставит картинку через url. Теперь оформим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.", required: true },
@@ -13494,11 +13525,11 @@ export const LESSON_AUDIO = {
     { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Подумай о размере картинки: помнишь значение, которое растягивает её на весь фон?", required: true },
     { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Размер картинки фона задаёт background-size, а накрыть весь фон, это cover. Запиши их через двоеточие, в конце точка с запятой.", required: true },
     { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом растягивает картинку поля на весь фон. Добавь такую же строку в правило с небом.", required: true },
-    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Напиши правило целиком, от начала до конца.", required: true },
+    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Правило [English pronunciation] body [Русское произношение] уже есть, допиши в него одну строку.", required: true },
     { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Небо в звёздах. Маленькая картинка сама повторилась и заняла весь фон.", required: true },
-    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило, три части: вся страница, свойство картинки фона и имя файла.", required: true },
-    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Селектор [English pronunciation] body [Русское произношение], свойство background-image. Значение, слово url, а в скобках yulduz.png в кавычках.", required: true },
-    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом ставит на фон мяч. Напиши такое же правило, только с yulduz.png.", required: true },
+    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Правило [English pronunciation] body [Русское произношение] уже есть. В него добавляется ещё одно свойство: картинка фона и имя файла.", required: true },
+    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В пустую строку напиши свойство background-image. Значение, слово url, а в скобках yulduz.png в кавычках.", required: true },
+    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом ставит на фон мяч. Напиши такую же строку внутри [English pronunciation] body [Русское произношение], только с yulduz.png.", required: true },
     { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это другая картинка. Звёзды, в файле yulduz.png.", required: true },
     { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Три страницы готовы! Четвёртая: игра в мяч. Здесь на фоне должен быть один мяч. Но я писал код в спешке, и в нём две поломки. Браузер сломанные записи выбрасывает, поэтому мяча нет. Найди и почини обе.", required: true },
     { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть, починено! На фоне один мяч. Игра начинается!", required: true },
@@ -13559,12 +13590,14 @@ export const LESSON_AUDIO = {
     { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
     { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
     { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
-    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Суббота: футбол!", required: true },
-    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Идём гулять!", required: true },
-    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сколько найдёшь?", required: true },
-    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не забудь мяч!", required: true },
-    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
-    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.", required: true },
+    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.", required: true },
+    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Суббота: футбол!", required: true },
+    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Идём гулять!", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Сколько найдёшь?", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не забудь мяч!", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
     { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is a website about my day off. Look: a green football field in the back, a yellow background behind the heading, and white behind the text. Background properties did all of that. The site has five pages. I’m about to update it, tap Refresh.", required: true },
     { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The CSS code got erased. The field and the colors are gone, and the tabs went dark.", required: true },
     { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L is fine, only the background is gone. Last lesson we learned about backgrounds: background-color paints any element, and background-image puts in a picture with url. Now let’s style the five pages one by one, and you’ll write the code. The fifth page will be yours.", required: true },
@@ -13578,11 +13611,11 @@ export const LESSON_AUDIO = {
     { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Think about the picture’s size: remember the value that stretches it over the whole background?", required: true },
     { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] background-size sets the background picture’s size, and cover means cover the whole background. Write them with a colon and a semicolon at the end.", required: true },
     { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code stretches the field picture over the whole background. Add the same line to the sky rule.", required: true },
-    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. Write the whole rule yourself.", required: true },
+    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. The body rule is already there, add one line to it.", required: true },
     { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! The sky is full of stars. The small picture repeated by itself and filled the whole background.", required: true },
-    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The rule has three parts: the whole page, the background picture property and the file name.", required: true },
-    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The selector is body, the property background-image. The value is the word url with yulduz.png in quotes inside brackets.", required: true },
-    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code puts a ball on the background. Write the same rule, only with yulduz.png.", required: true },
+    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The body rule is already there. One more property goes inside it: the background picture and the file name.", required: true },
+    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On the empty line, write the property background-image. The value is the word url with yulduz.png in quotes inside brackets.", required: true },
+    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example under the code puts a ball on the background. Write the same line inside body, only with yulduz.png.", required: true },
     { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s a different picture. The stars are in the file yulduz.png.", required: true },
     { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Three pages are done! The fourth is the ball game. There should be one ball on the background here. But I wrote the code in a hurry, and it has two broken spots. The browser throws broken entries away, so there’s no ball. Find and fix both.", required: true },
     { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fixed it! There’s one ball on the background. Let the game begin!", required: true },
@@ -13643,12 +13676,14 @@ export const LESSON_AUDIO = {
     { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
     { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
     { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
-    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Saturday: football!", required: true },
-    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s go for a walk!", required: true },
-    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How many can you find?", required: true },
-    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t forget the ball!", required: true },
-    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
-    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.", required: true },
+    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example is under the code. Write the same rule for this task and tap Check.", required: true },
+    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Saturday: football!", required: true },
+    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s go for a walk!", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How many can you find?", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Don’t forget the ball!", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
   ]
 };
 // Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
@@ -13667,11 +13702,11 @@ const SPEECH_INDEX = {
     "Rasmning o'lchami haqida o'ylang: uni kattalashtirib, butun fonga yoyadigan qiymat esingizdami?": "uz011",
     "Fon rasmining o'lchamini background-size beradi, butun fonni qoplash esa cover. Ularni ikki nuqta bilan yozing, oxirida nuqtali vergul.": "uz012",
     "Namuna kod ostida: u maydon rasmini butun fonga yoyadi. Xuddi shu qatorni osmon qoidasiga qo'shing.": "uz013",
-    "Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. Qoidani boshidan oxirigacha o'zingiz yozing.": "uz014",
+    "Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. [English pronunciation] body [O'zbekcha tallaffuz] qoidasi bor, unga bitta qator qo'shing.": "uz014",
     "Qoyil! Osmon yulduzlarga to'ldi. Kichik rasm o'zi takrorlanib, butun fonni egalladi.": "uz015",
-    "Qoida uch qismdan iborat: butun sahifa, fon rasmi xususiyati va fayl nomi.": "uz016",
-    "Selektor [English pronunciation] body [O'zbekcha tallaffuz], xususiyat background-image. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.": "uz017",
-    "Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qoida yozing, faqat yulduz.png bilan.": "uz018",
+    "[English pronunciation] body [O'zbekcha tallaffuz] qoidasi allaqachon bor. Uning ichiga yana bitta xususiyat qo'shiladi: fon rasmi va fayl nomi.": "uz016",
+    "Bo'sh qatorga background-image xususiyatini yozing. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.": "uz017",
+    "Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qatorni [English pronunciation] body [O'zbekcha tallaffuz] ichiga yozing, faqat yulduz.png bilan.": "uz018",
     "Bu boshqa rasm. Yulduzlar yulduz.png faylida.": "uz019",
     "Uchta sahifa tayyor! To'rtinchisi: to'p o'yini. Bu yerda fonda bitta to'p turishi kerak edi. Lekin kodni shoshib yozgan ekanman, unda ikkita joy buzilgan. Brauzer buzilgan yozuvni tashlab yuboradi, shuning uchun to'p yo'q. Ikkala joyni toping va tuzating.": "uz020",
     "Mana, tuzaldi! Fonda bitta to'p turibdi. O'yin boshlansin!": "uz021",
@@ -13732,12 +13767,14 @@ const SPEECH_INDEX = {
     "Salom!": "uz076",
     "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz077",
     "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz078",
-    "Shanba: futbol!": "uz079",
-    "Sayrga chiqamiz!": "uz080",
-    "Nechtasini topasiz?": "uz081",
-    "To'pni unutmang!": "uz082",
-    "Barakalla!": "uz083",
-    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz084",
+    "Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.": "uz079",
+    "Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.": "uz080",
+    "Shanba: futbol!": "uz081",
+    "Sayrga chiqamiz!": "uz082",
+    "Nechtasini topasiz?": "uz083",
+    "To'pni unutmang!": "uz084",
+    "Barakalla!": "uz085",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz086",
   },
   ru: {
     "Привет! Это сайт про мой выходной. Смотри: сзади зелёное футбольное поле, под заголовком жёлтый фон, а под текстом белый. Всё это сделали свойства фона. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
@@ -13753,11 +13790,11 @@ const SPEECH_INDEX = {
     "Подумай о размере картинки: помнишь значение, которое растягивает её на весь фон?": "ru011",
     "Размер картинки фона задаёт background-size, а накрыть весь фон, это cover. Запиши их через двоеточие, в конце точка с запятой.": "ru012",
     "Образец под кодом растягивает картинку поля на весь фон. Добавь такую же строку в правило с небом.": "ru013",
-    "Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Напиши правило целиком, от начала до конца.": "ru014",
+    "Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Правило [English pronunciation] body [Русское произношение] уже есть, допиши в него одну строку.": "ru014",
     "Вот это да! Небо в звёздах. Маленькая картинка сама повторилась и заняла весь фон.": "ru015",
-    "Правило, три части: вся страница, свойство картинки фона и имя файла.": "ru016",
-    "Селектор [English pronunciation] body [Русское произношение], свойство background-image. Значение, слово url, а в скобках yulduz.png в кавычках.": "ru017",
-    "Образец под кодом ставит на фон мяч. Напиши такое же правило, только с yulduz.png.": "ru018",
+    "Правило [English pronunciation] body [Русское произношение] уже есть. В него добавляется ещё одно свойство: картинка фона и имя файла.": "ru016",
+    "В пустую строку напиши свойство background-image. Значение, слово url, а в скобках yulduz.png в кавычках.": "ru017",
+    "Образец под кодом ставит на фон мяч. Напиши такую же строку внутри [English pronunciation] body [Русское произношение], только с yulduz.png.": "ru018",
     "Это другая картинка. Звёзды, в файле yulduz.png.": "ru019",
     "Три страницы готовы! Четвёртая: игра в мяч. Здесь на фоне должен быть один мяч. Но я писал код в спешке, и в нём две поломки. Браузер сломанные записи выбрасывает, поэтому мяча нет. Найди и почини обе.": "ru020",
     "Есть, починено! На фоне один мяч. Игра начинается!": "ru021",
@@ -13818,12 +13855,14 @@ const SPEECH_INDEX = {
     "Привет!": "ru076",
     "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru077",
     "Отлично, теперь это точно твоё! Идём дальше.": "ru078",
-    "Суббота: футбол!": "ru079",
-    "Идём гулять!": "ru080",
-    "Сколько найдёшь?": "ru081",
-    "Не забудь мяч!": "ru082",
-    "Молодец!": "ru083",
-    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru084",
+    "Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.": "ru079",
+    "Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.": "ru080",
+    "Суббота: футбол!": "ru081",
+    "Идём гулять!": "ru082",
+    "Сколько найдёшь?": "ru083",
+    "Не забудь мяч!": "ru084",
+    "Молодец!": "ru085",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru086",
   },
   en: {
     "Hi! This is a website about my day off. Look: a green football field in the back, a yellow background behind the heading, and white behind the text. Background properties did all of that. The site has five pages. I’m about to update it, tap Refresh.": "en001",
@@ -13839,11 +13878,11 @@ const SPEECH_INDEX = {
     "Think about the picture’s size: remember the value that stretches it over the whole background?": "en011",
     "background-size sets the background picture’s size, and cover means cover the whole background. Write them with a colon and a semicolon at the end.": "en012",
     "The example under the code stretches the field picture over the whole background. Add the same line to the sky rule.": "en013",
-    "Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. Write the whole rule yourself.": "en014",
+    "Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. The body rule is already there, add one line to it.": "en014",
     "Wow! The sky is full of stars. The small picture repeated by itself and filled the whole background.": "en015",
-    "The rule has three parts: the whole page, the background picture property and the file name.": "en016",
-    "The selector is body, the property background-image. The value is the word url with yulduz.png in quotes inside brackets.": "en017",
-    "The example under the code puts a ball on the background. Write the same rule, only with yulduz.png.": "en018",
+    "The body rule is already there. One more property goes inside it: the background picture and the file name.": "en016",
+    "On the empty line, write the property background-image. The value is the word url with yulduz.png in quotes inside brackets.": "en017",
+    "The example under the code puts a ball on the background. Write the same line inside body, only with yulduz.png.": "en018",
     "That’s a different picture. The stars are in the file yulduz.png.": "en019",
     "Three pages are done! The fourth is the ball game. There should be one ball on the background here. But I wrote the code in a hurry, and it has two broken spots. The browser throws broken entries away, so there’s no ball. Find and fix both.": "en020",
     "Fixed it! There’s one ball on the background. Let the game begin!": "en021",
@@ -13904,12 +13943,14 @@ const SPEECH_INDEX = {
     "Hello!": "en076",
     "Great! Now one more small task: the same thing for another case.": "en077",
     "Great, now you’ve really got it! Let’s move on.": "en078",
-    "Saturday: football!": "en079",
-    "Let’s go for a walk!": "en080",
-    "How many can you find?": "en081",
-    "Don’t forget the ball!": "en082",
-    "Well done!": "en083",
-    "Everything in the window lives inside body.": "en084",
+    "This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.": "en079",
+    "The example is under the code. Write the same rule for this task and tap Check.": "en080",
+    "Saturday: football!": "en081",
+    "Let’s go for a walk!": "en082",
+    "How many can you find?": "en083",
+    "Don’t forget the ball!": "en084",
+    "Well done!": "en085",
+    "Everything in the window lives inside body.": "en086",
   }
 };
 // ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

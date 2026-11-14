@@ -7602,8 +7602,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -13534,8 +13534,10 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   /* Панель «Файлы» (экраны 3 и 13) — своей строкой под браузером и кодом, а не третьим столбцом: иначе браузер и код сжимались. */
   .c16-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code):has(> .c16-files) { display: grid; grid-template-columns: 1fr 1.15fr; row-gap: 14px; }
   .c16-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .c16-files { grid-column: 1 / -1; justify-self: center; }
-  .c16-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
-  .c16-sheet .kz-line { min-height: 34px; }
+  /* Строки кода плотнее (отзыв, 14.11.2026: в уроке 16 отступы между строками большие, 12 строк кода
+     не помещались в высоту при масштабе 100 %): было 34 px и зазор 6 px. */
+  .c16-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 2px; }
+  .c16-sheet .kz-line { min-height: 28px; }
   .c16-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
 }
 
@@ -14398,6 +14400,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .c16-win { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: #fff;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .06); font: 600 14px var(--r-font, Inter, sans-serif); color: #1F2430; }
 .r28 .c16-win b { font: 700 15px var(--r-mono, ui-monospace, monospace); color: #C2410C; }
+/* Ширина — как у кода и кнопок под ней (отзыв, 14.11.2026: края полосы, кода и кнопок не совпадали). */
+.r28 .c16-win { box-sizing: border-box; align-self: center; width: min(100%, 520px); }
 /* @media в редакторе — как at-правило. */
 .r28 .kz-line .c16-at { color: #C586C0; }
 /* Страница шире окна — метка красная и показывает ширину страницы. */

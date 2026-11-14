@@ -198,7 +198,8 @@ const C = {
     say: L3("Ikkita sahifa yondi! Uchinchisi: seanslar. Bu yerda kod umuman yo'q, shuning uchun vaqtlar bir-birining tagida turibdi. Ular bitta qatorga tizilsin va chap hamda o'ng chetlarga tarqalsin. Qoidani o'zingiz yozing: qutining nomi HTML kodda, brauzer ostida turibdi.",
       'Две страницы горят! Третья: сеансы. Здесь кода нет совсем, поэтому время стоит столбиком. Пусть оно встанет в один ряд и разойдётся к левому и правому краю. Напиши правило: имя коробки — в HTML-коде под браузером.',
       'Two pages are lit! The third is showtimes. There’s no code here at all, so the times are stacked in a column. Let them line up in one row and spread to the left and right edges. Write the rule yourself: the box’s name is in the HTML code under the browser.'),
-    ask: L3("Vaqtlarni qatorga tizing va chetlarga tarqating", 'Выстрой время в ряд и разнеси по краям', 'Line up the times and spread them to the edges'),
+    // Цель — видимый результат (отзыв, 14.11.2026: «to the edges» непонятно): ряд, первое время у левого края, последнее — у правого.
+    ask: L3("Uchala vaqtni bitta qatorga qo'ying: 10:00 chap chetda, 18:00 o'ng chetda", 'Поставь три времени в один ряд: 10:00 у левого края, 18:00 у правого', 'Put the three times in one row: 10:00 at the left edge, 18:00 at the right edge'),
     ok: L3("Voy, xuddi haqiqiy kinoteatr saytidagidek! Seanslar bir qatorda, chetdan chetgacha.", 'Ого, прямо как на сайте настоящего кинотеатра! Сеансы в один ряд, от края до края.', 'Wow, just like a real cinema website! The showtimes are in one row, edge to edge.'),
     hints: [
       L3("Ikki ish kerak: oldin quti flex bo'lsin, keyin vaqtlar asosiy o'q bo'ylab chetlarga tarqalsin.", 'Нужны два дела: сначала коробка становится flex, потом время расходится по главной оси к краям.', 'Two things are needed: first the box becomes flex, then the times spread along the main axis to the edges.'),

@@ -6300,7 +6300,11 @@ const FB = {
 // Дополнительная задача после образца третьей ступени.
 const CP_DRILL = {
   say: L3("Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", 'Здорово! А теперь ещё маленькая задача: то же самое для другого случая.', 'Great! Now one more small task: the same thing for another case.'),
-  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.')
+  done: L3("Ajoyib, endi bu sizga tanish! Davom etamiz.", 'Отлично, теперь это точно твоё! Идём дальше.', 'Great, now you’ve really got it! Let’s move on.'),
+  // Помощь в дополнительной задаче — те же три ступени (отзыв, 14.11.2026: «в Bonus лампочка не даёт образец»):
+  // 1 — направление (общее), 2 — что именно нужно (C.tN.drillNo), 3 — образец под кодом и эта строка.
+  hint1: L3("Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", 'Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.', 'This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.'),
+  hint3: L3("Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", 'Образец под кодом. Напиши такое же правило для этой задачи и нажми «Проверить».', 'The example is under the code. Write the same rule for this task and tap Check.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7652,8 +7656,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -9511,6 +9515,8 @@ function useCpTabs(all) {
 // done — можно дальше (после дополнительной задачи, если была); drill — { st, checks, done }; first.
 // ─────────────────────────────────────────────────────────────────────────────
 const CP_AUTO_HINT = 2;   // со второй неудачи подряд — ступень подсказки сама (заказчик, 15.10.2026)
+// Ступень подсказки дополнительной задачи: 1 — общее направление, 2 — что нужно (drillNo), 3 — к образцу.
+const cpDrillHint = (cfg, lv) => (lv <= 0 ? null : lv === 1 ? CP_DRILL.hint1 : lv === 2 ? (cfg.C.drillNo || CP_DRILL.hint1) : CP_DRILL.hint3);
 function useCpTask(cfg, frameRef) {
   const store = useStore();
   const log = useLog();
@@ -9534,6 +9540,11 @@ function useCpTask(cfg, frameRef) {
     if (pulse === p0.current) return;
     p0.current = pulse;
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача — свои ступени
+      const dl = cur.drill.lv || 0;
+      if (dl < 3) row(put({ drill: Object.assign({}, cur.drill, { lv: dl + 1 }) }));
+      return;
+    }
     if (cur.solved || cur.lv >= 3) return;
     row(put({ lv: cur.lv + 1 }));
   }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -9546,6 +9557,19 @@ function useCpTask(cfg, frameRef) {
     setMark(at == null ? null : at);
     sfx('soft', true);
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача: со второй неудачи подряд — следующая ступень сама
+      const df = (cur.drill.fails || 0) + 1, dl = cur.drill.lv || 0;
+      if (df >= CP_AUTO_HINT && dl < 3) {
+        const h = cpDrillHint(cfg, dl + 1);
+        const both = h === m ? m : joinL(m, h);   // разбор и ступень 2 — часто одна строка drillNo
+        row(put({ drill: Object.assign({}, cur.drill, { fails: df, lv: dl + 1 }) }));
+        setMsg(both); sayNow(both, 'think');
+        return;
+      }
+      put({ drill: Object.assign({}, cur.drill, { fails: df }) });
+      setMsg(m); sayNow(m, 'think');
+      return;
+    }
     const fails = (cur.fails || 0) + 1;
     if (fails >= CP_AUTO_HINT && cur.lv < 3 && !cur.solved) {
       const lv = cur.lv + 1;
@@ -9641,6 +9665,7 @@ function CpTaskScreen({ p, cfg }) {
   const st = drilling ? rec.drill.st : rec.st;
   const tabs = useCpTabs(false);
   const lv = rec.solved ? 0 : rec.lv;
+  const dlv = drilling ? (rec.drill.lv || 0) : 0;   // ступень подсказки дополнительной задачи
   const slot = spec.slot;
   const sv = slot ? String(st.v == null ? slot.v0 : st.v) : '';
   const empty = slot ? !sv.trim() : !String(st.code || '').trim();
@@ -9650,9 +9675,9 @@ function CpTaskScreen({ p, cfg }) {
   // Во время дополнительной задачи решённое оформление остаётся на странице (если страница та же).
   const css = given.join('\n') + '\n' + (drilling && !cfg.drill.page ? rec.st.code + '\n' : '') + st.code;
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : cfg.C.ask;
-  const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const hint = t.msg || (drilling ? cpDrillHint(cfg, dlv) : !rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
   const workRef = useRef(null);
-  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, lv);
+  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, drilling ? dlv : lv);
   const htmlAid = spec.htmlAid || cfg.htmlAid;
   // Условия «готово» своей работы — видны сразу и загораются по живой странице.
   const [marks, setMarks] = useState([]);
@@ -9673,7 +9698,7 @@ function CpTaskScreen({ p, cfg }) {
       .filter((c) => !(c === '@' && /@/.test(String(spec.code0 || ''))))));
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
+      hint={(drilling ? cpDrillHint(cfg, Math.min(3, dlv + 1)) : cfg.C.hints[Math.min(3, lv + 1) - 1]) || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'cp-sheet cp-' + cfg.id + (cfg.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
         <ViewToggle vt={vt} />
@@ -9694,12 +9719,12 @@ function CpTaskScreen({ p, cfg }) {
           <div className="cp-main">
             {slot ? (
               <CpSlotEditor key={drilling ? 'd' : 'm'} before={['<style>'].concat(given)} after={['</style>']} slot={slot} value={sv}
-                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2} onEnter={t.check} />
+                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2 || dlv === 2} onEnter={t.check} />
             ) : (
               <CpEditor before={['<style>'].concat(given)} after={['</style>']} value={st.code} onChange={(code) => setCode({ code })}
-                inputRef={inRef} led={led || lv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
+                inputRef={inRef} led={led || lv === 2 || dlv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
             )}
-            {!rec.solved && lv >= 3 && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
+            {((!rec.solved && lv >= 3) || (drilling && dlv >= 3)) && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
             {!rec.done ? <CpKeys inputRef={inRef} onCheck={t.check} ready={!empty} syms={syms} /> : null}
           </div>
         </div>
@@ -13404,14 +13429,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    две строки, длинный код и длинный образец прокручиваются в своих рамках. */
 @media (min-width: 760px) {
   .r28 .cp-main:has(.cp-sample) .cp-ed.is-big .cp-edit { min-height: 2.9em; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 30dvh; overflow: auto; }
   .r28 .cp-main:has(.cp-sample) .cp-sample-code { max-height: 26dvh; overflow: auto !important; }
 }
-@media (min-width: 760px) {
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big { max-height: 26dvh; }
-  .r28 .cp-main:has(.cp-sample) .cp-ed.is-single, .r28 .cp-main:has(.cp-sample) .cp-sed { max-height: 26dvh; }
-}
-@media (min-width: 760px) { .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 26dvh; } }
+/* Редактор при открытом образце не ограничивается по высоте и не прокручивается внутри (отзыв, 14.11.2026:
+   «в других уроках редактор растёт в высоту без прокрутки, а в 15p — прокрутка»): весь код виден, а прокручивается
+   рабочая часть экрана (.stage-content:has(.cp-sample) ниже), образец поднимает useRevealSample. */
 
 /* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
    на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
@@ -13459,10 +13481,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .cp-fin .cp-side { align-self: stretch; }
   .r28 .cp-fin .cp-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
+/* Своя страница с условиями «готово» и HTML страницы (08p, 12p: класс виден на экране, отзыв 14.11.2026):
+   на невысоком телефоне у HTML — две строки (в них класс), остальное прокручивается. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .cp-side:has(.cp-list) .cp-html-code { max-height: 2.65em; }
+}
 `;
 
 // ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
-// Реплик: uz 91, ru 91, en 91; всего знаков 32750. Голос — agoC45V78njTIxYzwmSb (один на все языки).
+// Реплик: uz 93, ru 93, en 93; всего знаков 33528. Голос — agoC45V78njTIxYzwmSb (один на все языки).
 export const LESSON_AUDIO = {
   schema: 1,
   speeches: [
@@ -13548,15 +13575,17 @@ export const LESSON_AUDIO = {
     { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
     { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.", required: true },
     { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, endi bu sizga tanish! Davom etamiz.", required: true },
-    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi mavsum boshlandi! Birinchi o'yinga chipta oling!", required: true },
-    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reklama: yangi to'plar chegirmada!", required: true },
-    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirmalar yakshanbagacha!", required: true },
-    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizning jamoa eng zo'ri!", required: true },
-    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart qavssiz yozilgan: brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Shartni dumaloq qavslarga oling.", required: true },
-    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shartdagi sonda px yo'q: brauzer qoidani tashlab yubordi. Sonni px bilan yozing.", required: true },
-    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda min-width turibdi: qoida keng oynalarda ishlaydi, telefonda uxlaydi. Telefon uchun max-width kerak.", required: true },
-    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
-    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
+    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.", required: true },
+    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.", required: true },
+    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yangi mavsum boshlandi! Birinchi o'yinga chipta oling!", required: true },
+    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Reklama: yangi to'plar chegirmada!", required: true },
+    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Chegirmalar yakshanbagacha!", required: true },
+    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bizning jamoa eng zo'ri!", required: true },
+    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shart qavssiz yozilgan: brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Shartni dumaloq qavslarga oling.", required: true },
+    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shartdagi sonda px yo'q: brauzer qoidani tashlab yubordi. Sonni px bilan yozing.", required: true },
+    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerda min-width turibdi: qoida keng oynalarda ishlaydi, telefonda uxlaydi. Telefon uchun max-width kerak.", required: true },
+    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
+    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
     { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Это сайт моего футбольного клуба, я открыл его на телефоне. Смотри: баннер ровно по экрану, а карточки стоят друг под другом. Это сделали проценты и правило media. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.", required: true },
     { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой! CSS для телефона стёрся. Баннер вылез за экран, карточки сжались, а вкладки погасли.", required: true },
     { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] На компьютере сайт в порядке, сломался только телефон. На прошлом уроке мы разобрали проценты и правило media. Теперь починим пять страниц для телефона по одной, а код будешь писать ты. Посмотри на окно: оно как телефон, шириной триста шестьдесят пикселей. Пятая страница будет твоей.", required: true },
@@ -13639,15 +13668,17 @@ export const LESSON_AUDIO = {
     { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
     { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здорово! А теперь ещё маленькая задача: то же самое для другого случая.", required: true },
     { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, теперь это точно твоё! Идём дальше.", required: true },
-    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новый сезон начался! Купи билет на первый матч!", required: true },
-    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Реклама: новые мячи со скидкой!", required: true },
-    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скидки до воскресенья!", required: true },
-    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наша команда лучшая!", required: true },
-    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие без скобок: браузер его не понял и выбросил всё правило media. Возьми условие в круглые скобки.", required: true },
-    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В условии число без px: браузер выбросил правило. Напиши число вместе с px.", required: true },
-    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь стоит min-width: правило работает в широких окнах, а на телефоне спит. Для телефона нужен max-width.", required: true },
-    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
-    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
+    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.", required: true },
+    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.", required: true },
+    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Новый сезон начался! Купи билет на первый матч!", required: true },
+    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Реклама: новые мячи со скидкой!", required: true },
+    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скидки до воскресенья!", required: true },
+    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наша команда лучшая!", required: true },
+    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Условие без скобок: браузер его не понял и выбросил всё правило media. Возьми условие в круглые скобки.", required: true },
+    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В условии число без px: браузер выбросил правило. Напиши число вместе с px.", required: true },
+    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь стоит min-width: правило работает в широких окнах, а на телефоне спит. Для телефона нужен max-width.", required: true },
+    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
+    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
     { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! This is my football club’s website, opened on a phone. Look: the banner fits the screen exactly, and the cards are stacked. Percent and a media rule did that. The site has five pages. I’m about to update it, tap Refresh.", required: true },
     { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Oh no! The phone CSS got erased. The banner sticks out of the screen, the cards got squeezed, and the tabs went dark.", required: true },
     { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On a computer the site is fine; only the phone broke. Last lesson we learned percent and the media rule. Now let’s fix the five pages for a phone one by one, and you’ll write the code. Look at the window: it’s like a phone, three hundred sixty pixels wide. The fifth page will be yours.", required: true },
@@ -13730,15 +13761,17 @@ export const LESSON_AUDIO = {
     { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
     { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Now one more small task: the same thing for another case.", required: true },
     { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, now you’ve really got it! Let’s move on.", required: true },
-    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The new season has started! Get a ticket for the first match!", required: true },
-    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Ad: new balls on sale!", required: true },
-    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sale until Sunday!", required: true },
-    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our team is the best!", required: true },
-    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The condition has no brackets: the browser didn’t understand it and threw the whole media rule away. Put the condition in round brackets.", required: true },
-    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number in the condition has no px: the browser threw the rule away. Write the number with px.", required: true },
-    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This says min-width: the rule works in wide windows and sleeps on a phone. A phone needs max-width.", required: true },
-    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
-    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
+    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.", required: true },
+    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The example is under the code. Write the same rule for this task and tap Check.", required: true },
+    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The new season has started! Get a ticket for the first match!", required: true },
+    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Ad: new balls on sale!", required: true },
+    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Sale until Sunday!", required: true },
+    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Our team is the best!", required: true },
+    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The condition has no brackets: the browser didn’t understand it and threw the whole media rule away. Put the condition in round brackets.", required: true },
+    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The number in the condition has no px: the browser threw the rule away. Write the number with px.", required: true },
+    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This says min-width: the rule works in wide windows and sleeps on a phone. A phone needs max-width.", required: true },
+    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
+    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
   ]
 };
 // Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
@@ -13826,15 +13859,17 @@ const SPEECH_INDEX = {
     "Salom!": "uz080",
     "Zo'r! Endi yana bir kichik vazifa: xuddi shu narsani boshqa sahifa uchun yozing.": "uz081",
     "Ajoyib, endi bu sizga tanish! Davom etamiz.": "uz082",
-    "Yangi mavsum boshlandi! Birinchi o'yinga chipta oling!": "uz083",
-    "Reklama: yangi to'plar chegirmada!": "uz084",
-    "Chegirmalar yakshanbagacha!": "uz085",
-    "Bizning jamoa eng zo'ri!": "uz086",
-    "Shart qavssiz yozilgan: brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Shartni dumaloq qavslarga oling.": "uz087",
-    "Shartdagi sonda px yo'q: brauzer qoidani tashlab yubordi. Sonni px bilan yozing.": "uz088",
-    "Bu yerda min-width turibdi: qoida keng oynalarda ishlaydi, telefonda uxlaydi. Telefon uchun max-width kerak.": "uz089",
-    "Barakalla!": "uz090",
-    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz091",
+    "Bu ham xuddi hozir yechgan vazifadagi qoida. Kodingizga qarang: faqat sahifadagi element boshqa.": "uz083",
+    "Namuna kod ostida. Xuddi shunday qoidani shu vazifa uchun yozing va Tekshirishni bosing.": "uz084",
+    "Yangi mavsum boshlandi! Birinchi o'yinga chipta oling!": "uz085",
+    "Reklama: yangi to'plar chegirmada!": "uz086",
+    "Chegirmalar yakshanbagacha!": "uz087",
+    "Bizning jamoa eng zo'ri!": "uz088",
+    "Shart qavssiz yozilgan: brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Shartni dumaloq qavslarga oling.": "uz089",
+    "Shartdagi sonda px yo'q: brauzer qoidani tashlab yubordi. Sonni px bilan yozing.": "uz090",
+    "Bu yerda min-width turibdi: qoida keng oynalarda ishlaydi, telefonda uxlaydi. Telefon uchun max-width kerak.": "uz091",
+    "Barakalla!": "uz092",
+    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz093",
   },
   ru: {
     "Привет! Это сайт моего футбольного клуба, я открыл его на телефоне. Смотри: баннер ровно по экрану, а карточки стоят друг под другом. Это сделали проценты и правило media. На сайте пять страниц. Сейчас я его обновлю, нажми Обновить.": "ru001",
@@ -13919,15 +13954,17 @@ const SPEECH_INDEX = {
     "Привет!": "ru080",
     "Здорово! А теперь ещё маленькая задача: то же самое для другого случая.": "ru081",
     "Отлично, теперь это точно твоё! Идём дальше.": "ru082",
-    "Новый сезон начался! Купи билет на первый матч!": "ru083",
-    "Реклама: новые мячи со скидкой!": "ru084",
-    "Скидки до воскресенья!": "ru085",
-    "Наша команда лучшая!": "ru086",
-    "Условие без скобок: браузер его не понял и выбросил всё правило media. Возьми условие в круглые скобки.": "ru087",
-    "В условии число без px: браузер выбросил правило. Напиши число вместе с px.": "ru088",
-    "Здесь стоит min-width: правило работает в широких окнах, а на телефоне спит. Для телефона нужен max-width.": "ru089",
-    "Молодец!": "ru090",
-    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru091",
+    "Это то же правило, что в задании, которое ты только что решил. Посмотри на свой код: другой только элемент на странице.": "ru083",
+    "Образец под кодом. Напиши такое же правило для этой задачи и нажми Проверить.": "ru084",
+    "Новый сезон начался! Купи билет на первый матч!": "ru085",
+    "Реклама: новые мячи со скидкой!": "ru086",
+    "Скидки до воскресенья!": "ru087",
+    "Наша команда лучшая!": "ru088",
+    "Условие без скобок: браузер его не понял и выбросил всё правило media. Возьми условие в круглые скобки.": "ru089",
+    "В условии число без px: браузер выбросил правило. Напиши число вместе с px.": "ru090",
+    "Здесь стоит min-width: правило работает в широких окнах, а на телефоне спит. Для телефона нужен max-width.": "ru091",
+    "Молодец!": "ru092",
+    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru093",
   },
   en: {
     "Hi! This is my football club’s website, opened on a phone. Look: the banner fits the screen exactly, and the cards are stacked. Percent and a media rule did that. The site has five pages. I’m about to update it, tap Refresh.": "en001",
@@ -14012,15 +14049,17 @@ const SPEECH_INDEX = {
     "Hello!": "en080",
     "Great! Now one more small task: the same thing for another case.": "en081",
     "Great, now you’ve really got it! Let’s move on.": "en082",
-    "The new season has started! Get a ticket for the first match!": "en083",
-    "Ad: new balls on sale!": "en084",
-    "Sale until Sunday!": "en085",
-    "Our team is the best!": "en086",
-    "The condition has no brackets: the browser didn’t understand it and threw the whole media rule away. Put the condition in round brackets.": "en087",
-    "The number in the condition has no px: the browser threw the rule away. Write the number with px.": "en088",
-    "This says min-width: the rule works in wide windows and sleeps on a phone. A phone needs max-width.": "en089",
-    "Well done!": "en090",
-    "Everything in the window lives inside body.": "en091",
+    "This is the same rule as in the task you just solved. Look at your code: only the element on the page is different.": "en083",
+    "The example is under the code. Write the same rule for this task and tap Check.": "en084",
+    "The new season has started! Get a ticket for the first match!": "en085",
+    "Ad: new balls on sale!": "en086",
+    "Sale until Sunday!": "en087",
+    "Our team is the best!": "en088",
+    "The condition has no brackets: the browser didn’t understand it and threw the whole media rule away. Put the condition in round brackets.": "en089",
+    "The number in the condition has no px: the browser threw the rule away. Write the number with px.": "en090",
+    "This says min-width: the rule works in wide windows and sleeps on a phone. A phone needs max-width.": "en091",
+    "Well done!": "en092",
+    "Everything in the window lives inside body.": "en093",
   }
 };
 // ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

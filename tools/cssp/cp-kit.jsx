@@ -619,6 +619,8 @@ function useCpTabs(all) {
 // done — можно дальше (после дополнительной задачи, если была); drill — { st, checks, done }; first.
 // ─────────────────────────────────────────────────────────────────────────────
 const CP_AUTO_HINT = 2;   // со второй неудачи подряд — ступень подсказки сама (заказчик, 15.10.2026)
+// Ступень подсказки дополнительной задачи: 1 — общее направление, 2 — что нужно (drillNo), 3 — к образцу.
+const cpDrillHint = (cfg, lv) => (lv <= 0 ? null : lv === 1 ? CP_DRILL.hint1 : lv === 2 ? (cfg.C.drillNo || CP_DRILL.hint1) : CP_DRILL.hint3);
 function useCpTask(cfg, frameRef) {
   const store = useStore();
   const log = useLog();
@@ -642,6 +644,11 @@ function useCpTask(cfg, frameRef) {
     if (pulse === p0.current) return;
     p0.current = pulse;
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача — свои ступени
+      const dl = cur.drill.lv || 0;
+      if (dl < 3) row(put({ drill: Object.assign({}, cur.drill, { lv: dl + 1 }) }));
+      return;
+    }
     if (cur.solved || cur.lv >= 3) return;
     row(put({ lv: cur.lv + 1 }));
   }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -654,6 +661,19 @@ function useCpTask(cfg, frameRef) {
     setMark(at == null ? null : at);
     sfx('soft', true);
     const cur = ref.current;
+    if (cur.drill && !cur.drill.done) {   // дополнительная задача: со второй неудачи подряд — следующая ступень сама
+      const df = (cur.drill.fails || 0) + 1, dl = cur.drill.lv || 0;
+      if (df >= CP_AUTO_HINT && dl < 3) {
+        const h = cpDrillHint(cfg, dl + 1);
+        const both = h === m ? m : joinL(m, h);   // разбор и ступень 2 — часто одна строка drillNo
+        row(put({ drill: Object.assign({}, cur.drill, { fails: df, lv: dl + 1 }) }));
+        setMsg(both); sayNow(both, 'think');
+        return;
+      }
+      put({ drill: Object.assign({}, cur.drill, { fails: df }) });
+      setMsg(m); sayNow(m, 'think');
+      return;
+    }
     const fails = (cur.fails || 0) + 1;
     if (fails >= CP_AUTO_HINT && cur.lv < 3 && !cur.solved) {
       const lv = cur.lv + 1;
@@ -749,6 +769,7 @@ function CpTaskScreen({ p, cfg }) {
   const st = drilling ? rec.drill.st : rec.st;
   const tabs = useCpTabs(false);
   const lv = rec.solved ? 0 : rec.lv;
+  const dlv = drilling ? (rec.drill.lv || 0) : 0;   // ступень подсказки дополнительной задачи
   const slot = spec.slot;
   const sv = slot ? String(st.v == null ? slot.v0 : st.v) : '';
   const empty = slot ? !sv.trim() : !String(st.code || '').trim();
@@ -758,9 +779,9 @@ function CpTaskScreen({ p, cfg }) {
   // Во время дополнительной задачи решённое оформление остаётся на странице (если страница та же).
   const css = given.join('\n') + '\n' + (drilling && !cfg.drill.page ? rec.st.code + '\n' : '') + st.code;
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : cfg.C.ask;
-  const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const hint = t.msg || (drilling ? cpDrillHint(cfg, dlv) : !rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
   const workRef = useRef(null);
-  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, lv);
+  const vt = useViewToggle(cfg.num, workRef, '.cp-main .cp-ln', rec.done, drilling, t.msg, drilling ? dlv : lv);
   const htmlAid = spec.htmlAid || cfg.htmlAid;
   // Условия «готово» своей работы — видны сразу и загораются по живой странице.
   const [marks, setMarks] = useState([]);
@@ -781,7 +802,7 @@ function CpTaskScreen({ p, cfg }) {
       .filter((c) => !(c === '@' && /@/.test(String(spec.code0 || ''))))));
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
+      hint={(drilling ? cpDrillHint(cfg, Math.min(3, dlv + 1)) : cfg.C.hints[Math.min(3, lv + 1) - 1]) || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'cp-sheet cp-' + cfg.id + (cfg.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
         <ViewToggle vt={vt} />
@@ -802,12 +823,12 @@ function CpTaskScreen({ p, cfg }) {
           <div className="cp-main">
             {slot ? (
               <CpSlotEditor key={drilling ? 'd' : 'm'} before={['<style>'].concat(given)} after={['</style>']} slot={slot} value={sv}
-                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2} onEnter={t.check} />
+                onChange={(v) => setCode({ v, code: slot.pre + v + slot.post })} inputRef={inRef} led={led || lv === 2 || dlv === 2} onEnter={t.check} />
             ) : (
               <CpEditor before={['<style>'].concat(given)} after={['</style>']} value={st.code} onChange={(code) => setCode({ code })}
-                inputRef={inRef} led={led || lv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
+                inputRef={inRef} led={led || lv === 2 || dlv === 2} single={!!spec.single} big={!!cfg.big} onEnter={t.check} mark={t.mark} />
             )}
-            {!rec.solved && lv >= 3 && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
+            {((!rec.solved && lv >= 3) || (drilling && dlv >= 3)) && cfg.sample ? <CpSample lines={cfg.sample} /> : null}
             {!rec.done ? <CpKeys inputRef={inRef} onCheck={t.check} ready={!empty} syms={syms} /> : null}
           </div>
         </div>

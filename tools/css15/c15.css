@@ -1053,3 +1053,9 @@
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c15-sheet .kz-br.c15-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c15-sheet .kz-br.c15-br,
   .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c15-sheet .kz-br.c15-br { --brh: 21dvh !important; }
 }
+/* Экран «Средний кадр» (50 %): код длинный — строки плотнее, иначе на ноутбуке он налезал на строку задания
+   и кнопки (отзыв, 14.11.2026). Только этот экран (dense у CodeFill). */
+@media (min-width: 760px) {
+  .r28 .c15-sheet.c15-dense .kz-code { gap: 2px; }
+  .r28 .c15-sheet.c15-dense .kz-line { min-height: 28px; }
+}

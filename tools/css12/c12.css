@@ -873,7 +873,8 @@
 .r28 .kz-pick.c12-opts .kz-btn { font-family: var(--r-mono, ui-monospace, monospace); font-size: 14px; }
 .r28 .kz-pick.c12-sides .kz-btn { font-family: var(--r-mono, ui-monospace, monospace); font-size: 14px; }
 /* s7: страница целиком — полка видна на всю высоту (для align-items). */
-.r28 .c12-pickpage .kz-br.c12-br.is-short { --brh: 46dvh !important; aspect-ratio: 16 / 9 !important; }
+/* На низком ноутбуке (масштаб 100 %) окно ниже: над ним — строка задания, под ним — три варианта (отзыв, 14.11.2026). */
+.r28 .c12-pickpage .kz-br.c12-br.is-short { --brh: min(46dvh, calc(100dvh - 420px)) !important; aspect-ratio: 16 / 9 !important; }
 @media (max-width: 759px) { .r28 .c12-pickpage .kz-br.c12-br.is-short { --brh: 40dvh !important; aspect-ratio: 16 / 13 !important; } }
 @media (max-width: 759px) and (max-height: 699px) { .r28 .c12-pickpage .kz-br.c12-br.is-short { --brh: 36dvh !important; } }
 

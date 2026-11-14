@@ -98,9 +98,11 @@ const PR = {
     }),
     // Т3 · правило целиком: звёзды yulduz.png на фон body (тёмный цвет фона — готовое правило); плиткой — сами.
     (pk) => cpTask(3, {
-      kind: 'write-rule', code0: '', answer: 'body {\n  background-image: url("yulduz.png");\n}', syms: ['{', '}', ':', ';', '(', ')', '"'],
+      // body уже есть — картинка фона дописывается в него же, второго body нет (отзыв, 14.11.2026).
+      kind: 'write-rule', code0: 'body {\n  background-color: midnightblue;\n  \n}',
+      answer: 'body {\n  background-color: midnightblue;\n  background-image: url("yulduz.png");\n}', syms: ['{', '}', ':', ';', '(', ')', '"'],
       page: p4Page(P4.star, P4.star1, P4.star2),
-      given: ['body { background-color: midnightblue; }', 'h1 { color: white; }', 'p { color: white; }'],
+      given: ['h1 { color: white; }', 'p { color: white; }'],
       goal: (D) => {
         const f = p4File(D, 'body');
         if (f === 'yulduz.png') return null;
@@ -198,15 +200,15 @@ const C = {
   },
   t3: {
     eyebrow: L3("Yulduzli tun", 'Звёздная ночь', 'Starry night'),
-    say: L3("Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. Qoidani boshidan oxirigacha o'zingiz yozing.",
-      'Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Напиши правило целиком, от начала до конца.',
-      'Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. Write the whole rule yourself.'),
+    say: L3("Ikkita sahifa yondi! Uchinchisi: yulduzli tun. Fon rangi bor, lekin yulduzlar yo'q. Butun sahifa foniga yulduzlarni qo'ying: ular yulduz.png faylida. body qoidasi bor, unga bitta qator qo'shing.",
+      'Две страницы горят! Третья: звёздная ночь. Цвет фона есть, а звёзд нет. Поставь звёзды на фон всей страницы: они в файле yulduz.png. Правило body уже есть, допиши в него одну строку.',
+      'Two pages are lit! The third is the starry night. There’s a background color, but no stars. Put stars on the whole page’s background: they’re in the file yulduz.png. The body rule is already there, add one line to it.'),
     ask: L3("Fonga yulduzlarni qo'ying: yulduz.png", 'Поставь звёзды на фон: yulduz.png', 'Put the stars on the background: yulduz.png'),
     ok: L3("Qoyil! Osmon yulduzlarga to'ldi. Kichik rasm o'zi takrorlanib, butun fonni egalladi.", 'Вот это да! Небо в звёздах. Маленькая картинка сама повторилась и заняла весь фон.', 'Wow! The sky is full of stars. The small picture repeated by itself and filled the whole background.'),
     hints: [
-      L3("Qoida uch qismdan iborat: butun sahifa, fon rasmi xususiyati va fayl nomi.", 'Правило — три части: вся страница, свойство картинки фона и имя файла.', 'The rule has three parts: the whole page, the background picture property and the file name.'),
-      L3("Selektor body, xususiyat background-image. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", 'Селектор body, свойство background-image. Значение — слово url, а в скобках yulduz.png в кавычках.', 'The selector is body, the property background-image. The value is the word url with yulduz.png in quotes inside brackets.'),
-      L3("Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qoida yozing, faqat yulduz.png bilan.", 'Образец под кодом ставит на фон мяч. Напиши такое же правило, только с yulduz.png.', 'The example under the code puts a ball on the background. Write the same rule, only with yulduz.png.')
+      L3("body qoidasi allaqachon bor. Uning ichiga yana bitta xususiyat qo'shiladi: fon rasmi va fayl nomi.", 'Правило body уже есть. В него добавляется ещё одно свойство: картинка фона и имя файла.', 'The body rule is already there. One more property goes inside it: the background picture and the file name.'),
+      L3("Bo'sh qatorga background-image xususiyatini yozing. Qiymat url so'zi, keyin qavs ichida qo'shtirnoqda yulduz.png.", 'В пустую строку напиши свойство background-image. Значение — слово url, а в скобках yulduz.png в кавычках.', 'On the empty line, write the property background-image. The value is the word url with yulduz.png in quotes inside brackets.'),
+      L3("Namuna kod ostida: u fonga to'p qo'yadi. Xuddi shunday qatorni body ichiga yozing, faqat yulduz.png bilan.", 'Образец под кодом ставит на фон мяч. Напиши такую же строку внутри body, только с yulduz.png.', 'The example under the code puts a ball on the background. Write the same line inside body, only with yulduz.png.')
     ],
     noImg: L3("Fonda rasm yo'q. Rasm uchun background-image kerak, qiymati esa url va qavs ichida fayl nomi.", 'На фоне нет картинки. Нужен background-image, а значение — url и имя файла в скобках.', 'There’s no picture on the background. You need background-image, with url and the file name in brackets.'),
     noFile: L3("Brauzer bunday faylni topmadi. Fayl nomini harfma-harf tekshiring: yulduz.png.", 'Браузер не нашёл такой файл. Проверь имя файла буква за буквой: yulduz.png.', 'The browser didn’t find that file. Check the file name letter by letter: yulduz.png.'),

@@ -130,6 +130,8 @@ const PR = {
       kind: 'own-page', big: true, code0: '',
       answer: '.karta {\n  border-radius: 16px;\n  box-shadow: 0px 6px 12px silver;\n  border-left: 6px solid purple;\n}',
       page: p8Own,
+      // Класс карточки виден на экране, вспоминать его с прошлых заданий не нужно (отзыв, 14.11.2026).
+      htmlAid: (pk) => ['<h1>' + pk(P8.mine) + '</h1>', '<div class="karta">', '  <b>' + pk(P8.magic) + '</b> · ' + pk(P8.soon), '</div>'],
       list: [
         { t: L3("border-radius — burchaklar", 'border-radius — углы', 'border-radius — corners'), ok: (D) => p8Rad(D, '.karta') !== '0px' },
         { t: L3("box-shadow — soya", 'box-shadow — тень', 'box-shadow — shadow'), ok: (D) => !!p8Sh(D, '.karta') },
@@ -208,7 +210,8 @@ const C = {
     say: L3("Ikkita sahifa yondi! Uchinchisi: xitlar. Bu yerda uchta o'yin bor, lekin eng mashhuri bittasi. Uni chap tomondagi to'q sariq chiziq bilan belgilang, qoidani esa boshidan oxirigacha o'zingiz yozing. Diqqat qiling: xitning o'z id atributi bor, u HTML kodda ko'rinib turibdi.",
       'Две страницы горят! Третья: хиты. Здесь три игры, но самая популярная — одна. Отметь её оранжевой полосой слева, а правило напиши целиком. Обрати внимание: у хита свой id, он виден в HTML-коде.',
       'Two pages are lit! The third is hits. There are three games here, but only one is the most popular. Mark it with an orange stripe on the left, and write the whole rule yourself. Notice: the hit has its own id, you can see it in the HTML code.'),
-    ask: L3("Faqat xitni chapdan to'q sariq chiziq bilan belgilang", 'Отметь только хит оранжевой полосой слева', 'Mark only the hit with an orange stripe on the left'),
+    // id из HTML — прямо в задании, одинаково на трёх языках (отзыв, 14.11.2026).
+    ask: L3("Faqat xitni (id=\"xit\") chapdan to'q sariq chiziq bilan belgilang", 'Отметь только хит (id="xit") оранжевой полосой слева', 'Mark only the hit (id="xit") with an orange stripe on the left'),
     ok: L3("Mana bu xit! Endi uni darrov ko'rasiz. Xitlar sahifasi ham tayyor.", 'Вот это хит! Теперь его видно сразу. Страница хитов тоже готова.', 'Now that’s a hit! You can spot it right away. The hits page is ready too.'),
     hints: [
       L3("Oldin selektor: faqat xitni qaysi nom tanlaydi? HTML kodga qarang. Keyin bitta tomon uchun xususiyat kerak.", 'Сначала селектор: какое имя выбирает только хит? Посмотри в HTML-код. Потом нужно свойство для одной стороны.', 'First the selector: which name picks only the hit? Look at the HTML code. Then you need a property for one side.'),
