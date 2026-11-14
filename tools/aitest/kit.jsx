@@ -282,6 +282,7 @@ const AQ_CSS = `
 .aq-head { display: flex; flex-direction: column; margin-top: 16px; }
 .aq-q { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.3; color: #000; overflow-wrap: break-word; }
 .aq-ctx { margin: 8px 0 0; font-size: 14px; font-weight: 500; line-height: 1.4; color: #6E6A85; overflow-wrap: break-word; }
+/* Карточка промпта и сообщение — во всю ширину вариантов, по левому краю (заказчик, 14.11.2026). */
 .aq-main > .aq-vis { flex: 0 1 auto; min-height: 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; margin-top: 14px; }
 .aq-opts { display: flex; flex-wrap: wrap; margin-top: 18px; }
 .aq-opt { display: flex; align-items: center; width: 100%; min-height: 56px; margin: 5px 0; padding: 8px 16px; background: #fff; border: solid #E9E7EF; border-width: 2px 2px 4px; border-radius: 14px;
@@ -312,7 +313,7 @@ const AQ_CSS = `
 .aq-fb.is-bad .aq-fb-tx b { color: #C62828; }
 .aq-fb-tx p { margin: 4px 0 0; font-size: 14.5px; font-weight: 500; line-height: 1.45; color: #1E1B39; }
 /* Картинки: поле промпта, сайт, сообщение клиента. */
-.aq-prompt { display: flex; flex-direction: column; gap: 8px; width: min(100%, 480px); padding: 14px 16px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
+.aq-prompt { display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
 .aq-pl { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .aq-pq { flex: none; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .aq-pv { min-width: 0; padding: 2px 8px; border-radius: 6px; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
@@ -405,7 +406,7 @@ const AQ_CSS = `
 .aq-doc.is-m .blk { margin: 12px 20px 4px; } .aq-doc.is-m .it { flex: 1 1 28%; padding: 12px 14px; }
 .aq-doc.is-m .links { display: none; } .aq-doc.is-m .nav { padding: 12px 18px; } .aq-doc.is-m .hero { padding: 28px 20px; } .aq-doc.is-m .title { font-size: 32px; }
 .aq-doc.is-m .cards { gap: 10px; padding: 14px 20px 4px; } .aq-doc.is-m .card { padding: 12px; } .aq-doc.is-m .ch { font-size: 16px; } .aq-doc.is-m .cp { font-size: 13px; } .aq-doc.is-m .goal { margin: 12px 20px 6px; } .aq-doc.is-m .btn2 { white-space: nowrap; }
-.aq-msg { display: flex; flex-direction: column; gap: 4px; width: min(100%, 480px); padding: 12px 16px; border-radius: 18px 18px 18px 4px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
+.aq-msg { display: flex; flex-direction: column; gap: 4px; width: 100%; box-sizing: border-box; padding: 12px 16px; border-radius: 18px 18px 18px 4px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
 .aq-msg b { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #7C3AED; }
 .aq-msg span { font-size: 15px; font-weight: 600; line-height: 1.4; color: #1E1B39; }
 /* Ноутбук: варианты по два в ряд, вопрос крупнее, строка контекста — над вопросом (как в макете). */

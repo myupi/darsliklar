@@ -192,11 +192,11 @@ function Det({ p }) {
   const pick = usePick();
   const c = C.det;
   const siteOf = (s) => aiSite(pick, { what: pick(s.what), why: pick(s.why), inside: pick(s.inside) });
-  return <RoundsScreen pickCards={(it) => it.type === 'which'} p={p} c={c} id="det" keyOf={(it) => it.right}
+  return <RoundsScreen pickCards={(it) => it.type === 'which'} optsIn={(it) => it.type !== 'which'} p={p} c={c} id="det" keyOf={(it) => it.right}
     ansOf={(it) => (it.type === 'which' ? it.right.toUpperCase() : pick(BLOCK_H(it.right)))}
     opts={(it) => (it.type === 'which' ? ['a', 'b', 'c'] : it.opts)}
     optLabel={(v, it) => (it.type === 'which' ? v.toUpperCase() : pick(BLOCK_H(v)))}
-    body={(it, R) => (it.type === 'which' ? (
+    body={(it, R, O) => (it.type === 'which' ? (
       <div className="a1-which">
         <div className="a1-which-site"><AiBrowser site={siteOf(it.site)} small focus=".bh0" /></div>
         <div className="a1-which-list">
@@ -209,6 +209,7 @@ function Det({ p }) {
         <div className="a1-which-list">
           <span className="a1-qh">{pick(c.qMiss)}</span>
           <TaskCard c={{ card: { h: c.wantH, t: it.want } }} />
+          {O}
         </div>
         <div className="a1-which-site"><AiBrowser site={siteOf(it.site)} small focus=".bh0" /></div>
       </div>

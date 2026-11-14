@@ -7704,8 +7704,8 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голоса браузера в уроке нет (13.11.2026, подготовленная озвучка платформы): пометки в скобках
+// для него убирает эмуляция просмотрщика (src/runtime/speech.js).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -11148,26 +11148,32 @@ function AiShow({ p, c, id, steps }) {
 
 // ── ВЫБОР ПО РАУНДАМ (engine useRounds): карточка + варианты ──
 // pickCards — варианты нажимаются прямо в теле (карточки PickCard детектива), ряд кнопок под ним не ставится.
-function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards }) {
+// optsIn — ряд кнопок отдаётся телу третьим аргументом и стоит там, где его поставит тело (заказчик, 14.11.2026:
+// в детективе «какой строки не хватает» кнопки — в левой колонке под промптом, а не под всем экраном).
+function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards, optsIn }) {
   const pick = usePick();
   const R0 = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
   const R = Object.assign({}, R0, { key: keyOf(R0.it) });
   const cards = typeof pickCards === 'function' ? pickCards(R.it) : !!pickCards;
+  const inBody = !cards && typeof optsIn === 'function' && optsIn(R.it);
+  const O = cards ? null : (
+    <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
+      {opts(R.it).map((v) => (
+        <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
+          className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
+          <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
+        </button>
+      ))}
+    </div>
+  );
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="a1-sheet">
         <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : R.ch.now(R.hints)} err={R.ch.err} n={(R.ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col a1-rounds a1-in" key={'i' + R.ii}>
           <div className="kz-col">
-            {body(R.it, R)}
-            {cards ? null : <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
-              {opts(R.it).map((v) => (
-                <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
-                  className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
-                  <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
-                </button>
-              ))}
-            </div>}
+            {body(R.it, R, inBody ? O : null)}
+            {cards || inBody ? null : O}
           </div>
         </div>
       </Sheet>
@@ -15800,6 +15806,22 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .is-kbd .r28 .c17-sheet .kz-scene.c17-pair .kz-br.c17-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
 .is-kbd .r28 .c17-sheet .kz-scene.c17-pair .kz-br.c17-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 .r28 .c17-hexchip { white-space: nowrap; width: max-content; max-width: 100%; }
+
+/* Страница не сжимается до высоты окна (13.11.2026): на телефоне окно низкое, а слой fixed «прилипает» только в
+   пределах страницы — при прокрутке кнопка с position: fixed уезжала из угла окна. */
+.r28 .kz-br.c17-br .kz-br-page > .c17-doc { flex-shrink: 0; }
+
+/* После верного ответа («Barakalla!») окно браузера на телефоне не прячется — ученик видит результат (13.11.2026:
+   раньше окно до 799 px высотой пряталось при любой панели, и результат верного ответа на телефоне не был виден).
+   Прячется оно только при подсказке и ошибке; при «Barakalla!» — низкое, над панелью. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c17-sheet .kz-br.c17-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c17-sheet .kz-br.c17-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c17-sheet .kz-br.c17-br { display: flex !important; --brh: 14dvh !important; }
+}
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .r28 .c17-sheet .kz-br.c17-br, .r28 .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok .c17-sheet .kz-br.c17-br,
+  .b-stage.has-sheet.is-sheet-ok.is-sheet-ok.is-sheet-ok.r28 .c17-sheet .kz-br.c17-br { --brh: 21dvh !important; }
+}
 /* ══ ПРОБНЫЙ ЭКРАН МОДУЛЯ «ИИ» (11.11.2026) — «промпт в редакторе»: тёмный редактор курса (вкладки prompt.txt и
    index.html), строки промпта с метками вопросов формулы, рядом Chrome. Цвета — как у редактора r28 (VS Code). */
 .r28 .a1-sheet { --a1-ai: #A78BFA; }
@@ -15862,7 +15884,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .a1-which { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .r28 .a1-which-site { display: flex; min-height: 0; }
 .r28 .a1-which-site .kz-br.c17-br { flex: 1 1 auto; aspect-ratio: auto !important; min-height: 190px; --brh: none; }
-.r28 .a1-which-list { display: flex; flex-direction: column; gap: 8px; justify-content: center; min-width: 0; }
+.r28 .a1-which-list { display: flex; flex-direction: column; gap: 8px; justify-content: flex-start; min-width: 0; }
 .r28 .a1-pr { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; border-radius: 10px; background: var(--r-ed); color: #F3F4F6; font: 500 13.5px/1.4 var(--r-mono); }
 .r28 .a1-pr b { color: var(--r-pri); font-family: var(--r-font); }
 /* Пары «цель ↔ кнопка». */
@@ -16154,6 +16176,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (min-width: 760px) and (orientation: portrait) {
   .r28 .kz-sheet.a1-fin .kz-scene.a1-scene .kz-br.c17-br { min-height: 19dvh !important; max-height: 30dvh !important; }
 }
+/* Детектив (заказчик, 14.11.2026, скриншоты): столбец рядом с окном сайта — вровень с окном сверху и снизу:
+   вопрос у верхнего края, карточки-варианты растягиваются до нижнего края окна. */
+.r28 .a1-which > .a1-which-list > .a1-pr.a1-pickc { flex: 1 1 auto; align-items: center; }
+/* «Какой строки не хватает»: кнопки «Nima? / Nega?» — в левом столбце под промптом (optsIn у RoundsScreen). */
+.r28 .a1-rounds .a1-which-list > .kz-pick.a1-opts { width: 100%; align-self: stretch; margin-top: 2px; }
 /* ══ УРОК 4 МОДУЛЯ «ИИ» «Как должен выглядеть сайт?» — свои части (общий облик — ../ai1/ai1.css). */
 /* Детектив «какой это стиль»: вопрос и окно сайта столбиком. */
 .r28 .a4-mood { display: flex; flex-direction: column; gap: 8px; align-items: stretch; width: min(100%, 680px); align-self: center; }

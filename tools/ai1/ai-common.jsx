@@ -138,26 +138,32 @@ function AiShow({ p, c, id, steps }) {
 
 // ── ВЫБОР ПО РАУНДАМ (engine useRounds): карточка + варианты ──
 // pickCards — варианты нажимаются прямо в теле (карточки PickCard детектива), ряд кнопок под ним не ставится.
-function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards }) {
+// optsIn — ряд кнопок отдаётся телу третьим аргументом и стоит там, где его поставит тело (заказчик, 14.11.2026:
+// в детективе «какой строки не хватает» кнопки — в левой колонке под промптом, а не под всем экраном).
+function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards, optsIn }) {
   const pick = usePick();
   const R0 = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
   const R = Object.assign({}, R0, { key: keyOf(R0.it) });
   const cards = typeof pickCards === 'function' ? pickCards(R.it) : !!pickCards;
+  const inBody = !cards && typeof optsIn === 'function' && optsIn(R.it);
+  const O = cards ? null : (
+    <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
+      {opts(R.it).map((v) => (
+        <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
+          className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
+          <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
+        </button>
+      ))}
+    </div>
+  );
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="a1-sheet">
         <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : R.ch.now(R.hints)} err={R.ch.err} n={(R.ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col a1-rounds a1-in" key={'i' + R.ii}>
           <div className="kz-col">
-            {body(R.it, R)}
-            {cards ? null : <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
-              {opts(R.it).map((v) => (
-                <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
-                  className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
-                  <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
-                </button>
-              ))}
-            </div>}
+            {body(R.it, R, inBody ? O : null)}
+            {cards || inBody ? null : O}
           </div>
         </div>
       </Sheet>

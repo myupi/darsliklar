@@ -60,7 +60,7 @@
 .r28 .a1-which { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .r28 .a1-which-site { display: flex; min-height: 0; }
 .r28 .a1-which-site .kz-br.c17-br { flex: 1 1 auto; aspect-ratio: auto !important; min-height: 190px; --brh: none; }
-.r28 .a1-which-list { display: flex; flex-direction: column; gap: 8px; justify-content: center; min-width: 0; }
+.r28 .a1-which-list { display: flex; flex-direction: column; gap: 8px; justify-content: flex-start; min-width: 0; }
 .r28 .a1-pr { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; border-radius: 10px; background: var(--r-ed); color: #F3F4F6; font: 500 13.5px/1.4 var(--r-mono); }
 .r28 .a1-pr b { color: var(--r-pri); font-family: var(--r-font); }
 /* Пары «цель ↔ кнопка». */
@@ -352,3 +352,8 @@
 @media (min-width: 760px) and (orientation: portrait) {
   .r28 .kz-sheet.a1-fin .kz-scene.a1-scene .kz-br.c17-br { min-height: 19dvh !important; max-height: 30dvh !important; }
 }
+/* Детектив (заказчик, 14.11.2026, скриншоты): столбец рядом с окном сайта — вровень с окном сверху и снизу:
+   вопрос у верхнего края, карточки-варианты растягиваются до нижнего края окна. */
+.r28 .a1-which > .a1-which-list > .a1-pr.a1-pickc { flex: 1 1 auto; align-items: center; }
+/* «Какой строки не хватает»: кнопки «Nima? / Nega?» — в левом столбце под промптом (optsIn у RoundsScreen). */
+.r28 .a1-rounds .a1-which-list > .kz-pick.a1-opts { width: 100%; align-self: stretch; margin-top: 2px; }
