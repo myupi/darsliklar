@@ -15,11 +15,11 @@ Text content does not matter.
 ======================================================================
 2. НАЗВАНИЕ УРОКА: Amaliy ish. Sarlavhalar va matn
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
-Use <h1> once.
-Use <h2> at least once.
-Use <p> at least once.
+Use <h1>.
+Use <h2>.
+Use <p>.
 Use <b> and <i> inside the text.
-Text content does not matter.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
@@ -27,29 +27,29 @@ Text content does not matter.
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
 Use <ul> and <ol>.
-Each list must have at least 3 <li> items.
-Every <li> must be inside <ul> or <ol>.
-Text content does not matter.
+Use <li> inside the lists; every <li> must be inside <ul> or <ol>.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
 4. НАЗВАНИЕ УРОКА: Amaliy ish. Havolalar va atributlar
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
-Use at least three <a> tags.
+Use the <a> tag.
 Every <a> must have a filled href attribute.
 Every <a> must have text between <a> and </a>.
-The addresses and texts do not matter; the pages do not have to exist.
+The addresses, texts and the number of tags do not matter; the pages do not have to exist.
 
 
 ======================================================================
 5. НАЗВАНИЕ УРОКА: Amaliy ish. Rasmlar
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
-Use at least two <img> tags.
+Use the <img> tag.
 Every <img> must have a filled src attribute.
 Every <img> must have a filled alt attribute.
-Use <p> at least once.
+Use <p>.
 <img> has no closing tag; the images do not have to load.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
@@ -60,16 +60,18 @@ Use <input> with type text, number and password.
 Every <input> must have a filled placeholder attribute.
 Use <label>.
 All <input> tags must be inside <form>.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
 7. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 2-qism: tanlash va yuborish
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <form>.
-Use <select> with at least 3 <option> tags.
+Use <select> with <option> tags inside it.
 Use <textarea>.
 Use <button> with some text.
 <select>, <textarea> and <button> must be inside <form>.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
@@ -77,9 +79,9 @@ Use <button> with some text.
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <header>, <nav>, <main> and <footer>.
 Use a heading tag inside <header>.
-<nav> must have at least two <a> tags with a filled href.
-Use at least two <section> tags inside <main>.
-Text content does not matter.
+Use <a> tags with a filled href inside <nav>.
+Use <section> tags inside <main>.
+Text content and the number of tags do not matter.
 
 
 ======================================================================
@@ -89,4 +91,4 @@ Use <title> inside <head>.
 Use <header>, <nav>, <main> and <footer>.
 Use <p>, a list (<ul> or <ol>) and <img> with src and alt.
 Use <form> with <input> and <button>.
-Text content does not matter.
+Text content and the number of tags do not matter.

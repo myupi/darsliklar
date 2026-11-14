@@ -4,8 +4,8 @@
 по одному на каждый урок 1–9 нашего курса HTML; файл заказчика HTML_practice_prompts.txt — только образец
 формата («НАЗВАНИЕ УРОКА · ЗАДАНИЕ · ПРОМПТ ДЛЯ ПРОВЕРКИ»).
 Облик — как прежние слайды «Amaliy vazifa» (заказчик, 14.11.2026): одна строка темы и 3–4 условия
-с тегами; справа — как должна выглядеть страница. Промпт — короткие строки «Use …», ровно по условиям;
-текст ученика и адреса не проверяются. Пример решения — public/kompilyator/html/<NN>/index.html.
+с тегами; справа — как должна выглядеть страница. Промпт — короткие строки «Use …» по условиям, без количества тегов
+(заказчик, 14.11.2026: «в проверке не будем указывать сколько чего нужно»); текст ученика и адреса не проверяются. Пример решения — public/kompilyator/html/<NN>/index.html.
 
 ======================================================================
 
@@ -34,11 +34,11 @@ Bugungi film afishasini yarating.
 - <b> va <i> formatlash teglarini ishlating
 (RU: Сделай афишу сегодняшнего фильма: используй заголовки <h1> и <h2>; текст напиши в <p>; используй теги форматирования <b> и <i>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
-Use <h1> once.
-Use <h2> at least once.
-Use <p> at least once.
+Use <h1>.
+Use <h2>.
+Use <p>.
 Use <b> and <i> inside the text.
-Text content does not matter.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -53,9 +53,8 @@ Do'stingizga sendvich retseptini yozing.
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
 Use <ul> and <ol>.
-Each list must have at least 3 <li> items.
-Every <li> must be inside <ul> or <ol>.
-Text content does not matter.
+Use <li> inside the lists; every <li> must be inside <ul> or <ol>.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -69,10 +68,10 @@ Text content does not matter.
 в атрибут href="" впиши имя страницы: eshik1.html.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
-Use at least three <a> tags.
+Use the <a> tag.
 Every <a> must have a filled href attribute.
 Every <a> must have text between <a> and </a>.
-The addresses and texts do not matter; the pages do not have to exist.
+The addresses, texts and the number of tags do not matter; the pages do not have to exist.
 
 ======================================================================
 
@@ -86,11 +85,12 @@ The addresses and texts do not matter; the pages do not have to exist.
 (RU: Сделай страницу «Космический зал»: используй <img> два раза; в src="" — адрес картинки; в alt="" — что на картинке;
 под каждой картинкой — <p>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
-Use at least two <img> tags.
+Use the <img> tag.
 Every <img> must have a filled src attribute.
 Every <img> must have a filled alt attribute.
-Use <p> at least once.
+Use <p>.
 <img> has no closing tag; the images do not have to load.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -108,6 +108,7 @@ Use <input> with type text, number and password.
 Every <input> must have a filled placeholder attribute.
 Use <label>.
 All <input> tags must be inside <form>.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -121,10 +122,11 @@ Pitsa buyurtmasi formasini yarating.
 (RU: Сделай форму заказа пиццы: в <select> не меньше 3 <option>; используй <textarea>; используй <button>; всё — внутри <form>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <form>.
-Use <select> with at least 3 <option> tags.
+Use <select> with <option> tags inside it.
 Use <textarea>.
 Use <button> with some text.
 <select>, <textarea> and <button> must be inside <form>.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -140,9 +142,9 @@ Kibersport jamoasi saytini yarating.
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <header>, <nav>, <main> and <footer>.
 Use a heading tag inside <header>.
-<nav> must have at least two <a> tags with a filled href.
-Use at least two <section> tags inside <main>.
-Text content does not matter.
+Use <a> tags with a filled href inside <nav>.
+Use <section> tags inside <main>.
+Text content and the number of tags do not matter.
 
 ======================================================================
 
@@ -159,4 +161,4 @@ Use <title> inside <head>.
 Use <header>, <nav>, <main> and <footer>.
 Use <p>, a list (<ul> or <ol>) and <img> with src and alt.
 Use <form> with <input> and <button>.
-Text content does not matter.
+Text content and the number of tags do not matter.
