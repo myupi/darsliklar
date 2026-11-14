@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ListChecks, PencilRuler, Search, X } from 'lucide-react';
+import { ChevronDown, ListChecks, PencilRuler, Search, SquareTerminal, X } from 'lucide-react';
 import { pad2 } from '../shared/catalog.js';
+import { COMPILER } from '../shared/compiler.js';
 
 const STATUS_LABEL = { ready: 'готов', planned: 'в плане', extra: 'вне плана' };
 
@@ -8,7 +9,7 @@ const match = (l, q) =>
   !q || [l.title, l.lessonTitle, l.practiceTitle, l.slug, l.file, ...(l.topics || []), l.n != null ? pad2(l.n) : '']
     .some((s) => String(s || '').toLowerCase().includes(q));
 
-export default function Sidebar({ catalog, selectedKey, onPick }) {
+export default function Sidebar({ catalog, selectedKey, onPick, mode = 'lessons', onMode, cmpItems = [], cmpKey, onCmp }) {
   const [query, setQuery] = useState('');
   const [closed, setClosed] = useState({});
   const q = query.trim().toLowerCase();
@@ -29,12 +30,17 @@ export default function Sidebar({ catalog, selectedKey, onPick }) {
         </span>
       </button>
 
+      <div className="seg sb-mode" role="tablist" aria-label="Что смотреть">
+        <button type="button" role="tab" aria-selected={mode === 'lessons'} className={'seg-btn' + (mode === 'lessons' ? ' is-on' : '')} onClick={() => onMode && onMode('lessons')}><span>Уроки</span></button>
+        <button type="button" role="tab" aria-selected={mode === 'compiler'} className={'seg-btn' + (mode === 'compiler' ? ' is-on' : '')} onClick={() => onMode && onMode('compiler')}><SquareTerminal size={14} aria-hidden="true" /><span>Компилятор</span></button>
+      </div>
+
       <label className="search">
         <Search size={15} aria-hidden="true" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск: урок, тег, номер"
+          placeholder={mode === 'compiler' ? 'Поиск: задание, тег, номер' : 'Поиск: урок, тег, номер'}
           aria-label="Поиск урока"
         />
         {query ? (
@@ -44,6 +50,37 @@ export default function Sidebar({ catalog, selectedKey, onPick }) {
         ) : null}
       </label>
 
+      {mode === 'compiler' ? (
+        <nav className="courses">
+          {Object.keys(COMPILER).map((m) => {
+            const course = catalog.find((c) => c.id === m);
+            const rows = cmpItems.filter((x) => x.module === m && (!q || [x.title, x.check, x.n != null ? String(x.n) : ''].some((t) => String(t || '').toLowerCase().includes(q))));
+            if (q && !rows.length) return null;
+            return (
+              <section key={m} className="course">
+                <div className="course-head is-static">
+                  <span className="course-chip" style={{ '--chip': course ? course.color : '#FA4F28' }}>{course ? course.short : m.toUpperCase()}</span>
+                  <span className="course-title">Задания для компилятора</span>
+                  <span className="course-count">{COMPILER[m].items.length}</span>
+                </div>
+                <ul className="lessons">
+                  {rows.map((x) => (
+                    <li key={x.key}>
+                      <button type="button" className={'lesson-row is-ready' + (x.n == null ? ' is-practice' : '') + (cmpKey === x.key ? ' is-active' : '')} onClick={() => onCmp && onCmp(x.key)} title={x.title}>
+                        <span className="lesson-n">{x.n != null ? pad2(x.n) : '··'}</span>
+                        <span className="lesson-body">
+                          <span className="lesson-title">{x.title.replace(/^Amaliy ish\.\s*/, '')}</span>
+                          {x.n != null ? <span className="lesson-topics">{(x.check.match(/<[a-z0-9]+>/g) || []).filter((t, i, a) => a.indexOf(t) === i).slice(0, 5).join(' ')}</span> : null}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </nav>
+      ) : (
       <nav className="courses">
         {courses.map((c) => {
           if (q && !c.shown.length) return null;
@@ -94,12 +131,13 @@ export default function Sidebar({ catalog, selectedKey, onPick }) {
           );
         })}
       </nav>
+      )}
 
-      <div className="legend">
+      {mode === 'compiler' ? null : <div className="legend">
         <span><i className="status-dot is-ready" /> готов</span>
         <span><i className="status-dot is-planned" /> в плане</span>
         <span><i className="status-dot is-extra" /> вне плана</span>
-      </div>
+      </div>}
     </aside>
   );
 }

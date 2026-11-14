@@ -7,6 +7,8 @@ import Toolbar from './Toolbar.jsx';
 import DeviceStage from './DeviceStage.jsx';
 import LogPanel from './LogPanel.jsx';
 import { Placeholder, Welcome } from './Placeholder.jsx';
+import CompilerTask from './CompilerPage.jsx';
+import { COMPILER, compilerItems } from '../shared/compiler.js';
 
 let logId = 0;
 
@@ -16,7 +18,11 @@ export default function App() {
   const set = useCallback((patch) => setPrefs((p) => Object.assign({}, p, patch)), []);
   useEffect(() => { writePrefs(prefs); }, [prefs]);
 
-  const sel = findLesson(catalog, prefs.lesson);
+  // Режим «Компилятор» (14.11.2026): своя боковая панель с заданиями, курсов в ней нет.
+  const compilerMode = prefs.view === 'compiler';
+  const cmpAll = useMemo(() => compilerItems(), []);
+  const cmpSel = compilerMode ? (cmpAll.find((x) => x.key === prefs.cmp) || cmpAll[0] || null) : null;
+  const sel = compilerMode ? null : findLesson(catalog, prefs.lesson);
   const file = sel ? sel.lesson.file : null;
   const [run, setRun] = useState(0);
 
@@ -55,10 +61,15 @@ export default function App() {
 
   return (
     <div className={'app' + (navOpen ? ' nav-open' : '')}>
-      <Sidebar catalog={catalog} selectedKey={sel ? sel.lesson.key : null} onPick={pick} />
+      <Sidebar catalog={catalog} selectedKey={sel ? sel.lesson.key : null} onPick={pick}
+        mode={compilerMode ? 'compiler' : 'lessons'} onMode={(m) => { set({ view: m }); setNavOpen(false); }}
+        cmpItems={cmpAll} cmpKey={cmpSel ? cmpSel.key : null} onCmp={(k) => { set({ cmp: k }); setNavOpen(false); }} />
       {navOpen ? <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" /> : null}
       <main className="main">
-        {sel ? (
+        {compilerMode ? (
+          <CompilerTask item={cmpSel} items={cmpAll} course={cmpSel ? catalog.find((c) => c.id === cmpSel.module) : null}
+            onPick={(k) => set({ cmp: k })} onMenu={toggleNav} />
+        ) : sel ? (
           <>
             <Toolbar
               sel={sel}

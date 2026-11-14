@@ -1,0 +1,92 @@
+Курс: Dasturlash kursi
+Модуль: HTML
+Промпты проверки заданий компилятора (14.11.2026). Задания и примеры — docs/kompilyator-amaliy-html.txt.
+
+======================================================================
+1. НАЗВАНИЕ УРОКА: Amaliy ish. HTML hujjatining tuzilishi
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <!DOCTYPE html> at the start of the code.
+Use <html>, <head> and <body>.
+Use <title> inside <head>, with some text.
+Write some text inside <body>.
+Text content does not matter.
+
+
+======================================================================
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Sarlavhalar va matn
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <h1> once.
+Use <h2> at least once.
+Use <p> at least once.
+Use <b> and <i> inside the text.
+Text content does not matter.
+
+
+======================================================================
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Ro'yxatlar
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use one of the heading tags <h1> to <h6>.
+Use <ul> and <ol>.
+Each list must have at least 3 <li> items.
+Every <li> must be inside <ul> or <ol>.
+Text content does not matter.
+
+
+======================================================================
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Havolalar va atributlar
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use one of the heading tags <h1> to <h6>.
+Use at least three <a> tags.
+Every <a> must have a filled href attribute.
+Every <a> must have text between <a> and </a>.
+The addresses and texts do not matter; the pages do not have to exist.
+
+
+======================================================================
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Rasmlar
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use at least two <img> tags.
+Every <img> must have a filled src attribute.
+Every <img> must have a filled alt attribute.
+Use <p> at least once.
+<img> has no closing tag; the images do not have to load.
+
+
+======================================================================
+6. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 1-qism: ma'lumot kiritish
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <form>.
+Use <input> with type text, number and password.
+Every <input> must have a filled placeholder attribute.
+Use <label>.
+All <input> tags must be inside <form>.
+
+
+======================================================================
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 2-qism: tanlash va yuborish
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <form>.
+Use <select> with at least 3 <option> tags.
+Use <textarea>.
+Use <button> with some text.
+<select>, <textarea> and <button> must be inside <form>.
+
+
+======================================================================
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Haqiqiy sayt tuzilishi
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <header>, <nav>, <main> and <footer>.
+Use a heading tag inside <header>.
+<nav> must have at least two <a> tags with a filled href.
+Use at least two <section> tags inside <main>.
+Text content does not matter.
+
+
+======================================================================
+9. НАЗВАНИЕ УРОКА: Yakuniy HTML loyiha
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <title> inside <head>.
+Use <header>, <nav>, <main> and <footer>.
+Use <p>, a list (<ul> or <ol>) and <img> with src and alt.
+Use <form> with <input> and <button>.
+Text content does not matter.

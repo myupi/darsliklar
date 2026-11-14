@@ -12,10 +12,12 @@ export const DEFAULTS = {
   voice: 'browser',
   start: '',
   logOpen: true,
+  view: 'lessons',   // 'lessons' | 'compiler' — режим просмотрщика: уроки или задания для компилятора
+  cmp: '',           // выбранное задание компилятора: '<модуль>:<номер>'
   quizBar: true, // тесты: полоса платформы с «Tekshirish» (эмуляция платформы в плеере)
 };
 
-const URL_KEYS = ['lesson', 'lang', 'device', 'voice', 'start', 'name'];
+const URL_KEYS = ['lesson', 'lang', 'device', 'voice', 'start', 'name', 'view', 'cmp'];
 
 export function readPrefs() {
   let saved = {};
@@ -37,6 +39,8 @@ export function writePrefs(p) {
   q.set('voice', p.voice);
   if (p.name) q.set('name', p.name);
   if (p.start !== '') q.set('start', p.start);
+  if (p.view === 'compiler') q.set('view', 'compiler');
+  if (p.view === 'compiler' && p.cmp) q.set('cmp', p.cmp);
   const next = '?' + q.toString();
   if (next !== window.location.search) window.history.replaceState(null, '', next);
 }

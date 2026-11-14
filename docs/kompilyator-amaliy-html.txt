@@ -1,0 +1,162 @@
+Курс: Dasturlash kursi
+Модуль: HTML
+Задания для компилятора (ученик пишет код сам, с пустого редактора). Составлено 14.11.2026: свои задания,
+по одному на каждый урок 1–9 нашего курса HTML; файл заказчика HTML_practice_prompts.txt — только образец
+формата («НАЗВАНИЕ УРОКА · ЗАДАНИЕ · ПРОМПТ ДЛЯ ПРОВЕРКИ»).
+Облик — как прежние слайды «Amaliy vazifa» (заказчик, 14.11.2026): одна строка темы и 3–4 условия
+с тегами; справа — как должна выглядеть страница. Промпт — короткие строки «Use …», ровно по условиям;
+текст ученика и адреса не проверяются. Пример решения — public/kompilyator/html/<NN>/index.html.
+
+======================================================================
+
+1. НАЗВАНИЕ УРОКА: Amaliy ish. HTML hujjatining tuzilishi
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+O'yin profilingiz sahifasini yarating.
+- <!DOCTYPE html>, <html>, <head>, <body> teglarini yozing
+- <head> ichida <title> ga nikingizni yozing
+- <body> ichida o'zingiz haqingizda yozing
+(RU: Сделай страницу своего игрового профиля: напиши теги <!DOCTYPE html>, <html>, <head>, <body>; в <head> в <title> — твой ник;
+в <body> — пара слов о себе.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <!DOCTYPE html> at the start of the code.
+Use <html>, <head> and <body>.
+Use <title> inside <head>, with some text.
+Write some text inside <body>.
+Text content does not matter.
+
+======================================================================
+
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Sarlavhalar va matn
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Bugungi film afishasini yarating.
+- <h1> va <h2> sarlavha teglarini ishlating
+- Matnni <p> tegiga yozing
+- <b> va <i> formatlash teglarini ishlating
+(RU: Сделай афишу сегодняшнего фильма: используй заголовки <h1> и <h2>; текст напиши в <p>; используй теги форматирования <b> и <i>.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <h1> once.
+Use <h2> at least once.
+Use <p> at least once.
+Use <b> and <i> inside the text.
+Text content does not matter.
+
+======================================================================
+
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Ro'yxatlar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Do'stingizga sendvich retseptini yozing.
+- <h1> dan <h6> gacha birortasini ishlating
+- Mahsulotlar uchun <ul>, qadamlar uchun <ol>
+- <li> ro'yxat tegi ichida bo'lsin
+(RU: Напиши другу рецепт сэндвича: используй один из заголовков <h1>–<h6>; продукты — в <ul>, шаги — в <ol>;
+<li> — внутри тега списка.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use one of the heading tags <h1> to <h6>.
+Use <ul> and <ol>.
+Each list must have at least 3 <li> items.
+Every <li> must be inside <ul> or <ol>.
+Text content does not matter.
+
+======================================================================
+
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Havolalar va atributlar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Sirli qasr» o'yinini yarating.
+- Sarlavha (<h1> - <h6>) teglaridan ishlating
+- Uchta <a> havola: 1-eshik, 2-eshik, 3-eshik
+- href="" atributiga sahifa nomini yozing: eshik1.html
+(RU: Сделай игру «Таинственный замок»: используй заголовок <h1>–<h6>; три ссылки <a>: 1-eshik, 2-eshik, 3-eshik;
+в атрибут href="" впиши имя страницы: eshik1.html.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use one of the heading tags <h1> to <h6>.
+Use at least three <a> tags.
+Every <a> must have a filled href attribute.
+Every <a> must have text between <a> and </a>.
+The addresses and texts do not matter; the pages do not have to exist.
+
+======================================================================
+
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Rasmlar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Kosmos zali» sahifasini yarating.
+- <img> tegini ikki marta ishlating
+- src="" atributiga rasm manzilini yozing
+- alt="" atributiga rasmda nima borligini yozing
+- Har bir rasm ostiga <p> yozing
+(RU: Сделай страницу «Космический зал»: используй <img> два раза; в src="" — адрес картинки; в alt="" — что на картинке;
+под каждой картинкой — <p>.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use at least two <img> tags.
+Every <img> must have a filled src attribute.
+Every <img> must have a filled alt attribute.
+Use <p> at least once.
+<img> has no closing tag; the images do not have to load.
+
+======================================================================
+
+6. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 1-qism: ma'lumot kiritish
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Marsga uchadigan ekipaj anketasini yarating.
+- <form> ichida <label> va <input> teglarini ishlating
+- type="" : text, number va password
+- Har bir <input> da placeholder="" bo'lsin
+(RU: Сделай анкету в экипаж на Марс: в <form> используй <label> и <input>; type="": text, number и password;
+у каждого <input> — placeholder="".)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <form>.
+Use <input> with type text, number and password.
+Every <input> must have a filled placeholder attribute.
+Use <label>.
+All <input> tags must be inside <form>.
+
+======================================================================
+
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 2-qism: tanlash va yuborish
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Pitsa buyurtmasi formasini yarating.
+- <select> ichida kamida 3 ta <option>
+- <textarea> tegini ishlating
+- <button> tegini ishlating
+- Hammasi <form> ichida bo'lsin
+(RU: Сделай форму заказа пиццы: в <select> не меньше 3 <option>; используй <textarea>; используй <button>; всё — внутри <form>.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <form>.
+Use <select> with at least 3 <option> tags.
+Use <textarea>.
+Use <button> with some text.
+<select>, <textarea> and <button> must be inside <form>.
+
+======================================================================
+
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Haqiqiy sayt tuzilishi
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Kibersport jamoasi saytini yarating.
+- <header> ichida <h1>
+- <nav> ichida 2 ta <a> havola
+- <main> ichida 2 ta <section>
+- <footer> tegini ishlating
+(RU: Сделай сайт киберспортивной команды: в <header> — <h1>; в <nav> — 2 ссылки <a>; в <main> — 2 раздела <section>;
+используй <footer>.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <header>, <nav>, <main> and <footer>.
+Use a heading tag inside <header>.
+<nav> must have at least two <a> tags with a filled href.
+Use at least two <section> tags inside <main>.
+Text content does not matter.
+
+======================================================================
+
+9. НАЗВАНИЕ УРОКА: Yakuniy HTML loyiha
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sevimli mashg'ulotingiz haqida sayt yarating. Kursda o'rgangan teglarni ishlating:
+- <title>, <header>, <nav>, <main>, <footer>
+- <p>, <ul> yoki <ol>, <img>
+- <form>, <input>, <button>
+(RU: Сделай сайт о своём любимом занятии, используй теги курса: <title>, <header>, <nav>, <main>, <footer>; <p>, <ul> или <ol>, <img>;
+<form>, <input>, <button>.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use <title> inside <head>.
+Use <header>, <nav>, <main> and <footer>.
+Use <p>, a list (<ul> or <ol>) and <img> with src and alt.
+Use <form> with <input> and <button>.
+Text content does not matter.
