@@ -49,6 +49,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import * as LESSON_RT from '@lesson/runtime';   // КУРС HTML (15.11.2026): хуки платформы — только если они есть
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -3810,8 +3811,49 @@ const CSS_BASE = `
 // вернуться к списку. Кнопка при этом живёт В ШАПКЕ УРОКА, а не в полосе над
 // ним: полоса отняла бы у урока высоту, а все его размеры считаются от высоты
 // окна — и экран переставал укладываться без остатка.
+// КУРС HTML (15.11.2026): урок под платформу — см. swapLmsPlatform в tools/build-canon.mjs.
+const LMS_FONTS_LAT = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+const LMS_FONTS_CYR = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
+const LMS_FONTS = [
+  ['inter_latin_400', '300 500', LMS_FONTS_LAT], ['inter_latin_600', '600 900', LMS_FONTS_LAT],
+  ['inter_cyrillic_400', '300 500', LMS_FONTS_CYR], ['inter_cyrillic_600', '600 900', LMS_FONTS_CYR]
+];
+// Есть ли хук в runtime платформы — решается один раз при загрузке модуля: порядок хуков между рендерами не меняется.
+const LMS_HAS = (name) => { try { return typeof LESSON_RT[name] === 'function'; } catch (e) { return false; } };
+const LMS_PERF = LMS_HAS('useLessonPerf');
+const LMS_RES = LMS_HAS('useResources');
+const LMS_ASSETS = LMS_HAS('useAssets');
+const lmsNone = () => null;
+function useLmsPlatform() {
+  const perf = (LMS_PERF ? LESSON_RT.useLessonPerf : lmsNone)();
+  const res = (LMS_RES ? LESSON_RT.useResources : lmsNone)();
+  const assets = (LMS_ASSETS ? LESSON_RT.useAssets : lmsNone)();
+  const marked = useRef(false);   // в useRef, не в модуле: при повторном открытии во вкладке — заново
+  useEffect(() => {
+    LMS_FONTS.forEach(([key, weight, unicodeRange]) => {
+      try {
+        if (res && typeof res.loadFont === 'function') {
+          Promise.resolve(res.loadFont(key, 'Inter', { weight, unicodeRange })).catch(() => {});
+        } else if (assets && typeof assets.resolveUrl === 'function' && typeof FontFace === 'function') {
+          const url = assets.resolveUrl(key);
+          if (!url) return;
+          const face = new FontFace('Inter', 'url(' + url + ')', { weight, unicodeRange, display: 'swap' });
+          face.load().then((f) => document.fonts.add(f)).catch(() => {});
+        }
+      } catch (e) { /* нет ресурса — системный шрифт */ }
+    });
+    // Первый экран урока — учебный (крючок с заданием), картинок-файлов у уроков нет: отмечаем после показа.
+    const t = requestAnimationFrame(() => {
+      if (marked.current || !perf || typeof perf.markFirstScreenReady !== 'function') return;
+      marked.current = true;
+      try { perf.markFirstScreenReady(); } catch (e) { /* старый runtime */ }
+    });
+    return () => cancelAnimationFrame(t);
+  }, []);
+}
 function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, ttsKey, studentUuid, onFinished, extraPayload, startAt, onExit }) {
   setTtsAuth(ttsKey, studentUuid);   // КУРС HTML (14.11.2026): ключ сервиса озвучки и ученик — в адрес реплик
+  useLmsPlatform();   // КУРС HTML (15.11.2026): отметка первого экрана, шрифт Inter ресурсами
   // ЯЗЫК ЗАДАЁТ ПЛАТФОРМА (решение заказчика 2026-09-24, как в «Кибербезе»).
   // Переключателя в уроке нет: ребёнок случайно жал «EN», реплика обрывалась,
   // и урок оставался на чужом языке. Код нормализуем: платформа может прислать

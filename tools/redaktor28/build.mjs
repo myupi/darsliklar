@@ -53,38 +53,15 @@ scr = must(scr, "    { act: () => { setFlying(false); setStep(2); setStamp((v) =
 scr = must(scr, "<div ref={sceneRef} className={'kz-scene kz-s6' + (flying ? ' is-flying' : '')}", "<div ref={sceneRef} className={'kz-scene kz-s6 ms-root' + (flying ? ' is-flying' : '')}", 's6 root');
 scr = must(scr, "parts: [T_('head', true)] }\n            ]} />\n          </div>\n        </div>\n      </Sheet>",
   "parts: [T_('head', true)] }\n            ]} />\n          </div>\n          {M.el}\n        </div>\n      </Sheet>", 's6 cursor');
-// LMS CoddyCamp (14.11.2026, пакет IT dars-mashina, валидатор jsx-tekshir): урок 1 под CRM — только здесь,
-// общий набор naborRedaktor и другие уроки не меняются. Корень урока зовёт useR28Lms (r28-lms.jsx):
-// шрифт Inter ресурсами WOFF2 через loadFont и markFirstScreenReady.
-scr = must(scr, '  useParallax();\n  usePaperSound();\n', '  useParallax();\n  usePaperSound();\n  useR28Lms();\n', 'lms hook');
+// Урок под платформу LMS (шрифт Inter ресурсами, отметка первого экрана, место под «X», пометки для валидатора IT)
+// с 15.11.2026 — во всех уроках: канон (swapLmsPlatform в tools/build-canon.mjs) и общий набор (nabor.mjs).
 writeFileSync(join(gen, 'kollazh-screens.jsx'), scr);
-// Шрифты не встраиваются в CSS base64: Nunito на экранах «Редактора» не используется (весь текст — Inter),
-// Inter — файлы-ресурсы урока (lessons/html/assets/01-struktura-dokumenta/<ключ>.woff2, ключ — в r28-lms.jsx).
-const noFaces = (file, family) => {
-  const css = readFileSync(join(gen, file), 'utf8');
-  const out = css.split('\n').filter((l) => !l.startsWith("@font-face { font-family: '" + family + "'")).join('\n');
-  if (out === css) throw new Error('build.mjs: нет @font-face ' + family + ' в ' + file);
-  writeFileSync(join(gen, file), out);
-};
-noFaces('p17.css', 'Nunito');
-noFaces('r28.css', 'Inter');
-const assets = join(root, 'lessons/html/assets/01-struktura-dokumenta');
-mkdirSync(assets, { recursive: true });
-for (const f of ['inter-latin-400', 'inter-latin-600', 'inter-cyrillic-400', 'inter-cyrillic-600']) {
-  copyFileSync(join(here, 'fonts', f + '.woff2'), join(assets, f.replace(/-/g, '_') + '.woff2'));
-}
-// Y09 (валидатор): _bAskSet — ссылка на сеттер смонтированной рамки, при размонтировании сбрасывается в null.
-let chr = readFileSync(join(gen, 'b16-chrome.jsx'), 'utf8');
-chr = must(chr, 'let _bAskSet = null;   // KzAsk сообщает рамке текст задания и подсказку (build.mjs)',
-  'let _bAskSet = null;   // jsx-tekshir: ataylab — ramka sozlagichi, unmount\'da null bo\'ladi (KzAsk сообщает рамке текст задания)', 'bAskSet');
-writeFileSync(join(gen, 'b16-chrome.jsx'), chr);
 
 // META — урока 1 курса (lessonId html-01-struktura-dokumenta) из исходника, без замены.
 let src = readFileSync(join(gen, 'p17.src.jsx'), 'utf8');
 src = must(src, '/*@FILE:p17.css@*/', '/*@FILE:p17.css@*/\n/*@FILE:r28.css@*/', 'css');
 src = must(src, '/*@FILE:kollazh-screens.jsx@*/', '/*@FILE:../../mysh/mysh.jsx@*/\n\n/*@FILE:kollazh-screens.jsx@*/', 'mysh jsx');
-src = must(src, '/*@FILE:r28.css@*/', '/*@FILE:r28.css@*/\n/*@FILE:../../mysh/mysh.css@*/\n/*@FILE:../r28-lms.css@*/', 'mysh css');
-src = must(src, '/*@FILE:kollazh-screens.jsx@*/', '/*@FILE:../r28-lms.jsx@*/\n\n/*@FILE:kollazh-screens.jsx@*/', 'lms jsx');
+src = must(src, '/*@FILE:r28.css@*/', '/*@FILE:r28.css@*/\n/*@FILE:../../mysh/mysh.css@*/', 'mysh css');
 src = src.replace(/^\/\/ СГЕНЕРИРОВАНО[^\n]*\n/, '// СГЕНЕРИРОВАНО tools/redaktor28/build.mjs (урок 1 курса HTML, облик «Редактор») — не править руками.\n');
 const srcOut = join(gen, 'r28.src.jsx');
 writeFileSync(srcOut, src);

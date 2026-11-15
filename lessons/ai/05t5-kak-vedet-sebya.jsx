@@ -273,10 +273,12 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
 }
 
 const AQ_CSS = `
-.aq { box-sizing: border-box; display: flex; flex-direction: column; height: var(--aq-h, 100dvh); overflow: hidden; width: 100%; color: #1E1B39; font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, Arial, sans-serif; -webkit-text-size-adjust: 100%;
+.aq { box-sizing: border-box; display: flex; flex-direction: column; height: var(--aq-h, calc(100dvh - 80px)); overflow: hidden; width: 100%; color: #1E1B39; font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, Arial, sans-serif; -webkit-text-size-adjust: 100%;
   background-color: #F4F5F7; background-image: radial-gradient(circle, #D5DAE1 1px, transparent 1.4px); background-size: 20px 20px; background-position: -10px -10px; }
 .aq * { box-sizing: border-box; }
 /* Экран теста — ровно в высоту окна, без прокрутки (заказчик, 13.11.2026). Картинка берёт оставшееся место. */
+/* В CRM платформа рисует «Tekshirish» под тестом (≈ 80 px: отступы 12 + 24, кнопка 42) — тест оставляет ей место, иначе кнопка
+   за краем и нужна прокрутка (валидатор IT, S07; 15.11.2026). В просмотрщике высоту задаёт QuizShell (--aq-h: 100%). */
 .aq-main { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; max-width: 760px; margin: 0 auto; padding: 16px 16px 12px; }
 .aq-main > * { flex: none; }
 .aq.is-tight .aq-vis { display: none; }

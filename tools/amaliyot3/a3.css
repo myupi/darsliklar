@@ -254,3 +254,7 @@
   .r28 .a3-fin .a3-side { align-self: stretch; }
   .r28 .a3-fin .a3-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
 }
+
+/* Телефон: пока открыта панель ошибки или подсказки, «Проверить» в ряду символов под ней не нажимается — прячем,
+   ученик закрывает панель («Попробовать ещё» / «Понятно»). Валидатор IT (B07, 15.11.2026): кнопка под панелью. */
+@media (max-width: 759px) { .b-stage.has-sheet.is-sheet-hint .key-go { visibility: hidden; } }

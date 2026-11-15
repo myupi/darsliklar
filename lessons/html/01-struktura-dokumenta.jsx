@@ -59,6 +59,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
+import * as LESSON_RT from '@lesson/runtime';   // КУРС HTML (15.11.2026): хуки платформы — только если они есть
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -3820,8 +3821,49 @@ const CSS_BASE = `
 // вернуться к списку. Кнопка при этом живёт В ШАПКЕ УРОКА, а не в полосе над
 // ним: полоса отняла бы у урока высоту, а все его размеры считаются от высоты
 // окна — и экран переставал укладываться без остатка.
+// КУРС HTML (15.11.2026): урок под платформу — см. swapLmsPlatform в tools/build-canon.mjs.
+const LMS_FONTS_LAT = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+const LMS_FONTS_CYR = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
+const LMS_FONTS = [
+  ['inter_latin_400', '300 500', LMS_FONTS_LAT], ['inter_latin_600', '600 900', LMS_FONTS_LAT],
+  ['inter_cyrillic_400', '300 500', LMS_FONTS_CYR], ['inter_cyrillic_600', '600 900', LMS_FONTS_CYR]
+];
+// Есть ли хук в runtime платформы — решается один раз при загрузке модуля: порядок хуков между рендерами не меняется.
+const LMS_HAS = (name) => { try { return typeof LESSON_RT[name] === 'function'; } catch (e) { return false; } };
+const LMS_PERF = LMS_HAS('useLessonPerf');
+const LMS_RES = LMS_HAS('useResources');
+const LMS_ASSETS = LMS_HAS('useAssets');
+const lmsNone = () => null;
+function useLmsPlatform() {
+  const perf = (LMS_PERF ? LESSON_RT.useLessonPerf : lmsNone)();
+  const res = (LMS_RES ? LESSON_RT.useResources : lmsNone)();
+  const assets = (LMS_ASSETS ? LESSON_RT.useAssets : lmsNone)();
+  const marked = useRef(false);   // в useRef, не в модуле: при повторном открытии во вкладке — заново
+  useEffect(() => {
+    LMS_FONTS.forEach(([key, weight, unicodeRange]) => {
+      try {
+        if (res && typeof res.loadFont === 'function') {
+          Promise.resolve(res.loadFont(key, 'Inter', { weight, unicodeRange })).catch(() => {});
+        } else if (assets && typeof assets.resolveUrl === 'function' && typeof FontFace === 'function') {
+          const url = assets.resolveUrl(key);
+          if (!url) return;
+          const face = new FontFace('Inter', 'url(' + url + ')', { weight, unicodeRange, display: 'swap' });
+          face.load().then((f) => document.fonts.add(f)).catch(() => {});
+        }
+      } catch (e) { /* нет ресурса — системный шрифт */ }
+    });
+    // Первый экран урока — учебный (крючок с заданием), картинок-файлов у уроков нет: отмечаем после показа.
+    const t = requestAnimationFrame(() => {
+      if (marked.current || !perf || typeof perf.markFirstScreenReady !== 'function') return;
+      marked.current = true;
+      try { perf.markFirstScreenReady(); } catch (e) { /* старый runtime */ }
+    });
+    return () => cancelAnimationFrame(t);
+  }, []);
+}
 function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, ttsKey, studentUuid, onFinished, extraPayload, startAt, onExit }) {
   setTtsAuth(ttsKey, studentUuid);   // КУРС HTML (14.11.2026): ключ сервиса озвучки и ученик — в адрес реплик
+  useLmsPlatform();   // КУРС HTML (15.11.2026): отметка первого экрана, шрифт Inter ресурсами
   // ЯЗЫК ЗАДАЁТ ПЛАТФОРМА (решение заказчика 2026-09-24, как в «Кибербезе»).
   // Переключателя в уроке нет: ребёнок случайно жал «EN», реплика обрывалась,
   // и урок оставался на чужом языке. Код нормализуем: платформа может прислать
@@ -9921,58 +9963,6 @@ function useMysh(root) {
   return { go, click, hide, hold, follow, card: setCard, slow, el: both, on: !!cur };
 }
 
-// ─── LMS CoddyCamp: урок 1 под CRM (14.11.2026, пакет IT «dars-mashina-2026-11-11», валидатор jsx-tekshir) ───
-// Только урок 1 курса HTML (вставка в tools/redaktor28/build.mjs); общий набор naborRedaktor не меняется.
-// · Шрифт Inter — не base64 в CSS (R06; код в gzip был 462 КБ при пределе IT 400 КБ), а ресурсы WOFF2
-//   по ключу: useResources().loadFont(ключ, 'Inter', дескрипторы). Файлы — lessons/html/assets/01-struktura-dokumenta/
-//   (в CRM — блок WOFF2, ключ = имя файла без расширения). Пока шрифт грузится, текст — системным шрифтом (swap).
-// · markFirstScreenReady — один раз за открытие, когда первый учебный экран показан (Y01 / B03).
-// · Не на каждой платформе runtime новый (go.junior-it.uz, 14.11.2026: «useLessonPerf is not a function» —
-//   урок не открылся): хуки берутся из модуля целиком и зовутся, только если они есть. Нет loadFont — шрифт
-//   из useAssets().resolveUrl(ключ) своим FontFace; нет и файла — системный шрифт. Урок открывается в любом случае.
-import * as R28_RT from '@lesson/runtime';
-
-const R28_LAT = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
-const R28_CYR = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
-const R28_FONTS = [
-  ['inter_latin_400', '300 500', R28_LAT], ['inter_latin_600', '600 900', R28_LAT],
-  ['inter_cyrillic_400', '300 500', R28_CYR], ['inter_cyrillic_600', '600 900', R28_CYR]
-];
-// Есть ли хук в runtime платформы — решается один раз при загрузке модуля: порядок хуков между рендерами не меняется.
-const R28_HAS = (name) => { try { return typeof R28_RT[name] === 'function'; } catch (e) { return false; } };
-const R28_PERF = R28_HAS('useLessonPerf');
-const R28_RES = R28_HAS('useResources');
-const R28_ASSETS = R28_HAS('useAssets');
-const r28None = () => null;
-
-function useR28Lms() {
-  const perf = (R28_PERF ? R28_RT.useLessonPerf : r28None)();
-  const res = (R28_RES ? R28_RT.useResources : r28None)();
-  const assets = (R28_ASSETS ? R28_RT.useAssets : r28None)();
-  const marked = useRef(false);   // в useRef, не в модуле: при повторном открытии во вкладке — заново
-  useEffect(() => {
-    R28_FONTS.forEach(([key, weight, unicodeRange]) => {
-      try {
-        if (res && typeof res.loadFont === 'function') {
-          Promise.resolve(res.loadFont(key, 'Inter', { weight, unicodeRange })).catch(() => {});
-        } else if (assets && typeof assets.resolveUrl === 'function' && typeof FontFace === 'function') {
-          const url = assets.resolveUrl(key);
-          if (!url) return;
-          const face = new FontFace('Inter', 'url(' + url + ')', { weight, unicodeRange, display: 'swap' });
-          face.load().then((f) => document.fonts.add(f)).catch(() => {});
-        }
-      } catch (e) { /* нет ресурса — системный шрифт */ }
-    });
-    // Первый экран урока — учебный (крючок с заданием), картинок для него не грузится: отмечаем после показа.
-    const t = requestAnimationFrame(() => {
-      if (marked.current || !perf || typeof perf.markFirstScreenReady !== 'function') return;
-      marked.current = true;
-      try { perf.markFirstScreenReady(); } catch (e) { /* старый runtime */ }
-    });
-    return () => cancelAnimationFrame(t);
-  }, []);
-}
-
 // КОПИЯ экранов урока 1 (tools/kollazh/kollazh-screens.jsx, 28.10.2026) для тестового урока 16
 // по репликам заказчика v2: экраны 3 и 6 — ученик сам нажимает бирки, голову и бумажку;
 // экран 10 — один дополнительный раунд и «Давай ещё пример»; экран 11 — приветствие
@@ -11528,7 +11518,6 @@ export default function HtmlKollazh({ studentName, lang, ttsApiBase, ttsKey, voi
   });
   useParallax();
   usePaperSound();
-  useR28Lms();
   const cur = SCREENS[R.i];
   const Comp = cur.Comp;
   const nextId = SCREENS[R.i + 1] && SCREENS[R.i + 1].id;
@@ -14124,6 +14113,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    остались только имена тегов в тёмном редакторе — это подсветка синтаксиса, как в VS Code.
    Лежит поверх p17.css (оттуда — только раскладка экранов на телефоне и снятие бумаги).
    02.11.2026: шапка и низ с панелями результата — по дизайну уроков CoddyCamp LMS (блок в конце). */
+/* Шрифт Inter — ресурсы WOFF2 урока, грузит канон (useLmsPlatform). */
+/* LMS: кнопка «X» платформы — слева сверху (8–44 px): шапка урока начинается с 52 px (валидатор IT, B09). */
+.r28.b-stage .stage-header.b-head.cc-head { padding-left: 52px; }
 .r28 {
   --r-bg: #F4F5F7; --r-dot: #D5DAE1; --r-panel: #FFFFFF; --r-line: #E2E8F0; --r-edge: #CBD5E1;
   --r-ink: #0F172A; --r-ink2: #334155; --r-muted: #64748B;
@@ -14673,9 +14665,6 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .ms-card i { font: 400 12px/1.3 var(--r-font, Inter, sans-serif); color: #5F6368; font-style: normal; }
 @keyframes msCard { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .r28 .ms-card { animation: none; } }
-/* LMS CoddyCamp (урок 1 под CRM, 14.11.2026): кнопка «X» платформы стоит в левом верхнем углу окна урока
-   (8–44 px, режим ученика) — шапка урока начинается правее, чтобы ярлык раздела не ушёл под неё (B09). */
-.r28.b-stage .stage-header.b-head.cc-head { padding-left: 52px; }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
    экранах 6–10, 14 и 15 крупнее — место вокруг было пустым; текст в окне крупнее вместе
    с ним. Только в уроке 1 — общий kollazh.css (уроки 2–5, практики) не трогается. */
@@ -14687,4 +14676,3 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .kz-s6 .kz-br-page, .kz-s9 .kz-br-page, .kz-scene-col .kz-br-page, .kz-s14 .kz-br-page, .kz-q1 .kz-br-page { font-size: clamp(14px, 2.9dvh, 26px); }
 }
 `;
-

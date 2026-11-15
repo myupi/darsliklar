@@ -1,7 +1,8 @@
 # Урок 1 HTML «Структура HTML-документа» — загрузка в CRM
 
 14.11.2026. Подготовка по пакету IT `dars-mashina-2026-11-11.zip` (инструкция `IT-yoriqnoma/JSX-YUKLASH-VA-AKTIVLASHTIRISH-UZ-2026-11-11.md`).
-Сборка: `node tools/redaktor28/build.mjs` (правки под LMS — только урок 1: `tools/redaktor28/r28-lms.jsx`, `r28-lms.css`).
+Сборка: `node tools/redaktor28/build.mjs`. С 15.11.2026 правки под LMS — во всех уроках (канон и общий набор);
+общая памятка для всех уроков — `docs/crm-zagruzka-urokov.md`.
 
 ## Что загружать
 

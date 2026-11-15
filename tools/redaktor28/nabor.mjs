@@ -5,7 +5,7 @@
 //     tools/kollazh/, рамка B tools/bdizayn16/, облик p17 — снятие бумаги и раскладка на телефоне);
 //   · поверх — облик «Редактор»: p17-skin.jsx → r28-skin.jsx (стол, герой, подсказка-инспектор, полёт
 //     названия), kollazh-trans.jsx → r28-trans.jsx (переход «Глитч» со звуком sounds/glitch.mp3),
-//     шапка и низ CoddyCamp в b16-chrome.jsx (класс сцены r28), r28.css со встроенным шрифтом Inter.
+//     шапка и низ CoddyCamp в b16-chrome.jsx (класс сцены r28), r28.css (шрифт Inter — ресурсы урока, 15.11.2026).
 //   import { naborRedaktor } from '../redaktor28/nabor.mjs';
 //   naborRedaktor(join(here, 'gen'));   // потом sobrat.mjs по исходнику урока
 // Включения в исходнике урока — .claude/skills/novyy-urok/references/etalon-redaktor.md, раздел «Как собрать».
@@ -68,14 +68,25 @@ export function naborRedaktor(gen) {
 ` + chrome.slice(b);
   }
   chrome = must(chrome, '<BIco d={B_ICO.x} size={24} w={2.4} />', '<BIco d={<path d="m15 18-6-6 6-6" />} size={26} w={2.4} />', 'exit chevron');
+  // Валидатор IT (Y09): _bAskSet — ссылка на сеттер смонтированной рамки, при размонтировании сбрасывается в null.
+  chrome = must(chrome, 'let _bAskSet = null;   // KzAsk сообщает рамке текст задания и подсказку (build.mjs)',
+    "let _bAskSet = null;   // jsx-tekshir: ataylab — ramka sozlagichi, unmount'da null bo'ladi (KzAsk сообщает рамке текст задания)", 'bAskSet');
   writeFileSync(join(gen, 'b16-chrome.jsx'), chrome);
 
-  // Шрифт Inter (SIL OFL; латиница и кириллица, 400 и 600) — встроен в CSS: урок не грузит ничего снаружи.
-  const face = (file, w, range) => "@font-face { font-family: 'Inter'; font-style: normal; font-weight: " + w + "; font-display: swap; src: url(data:font/woff2;base64,"
-    + readFileSync(join(here, 'fonts', file)).toString('base64') + ") format('woff2'); unicode-range: " + range + '; }';
-  const LAT = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
-  const CYR = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
-  const fonts = [face('inter-latin-400.woff2', '300 500', LAT), face('inter-latin-600.woff2', '600 900', LAT),
-    face('inter-cyrillic-400.woff2', '300 500', CYR), face('inter-cyrillic-600.woff2', '600 900', CYR)].join('\n');
-  writeFileSync(join(gen, 'r28.css'), must(readFileSync(join(here, 'r28.css'), 'utf8'), '/*@R28_FONTS@*/', fonts, 'fonts'));
+  // LMS CoddyCamp (15.11.2026; пакет IT dars-mashina, валидатор jsx-tekshir: R06 и предел кода в gzip 400 КБ):
+  // шрифты не встраиваются в CSS base64. Nunito на экранах «Редактора» не используется (весь текст — Inter) —
+  // убран; Inter — файлы-ресурсы урока (tools/redaktor28/fonts → lessons/<курс>/assets/<урок>/<ключ>.woff2,
+  // копирует sobrat.mjs), грузит их канон: useLmsPlatform → useResources().loadFont (tools/build-canon.mjs).
+  {
+    const p17 = join(gen, 'p17.css');
+    const css = readFileSync(p17, 'utf8');
+    const out = css.split('\n').filter((l) => !l.startsWith("@font-face { font-family: 'Nunito'")).join('\n');
+    if (out === css) throw new Error('nabor.mjs (redaktor): нет @font-face Nunito в p17.css');
+    writeFileSync(p17, out);
+  }
+  // Кнопка «X» LMS стоит в левом верхнем углу окна урока (8–44 px, режим ученика) — шапка начинается правее (B09).
+  writeFileSync(join(gen, 'r28.css'), must(readFileSync(join(here, 'r28.css'), 'utf8'), '/*@R28_FONTS@*/',
+    "/* Шрифт Inter — ресурсы WOFF2 урока, грузит канон (useLmsPlatform). */\n"
+    + "/* LMS: кнопка «X» платформы — слева сверху (8–44 px): шапка урока начинается с 52 px (валидатор IT, B09). */\n"
+    + '.r28.b-stage .stage-header.b-head.cc-head { padding-left: 52px; }', 'fonts'));
 }

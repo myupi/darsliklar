@@ -23,8 +23,8 @@
 // если якорь не найден или встречается дважды, сборка останавливается.
 // Результат — обычный цельный файл урока; дальше его можно править напрямую.
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const [srcArg, outArg, course = 'html'] = process.argv.slice(2);
@@ -99,6 +99,19 @@ if (/from ['"](?!react['"]|@lesson\/runtime['"])/.test(out.replace(/^import Reac
 if ((out.match(/export default /g) || []).length !== 1) throw new Error('Нужен ровно один export default');
 
 writeFileSync(resolve(outArg), out);
+// Шрифт Inter — ресурсы урока для CRM (15.11.2026; канон грузит их по ключу, useLmsPlatform → loadFont):
+// lessons/<курс>/assets/<урок>/<ключ>.woff2 — их загружают в CRM вместе с уроком (блок WOFF2).
+{
+  const m = /lessons\/(html|css|ai)\/(\d\d(?:p)?-[^/]+)\.jsx$/.exec(resolve(outArg));
+  if (m && out.indexOf('const LMS_FONTS = [') >= 0) {
+    const fonts = new URL('../../../../tools/redaktor28/fonts/', import.meta.url);
+    const dir = resolve(dirname(resolve(outArg)), 'assets', m[2]);
+    mkdirSync(dir, { recursive: true });
+    for (const f of ['inter-latin-400', 'inter-latin-600', 'inter-cyrillic-400', 'inter-cyrillic-600']) {
+      copyFileSync(new URL(f + '.woff2', fonts), join(dir, f.replace(/-/g, '_') + '.woff2'));
+    }
+  }
+}
 console.log(`Собран ${outArg}: ${out.split('\n').length} строк, ${Math.round(out.length / 1024)} КБ; канон ${course} дословно, пометка «УРОК» на месте.`);
 // Подготовленная озвучка (13.11.2026): реплики урока на трёх языках — в LESSON_AUDIO в конце файла.
 if (out.indexOf('function speechIdsOf(') >= 0 && /lessons\/(html|css|ai)\/\d\d(p)?-[^/]+\.jsx$/.test(resolve(outArg))) {
