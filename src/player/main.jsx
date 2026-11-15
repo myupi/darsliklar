@@ -23,7 +23,15 @@ const startRaw = q.get('start');
 const start = startRaw !== null && startRaw !== '' && Number.isFinite(Number(startRaw)) ? Number(startRaw) : null;
 
 const found = findByFile(buildCatalog(), file);
-configureRuntime({ voice, lang, assets: (found && found.lesson.assets) || {} });
+// Ресурсы урока для useAssets / useResources (14.11.2026): lessons/<курс>/assets/<файл урока>/<ключ>.<ext>,
+// ключ = имя файла без расширения — как в CRM («Dars rasmlari», WOFF2 / JSON / CSS).
+const ASSET_URLS = import.meta.glob('/lessons/*/assets/*/*', { query: '?url', import: 'default', eager: true });
+const fileAssets = {};
+Object.entries(ASSET_URLS).forEach(([p, url]) => {
+  const m = /^\/lessons\/([^/]+)\/assets\/([^/]+)\/([^/]+)\.[a-z0-9]+$/i.exec(p);
+  if (m && m[1] + '/' + m[2] === file) fileAssets[m[3]] = url;
+});
+configureRuntime({ voice, lang, assets: Object.assign({}, fileAssets, (found && found.lesson.assets) || {}) });
 
 // СЕРВИС ОЗВУЧКИ. Адрес свой у каждого запуска плеера: реплики в журнал
 // приходят только этому плееру, даже если открыто несколько уроков.

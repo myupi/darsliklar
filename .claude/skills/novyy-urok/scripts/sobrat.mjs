@@ -90,7 +90,9 @@ if (left) throw new Error('Остались метки: ' + left.join(', '));
 const cAt = once(out, canon, 'канон в результате');
 if (out.indexOf('==  У Р О К  ==', cAt + canon.length) < 0) throw new Error('Пометка «УРОК» не после канона');
 const lesson = out.slice(cAt + canon.length);
-const imports = (lesson.match(/^\s*import .+$/gm) || []);
+// Ниже канона можно только импорт из '@lesson/runtime' (14.11.2026: хуки платформы, которых нет в импорте
+// канона, — useLessonPerf, useResources; урок 1 HTML под CRM, tools/redaktor28/r28-lms.jsx).
+const imports = (lesson.match(/^\s*import .+$/gm) || []).filter((l) => !/from ['"]@lesson\/runtime['"];?\s*$/.test(l));
 if (imports.length) throw new Error('Импорты ниже канона запрещены: ' + imports.join(' | '));
 // Кроме react — только '@lesson/runtime' (подготовленная озвучка платформы в каноне, 13.11.2026).
 if (/from ['"](?!react['"]|@lesson\/runtime['"])/.test(out.replace(/^import React[^\n]*$/m, ''))) throw new Error('Есть импорт не из react / @lesson/runtime');

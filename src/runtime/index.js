@@ -12,6 +12,7 @@
 //   запись, здесь — её текст тем же движком эмуляции. Нет такой реплики — пропуск с предупреждением.
 // useSfx()   → { playCorrect(), playWrong(), playClick(), play(name) }
 // useAssets() → { resolveUrl(key) } — ссылка из манифеста урока или null.
+// useLessonPerf() → { markFirstScreenReady() }; useResources() → { loadFont, loadJson, loadStyle } — ниже.
 //
 // Правило: если урок не работает здесь — чинится урок, а не эта эмуляция.
 // Сюда добавляется только то, что действительно умеет платформа.
@@ -122,5 +123,40 @@ export function useAssets() {
   return useMemo(() => ({
     assets: config.assets,
     resolveUrl: (key) => (config.assets && config.assets[key]) || null,
+  }), []);
+}
+
+// useLessonPerf() → { markFirstScreenReady() } — отметка «первый учебный экран готов» (платформа меряет
+// first_screen_ms; IT-yoriqnoma JSX-AUTHOR-GUIDE §4). Здесь — строка в журнале со временем от загрузки.
+export function useLessonPerf() {
+  return useMemo(() => ({
+    markFirstScreenReady: () => emit('perf', 'markFirstScreenReady · ' + Math.round(performance.now()) + ' мс от загрузки'),
+  }), []);
+}
+
+// useResources() → { loadFont(key, family, descriptors?), loadJson(key), loadStyle(key) } — ресурсы урока
+// по ключу (WOFF2 / JSON / CSS; IT-yoriqnoma JSX-AUTHOR-GUIDE §4). Файлы — из манифеста урока, как у useAssets.
+// loadFont: третий аргумент уходит в FontFace (weight, unicodeRange…), font-display — swap, как на платформе.
+const resUrl = (key) => {
+  const u = config.assets && config.assets[key];
+  if (!u) { emit('error', { message: 'useResources: нет ресурса ' + key }); throw new Error('resource not found: ' + key); }
+  return u;
+};
+export function useResources() {
+  return useMemo(() => ({
+    loadFont: async (key, family, descriptors) => {
+      const face = new FontFace(family, 'url(' + resUrl(key) + ')', Object.assign({ display: 'swap' }, descriptors || {}));
+      await face.load();
+      document.fonts.add(face);
+      return face;
+    },
+    loadJson: async (key) => (await fetch(resUrl(key))).json(),
+    loadStyle: async (key) => {
+      const css = await (await fetch(resUrl(key))).text();
+      const el = document.createElement('style');
+      el.textContent = css;
+      document.head.appendChild(el);
+      return el;
+    },
   }), []);
 }
