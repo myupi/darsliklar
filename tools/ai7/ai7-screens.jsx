@@ -399,10 +399,10 @@ function lessonAi7Artifact(store) {
   return a || b ? { type: 'ai-fix', fix: a ? a.fix : null, own: b ? b.fix : null } : null;
 }
 
-export default function AiImproveResult({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function AiImproveResult({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonAi7Artifact(store) })
   });
   useParallax();

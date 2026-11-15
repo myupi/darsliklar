@@ -1381,10 +1381,10 @@ function lessonCss16Artifact(store) {
       ['    </style>', '  </head>', '  <body>', '    <div class="banner">Yangi o\'yin!</div>', '    <div class="qator">', '      <div class="karta">O\'yinlar</div>', '      <div class="karta">Musiqa</div>', '      <div class="karta">Kino</div>', '    </div>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssResponsive({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssResponsive({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss16Artifact(store) })
   });
   useParallax();

@@ -1324,10 +1324,10 @@ function practiceArtifact(store) {
   return { type: 'html-page', title: store.get('mySite') || '', footer: store.get('myFoot') || '', html: a9SiteLines(P, true).join('\n') };
 }
 
-export default function HtmlPraktika9({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlPraktika9({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: practiceArtifact(store) })
   });
   useParallax();

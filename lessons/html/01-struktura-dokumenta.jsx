@@ -41,9 +41,13 @@
 //
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
-//   · озвучка — «Подготовленная озвучка JSX» платформы (13.11.2026): реплики объявлены в
-//     export const LESSON_AUDIO в конце урока (пишет tools/ovoz/ovoz.mjs), звук даёт useAudio
-//     из '@lesson/runtime'. ttsApiBase урок больше не использует.
+//   · ttsApiBase — база сервиса озвучки (как в Dars001, 14.11.2026):
+//     GET {ttsApiBase}/api/tts?text=…&g=m&lesson_id=…&lesson_name=…&student_uuid=…&voice_id=…&k=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
+//     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
+//     voice_id — голос курса TTS_VOICE_ID. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -55,7 +59,6 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
-import { useAudio as useLessonAudio } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -467,7 +470,7 @@ const KODI_CSS = `
 
 // Градиенты и обтравка объявляются внутри каждого экземпляра, поэтому им нужны
 // разные имена: на экране бывает два Коди сразу (в строке героя и в шапке).
-let _botUid = 0;
+let _botUid = 0;   // jsx-tekshir: ataylab — id hisoblagichi, eski qiymat zarar qilmaydi
 
 // ВОЛНЫ ГОЛОСА — как у Алисы и Siri, всегда хаотичные. Три оранжевых контура вокруг
 // кружка: радиус каждого — сумма трёх синусоид с разным числом горбов. Пока
@@ -937,128 +940,652 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
+// КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
+// при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
+const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
+const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
+let _ttsFirstLogged = false;   // jsx-tekshir: ataylab — faqat konsol diagnostikasi (диагностика: первый запрос к сервису — в консоль)
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
-// ── ОЗВУЧКА: ПОДГОТОВЛЕННЫЕ ЗАПИСИ ПЛАТФОРМЫ (13.11.2026) ─────────────────────────────────────
-// Урок не обращается к сервису и не говорит голосом браузера: реплики объявлены в LESSON_AUDIO
-// (в конце урока), звук даёт платформа через useAudio из '@lesson/runtime'. speak(text) находит запись
-// по тексту реплики (SPEECH_INDEX[язык]: чистый текст → id; склейку похвалы и разбора — по кускам),
-// ставит очередь [{ speechId }] и ждёт конца. Записи нет (подстановка слов ученика) — реплика
-// «проживается» молча по времени. Движок отдаёт тот же набор, что прежний: экраны не меняются.
+// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
+// маркера — как есть) + lesson_id и lesson_name из META урока.
+const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
+const buildTtsUrl = (base, text, gender, lang) => {
+  if (!base) return '';
+  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
+  // voiceGender от LMS голос курса не меняет.
+  const g = 'm';
+  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  const meta = typeof META !== 'undefined' && META ? META : null;
+  if (meta && meta.lessonId) {
+    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
+    const t = meta.lessonTitle || {};
+    const name = t[lang] || t.ru || '';
+    if (name) url += '&lesson_name=' + encodeURIComponent(name);
+  }
+  // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
+  if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
+  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
+  return url;
+};
+
+// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
+// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
+// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
+// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
+// звук. Для audio-led урока тишина хуже машинного голоса.
+const localVoiceOk = () =>
+  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
+
+// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
+// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
+// по высоте. API пол не сообщает, поэтому опознаём по имени.
+// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
+// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
+// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
+// Поэтому оба алфавита.
+const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
+const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
+
+const pickLocalVoice = (lang, gender) => {
+  if (!localVoiceOk()) return null;
+  const all = window.speechSynthesis.getVoices() || [];
+  if (!all.length) return null;
+  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
+  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
+  // узбекской латинице ближе всего — читает заметно вернее английской.
+  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
+  let pool = [];
+  for (let i = 0; i < order.length && !pool.length; i += 1) {
+    pool = all.filter((v) => norm(v).startsWith(order[i]));
+  }
+  if (!pool.length) pool = all;
+  const want = gender === 'm' ? VOICE_M : VOICE_F;
+  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
+  const named = pool.find((v) => want.test(v.name || ''));
+  if (named) return named;
+  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
+  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
+};
+
+// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
+// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
+// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
+// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
+// звучал, то нет, и начинал работать стабильно, как только на объект держали
+// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
+// поэтому: локальная умирает вместе с вызовом.
+let _utter = null;
+let _keepAlive = null;
+
+// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
+// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
+// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
+// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
+// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
+// resume(). На неприостановленном движке resume() безвреден.
+// Таймер обязан останавливаться сам — иначе он переживёт урок.
+function keepSpeechAlive(synth) {
+  if (_keepAlive) clearInterval(_keepAlive);
+  _keepAlive = setInterval(() => {
+    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
+    try { synth.resume(); } catch (e) { /* no-op */ }
+  }, 250);
+}
+function stopSpeechKeepAlive() {
+  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
+}
+
+// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
+const speakLocal = (text, gender, lang, onDone) => {
+  if (!localVoiceOk()) return false;
+  try {
+    const synth = window.speechSynthesis;
+    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
+    // очереди в Chrome иногда гасит фразу, поставленную следом.
+    if (synth.speaking || synth.pending) synth.cancel();
+    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
+    // после загрузки страницы: speak() принимается, событий не приходит, звука
+    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
+    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
+    // resume() на неприостановленном движке безвреден.
+    try { synth.resume(); } catch (e) { /* no-op */ }
+    const u = new window.SpeechSynthesisUtterance(text);
+    const v = pickLocalVoice(lang, gender);
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
+    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
+    // героев. Достался один на двоих — разводим их тембром сильнее.
+    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
+    // ставились, чтобы развести двух персонажей одним системным голосом; герой
+    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
+    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
+    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
+    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
+    u.rate = 0.94;
+    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
+    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
+    _utter = u;              // см. комментарий выше — без этого речь пропадает
+    synth.speak(u);
+    keepSpeechAlive(synth);
+    return true;
+  } catch (e) { return false; }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. ОЗВУЧКА — useAudioEngine
+// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
+// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
+//
+// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
+// возможности его выключить. Взамен работает флаг failed: если голоса фактически
+// нет, экран обязан показать текст.
+// ─────────────────────────────────────────────────────────────────────────────
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
-function speechIndexOf(lang) {
-  const all = typeof SPEECH_INDEX !== 'undefined' ? SPEECH_INDEX : null;
-  return (all && (all[lang] || all.ru)) || {};
-}
-function speechIdsOf(clean, lang) {
-  const idx = speechIndexOf(lang);
-  if (idx[clean]) return [idx[clean]];
-  const keys = Object.keys(idx);
-  const ids = [];
-  let rest = clean;
-  while (rest) {
-    let best = null;
-    keys.forEach((c) => {
-      if (rest.indexOf(c) === 0 && (rest.length === c.length || rest.charAt(c.length) === ' ') && (!best || c.length > best.length)) best = c;
-    });
-    if (!best) return null;
-    ids.push(idx[best]);
-    rest = rest.slice(best.length).trim();
-  }
-  return ids.length ? ids : null;
-}
+
+// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
+// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
+// play() падает — тогда разблокировка молча не срабатывает.
+const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+
 function useAudioEngine(ttsApiBase, lang) {
+  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
+  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
+  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
+  // печатаются текстом (см. failed/muted в PersonaBubble).
   const [muted, setMuted] = useState(false);
-  const mutedRef = useRef(false);
-  mutedRef.current = muted;
+  const on = !muted;
   const [playing, setPlaying] = useState(false);
+  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
+  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
+  // ради озвучки, обязан по этому флагу текст показать.
+  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
+  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
+  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
+  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
+  // до него реплика показывается ТЕКСТОМ, а после — произносится.
+  const [gestured, setGestured] = useState(false);
+  const elRef = useRef(null);
+  const onRef = useRef(true);
+  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
+  const timers = useRef([]);
+  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
+  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
+  useEffect(() => {
+    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
+  }, [ttsApiBase]);
+
+  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // Список системных голосов приезжает асинхронно: первый getVoices() часто
+  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
+  useEffect(() => {
+    if (!localVoiceOk()) return undefined;
+    const synth = window.speechSynthesis;
+    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
+    warm();
+    if (synth.addEventListener) {
+      synth.addEventListener('voiceschanged', warm);
+      return () => synth.removeEventListener('voiceschanged', warm);
+    }
+    return undefined;
+  }, []);
+
+  const el = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
+    return elRef.current;
+  }, []);
+
+  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
+  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
+  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
+  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
+  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
+  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
+  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  const [gestured, setGestured] = useState(false);
+  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
+  const resumeRef = useRef(null);
+  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
+  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
+  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
+  // подхватить, а не оставить тишину до следующего экрана.
+  const unmuteRef = useRef(null);
+  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
+  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
+  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
+  // Здесь лежит обещание произнести её, как только касание случится.
+  const gestureWait = useRef(null);
+  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
+  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
+  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
   const [replayNonce, setReplayNonce] = useState(0);
-  const [queue, setQueue] = useState([]);
-  const pending = useRef(null);
-  const seq = useRef(0);   // номер очереди — свой у каждого открытия урока (валидатор IT, Y09: без состояния уровня модуля)
-  const lessonAudio = useLessonAudio(queue);
-  const audioRef = useRef(lessonAudio);
-  audioRef.current = lessonAudio;
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const h = () => setGestured(true);
-    window.addEventListener('pointerdown', h, { once: true, capture: true });
-    window.addEventListener('keydown', h, { once: true, capture: true });
-    return () => { window.removeEventListener('pointerdown', h, { capture: true }); window.removeEventListener('keydown', h, { capture: true }); };
-  }, []);
-
-  const settle = useCallback(() => {
-    const p = pending.current;
-    if (!p) return;
-    if (pausedRef.current) { p.timer = setTimeout(settle, 300); return; }
-    clearTimeout(p.timer);
-    pending.current = null;
-    setPlaying(false);
-    p.resolve();
-  }, []);
-
-  // Конец реплики — когда платформа перестала играть (с запасом: между кусками очереди бывает пауза).
-  const isPlaying = !!(lessonAudio && (lessonAudio.isPlaying || lessonAudio.playing));
-  useEffect(() => {
-    const p = pending.current;
-    if (!p) return undefined;
-    if (isPlaying) { p.started = true; setPlaying(true); return undefined; }
-    if (!p.started) return undefined;
-    const t = setTimeout(() => { if (pending.current === p && !(audioRef.current.isPlaying || audioRef.current.playing)) settle(); }, 350);
-    return () => clearTimeout(t);
-  }, [isPlaying, settle]);
-
-  const speak = useCallback((text) => {
-    const clean = sanitizeForTts(text, lang);
-    if (!clean) return Promise.resolve();
-    if (pending.current) settle();
-    const ids = speechIdsOf(clean, lang);
-    if (!ids) { try { console.warn('[ovoz] LESSON_AUDIO da yozuv yo\'q: ' + clean); } catch (e) { /* no-op */ } }
-    const est = estimateMs(clean);
-    return new Promise((resolve) => {
-      const p = { resolve, started: false, timer: null, ids };
-      pending.current = p;
-      // Записи нет, звук выключен или платформа не начала играть — реплика «проживается» по времени.
-      p.timer = setTimeout(() => { if (pending.current === p && !p.started) settle(); }, ids && !mutedRef.current ? est + 4000 : est);
-      if (ids) { seq.current += 1; const n = seq.current; setQueue(ids.map((id) => ({ speechId: id, n }))); }
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      setSoundOff(next);
+      if (next) {
+        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
+        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
+        // «проживается» молча и экран идёт дальше, иначе выключенный звук
+        // запирал бы ребёнка на странице.
+        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
+        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
+      } else {
+        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
+        // после включения звук возвращался только со следующего экрана, и
+        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
+        // Дорожка сервиса просто продолжается с того места, где её приглушили.
+        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
+        // в адрес самой страницы, и play() на нём падает NotSupportedError.
+        const a = elRef.current;
+        if (a && a.readyState > 0 && a.paused && !a.ended) {
+          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
+        }
+        const fn = unmuteRef.current;
+        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
+      }
+      return next;
     });
-  }, [lang, settle]);
-
-  const stop = useCallback(() => {
-    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
-    setQueue([]);
-    settle();
-  }, [settle]);
-  const abort = useCallback(() => {
-    try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ }
-    const p = pending.current;
-    if (p) clearTimeout(p.timer);
-    pending.current = null;
-    setQueue([]);
-    pausedRef.current = false; setPaused(false); setPlaying(false);
   }, []);
   const toggle = useCallback(() => {
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
-    const p = pending.current;
-    if (next) { try { if (audioRef.current && audioRef.current.stop) audioRef.current.stop(); } catch (e) { /* no-op */ } setPlaying(false); if (p) p.started = false; }
-    else if (p && p.ids) { seq.current += 1; const n = seq.current; setQueue(p.ids.map((id) => ({ speechId: id, n }))); }
+    const a = elRef.current;
+    try {
+      if (next) { if (a) a.pause(); setPlaying(false); }
+      else if (a && a.readyState > 0 && !a.ended) {
+        const p = a.play();
+        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
+        else setPlaying(true);
+      }
+    } catch (e) { /* no-op */ }
+    if (localVoiceOk()) {
+      try {
+        if (next) {
+          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
+          // не гарантирована. Фразу запомнили — при продолжении произнесём
+          // заново (см. runLocal).
+          stopSpeechKeepAlive();
+          window.speechSynthesis.cancel();
+        } else if (resumeRef.current) {
+          const fn = resumeRef.current;
+          resumeRef.current = null;
+          fn();
+        }
+      } catch (e) { /* no-op */ }
+    }
   }, []);
-  const toggleMute = useCallback(() => {
-    setMuted((m) => { setSoundOff(!m); return !m; });
-    try { if (audioRef.current && audioRef.current.toggleMute) audioRef.current.toggleMute(); } catch (e) { /* no-op */ }
+
+  const unlocked = useRef(false);
+  const unlock = useCallback(() => {
+    if (unlocked.current) return;
+    unlocked.current = true;
+    resumeSfx();
+    const a = el();
+    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
+    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
+    if (!a || (a.src && !a.paused)) return;
+    try {
+      a.src = SILENT_WAV;
+      const p = a.play();
+      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
+      if (p && p.catch) p.catch(() => { unlocked.current = false; });
+    } catch (e) { unlocked.current = false; }
+  }, [el]);
+
+  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
+  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
+  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
+  // остаётся ни с чем; после касания она произносится.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => {
+      setGestured(true);
+      unlock();
+      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
+      const fn = gestureWait.current;
+      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
+    };
+    const opt = { once: true, capture: true };
+    window.addEventListener('pointerdown', h, opt);
+    window.addEventListener('keydown', h, opt);
+    return () => {
+      window.removeEventListener('pointerdown', h, { capture: true });
+      window.removeEventListener('keydown', h, { capture: true });
+    };
+  }, [unlock]);
+
+  const flush = useCallback(() => {
+    const list = resolvers.current;
+    resolvers.current = [];
+    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
   }, []);
-  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
-  const unlock = useCallback(() => { resumeSfx(); }, []);
-  const warm = useCallback(() => {}, []);   // записи заранее грузит платформа
+
+  const stop = useCallback(() => {
+    const a = elRef.current;
+    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
+    // резервный голос обрывается вместе с основным, иначе он договаривает
+    // реплику уже на следующем экране
+    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
+    setPlaying(false);
+    flush();
+  }, [flush]);
+
+  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
+  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
+  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
+  const abort = useCallback(() => {
+    const a = elRef.current;
+    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
+    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
+    timers.current.forEach(clearTimeout); timers.current = [];
+    resolvers.current = [];
+    pausedRef.current = false; setPaused(false); setPlaying(false);
+  }, []);
+
+  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
+  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
+  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
+  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
+  const gesturedRef = useRef(false);
+  gesturedRef.current = gestured;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
+
+  const speak = useCallback((text, gender) => {
+    const clean = sanitizeForTts(text, lang);
+    if (!clean) return Promise.resolve();
+    const est = estimateMs(clean);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
+        // закрывает не только onended, но и страховочные таймеры, а они тикают
+        // и на паузе. Откладываем до снятия.
+        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
+        done = true;
+        unmuteRef.current = null;
+        resolvers.current = resolvers.current.filter((f) => f !== finish);
+        setPlaying(false);
+        resolve();
+      };
+      resolvers.current.push(finish);
+      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
+
+      let localSpoke = false;
+      let localStarted = false;      // одна реплика — один запуск резерва
+
+      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
+      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
+      // срабатывает, то оставляет движок в состоянии, из которого речь больше
+      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
+      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
+      // стоп — стало тихо, нажал продолжить — снова слышно.
+      //
+      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
+      // «стоп» и «без звука» оба выглядели сломанными:
+      //   · cancel() гасил речь, браузер присылал end,
+      //   · end закрывал реплику как СКАЗАННУЮ,
+      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
+      //     до следующего экрана.
+      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
+      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
+      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
+      let stopGuard = null;
+      const runLocal = () => {
+        if (done || localSpoke) return;
+        if (pausedRef.current) { resumeRef.current = runLocal; return; }
+        resumeRef.current = null;
+        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
+        speakLocal(clean, gender, lang, onLocalEnd);
+      };
+      const onLocalEnd = () => {
+        if (done) return;
+        if (mutedRef.current || pausedRef.current) {
+          setPlaying(false);
+          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
+          if (mutedRef.current) {
+            unmuteRef.current = () => { unmuteRef.current = null; again(); };
+            // Со включённым тумблером урок не запирается: если звук так и не
+            // вернули, реплика «проживается» и экран идёт дальше.
+            stopGuard = setTimeout(finish, est);
+            timers.current.push(stopGuard);
+          }
+          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
+          // месте, пока ребёнок сам не нажмёт «продолжить».
+          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
+          return;
+        }
+        localSpoke = true; setPlaying(false); finish();
+      };
+
+      const tryLocal = () => {
+        if (done) return false;
+        // Резерв уже ведёт эту реплику — это успех, а не отказ.
+        if (localStarted) return true;
+        if (!localVoiceOk()) return false;
+        localStarted = true;
+        runLocal();
+        const ok = true;
+        if (!ok) return false;
+        setPlaying(true);
+        setFailed(false);
+        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
+        // не по возврату speak() — иначе экран замрёт без звука и без текста.
+        timers.current.push(setTimeout(() => {
+          if (done || localSpoke) return;
+          const s = window.speechSynthesis;
+          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
+        }, 900));
+        return true;
+      };
+
+      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
+      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
+      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
+      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
+      // герой и есть робот, так что машинный голос попадает в образ.
+      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
+      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
+      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
+      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
+      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
+      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
+      if (mutedRef.current) {
+        setFailed(true);
+        unmuteRef.current = () => {
+          if (done) return;
+          unmuteRef.current = null;
+          setFailed(false);
+          if (localVoiceOk()) {
+            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
+            setPlaying(true);
+          }
+        };
+        waitThen(est);
+        return;
+      }
+      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
+      // и обычный путь, и отложенный запуск после первого касания.
+      const play = () => {
+        if (!ttsApiBase || !onRef.current) {
+          if (tryLocal()) return;
+          setFailed(true); waitThen(est); return;
+        }
+        const a = el();
+        if (!a) { setFailed(true); waitThen(est); return; }
+        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
+        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
+        let attempt = 0;
+        let pending = false;
+        const onFail = () => {
+          if (done || pending) return;
+          if (localStarted) return;
+          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
+          // стоять пустым, пока мы втихую пробуем ещё раз.
+          if (!localVoiceOk()) setFailed(true);
+          if (attempt < 2) {
+            pending = true;
+            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
+            return;
+          }
+          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
+          try {
+            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
+              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
+          } catch (e) { /* no-op */ }
+          if (tryLocal()) return;
+          setFailed(true);
+          waitThen(est);
+        };
+        const tryPlay = () => {
+          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
+          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
+          // через мгновение следующая реплика зовёт play() и снова её запускает.
+          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
+          attempt += 1;
+          try {
+            a.onended = null; a.onerror = null; a.pause();
+            // r= обходит кэш неудачного ответа
+            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
+            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
+            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
+            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
+            a.onended = finish;
+            a.onerror = onFail;
+            const p = a.play();
+            if (p && p.then) {
+              p.then(() => {
+                setPlaying(true);
+                // play() может «разрешиться», а звука не быть — так ведёт себя
+                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
+                // HTML-телом): ни reject, ни события error не приходит. Поэтому
+                // верим не обещанию, а прогрессу дорожки.
+                timers.current.push(setTimeout(() => {
+                  if (done) return;
+                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
+                  if (!silent) { setFailed(false); return; }
+                  try { a.pause(); } catch (e) { /* no-op */ }
+                  if (!tryLocal()) setFailed(true);
+                }, 900));
+                // страховка: если поток умер молча — не висим вечно.
+                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
+                // бы паузу за мёртвый поток и закрыла реплику.
+                timers.current.push(setTimeout(() => {
+                  if (pausedRef.current) return;
+                  if (a.paused || !a.duration) finish();
+                }, est + 4000));
+              }).catch(onFail);          // сюда попадает и блокировка автозапуска
+            } else {
+              setPlaying(true);
+              waitThen(est + 4000);
+            }
+          } catch (e) { onFail(); }
+        };
+        tryPlay();
+      };
+      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
+      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
+      // любому месту экрана — произносит её с начала. Раньше здесь стояло
+      // простое ожидание, и самая первая фраза урока не звучала вообще:
+      // ребёнок молча смотрел на текст, а голос включался только со второй.
+      // Страховочный таймер остаётся: если касания так и нет, реплика
+      // «проживается» и урок идёт дальше, а не запирается.
+      const waitGesture = () => {
+        setFailed(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          if (done) return;
+          clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+      };
+      if (!gesturedRef.current) {
+        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
+        // Проба — на отдельном элементе: общую дорожку экран при открытии
+        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
+        // только отказ браузера (NotAllowedError), а не обрыв.
+        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
+        if (!a0) { waitGesture(); return; }
+        let settled = false;
+        const allowed = () => {
+          if (settled) return;
+          settled = true;
+          gesturedRef.current = true;
+          unlocked.current = true;
+          setGestured(true);
+          setFailed(false);
+          if (!done) play();
+        };
+        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
+        try {
+          a0.src = SILENT_WAV;
+          const pr = a0.play();
+          if (pr && pr.then) {
+            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
+            timers.current.push(setTimeout(blocked, 1500));
+          } else allowed();
+        } catch (e) { blocked(); }
+        return;
+      }
+      play();
+    });
+  }, [ttsApiBase, lang, el]);
+
+  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
+  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
+  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
+  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
+  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
+  // нажатию ребёнка звук уже готов.
+  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
+  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
+  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
+  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
+  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
+  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
+  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
+  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
+  const warmQ = useRef([]);
+  const warmBusy = useRef(0);
+  const warm = useCallback((texts) => {
+    if (!ttsApiBase || typeof fetch !== 'function') return;
+    warmQ.current.forEach((u) => warmed.current.delete(u));
+    warmQ.current = [];
+    (texts || []).forEach((t) => {
+      const clean = sanitizeForTts(t, lang);
+      if (!clean) return;
+      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
+      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
+    });
+    const pump = () => {
+      while (warmBusy.current < 2 && warmQ.current.length) {
+        const u = warmQ.current.shift();
+        warmBusy.current += 1;
+        const next = () => { warmBusy.current -= 1; pump(); };
+        const fail = () => { warmed.current.delete(u); next(); };
+        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
+      }
+    };
+    pump();
+  }, [ttsApiBase, lang]);
+
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on: !muted, muted, gestured, playing, failed: false };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
 }
 
 // ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (13.11.2026) ──────────────────────────────────────────────────────
@@ -2117,7 +2644,7 @@ const LED_MS = 7000;
 //
 // Шина модульная, а не контекстная: useIdleLed зовут сами экраны, а кнопка
 // живёт внутри Stage — контекст из Stage до экрана не достаёт.
-let _hintText = null;
+let _hintText = null;   // jsx-tekshir: ataylab — unmount'da null bo'ladi
 let _hintN = 0;
 const _hintSubs = new Set();
 const pulseHint = () => { _hintN += 1; _hintSubs.forEach((f) => f(_hintN)); };
@@ -3293,7 +3820,8 @@ const CSS_BASE = `
 // вернуться к списку. Кнопка при этом живёт В ШАПКЕ УРОКА, а не в полосе над
 // ним: полоса отняла бы у урока высоту, а все его размеры считаются от высоты
 // окна — и экран переставал укладываться без остатка.
-function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, onFinished, extraPayload, startAt, onExit }) {
+function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, ttsKey, studentUuid, onFinished, extraPayload, startAt, onExit }) {
+  setTtsAuth(ttsKey, studentUuid);   // КУРС HTML (14.11.2026): ключ сервиса озвучки и ученик — в адрес реплик
   // ЯЗЫК ЗАДАЁТ ПЛАТФОРМА (решение заказчика 2026-09-24, как в «Кибербезе»).
   // Переключателя в уроке нет: ребёнок случайно жал «EN», реплика обрывалась,
   // и урок оставался на чужом языке. Код нормализуем: платформа может прислать
@@ -7862,7 +8390,7 @@ Object.assign(NOT_SPOKEN_IN, { items: { id: 1, want: 1 }, opts: { t: 1, id: 1, r
 //     с кнопкой «Qayta urinish» (закрыть); строка задания на листе остаётся заданием.
 // Экраны рисуют StageB вместо Stage канона (замена при сборке, build.mjs).
 // ─────────────────────────────────────────────────────────────────────────────
-let _bAskSet = null;   // KzAsk сообщает рамке текст задания и подсказку (build.mjs)
+let _bAskSet = null;   // jsx-tekshir: ataylab — ramka sozlagichi, unmount'da null bo'ladi (KzAsk сообщает рамке текст задания)
 
 const B_UI = {
   ok: L3('Barakalla!', 'Молодец!', 'Well done!'),
@@ -8079,8 +8607,15 @@ function b16EnWords(s, lang) {
   if (!back) return s;
   return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
 }
-// Голоса браузера в уроке нет (подготовленная озвучка платформы, 13.11.2026).
-
+// Голос браузера (когда сервиса озвучки нет или он не ответил) пометки в скобках не понимает и прочёл
+// бы их вслух — для него они убираются (возвращено 14.11.2026: озвучка как в Dars001, голос браузера — запасной).
+if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
+  const BaseUtt = window.SpeechSynthesisUtterance;
+  window.__b16Utt = true;
+  window.SpeechSynthesisUtterance = function B16Utterance(t) {
+    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026). Заказчик: «попробуй урок в стиле, который
@@ -9384,6 +9919,58 @@ function useMysh(root) {
   ) : null;
   const both = cur ? <>{cardEl}{el}</> : null;
   return { go, click, hide, hold, follow, card: setCard, slow, el: both, on: !!cur };
+}
+
+// ─── LMS CoddyCamp: урок 1 под CRM (14.11.2026, пакет IT «dars-mashina-2026-11-11», валидатор jsx-tekshir) ───
+// Только урок 1 курса HTML (вставка в tools/redaktor28/build.mjs); общий набор naborRedaktor не меняется.
+// · Шрифт Inter — не base64 в CSS (R06; код в gzip был 462 КБ при пределе IT 400 КБ), а ресурсы WOFF2
+//   по ключу: useResources().loadFont(ключ, 'Inter', дескрипторы). Файлы — lessons/html/assets/01-struktura-dokumenta/
+//   (в CRM — блок WOFF2, ключ = имя файла без расширения). Пока шрифт грузится, текст — системным шрифтом (swap).
+// · markFirstScreenReady — один раз за открытие, когда первый учебный экран показан (Y01 / B03).
+// · Не на каждой платформе runtime новый (go.junior-it.uz, 14.11.2026: «useLessonPerf is not a function» —
+//   урок не открылся): хуки берутся из модуля целиком и зовутся, только если они есть. Нет loadFont — шрифт
+//   из useAssets().resolveUrl(ключ) своим FontFace; нет и файла — системный шрифт. Урок открывается в любом случае.
+import * as R28_RT from '@lesson/runtime';
+
+const R28_LAT = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+const R28_CYR = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
+const R28_FONTS = [
+  ['inter_latin_400', '300 500', R28_LAT], ['inter_latin_600', '600 900', R28_LAT],
+  ['inter_cyrillic_400', '300 500', R28_CYR], ['inter_cyrillic_600', '600 900', R28_CYR]
+];
+// Есть ли хук в runtime платформы — решается один раз при загрузке модуля: порядок хуков между рендерами не меняется.
+const R28_HAS = (name) => { try { return typeof R28_RT[name] === 'function'; } catch (e) { return false; } };
+const R28_PERF = R28_HAS('useLessonPerf');
+const R28_RES = R28_HAS('useResources');
+const R28_ASSETS = R28_HAS('useAssets');
+const r28None = () => null;
+
+function useR28Lms() {
+  const perf = (R28_PERF ? R28_RT.useLessonPerf : r28None)();
+  const res = (R28_RES ? R28_RT.useResources : r28None)();
+  const assets = (R28_ASSETS ? R28_RT.useAssets : r28None)();
+  const marked = useRef(false);   // в useRef, не в модуле: при повторном открытии во вкладке — заново
+  useEffect(() => {
+    R28_FONTS.forEach(([key, weight, unicodeRange]) => {
+      try {
+        if (res && typeof res.loadFont === 'function') {
+          Promise.resolve(res.loadFont(key, 'Inter', { weight, unicodeRange })).catch(() => {});
+        } else if (assets && typeof assets.resolveUrl === 'function' && typeof FontFace === 'function') {
+          const url = assets.resolveUrl(key);
+          if (!url) return;
+          const face = new FontFace('Inter', 'url(' + url + ')', { weight, unicodeRange, display: 'swap' });
+          face.load().then((f) => document.fonts.add(f)).catch(() => {});
+        }
+      } catch (e) { /* нет ресурса — системный шрифт */ }
+    });
+    // Первый экран урока — учебный (крючок с заданием), картинок для него не грузится: отмечаем после показа.
+    const t = requestAnimationFrame(() => {
+      if (marked.current || !perf || typeof perf.markFirstScreenReady !== 'function') return;
+      marked.current = true;
+      try { perf.markFirstScreenReady(); } catch (e) { /* старый runtime */ }
+    });
+    return () => cancelAnimationFrame(t);
+  }, []);
 }
 
 // КОПИЯ экранов урока 1 (tools/kollazh/kollazh-screens.jsx, 28.10.2026) для тестового урока 16
@@ -10933,14 +11520,15 @@ const SCREENS = [
 const SCREEN_RESET = { s1: ['s1'], rd: ['rd'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
   s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
-export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlKollazh({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: makeArtifact(store) })
   });
   useParallax();
   usePaperSound();
+  useR28Lms();
   const cur = SCREENS[R.i];
   const Comp = cur.Comp;
   const nextId = SCREENS[R.i + 1] && SCREENS[R.i + 1].id;
@@ -13032,8 +13620,6 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    спокойное (покачивание, моргание, мягкое появление снизу). Шапка и низ — рамка B
    урока 16 (b16.css), здесь не трогаются. Бумаги нет нигде: ни рваных краёв, ни
    фактуры, ни наклонов, ни шороха. Шрифт Nunito (SIL OFL) встроен урезанным. */
-@font-face { font-family: 'Nunito'; font-weight: 400 700; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); }
-@font-face { font-family: 'Nunito'; font-weight: 800 1000; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); }
 :root { --kz-piece: #FFF3CE; }
 .p17 { --p17-ink: #162038; --p17-muted: #758099; --p17-coral: #FF6957; --p17-blue: #3EAFF3; --p17-yellow: #FFD563;
   --p17-mint: #77DCB8; --p17-pink: #E964A1; --p17-paper: #FFFDF9; --p17-line: #ECEEF3;
@@ -13538,10 +14124,6 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    остались только имена тегов в тёмном редакторе — это подсветка синтаксиса, как в VS Code.
    Лежит поверх p17.css (оттуда — только раскладка экранов на телефоне и снятие бумаги).
    02.11.2026: шапка и низ с панелями результата — по дизайну уроков CoddyCamp LMS (блок в конце). */
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600 900; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600 900; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
 .r28 {
   --r-bg: #F4F5F7; --r-dot: #D5DAE1; --r-panel: #FFFFFF; --r-line: #E2E8F0; --r-edge: #CBD5E1;
   --r-ink: #0F172A; --r-ink2: #334155; --r-muted: #64748B;
@@ -14091,6 +14673,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .ms-card i { font: 400 12px/1.3 var(--r-font, Inter, sans-serif); color: #5F6368; font-style: normal; }
 @keyframes msCard { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .r28 .ms-card { animation: none; } }
+/* LMS CoddyCamp (урок 1 под CRM, 14.11.2026): кнопка «X» платформы стоит в левом верхнем углу окна урока
+   (8–44 px, режим ученика) — шапка урока начинается правее, чтобы ярлык раздела не ушёл под неё (B09). */
+.r28.b-stage .stage-header.b-head.cc-head { padding-left: 52px; }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
    экранах 6–10, 14 и 15 крупнее — место вокруг было пустым; текст в окне крупнее вместе
    с ним. Только в уроке 1 — общий kollazh.css (уроки 2–5, практики) не трогается. */
@@ -14103,1674 +14688,3 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 `;
 
-// ── ПОДГОТОВЛЕННАЯ ОЗВУЧКА (tools/ovoz/ovoz.mjs, не править вручную) ──
-// Реплик: uz 302, ru 268, en 257; всего знаков 113353. Голос — agoC45V78njTIxYzwmSb (один на все языки).
-export const LESSON_AUDIO = {
-  schema: 1,
-  speeches: [
-    { id: "uz001", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammaga salom! Mening ismim Kodi. Hozir sizlarga bitta veb-sahifani ko'rsataman. Nimaga deysizmi? Buni dars davomida bilib olasiz!", required: true },
-    { id: "uz002", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadagi mana bu kichkina joyni ko'ryapsizmi? Bu yorliq deyiladi. Unga sahifaning nomi yozib qo'yilgan.", required: true },
-    { id: "uz003", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi bir narsani tasavvur qiling: shu sahifa odam bo'lib qolsa, qanaqa bo'larkin? Qani, ko'ramiz! Aylantirish tugmasini bosing.", required: true },
-    { id: "uz004", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Voy-voy, qarang! Sahifa jonlanib, odamchaga aylanib qoldi!", required: true },
-    { id: "uz005", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sezdingizmi? Sahifaning nomi endi uning boshida turibdi. Chunki boshda sahifa haqidagi ma'lumotlar saqlanadi.", required: true },
-    { id: "uz006", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tanasi-chi? U sahifada ko'rinib turgan narsalardan yasalgan: matndan, rasmdan va tugmadan.", required: true },
-    { id: "uz007", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun siz ham o'zingizning sahifangizni yasaysiz: unga nom qo'yasiz, salom ham yozasiz. Lekin oldin kod degani qanaqa bo'lishini ko'rib olamiz.", required: true },
-    { id: "uz008", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, bu kod. Brauzer sahifani aynan shundan yig'adi. Qani, qanday o'qishini kuzatib turing!", required: true },
-    { id: "uz009", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sezdingizmi? Brauzer kodni xuddi biz kitob o'qigandek o'qiyapti.", required: true },
-    { id: "uz010", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir qatorni chapdan o'ngga qarab o'qiydi.", required: true },
-    { id: "uz011", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qatorlarni esa tepadan pastga, bittalab o'qiydi.", required: true },
-    { id: "uz012", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer kodni oxirigacha o'qib chiqdi. mana, sahifa ham tayyor! Endi bu kodda nimalar yozilganini birga ko'rib chiqamiz.", required: true },
-    { id: "uz013", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaga bir qarang-chi: unda ikkita yozuv bor. Tepadagisini bosib ko'ring.", required: true },
-    { id: "uz014", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu chap burchakli qavs va o'ng burchakli qavs belgilarini ko'ryapsizmi? Ularni burchakli qavslar deyishadi.", required: true },
-    { id: "uz015", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ularning o'rtasida [English pronunciation] HTML [O'zbekcha tallaffuz] degan so'z turibdi. Bu [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi.", required: true },
-    { id: "uz016", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana shu yozuv butunligicha [English pronunciation] tag [O'zbekcha tallaffuz] deyiladi. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni sahifada ko'rsatmaydi, faqat o'qiydi.", required: true },
-    { id: "uz017", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bunisi ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U brauzerga Sahifa shu yerdan boshlanadi, deb aytadi. Endi pastdagisini bosing.", required: true },
-    { id: "uz018", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Farqini sezdingizmi? Bunda birinchi qavsdan keyin qiya chiziq bor. Bu yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U Sahifa shu yerda tugaydi, deydi.", required: true },
-    { id: "uz019", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Demak, ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlaydi, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] tugatadi. Sahifadagi hamma narsa shu ikkalasining o'rtasida turadi.", required: true },
-    { id: "uz020", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sizga bir sir aytaymi? Bu ramkani tushunarli bo'lsin deb o'zimiz chizdik. Haqiqiy brauzerda uni ko'rmaysiz.", required: true },
-    { id: "uz021", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, ramkaning pastki cheti qayoqqa ketdi? Kodda yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i yo'q ekan. Uni bo'sh qatorga yozing-da, Tekshirishni bosing.", required: true },
-    { id: "uz022", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oz qoldi! Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ku. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da [English pronunciation] HTML [O'zbekcha tallaffuz] so'zidan oldin qiya chiziq bo'ladi.", required: true },
-    { id: "uz023", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Boshi tushib qolibdi: [English pronunciation] tag [O'zbekcha tallaffuz] doim qavsi bilan boshlanadi.", required: true },
-    { id: "uz024", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oxiri tushib qolibdi: [English pronunciation] tag [O'zbekcha tallaffuz] doim qavsi bilan tugaydi.", required: true },
-    { id: "uz025", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] ichidagi so'zga qarang-chi: bu yerga [English pronunciation] HTML [O'zbekcha tallaffuz] yozilishi kerak.", required: true },
-    { id: "uz026", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nimadir chalkashib ketdi. Tepadagi [English pronunciation] tag [O'zbekcha tallaffuz] bilan solishtirib ko'ring: qavs, qiya chiziq, [English pronunciation] HTML [O'zbekcha tallaffuz], qavs.", required: true },
-    { id: "uz027", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaning tepasidagi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang. Pastdagisi unga juda o'xshaydi.", required: true },
-    { id: "uz028", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ham xuddi o'sha, faqat qiya chizig'i bor.", required: true },
-    { id: "uz029", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tugmalarni ketma-ket bosing: qavs, qiya chiziq, [English pronunciation] HTML [O'zbekcha tallaffuz], keyin yana qavs.", required: true },
-    { id: "uz030", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r! Ramka yopildi. Endi butun sahifa ikkita [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ining o'rtasida.", required: true },
-    { id: "uz031", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi navbat sizga! Ramkaga ikkita [English pronunciation] tag [O'zbekcha tallaffuz] kerak: biri tepaga, biri pastga. Faqat ehtiyot bo'ling: pastdagi uchta [English pronunciation] tag [O'zbekcha tallaffuz]-dan bittasi ortiqcha.", required: true },
-    { id: "uz032", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz]-ni ushlab, joyiga olib boring. Yoki oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin joyni bosing.", required: true },
-    { id: "uz033", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oz qoldi! Tepada sahifa boshlanadi, shuning uchun bu yerga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz034", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Hechqisi yo'q! Pastda sahifa tugaydi, bu yerga qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz035", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana, tuzoq shu yerda ekan! Bu chiziq teskari tomonga qiyshaygan. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da chiziq o'ngga qarab qiyshaygan bo'ladi.", required: true },
-    { id: "uz036", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni tanlang.", required: true },
-    { id: "uz037", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] sahifani boshlaydi-yu, qaysi biri tugatadi?", required: true },
-    { id: "uz038", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepaga qiya chiziqsiz [English pronunciation] tag [O'zbekcha tallaffuz], pastga qiya chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] qo'yiladi.", required: true },
-    { id: "uz039", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan [English pronunciation] tag [O'zbekcha tallaffuz]-ni yonib turgan joyga olib boring.", required: true },
-    { id: "uz040", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla, ikkala [English pronunciation] tag [O'zbekcha tallaffuz] ham joyida! Teskari chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] esa ortiqcha edi.", required: true },
-    { id: "uz041", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida ikkita qism yashaydi. Birinchisining nomi [English pronunciation] head [O'zbekcha tallaffuz], inglizchada bosh degani. Odamchaning boshi xuddi shu [English pronunciation] head [O'zbekcha tallaffuz].", required: true },
-    { id: "uz042", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] ichida sahifa haqidagi ma'lumotlar turadi. Pastdagi katta joy. brauzer oynasiga qarang: u yerda ular ko'rinmaydi. Qani, boshni bosib, ichida nima borligini ko'ring.", required: true },
-    { id: "uz043", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana, ichida nima ekan: sahifaning nomi! U [English pronunciation] title tag [O'zbekcha tallaffuz]-ining ichiga yoziladi. Endi nom yozilgan qog'ozchani bosing.", required: true },
-    { id: "uz044", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom uchib, yorliqqa o'tib oldi! Brauzer [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matnni mana shu yerda, tepada ko'rsatadi. Oynada esa u yo'q.", required: true },
-    { id: "uz045", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi kodga qarang: tepada ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, pastda yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i turibdi.", required: true },
-    { id: "uz046", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] qatori ularning o'rtasida. Demak, [English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi.", required: true },
-    { id: "uz047", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi eng qiziq joyiga keldik: sahifangizga o'zingiz nom qo'ying! Uni [English pronunciation] title [O'zbekcha tallaffuz] teglarining o'rtasiga yozing, masalan, Futbol. Nom shu zahoti yorliqda chiqadi. Keyin Tayyorni bosing.", required: true },
-    { id: "uz048", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r! Endi yorliqda sahifangizning nomi turibdi.", required: true },
-    { id: "uz049", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom qayerga yoziladi? Kodga qarang: u yerda bo'sh joy bor.", required: true },
-    { id: "uz050", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Nom ikkita [English pronunciation] title tag [O'zbekcha tallaffuz]-ining o'rtasiga yoziladi.", required: true },
-    { id: "uz051", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita [English pronunciation] title tag [O'zbekcha tallaffuz]-i o'rtasidagi bo'sh joyni bosing, nom yozing va Tayyorni bosing.", required: true },
-    { id: "uz052", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslar kerak emas.", required: true },
-    { id: "uz053", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi bir o'yin o'ynaymiz: siz brauzersiz! Kod qatoriga qarab, so'z qayerda chiqishini toping: yorliqdami yoki oynada?", required: true },
-    { id: "uz054", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] To'ppa-to'g'ri! [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi so'z yorliqqa chiqdi.", required: true },
-    { id: "uz055", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi so'z oynaga chiqdi.", required: true },
-    { id: "uz056", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Hechqisi yo'q! So'z [English pronunciation] title tag [O'zbekcha tallaffuz]-ida turgan edi, shuning uchun yorliqqa chiqdi.", required: true },
-    { id: "uz057", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu safar adashdingiz! So'z [English pronunciation] body tag [O'zbekcha tallaffuz]-ida turgan edi, shuning uchun oynaga chiqdi.", required: true },
-    { id: "uz058", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] So'z qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-larning o'rtasida turibdi?", required: true },
-    { id: "uz059", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda, [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada ko'rinadi.", required: true },
-    { id: "uz060", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomini o'qing: [English pronunciation] title [O'zbekcha tallaffuz] bo'lsa Yorliqni, [English pronunciation] body [O'zbekcha tallaffuz] bo'lsa Oynani bosing.", required: true },
-    { id: "uz061", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, o'yin tugadi! Esingizda bo'lsin: [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda, [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi.", required: true },
-    { id: "uz062", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, yana bittasini ko'ramiz.", required: true },
-    { id: "uz063", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nom tayyor. Endi sahifaning o'zini to'ldiramiz! [English pronunciation] HTML [O'zbekcha tallaffuz] ichidagi ikkinchi qismning nomi [English pronunciation] body [O'zbekcha tallaffuz], inglizchada tana degani. Qani, odamchaning tanasidan nima uchib chiqarkin?", required: true },
-    { id: "uz064", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Matn, rasm, tugma. hammasi tanadan uchib chiqib, to'ppa-to'g'ri oynaga tushdi.", required: true },
-    { id: "uz065", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynada nima ko'rinsa. matnmi, rasmmi, tugmami. hammasi [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi. Bugun [English pronunciation] body [O'zbekcha tallaffuz] ichiga matn yozamiz, rasm bilan tugmani keyingi darslarda qo'shamiz.", required: true },
-    { id: "uz066", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] body [O'zbekcha tallaffuz] teglarining o'rtasiga Salom so'zini yozing.", required: true },
-    { id: "uz067", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] U shu zahoti oynada paydo bo'ladi. Keyin Tayyorni bosing.", required: true },
-    { id: "uz068", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Salomingiz oynada turibdi.", required: true },
-    { id: "uz069", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oyna uchun matn qayerga yoziladi? Kodga qarang.", required: true },
-    { id: "uz070", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Matn ikkita [English pronunciation] body tag [O'zbekcha tallaffuz]-ining o'rtasiga yoziladi.", required: true },
-    { id: "uz071", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikkita [English pronunciation] body tag [O'zbekcha tallaffuz]-i o'rtasidagi bo'sh joyni bosing, matn yozing va Tayyorni bosing.", required: true },
-    { id: "uz072", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, endi hammasini joy-joyiga qo'yamiz! Har bir bo'lakning o'z uyi bor. Qani, toping-chi: uyi [English pronunciation] head [O'zbekcha tallaffuz] ichidami yoki [English pronunciation] body [O'zbekcha tallaffuz] ichidami? Bo'lakni olib boring yoki oldin bo'lakni, keyin kerakli qismni bosing.", required: true },
-    { id: "uz073", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: bu [English pronunciation] title [O'zbekcha tallaffuz] qatori-ku. [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida yashaydi, demak, uning joyi [English pronunciation] head [O'zbekcha tallaffuz].", required: true },
-    { id: "uz074", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yo'q, bunisining uyi boshqa joyda! Salomingiz oynada ko'rinadi-ku, demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida yashaydi.", required: true },
-    { id: "uz075", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Hechqisi yo'q! Rasmni oynada ko'ramiz-ku, demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz076", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'ylab ko'ring-chi: tugmani qayerda bosamiz? Oynada! Demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz077", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hammasi joy-joyida! [English pronunciation] title head [O'zbekcha tallaffuz] ichida, salom, rasm va tugma esa [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz078", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin bo'lakni tanlang.", required: true },
-    { id: "uz079", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'ylab ko'ring: bu narsa brauzer oynasida ko'rinadimi?", required: true },
-    { id: "uz080", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynada ko'rinadigan hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida. [English pronunciation] title [O'zbekcha tallaffuz] qatori esa [English pronunciation] head [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz081", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan bo'lakni yonib turgan joyga olib boring.", required: true },
-    { id: "uz082", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi siz hamma qismlarni bilasiz. Keling, brauzer sizning kodingizni qanday o'qishini yana bir marta ko'ramiz va har bir qatorni tushunib olamiz.", required: true },
-    { id: "uz083", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu joyi muhim: oldin [English pronunciation] head [O'zbekcha tallaffuz] yopiladi, keyin [English pronunciation] body [O'zbekcha tallaffuz] ochiladi. Ular bir-birining ichida emas, ketma-ket turadi.", required: true },
-    { id: "uz084", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir marta eshitmoqchimisiz? Kod qatorini yoki o'ngdagi qismni bosing, men aytib beraman.", required: true },
-    { id: "uz085", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qator. [English pronunciation] doctype HTML [O'zbekcha tallaffuz]. U brauzerga Bu [English pronunciation] HTML [O'zbekcha tallaffuz] sahifa, deb aytadi. Uning jufti yo'q, shuning uchun uni yopish shart emas.", required: true },
-    { id: "uz086", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i butun sahifani quchoqlab turadi. [English pronunciation] head [O'zbekcha tallaffuz] ham, [English pronunciation] body [O'zbekcha tallaffuz] ham uning ichida.", required: true },
-    { id: "uz087", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu [English pronunciation] head [O'zbekcha tallaffuz], sahifaning boshi. Bu yerda sahifa haqidagi ma'lumotlar turadi.", required: true },
-    { id: "uz088", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] ichida [English pronunciation] title [O'zbekcha tallaffuz] bor, unda sahifaning nomi yozilgan. Brauzer shu nomni yorliqda ko'rsatadi.", required: true },
-    { id: "uz089", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu [English pronunciation] body [O'zbekcha tallaffuz], sahifaning tanasi. Oynada ko'rinadigan hamma narsa shu yerda.", required: true },
-    { id: "uz090", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sizning salomingiz! U [English pronunciation] body [O'zbekcha tallaffuz] ichida, shuning uchun oynada ko'rinyapti.", required: true },
-    { id: "uz091", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, eng qiziq joyi keldi: endi butun kodni o'zingiz yig'asiz! Birinchi qatorni men qo'yib qo'ydim, qolgani sizdan. Qatorchani bossangiz, o'zi keyingi bo'sh joyga borib tushadi.", required: true },
-    { id: "uz092", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartibni adashtirib qo'ysangiz, qo'rqmang: qatorchalarni o'qchalar bilan tepaga yoki pastga suring. Hammasi tayyor bo'lsa, Tekshirishni bosing.", required: true },
-    { id: "uz093", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin darrov ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i keladi. Yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i esa eng oxirida turadi.", required: true },
-    { id: "uz094", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] doim o'zining ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-idan keyin keladi.", required: true },
-    { id: "uz095", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] head [O'zbekcha tallaffuz] keladi, keyin [English pronunciation] body [O'zbekcha tallaffuz].", required: true },
-    { id: "uz096", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yoping, keyin [English pronunciation] body tag [O'zbekcha tallaffuz]-ini oching.", required: true },
-    { id: "uz097", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title head [O'zbekcha tallaffuz] ichida turishi kerak.", required: true },
-    { id: "uz098", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom [English pronunciation] body [O'zbekcha tallaffuz] ichida turishi kerak.", required: true },
-    { id: "uz099", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin qaysi [English pronunciation] tag [O'zbekcha tallaffuz] keladi, eng oxirida-chi?", required: true },
-    { id: "uz100", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida oldin [English pronunciation] title [O'zbekcha tallaffuz] bilan [English pronunciation] head [O'zbekcha tallaffuz], keyin salom bilan [English pronunciation] body [O'zbekcha tallaffuz] keladi.", required: true },
-    { id: "uz101", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgilangan qatorlardan birini bosing, keyin boshqasini. Ular joyini almashtiradi.", required: true },
-    { id: "uz102", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil! Kod to'g'ri yig'ildi. Nom [English pronunciation] head [O'zbekcha tallaffuz] ichida, salom [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz103", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Voy, nimadir buzilib qolibdi! Sahifadagi hamma matn yorliqqa chiqib ketibdi, oyna bo'm-bo'sh. [English pronunciation] title [O'zbekcha tallaffuz] qatorida bitta [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayapti.", required: true },
-    { id: "uz104", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, birga tuzatamiz! Kerakli [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga olib boring yoki ustiga bir bosing.", required: true },
-    { id: "uz105", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yo'q, bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ku! [English pronunciation] title [O'zbekcha tallaffuz] allaqachon ochilgan, endi uni yopadigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz106", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Shoshilmang! [English pronunciation] head [O'zbekcha tallaffuz] keyinroq yopiladi. Oldin nom tugashi kerak, ya'ni [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yopamiz.", required: true },
-    { id: "uz107", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan-u, lekin yopilmagan?", required: true },
-    { id: "uz108", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] ochilgan. Uni yopadigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz109", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiya chiziqli [English pronunciation] title tag [O'zbekcha tallaffuz]-ini bo'sh joyga qo'ying.", required: true },
-    { id: "uz110", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, tuzaldi! Nom yorliqda, salom oynada. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i brauzerga nom qayerda tugashini ko'rsatib berdi.", required: true },
-    { id: "uz111", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring! Mana yangi sahifa. Yorliqda Robotlar, oynada esa Salom! chiqishi kerak. Har bir so'zni koddagi o'z joyiga olib boring.", required: true },
-    { id: "uz112", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yorliqdagi matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-ga yoziladi?", required: true },
-    { id: "uz113", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yorliq uchun [English pronunciation] title [O'zbekcha tallaffuz], oyna uchun [English pronunciation] body [O'zbekcha tallaffuz].", required: true },
-    { id: "uz114", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yonib turgan so'zni yonib turgan joyga olib boring.", required: true },
-    { id: "uz115", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juda zo'r! Robotlar [English pronunciation] title tag [O'zbekcha tallaffuz]-ida, shuning uchun yorliqda. Salom! [English pronunciation] body tag [O'zbekcha tallaffuz]-ida, shuning uchun oynada.", required: true },
-    { id: "uz116", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oldin so'zni tanlang.", required: true },
-    { id: "uz117", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Va oxirgi savol. Sizningcha, yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nimaga kerak? Javobni tanlang.", required: true },
-    { id: "uz118", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unday emas: yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] sahifada ko'rinmaydi, oynaga ham hech narsa chiqarmaydi.", required: true },
-    { id: "uz119", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Unday emas: sahifa qayerda tugashini yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i ko'rsatadi. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i faqat [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yopadi.", required: true },
-    { id: "uz120", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Matn yorliqqa chiqib ketgan sahifa esingizdami? U yerda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yetishmagan edi?", required: true },
-    { id: "uz121", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qiya chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] o'z qismini yopadi. [English pronunciation] title [O'zbekcha tallaffuz] ichida nima turadi?", required: true },
-    { id: "uz122", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i sahifa nomini tugatadi.", required: true },
-    { id: "uz123", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Xuddi shunday! U nom qayerda tugashini ko'rsatadi. U bo'lmasa, sahifadagi hamma matn yorliqqa chiqib ketadi.", required: true },
-    { id: "uz124", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sizning birinchi sahifangiz!", required: true },
-    { id: "uz125", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami? [English pronunciation] tag [O'zbekcha tallaffuz]. bu burchakli qavs ichidagi so'z. Brauzer uni ko'rsatmaydi, faqat o'qiydi.", required: true },
-    { id: "uz126", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] butun sahifani o'rab turadi: [English pronunciation] head [O'zbekcha tallaffuz] ham, [English pronunciation] body [O'zbekcha tallaffuz] ham uning ichida.", required: true },
-    { id: "uz127", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ma'lumotlarni saqlaydi.", required: true },
-    { id: "uz128", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi. Unga sahifa nomi yoziladi, brauzer esa shu nomni yorliqda ko'rsatadi.", required: true },
-    { id: "uz129", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynada nima ko'rinsa, hammasi [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
-    { id: "uz130", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla! Birinchi [English pronunciation] HTML [O'zbekcha tallaffuz] sahifangiz tayyor. Endi siz haqiqiy veb-dasturchi bo'lishga bir qadam yaqinlashdingiz!", required: true },
-    { id: "uz131", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, zo'r!", required: true },
-    { id: "uz132", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ana! Chiqdi!", required: true },
-    { id: "uz133", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Super!", required: true },
-    { id: "uz134", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil!", required: true },
-    { id: "uz135", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Ura!", required: true },
-    { id: "uz136", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r-ku!", required: true },
-    { id: "uz137", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring.", required: true },
-    { id: "uz138", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Diqqat bilan qarang.", required: true },
-    { id: "uz139", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yaqin qoldingiz. Shoshilmang.", required: true },
-    { id: "uz140", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kod qanday o'qiladi?", required: true },
-    { id: "uz141", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] tag [O'zbekcha tallaffuz] nima?", required: true },
-    { id: "uz142", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Yorliqmi yoki oyna?", required: true },
-    { id: "uz143", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Juma kuni final!", required: true },
-    { id: "uz144", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun konsert!", required: true },
-    { id: "uz145", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Hamma qatorlar joyida! Endi Tekshirish tugmasini bosing, kod to'g'ri yig'ilganini bilib olamiz.", required: true },
-    { id: "uz146", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgilangan qatorlarni strelkalar bilan yuqoriga yoki pastga suring, keyin yana Tekshirishni bosing.", required: true },
-    { id: "uz147", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom!", required: true },
-    { id: "uz148", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nimaga kerak?", required: true },
-    { id: "uz149", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom, dunyo!", required: true },
-    { id: "uz150", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat so'z yozing, burchakli qavslarsiz.", required: true },
-    { id: "uz151", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ikki qatorni bosing. ular joy almashadi.", required: true },
-    { id: "uz152", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [cheerful] Salom! Men Kodi. Qarang, mana bu veb-sahifa.", required: true },
-    { id: "uz153", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tepadagi kichkina joyni ko'ryapsizmi? Bu brauzer varag'i, unda sahifa nomi yozilgan.", required: true },
-    { id: "uz154", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Agar veb-sahifa odam bo'lsa, nima deb o'ylaysiz, u qanday ko'rinardi? Keling, shuni ko'ramiz. Aylantirish tugmasini bosing.", required: true },
-    { id: "uz155", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [amazed] Voy, qarang! Sahifa jonlanib, odamchaga aylandi!", required: true },
-    { id: "uz156", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sezdingizmi? Sahifa nomi odamchaning boshiga joylashdi. Boshda sahifa haqidagi ma'lumotlar saqlanadi.", required: true },
-    { id: "uz157", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tanasi-chi? U sahifada ko'rinadigan narsalardan yig'ildi: matn, rasm va tugmadan.", required: true },
-    { id: "uz158", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bugun o'z sahifangizni yaratasiz, unga nom berasiz va salomlashish matnini yozasiz! Keling, avval buning kodi qanday ko'rinishini ko'rib chiqamiz.", required: true },
-    { id: "uz159", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sahifaning kodi! Brauzer shu kod asosida sahifani yaratadi. U kodni qanday o'qishini kuzating!", required: true },
-    { id: "uz160", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sezdingizmi? Brauzer kodni xuddi kitob o'qigandek o'qiydi.", required: true },
-    { id: "uz161", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Har bir qatorni chapdan o'ngga o'qiydi.", required: true },
-    { id: "uz162", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qatorlarni esa yuqoridan pastga, birin-ketin o'qiydi.", required: true },
-    { id: "uz163", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, sahifa tayyor! Endi kodning har bir qismi nimani anglatishini birga bilib olamiz.", required: true },
-    { id: "uz164", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ramkaga qarang: unda ikkita qiziq yozuv bor. Ular nimani bildiradi?", required: true },
-    { id: "uz165", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana bu belgilarga qarang. Ular burchakli qavslar deyiladi.", required: true },
-    { id: "uz166", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavslar orasida [English pronunciation] HTML [O'zbekcha tallaffuz] deb yozilgan. Bu. [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi.", required: true },
-    { id: "uz167", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qavslar va ular orasidagi nom birgalikda [English pronunciation] tag [O'zbekcha tallaffuz] deyiladi. Mana bu. [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni o'qiydi, lekin sahifada ko'rsatmaydi.", required: true },
-    { id: "uz168", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuqoridagi [English pronunciation] HTML [O'zbekcha tallaffuz]. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. U brauzerga: Sahifa shu yerdan boshlanadi, deydi.", required: true },
-    { id: "uz169", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Pastdagi yozuvga qarang: birinchi qavsdan keyin qiya chiziq bor. Bu. yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U brauzerga: Sahifa shu yerda tugaydi, deydi.", required: true },
-    { id: "uz170", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlanishni, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] esa tugashni bildiradi. Sahifaning barcha mazmuni shu ikki [English pronunciation] tag [O'zbekcha tallaffuz] orasida joylashadi.", required: true },
-    { id: "uz171", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bir sirni aytaymi? Bu ramkani tushunish oson bo'lishi uchun chizdik. Aslida brauzer bu ramkani ko'rsatmaydi.", required: true },
-    { id: "uz172", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang, ramkaning pastki cheti yo'q! Kodda yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i yetishmayapti. Uni bo'sh qatorga yozing va Tekshirish tugmasini bosing.", required: true },
-    { id: "uz173", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Deyarli to'g'ri! Bu. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da [English pronunciation] HTML [O'zbekcha tallaffuz] nomidan oldin qiya chiziq bo'ladi.", required: true },
-    { id: "uz174", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] [English pronunciation] tag [O'zbekcha tallaffuz] boshida chap burchakli qavs yetishmayapti. Uni qo'shing.", required: true },
-    { id: "uz175", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] [English pronunciation] tag [O'zbekcha tallaffuz] oxirida o'ng burchakli qavs yetishmayapti. Uni qo'shing.", required: true },
-    { id: "uz176", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomini tekshiring: bu yerda [English pronunciation] HTML [O'zbekcha tallaffuz] bo'lishi kerak.", required: true },
-    { id: "uz177", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgilar tartibini tekshiring: avval chap burchakli qavs, keyin qiya chiziq, undan keyin [English pronunciation] HTML [O'zbekcha tallaffuz] va oxirida o'ng burchakli qavs.", required: true },
-    { id: "uz178", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ramkaning yuqorisidagi ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang.", required: true },
-    { id: "uz179", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi ham [English pronunciation] HTML [O'zbekcha tallaffuz]. Faqat nomidan oldin qiya chiziq qo'yiladi.", required: true },
-    { id: "uz180", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval chap burchakli qavsni, keyin qiya chiziqni yozing. So'ng [English pronunciation] HTML [O'zbekcha tallaffuz] deb yozing va oxiriga o'ng burchakli qavsni qo'ying.", required: true },
-    { id: "uz181", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r, ramka yopildi! Endi sahifaning barcha mazmuni ikki [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i orasida.", required: true },
-    { id: "uz182", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi [English pronunciation] tag [O'zbekcha tallaffuz]-larni joyiga qo'ying! Biri ramkaning yuqorisiga, ikkinchisi pastiga qo'yiladi. Diqqat: uchta [English pronunciation] tag [O'zbekcha tallaffuz]-dan bittasi ortiqcha!", required: true },
-    { id: "uz183", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz]-ni barmog'ingiz bilan bosib turing va kerakli joyga suring. Yoki avval [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin uning joyini bosing.", required: true },
-    { id: "uz184", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Deyarli to'g'ri! Yuqorida sahifa boshlanadi. Bu yerga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz185", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ring! Pastda sahifa tugaydi. Bu yerga qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz186", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu tegdagi chiziqqa qarang: uning yuqori uchi chap tomonda. Yopuvchi tegdagi qiya chiziqning yuqori uchi esa o'ng tomonda bo'lishi kerak.", required: true },
-    { id: "uz187", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval [English pronunciation] tag [O'zbekcha tallaffuz]-ni tanlang.", required: true },
-    { id: "uz188", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] sahifaning boshlanishini, qaysi biri tugashini bildiradi?", required: true },
-    { id: "uz189", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yuqoriga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni, pastga esa qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni qo'ying.", required: true },
-    { id: "uz190", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ini ramkaning yuqorisidagi joyga suring.", required: true },
-    { id: "uz191", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, ikkala [English pronunciation] tag [O'zbekcha tallaffuz] ham joyida! Chizig'i teskari tomonga qiyalangan [English pronunciation] tag [O'zbekcha tallaffuz] ortiqcha edi.", required: true },
-    { id: "uz192", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida ikkita asosiy qism bor. Birinchisi. [English pronunciation] head [O'zbekcha tallaffuz]. Ingliz tilida [English pronunciation] head [O'zbekcha tallaffuz] bosh degani. Odamchaning boshi bu qismni eslab qolishga yordam beradi.", required: true },
-    { id: "uz193", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] qismida sahifa haqidagi ma'lumotlar saqlanadi. Bu ma'lumotlar sahifaning asosiy qismida ko'rinmaydi.", required: true },
-    { id: "uz194", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] ichida nima bor ekan? Mana, sahifaning nomi! U ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.", required: true },
-    { id: "uz195", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifaning nomi brauzer varag'iga ko'chdi! Brauzer [English pronunciation] title [O'zbekcha tallaffuz] ichidagi nomni shu yerda ko'rsatadi.", required: true },
-    { id: "uz196", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodga qarang: yuqorida ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, pastda esa yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i bor.", required: true },
-    { id: "uz197", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] qatori shu ikki [English pronunciation] tag [O'zbekcha tallaffuz] orasida joylashgan. Demak, [English pronunciation] title head [O'zbekcha tallaffuz] qismining ichida.", required: true },
-    { id: "uz198", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi sahifangizga nom bering! Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga o'zingiz tanlagan nomni yozing. Masalan, Futbol. Nom darhol brauzer varag'ida paydo bo'ladi. So'ng Tayyor tugmasini bosing.", required: true },
-    { id: "uz199", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Zo'r! Endi brauzer varag'ida sahifangizning nomi ko'rinib turibdi.", required: true },
-    { id: "uz200", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifaning nomi qayerga yoziladi? Kodga qarang.", required: true },
-    { id: "uz201", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifaning nomi ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.", required: true },
-    { id: "uz202", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasidagi bo'sh joyni bosing va sahifangizga nom yozing. So'ng Tayyor tugmasini bosing.", required: true },
-    { id: "uz203", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat sahifa nomini yozing. Burchakli qavslar kerak emas.", required: true },
-    { id: "uz204", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Varaqmi yoki oyna?", required: true },
-    { id: "uz205", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi o'ynaymiz: o'zingizni brauzer deb tasavvur qiling! Kodga qarang va matn qayerda paydo bo'lishini toping: brauzer varag'idami yoki oynadami?", required: true },
-    { id: "uz206", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Final juma kuni!", required: true },
-    { id: "uz207", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] To'g'ri! [English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag'ida paydo bo'ldi.", required: true },
-    { id: "uz208", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Topdingiz! [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn brauzer oynasida paydo bo'ldi.", required: true },
-    { id: "uz209", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ramiz! Matn [English pronunciation] title [O'zbekcha tallaffuz] ichida yozilgan, shuning uchun u brauzer varag'ida paydo bo'ldi. Keling, yana bir misolni ko'ramiz.", required: true },
-    { id: "uz210", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana bir bor urinib ko'ramiz! Matn [English pronunciation] body [O'zbekcha tallaffuz] ichida yozilgan, shuning uchun u brauzer oynasida paydo bo'ldi. Keling, yana bir misolni ko'ramiz.", required: true },
-    { id: "uz211", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-lar orasida yozilgan?", required: true },
-    { id: "uz212", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag'ida, [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn esa brauzer oynasida ko'rinadi.", required: true },
-    { id: "uz213", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] tag [O'zbekcha tallaffuz] nomiga qarang: [English pronunciation] title [O'zbekcha tallaffuz] bo'lsa, Varaq tugmasini bosing. [English pronunciation] body [O'zbekcha tallaffuz] bo'lsa, Oyna tugmasini bosing.", required: true },
-    { id: "uz214", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Endi bilasiz: [English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag'ida, [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn esa brauzer oynasida ko'rinadi.", required: true },
-    { id: "uz215", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifangizning nomi tayyor! Endi uning ichini to'ldiramiz. [English pronunciation] HTML [O'zbekcha tallaffuz] ichidagi ikkinchi asosiy qism. [English pronunciation] body [O'zbekcha tallaffuz]. Ingliz tilida [English pronunciation] body [O'zbekcha tallaffuz] tana degani. Odamchaning tanasiga qarang: undan nimalar chiqarkin?", required: true },
-    { id: "uz216", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana! Matn, rasm va tugma odamchaning tanasidan uchib chiqib, sahifada paydo bo'ldi.", required: true },
-    { id: "uz217", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifada ko'rinadigan matnlar, rasmlar va tugmalar [English pronunciation] body [O'zbekcha tallaffuz] qismida joylashadi.", required: true },
-    { id: "uz218", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo'sh joyga salomlashish matnini yozing. Masalan, Salom!.", required: true },
-    { id: "uz219", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yozgan matningiz darhol sahifada paydo bo'ladi. So'ng Tayyor tugmasini bosing.", required: true },
-    { id: "uz220", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Siz yozgan salomlashish matni endi sahifada ko'rinib turibdi.", required: true },
-    { id: "uz221", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Kodga qarang: [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo'sh joyni toping.", required: true },
-    { id: "uz222", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Salomlashish matni ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.", required: true },
-    { id: "uz223", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo'sh joyni bosing va Salom! deb yozing. So'ng Tayyor tugmasini bosing.", required: true },
-    { id: "uz224", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu yerga faqat matn yozing. Burchakli qavslar kerak emas.", required: true },
-    { id: "uz225", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, har bir bo'lakni o'z joyiga qo'yamiz! Uning joyi qayerda: [English pronunciation] head [O'zbekcha tallaffuz] qismidami yoki [English pronunciation] body [O'zbekcha tallaffuz] qismidami? Bo'lakni kerakli qismga suring. Yoki avval bo'lakni, keyin kerakli qismni bosing.", required: true },
-    { id: "uz226", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qarang, bu. [English pronunciation] title [O'zbekcha tallaffuz] qatori. [English pronunciation] title head [O'zbekcha tallaffuz] ichida joylashadi. Bu bo'lakni [English pronunciation] head [O'zbekcha tallaffuz] qismiga qo'ying.", required: true },
-    { id: "uz227", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu matn sahifada ko'rinishi kerak. Shuning uchun uni [English pronunciation] body [O'zbekcha tallaffuz] qismiga qo'ying.", required: true },
-    { id: "uz228", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Rasm ham sahifada ko'rinadi. Shuning uchun uning joyi [English pronunciation] body [O'zbekcha tallaffuz] qismida.", required: true },
-    { id: "uz229", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] O'ynash tugmasi sahifada ko'rinishi kerak. Demak, uning joyi ham [English pronunciation] body [O'zbekcha tallaffuz] qismida.", required: true },
-    { id: "uz230", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, hammasi o'z joyida! [English pronunciation] title head [O'zbekcha tallaffuz] ichida, matn, rasm va tugma esa [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz231", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval bo'lakni tanlang.", required: true },
-    { id: "uz232", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] O'ylab ko'ring: bu bo'lakdagi narsa sahifada ko'rinadimi yoki brauzer varag'idami?", required: true },
-    { id: "uz233", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Sahifada ko'rinadigan matnlar, rasmlar va tugmalar [English pronunciation] body [O'zbekcha tallaffuz] qismida joylashadi. [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida bo'ladi.", required: true },
-    { id: "uz234", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ajratib ko'rsatilgan bo'lakni ajratib ko'rsatilgan joyga suring.", required: true },
-    { id: "uz235", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi sahifangizning to'liq kodini ko'rib chiqamiz. Brauzer kodni yuqoridan pastga o'qib, sahifani yaratadi. Qanday o'qishini kuzating!", required: true },
-    { id: "uz236", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu joyga e'tibor bering: avval [English pronunciation] head [O'zbekcha tallaffuz] qismi yopiladi, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi ochiladi.", required: true },
-    { id: "uz237", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Biror qism haqidagi tushuntirishni yana eshitmoqchimisiz? Kod qatorini yoki o'ngdagi mos qismni bosing. Men yana tushuntirib beraman.", required: true },
-    { id: "uz238", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Birinchi qatorda [English pronunciation] doctype HTML [O'zbekcha tallaffuz] deb yozilgan. Bu. maxsus ko'rsatma. U brauzerga: Bu [English pronunciation] HTML [O'zbekcha tallaffuz] hujjati, deb bildiradi. Unga yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas.", required: true },
-    { id: "uz239", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ochuvchi va yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-lari orasida sahifaning barcha mazmuni joylashadi. [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] body [O'zbekcha tallaffuz] qismlari ham shu yerda.", required: true },
-    { id: "uz240", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, [English pronunciation] head [O'zbekcha tallaffuz]. sahifaning boshi. Bu qismda sahifa haqidagi ma'lumotlar saqlanadi.", required: true },
-    { id: "uz241", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] ichida [English pronunciation] title [O'zbekcha tallaffuz] joylashadi. Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga sahifaning nomi yoziladi. Brauzer bu nomni brauzer varag'ida ko'rsatadi.", required: true },
-    { id: "uz242", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, [English pronunciation] body [O'zbekcha tallaffuz]. sahifaning tanasi. Sahifada ko'rinadigan matnlar, rasmlar va tugmalar shu qismda joylashadi.", required: true },
-    { id: "uz243", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, siz yozgan matn! U [English pronunciation] body [O'zbekcha tallaffuz] ichida yozilgani uchun sahifada ko'rinadi.", required: true },
-    { id: "uz244", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi sahifangizning to'liq kodini o'zingiz yig'ing! Birinchi qator allaqachon joyida. O'ngdagi bo'laklardan birini bosing. u navbatdagi bo'sh qatorga joylashadi.", required: true },
-    { id: "uz245", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Tartibni o'zgartirish uchun bo'lakni yuqoriga yoki pastga yo'nalgan strelkalar yordamida suring. Barcha qatorlarni joyiga qo'ygach, Tekshirish tugmasini bosing.", required: true },
-    { id: "uz246", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan so'ng darhol ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ini qo'ying. Yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i esa eng oxirida bo'lishi kerak.", required: true },
-    { id: "uz247", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz], undan keyin unga mos yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kelishi kerak.", required: true },
-    { id: "uz248", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval [English pronunciation] head [O'zbekcha tallaffuz] qismi, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi keladi.", required: true },
-    { id: "uz249", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval [English pronunciation] head [O'zbekcha tallaffuz] qismini yoping, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismini oching.", required: true },
-    { id: "uz250", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title [O'zbekcha tallaffuz] qatorini ochuvchi va yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-lari orasiga qo'ying.", required: true },
-    { id: "uz251", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Siz yozgan matnni ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga qo'ying.", required: true },
-    { id: "uz252", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin qaysi [English pronunciation] tag [O'zbekcha tallaffuz] keladi? Eng oxirida-chi?", required: true },
-    { id: "uz253", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida avval [English pronunciation] head [O'zbekcha tallaffuz], keyin [English pronunciation] body [O'zbekcha tallaffuz] joylashadi. [English pronunciation] title [O'zbekcha tallaffuz] qatori [English pronunciation] head [O'zbekcha tallaffuz] ichida, siz yozgan matn esa [English pronunciation] body [O'zbekcha tallaffuz] ichida bo'ladi.", required: true },
-    { id: "uz254", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Belgilangan bo'laklardan birini, keyin ikkinchisini bosing. Ular o'rin almashadi.", required: true },
-    { id: "uz255", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Qoyil, kodni to'g'ri yig'dingiz! Sahifaning nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasida, [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida. Siz yozgan matn [English pronunciation] body [O'zbekcha tallaffuz] ichida.", required: true },
-    { id: "uz256", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang, nimadir noto'g'ri! Sahifaning barcha matni brauzer varag'ida paydo bo'ldi, oyna esa bo'sh qoldi. [English pronunciation] title [O'zbekcha tallaffuz] qatorida bitta [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayapti.", required: true },
-    { id: "uz257", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Keling, xatoni tuzatamiz! Kerakli [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo'sh joyga suring yoki [English pronunciation] tag [O'zbekcha tallaffuz]-ning o'zini bosing.", required: true },
-    { id: "uz258", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. [English pronunciation] title [O'zbekcha tallaffuz] allaqachon ochilgan. Endi uni yopish kerak.", required: true },
-    { id: "uz259", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Bu [English pronunciation] tag head [O'zbekcha tallaffuz] qismini yopadi. Avval [English pronunciation] title [O'zbekcha tallaffuz] qismini yopish kerak, keyin [English pronunciation] head [O'zbekcha tallaffuz] yopiladi.", required: true },
-    { id: "uz260", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Kodga qarang: qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan, lekin hali yopilmagan?", required: true },
-    { id: "uz261", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title [O'zbekcha tallaffuz] ochilgan, lekin yopilmagan. Uni yopish uchun qaysi [English pronunciation] tag [O'zbekcha tallaffuz] kerak?", required: true },
-    { id: "uz262", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Qiya chiziqli yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini bo'sh joyga qo'ying.", required: true },
-    { id: "uz263", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib, xato tuzatildi! Endi sahifaning nomi brauzer varag'ida, salomlashish matni esa oynada. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nom qayerda tugashini bildirdi.", required: true },
-    { id: "uz264", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi o'zingizni sinab ko'ring! Yangi sahifada Robotlar brauzer varag'ida, Salom! esa oynada ko'rinishi kerak. Har bir matnni koddagi kerakli joyga suring. Yoki avval matnni, keyin uning joyini bosing.", required: true },
-    { id: "uz265", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Brauzer varag'ida ko'rinadigan matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-lar orasiga yoziladi?", required: true },
-    { id: "uz266", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Brauzer varag'idagi nom [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga, oynadagi matn esa [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.", required: true },
-    { id: "uz267", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Ajratib ko'rsatilgan matnni ajratib ko'rsatilgan joyga suring.", required: true },
-    { id: "uz268", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Ajoyib! Robotlar [English pronunciation] title [O'zbekcha tallaffuz] ichida, shuning uchun brauzer varag'ida ko'rinadi. Salom! esa [English pronunciation] body [O'zbekcha tallaffuz] ichida, shuning uchun oynada ko'rinadi.", required: true },
-    { id: "uz269", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Avval matnni tanlang.", required: true },
-    { id: "uz270", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Nega yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i kerak?", required: true },
-    { id: "uz271", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Endi oxirgi savol! Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nima uchun kerak? To'g'ri javobni tanlang.", required: true },
-    { id: "uz272", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana o'ylab ko'ring: sahifaning nomi oynada emas, brauzer varag'ida ko'rinadi. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i esa nom qayerda tugashini bildiradi.", required: true },
-    { id: "uz273", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yana o'ylab ko'ring: bu [English pronunciation] tag [O'zbekcha tallaffuz] yangi sahifani boshlamaydi. U sahifa nomi qayerda tugashini bildiradi.", required: true },
-    { id: "uz274", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Sahifa matni brauzer varag'ida paydo bo'lgan misolni eslang. O'shanda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayotgan edi?", required: true },
-    { id: "uz275", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlanishni, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] esa tugashni bildiradi. [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga nima yoziladi?", required: true },
-    { id: "uz276", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i sahifa nomi qayerda tugashini bildiradi.", required: true },
-    { id: "uz277", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] To'g'ri! Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i brauzerga sahifa nomi qayerda tugashini bildiradi. Usiz sahifaning qolgan matni ham brauzer varag'ida paydo bo'lishi mumkin.", required: true },
-    { id: "uz278", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Mana, siz yaratgan birinchi sahifa!", required: true },
-    { id: "uz279", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Esingizdami? [English pronunciation] tag [O'zbekcha tallaffuz] nomi burchakli qavslar orasiga yoziladi. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni o'qiydi, lekin uni sahifada ko'rsatmaydi.", required: true },
-    { id: "uz280", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] HTML [O'zbekcha tallaffuz] ichida sahifaning ikkita asosiy qismi joylashadi: [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] body [O'zbekcha tallaffuz].", required: true },
-    { id: "uz281", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] head [O'zbekcha tallaffuz] qismida sahifa haqidagi ma'lumotlar saqlanadi.", required: true },
-    { id: "uz282", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] [English pronunciation] title head [O'zbekcha tallaffuz] ichida joylashadi. [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga sahifaning nomi yoziladi. Brauzer bu nomni brauzer varag'ida ko'rsatadi.", required: true },
-    { id: "uz283", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [excited] Tabriklayman! Birinchi [English pronunciation] HTML [O'zbekcha tallaffuz] sahifangizni yaratdingiz! Keyingi darsda sahifangizga katta sarlavha va matn uchun abzatslar qo'shamiz.", required: true },
-    { id: "uz284", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [happy] Barakalla!", required: true },
-    { id: "uz285", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.", required: true },
-    { id: "uz286", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [friendly] Masalan: Salom!", required: true },
-    { id: "uz287", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Kosmos deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz288", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Kosmos deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz289", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Musiqa deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz290", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Musiqa deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz291", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Juma kuni final! deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz292", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Juma kuni final deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz293", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Juma kuni final! deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz294", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Juma kuni final deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz295", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Bugun konsert! deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz296", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] [English pronunciation] title tag [O'zbekcha tallaffuz]-ida Bugun konsert deb yozilgan. Qani, u qayerda chiqadi?", required: true },
-    { id: "uz297", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Bugun konsert! deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz298", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [curious] Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Bugun konsert deb yozilgan. Bu safar qayerda chiqadi?", required: true },
-    { id: "uz299", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: Robotlar oynaga tushib qoldi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi, yorliq uchun esa [English pronunciation] title [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz300", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: Robotlar yorliqqa chiqib qoldi. [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda chiqadi, oyna uchun esa [English pronunciation] body [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz301", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: Salom! oynaga tushib qoldi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi, yorliq uchun esa [English pronunciation] title [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "uz302", lang: "uz", voiceId: "agoC45V78njTIxYzwmSb", text: "[O'zbekcha tallaffuz] [reassuring] Qarang: Salom! yorliqqa chiqib qoldi. [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda chiqadi, oyna uchun esa [English pronunciation] body [O'zbekcha tallaffuz] kerak.", required: true },
-    { id: "ru001", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я Коди. Смотри, это веб-страница.", required: true },
-    { id: "ru002", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Видишь маленькую полоску сверху? Это вкладка. На ней написано название страницы.", required: true },
-    { id: "ru003", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если бы страница была человеком, какой бы она была? Давай проверим! Нажми Превратить.", required: true },
-    { id: "ru004", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого! Страница ожила и стала человечком!", required: true },
-    { id: "ru005", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: название страницы спряталось у него в голове. В голове хранится информация о странице.", required: true },
-    { id: "ru006", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А тело собрано из того, что видно на странице: из текста, картинки и кнопки.", required: true },
-    { id: "ru007", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты сделаешь свою страницу: придумаешь ей название и напишешь приветствие. Но сначала посмотрим, как выглядит код.", required: true },
-    { id: "ru008", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это код. По нему браузер собирает страницу. Смотри, как он его читает!", required: true },
-    { id: "ru009", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Заметил? Браузер читает код так же, как ты читаешь книжку.", required: true },
-    { id: "ru010", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Каждую строчку, слева направо.", required: true },
-    { id: "ru011", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А строчки, сверху вниз, одну за другой.", required: true },
-    { id: "ru012", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строчка за строчкой, и страница готова! Сейчас разберёмся, что написано в этом коде.", required: true },
-    { id: "ru013", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на рамку: на ней две надписи. Нажми на верхнюю.", required: true },
-    { id: "ru014", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Видишь знаки левый уголок и правый уголок? Это угловые скобки.", required: true },
-    { id: "ru015", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между ними слово [English pronunciation] HTML [Русское произношение]. Это имя тега.", required: true },
-    { id: "ru016", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Скобки и имя вместе, это тег. Тег, подсказка для браузера. Браузер не показывает тег на странице, а только читает его.", required: true },
-    { id: "ru017", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Это открывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит браузеру: Здесь страница начинается. Теперь нажми на нижнюю надпись.", required: true },
-    { id: "ru018", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Видишь разницу? Сразу после первой скобки стоит косая черта. Это закрывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит: Здесь страница заканчивается.", required: true },
-    { id: "ru019", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Открывающий тег, начало, закрывающий, конец. Всё, что есть на странице, стоит между ними.", required: true },
-    { id: "ru020", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Маленький секрет: рамку мы нарисовали, чтобы было понятнее. В настоящем браузере её нет.", required: true },
-    { id: "ru021", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, у рамки пропал нижний край! В коде не хватает закрывающего тега [English pronunciation] HTML [Русское произношение]. Напиши его в пустой строке и нажми Проверить.", required: true },
-    { id: "ru022", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Это открывающий тег. В закрывающем перед словом [English pronunciation] HTML [Русское произношение] стоит косая черта.", required: true },
-    { id: "ru023", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Не хватает начала: тег начинается со скобки.", required: true },
-    { id: "ru024", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Не хватает конца: тег заканчивается скобкой.", required: true },
-    { id: "ru025", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на слово внутри тега: здесь нужно [English pronunciation] HTML [Русское произношение].", required: true },
-    { id: "ru026", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Что-то перепуталось. Сравни с верхним тегом: скобка, косая черта, [English pronunciation] HTML [Русское произношение], скобка.", required: true },
-    { id: "ru027", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на верхний тег на рамке. Нижний очень на него похож.", required: true },
-    { id: "ru028", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег, тот же самый, только с косой чертой.", required: true },
-    { id: "ru029", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажимай кнопки по порядку: скобка, косая черта, [English pronunciation] HTML [Русское произношение] и снова скобка.", required: true },
-    { id: "ru030", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Рамка закрылась. Теперь вся страница стоит между двумя тегами [English pronunciation] HTML [Русское произношение].", required: true },
-    { id: "ru031", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь сам! Рамке нужны два тега: сверху и снизу. Осторожно: один из трёх тегов внизу, лишний.", required: true },
-    { id: "ru032", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи тег на место. Или нажми тег, а потом место.", required: true },
-    { id: "ru033", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Сверху страница начинается. Здесь нужен открывающий тег, без косой черты.", required: true },
-    { id: "ru034", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего страшного! Снизу страница заканчивается. Здесь нужен закрывающий тег, с косой чертой.", required: true },
-    { id: "ru035", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот она, ловушка! Эта черта наклонена не в ту сторону. В закрывающем теге черта наклонена вправо.", required: true },
-    { id: "ru036", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери тег.", required: true },
-    { id: "ru037", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег начинает страницу, а какой заканчивает?", required: true },
-    { id: "ru038", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сверху, тег без косой черты. Снизу, тег с косой чертой.", required: true },
-    { id: "ru039", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи светящийся тег на светящееся место.", required: true },
-    { id: "ru040", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, оба тега на месте! А тег с неправильной чертой был лишним.", required: true },
-    { id: "ru041", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] HTML [Русское произношение] есть две части. Первая называется [English pronunciation] head [Русское произношение], по-английски голова. Голова человечка, это и есть [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru042", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] head [Русское произношение] лежит информация о странице. В окне браузера, в этой большой части внизу, её не видно. Нажми на голову и посмотри, что там.", required: true },
-    { id: "ru043", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот что внутри: название страницы! Его пишут в теге [English pronunciation] title [Русское произношение]. Нажми на бумажку с названием.", required: true },
-    { id: "ru044", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название перелетело на вкладку! Вот где браузер показывает текст из [English pronunciation] title [Русское произношение]: наверху, на вкладке. А в окне его нет.", required: true },
-    { id: "ru045", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь посмотри на код: сверху открывающий тег [English pronunciation] head [Русское произношение], снизу закрывающий.", required: true },
-    { id: "ru046", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строка [English pronunciation] title [Русское произношение] стоит между ними. Значит, [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru047", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь самое интересное: придумай название для своей страницы! Напиши его между тегами [English pronunciation] title [Русское произношение], например Футбол. Название сразу появится на вкладке. Потом нажми Готово.", required: true },
-    { id: "ru048", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Теперь на вкладке название твоей страницы.", required: true },
-    { id: "ru049", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Куда пишется название? Посмотри на код: там есть пустое место.", required: true },
-    { id: "ru050", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название пишут между двумя тегами [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru051", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми на пустое место между тегами [English pronunciation] title [Русское произношение], напиши название и нажми Готово.", required: true },
-    { id: "ru052", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь пиши только слова, без угловых скобок.", required: true },
-    { id: "ru053", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь игра: ты, браузер! Смотри на строку кода и решай, где появится слово: на вкладке или в окне?", required: true },
-    { id: "ru054", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Верно! Слово из [English pronunciation] title [Русское произношение], на вкладке.", required: true },
-    { id: "ru055", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] В точку! Слово из [English pronunciation] body [Русское произношение], в окне.", required: true },
-    { id: "ru056", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего страшного! Слово стоит в [English pronunciation] title [Русское произношение], поэтому оно на вкладке.", required: true },
-    { id: "ru057", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Слово стоит в [English pronunciation] body [Русское произношение], поэтому оно в окне.", required: true },
-    { id: "ru058", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Между какими тегами стоит слово?", required: true },
-    { id: "ru059", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст из [English pronunciation] title [Русское произношение] видно на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.", required: true },
-    { id: "ru060", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Прочитай имя тега: [English pronunciation] title [Русское произношение], жми Вкладка, [English pronunciation] body [Русское произношение], жми Окно.", required: true },
-    { id: "ru061", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот и всё! Запомни: текст из [English pronunciation] title [Русское произношение], на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.", required: true },
-    { id: "ru062", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Давай ещё один пример.", required: true },
-    { id: "ru063", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название готово. Теперь заполним саму страницу! Вторая часть внутри [English pronunciation] HTML [Русское произношение], [English pronunciation] body [Русское произношение], по-английски тело. Смотри, что вылетит из тела человечка!", required: true },
-    { id: "ru064", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Текст, картинка и кнопка вылетели из тела прямо в окно.", required: true },
-    { id: "ru065", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне,, текст, картинки, кнопки, живёт внутри [English pronunciation] body [Русское произношение]. Сегодня мы напишем в [English pronunciation] body [Русское произношение] текст, а картинки и кнопки добавим на следующих уроках.", required: true },
-    { id: "ru066", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши приветствие между тегами [English pronunciation] body [Русское произношение]. Например, Привет!.", required: true },
-    { id: "ru067", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Оно сразу появится в окне. Потом нажми Готово.", required: true },
-    { id: "ru068", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично! Твоё приветствие уже в окне.", required: true },
-    { id: "ru069", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Куда пишется текст для окна? Посмотри на код.", required: true },
-    { id: "ru070", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст пишут между двумя тегами [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru071", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми на пустое место между тегами [English pronunciation] body [Русское произношение], напиши текст и нажми Готово.", required: true },
-    { id: "ru072", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наведём порядок! Куда положить каждую вырезку: в [English pronunciation] head [Русское произношение] или в [English pronunciation] body [Русское произношение]? Перетащи её. Или нажми вырезку, а потом нужную часть.", required: true },
-    { id: "ru073", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: это строка [English pronunciation] title [Русское произношение]. А [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]. Значит, её место в [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru074", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Твоё приветствие видно в окне. Значит, оно в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru075", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего страшного! Картинку мы видим в окне. Значит, она в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru076", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Подумай: где мы нажимаем кнопку? В окне! Значит, она в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru077", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок! [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение], а приветствие, картинка и кнопка, в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru078", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери вырезку.", required: true },
-    { id: "ru079", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Подумай: эту вещь видно в окне браузера?", required: true },
-    { id: "ru080", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне,, в [English pronunciation] body [Русское произношение]. Строка [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru081", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи светящуюся вырезку в светящееся место.", required: true },
-    { id: "ru082", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь ты знаешь все части. Давай ещё раз посмотрим, как браузер читает твой код, и разберём каждую строчку.", required: true },
-    { id: "ru083", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Важный момент: сначала [English pronunciation] head [Русское произношение] закрывается, и только потом открывается [English pronunciation] body [Русское произношение]. Они стоят друг за другом, а не друг в друге.", required: true },
-    { id: "ru084", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хочешь послушать ещё раз? Нажми на строку кода или на часть справа.", required: true },
-    { id: "ru085", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая строка, [English pronunciation] doctype HTML [Русское произношение]. Она говорит браузеру: Это [English pronunciation] HTML [Русское произношение]-страница. Пары у неё нет, закрывать её не нужно.", required: true },
-    { id: "ru086", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег [English pronunciation] HTML [Русское произношение] обнимает всю страницу. Внутри него, [English pronunciation] head [Русское произношение] и [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru087", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это [English pronunciation] head [Русское произношение], голова страницы. Здесь хранится информация о странице.", required: true },
-    { id: "ru088", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] head [Русское произношение], [English pronunciation] title [Русское произношение] с названием страницы. Это название браузер показывает на вкладке.", required: true },
-    { id: "ru089", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Это [English pronunciation] body [Русское произношение], тело страницы. Здесь всё, что видно в окне.", required: true },
-    { id: "ru090", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А вот и твоё приветствие! Оно внутри [English pronunciation] body [Русское произношение], поэтому его видно в окне.", required: true },
-    { id: "ru091", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь главное испытание: собери весь код сам! Первая строка уже стоит. Нажми на полоску, она встанет в следующую пустую строку.", required: true },
-    { id: "ru092", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Ошибся с порядком, не беда: двигай полоски стрелками вверх и вниз. Когда всё готово, нажми Проверить.", required: true },
-    { id: "ru093", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сразу после [English pronunciation] doctype [Русское произношение] идёт открывающий тег [English pronunciation] HTML [Русское произношение]. А закрывающий [English pronunciation] HTML [Русское произношение], в самом конце.", required: true },
-    { id: "ru094", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег стоит после своего открывающего.", required: true },
-    { id: "ru095", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала идёт [English pronunciation] head [Русское произношение], потом [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru096", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала закрой [English pronunciation] head [Русское произношение], потом открывай [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru097", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] должен стоять внутри [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru098", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Приветствие должно стоять внутри [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru099", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег идёт сразу после [English pronunciation] doctype [Русское произношение], а какой стоит в самом конце?", required: true },
-    { id: "ru100", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение] с [English pronunciation] title [Русское произношение], потом [English pronunciation] body [Русское произношение] с приветствием.", required: true },
-    { id: "ru101", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми одну отмеченную полоску, потом другую, они поменяются местами.", required: true },
-    { id: "ru102", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер, код собран верно! Название, в [English pronunciation] head [Русское произношение], приветствие, в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru103", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [embarrassed] Ой, что-то сломалось! Весь текст страницы уехал на вкладку, а окно пустое. В строке [English pronunciation] title [Русское произношение] не хватает одного тега.", required: true },
-    { id: "ru104", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Починим? Перетащи нужный тег в пустое место или просто нажми на него.", required: true },
-    { id: "ru105", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Это открывающий тег, а [English pronunciation] title [Русское произношение] уже открыт. Теперь его нужно закрыть.", required: true },
-    { id: "ru106", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не спеши! [English pronunciation] head [Русское произношение] закроется чуть позже. Сначала нужно закончить название, закрыть [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru107", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег открыт, но не закрыт?", required: true },
-    { id: "ru108", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] открыт. Нужен тег, который его закроет.", required: true },
-    { id: "ru109", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Поставь в пустое место тег [English pronunciation] title [Русское произношение] с косой чертой.", required: true },
-    { id: "ru110", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Починили! Название на вкладке, приветствие в окне. Закрывающий тег [English pronunciation] title [Русское произношение] показал браузеру, где кончается название.", required: true },
-    { id: "ru111", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя! Вот новая страница. На вкладке должно быть Роботы, а в окне, Привет!. Перетащи каждую фразу на её место в коде.", required: true },
-    { id: "ru112", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В какой тег пишут текст для вкладки?", required: true },
-    { id: "ru113", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Для вкладки, [English pronunciation] title [Русское произношение], для окна, [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru114", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи светящуюся фразу в светящееся место.", required: true },
-    { id: "ru115", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Идеально! Роботы стоит в [English pronunciation] title [Русское произношение], поэтому на вкладке. Привет! стоит в [English pronunciation] body [Русское произношение], поэтому в окне.", required: true },
-    { id: "ru116", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сначала выбери фразу.", required: true },
-    { id: "ru117", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И последний вопрос. Как думаешь, зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]? Выбери ответ.", required: true },
-    { id: "ru118", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не совсем: закрывающий тег на странице не виден и ничего не выводит в окно.", required: true },
-    { id: "ru119", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не совсем: где кончается страница, показывает закрывающий тег [English pronunciation] HTML [Русское произношение]. А закрывающий [English pronunciation] title [Русское произношение] закрывает только [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru120", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни страницу, где весь текст уехал на вкладку. Какого тега там не хватало?", required: true },
-    { id: "ru121", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Тег с косой чертой закрывает свою часть. Что стоит внутри [English pronunciation] title [Русское произношение]?", required: true },
-    { id: "ru122", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег [English pronunciation] title [Русское произношение] заканчивает название страницы.", required: true },
-    { id: "ru123", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно! Он показывает, где кончается название. Без него весь текст страницы уезжает на вкладку.", required: true },
-    { id: "ru124", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот она, твоя первая страница!", required: true },
-    { id: "ru125", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Помнишь? Тег, это слово в угловых скобках. Браузер его не показывает, а только читает.", required: true },
-    { id: "ru126", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] HTML [Русское произношение] обнимает всю страницу: и [English pronunciation] head [Русское произношение], и [English pronunciation] body [Русское произношение], внутри него.", required: true },
-    { id: "ru127", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] хранит информацию о странице.", required: true },
-    { id: "ru128", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]. В нём пишут название страницы, а браузер показывает его на вкладке.", required: true },
-    { id: "ru129", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru130", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Твоя первая [English pronunciation] HTML [Русское произношение]-страница готова. Ты на шаг ближе к тому, чтобы стать настоящим веб-разработчиком!", required: true },
-    { id: "ru131", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Вау, классно!", required: true },
-    { id: "ru132", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Получилось!", required: true },
-    { id: "ru133", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Супер!", required: true },
-    { id: "ru134", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Огонь!", required: true },
-    { id: "ru135", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура!", required: true },
-    { id: "ru136", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да!", required: true },
-    { id: "ru137", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Попробуй ещё раз.", required: true },
-    { id: "ru138", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри внимательно.", required: true },
-    { id: "ru139", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Уже близко. Не спеши.", required: true },
-    { id: "ru140", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Как читают код?", required: true },
-    { id: "ru141", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Что такое тег?", required: true },
-    { id: "ru142", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вкладка или окно?", required: true },
-    { id: "ru143", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Финал в пятницу!", required: true },
-    { id: "ru144", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня концерт!", required: true },
-    { id: "ru145", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Все полоски на местах! Теперь нажми Проверить, узнаем, верно ли собран код.", required: true },
-    { id: "ru146", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сдвинь отмеченные полоски стрелками вверх или вниз и снова нажми Проверить.", required: true },
-    { id: "ru147", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет!", required: true },
-    { id: "ru148", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]?", required: true },
-    { id: "ru149", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет, мир!", required: true },
-    { id: "ru150", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Здесь нужны только слова, без угловых скобок.", required: true },
-    { id: "ru151", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми две полоски, они поменяются местами.", required: true },
-    { id: "ru152", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [cheerful] Привет! Я Коди. Смотри, вот веб-страница.", required: true },
-    { id: "ru153", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Видишь маленькое место сверху? Это вкладка браузера, на ней написано название страницы.", required: true },
-    { id: "ru154", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А если бы веб-страница была человеком, как думаешь, какой бы она была? Давай проверим! Нажми Превратить.", required: true },
-    { id: "ru155", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [amazed] Ого, смотри! Страница ожила и стала человечком!", required: true },
-    { id: "ru156", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри-ка! Название страницы спряталось у него в голове. В голове хранятся сведения о странице.", required: true },
-    { id: "ru157", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А тело? Оно собралось из того, что видно на странице: текста, картинки и кнопки.", required: true },
-    { id: "ru158", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Сегодня ты создашь страницу со своим названием и приветствием! Сначала посмотрим, как выглядит код.", required: true },
-    { id: "ru159", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вот это код! Из него браузер и собирает страницу. Смотри, как он его читает!", required: true },
-    { id: "ru160", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Смотри-ка: браузер читает код, как книжку.", required: true },
-    { id: "ru161", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строчка за строчкой, и страница готова! Дальше разберёмся с этим кодом вместе.", required: true },
-    { id: "ru162", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Посмотри на рамку: на ней две интересные надписи. Что же это такое?", required: true },
-    { id: "ru163", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на эти знаки. Они называются угловыми скобками.", required: true },
-    { id: "ru164", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Между ними написано [English pronunciation] HTML [Русское произношение]. Это название тега.", required: true },
-    { id: "ru165", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Вся запись вместе, тег [English pronunciation] HTML [Русское произношение]. Браузер не показывает тег на странице, а читает его.", required: true },
-    { id: "ru166", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Верхний, открывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит браузеру: Здесь страница начинается.", required: true },
-    { id: "ru167", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А на нижнем сразу после первой скобки стоит косая черта. Это закрывающий тег [English pronunciation] HTML [Русское произношение], он говорит: Здесь страница заканчивается.", required: true },
-    { id: "ru168", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Открывающий тег обозначает начало, закрывающий, конец. Всё содержимое страницы стоит между ними.", required: true },
-    { id: "ru169", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Маленький секрет: рамку мы нарисовали для наглядности. В браузере её не увидишь.", required: true },
-    { id: "ru170", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: у рамки пропал нижний край! В коде не хватает закрывающего тега [English pronunciation] HTML [Русское произношение]. Напиши его в пустой строке и нажми Проверить.", required: true },
-    { id: "ru171", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Чего-то не хватает: тег начинается с угловой скобки. Добавь её в начало.", required: true },
-    { id: "ru172", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] В конце чего-то не хватает: тег заканчивается угловой скобкой. Добавь её в конец.", required: true },
-    { id: "ru173", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на слово внутри тега: здесь нужен [English pronunciation] HTML [Русское произношение].", required: true },
-    { id: "ru174", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Проверь порядок знаков: угловая скобка, косая черта, слово [English pronunciation] HTML [Русское произношение] и угловая скобка.", required: true },
-    { id: "ru175", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на верхний тег на рамке.", required: true },
-    { id: "ru176", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Закрывающий тег, то же слово, но с косой чертой.", required: true },
-    { id: "ru177", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Начни с угловой скобки, потом поставь косую черту. Дальше [English pronunciation] HTML [Русское произношение] и в конце снова угловая скобка.", required: true },
-    { id: "ru178", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Есть! Рамка закрылась: вся страница теперь между двумя тегами [English pronunciation] HTML [Русское произношение].", required: true },
-    { id: "ru179", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь твоя очередь! Рамке нужны два тега: сверху и снизу. Осторожно, один из трёх тегов внизу лишний.", required: true },
-    { id: "ru180", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хватай тег пальцем и неси на место. Или проще: нажми тег, а потом место.", required: true },
-    { id: "ru181", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Сверху страница начинается, здесь нужен открывающий тег, без косой черты.", required: true },
-    { id: "ru182", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего! Снизу страница заканчивается, здесь нужен закрывающий тег, с косой чертой.", required: true },
-    { id: "ru183", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А вот и хитрость! Эта черта наклонена не в ту сторону. В закрывающем теге она наклонена вправо: косая черта.", required: true },
-    { id: "ru184", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Перетащи [English pronunciation] HTML [Русское произношение] на верхнее место.", required: true },
-    { id: "ru185", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Отлично, оба тега на месте! А тег с обратной чертой был лишним.", required: true },
-    { id: "ru186", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] HTML [Русское произношение] живут две части. Первая, [English pronunciation] head [Русское произношение]. Голова человечка как раз про неё.", required: true },
-    { id: "ru187", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В [English pronunciation] head [Русское произношение], сведения о странице. Посмотри на большое место внизу, на окно браузера: там их не видно.", required: true },
-    { id: "ru188", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А что внутри? Вот, название страницы! Его пишут внутри тега [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru189", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название перелетело на вкладку! Браузер показывает текст из [English pronunciation] title [Русское произношение] именно там.", required: true },
-    { id: "ru190", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на код: сверху открывающий тег [English pronunciation] head [Русское произношение], снизу закрывающий.", required: true },
-    { id: "ru191", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Строка [English pronunciation] title [Русское произношение] стоит между ними. Значит, [English pronunciation] title [Русское произношение] находится внутри [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru192", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь самое интересное: придумай своей странице название! Напиши его внутри [English pronunciation] title [Русское произношение], например Футбол. Оно сразу появится на вкладке. Потом нажми Готово.", required: true },
-    { id: "ru193", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Класс! Теперь на вкладке видно название твоей страницы.", required: true },
-    { id: "ru194", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] В каком теге пишут название? Посмотри на код.", required: true },
-    { id: "ru195", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми пустое место между тегами [English pronunciation] title [Русское произношение], напиши название и нажми Готово.", required: true },
-    { id: "ru196", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь игра: ты, браузер! Посмотри на строку кода и реши, где появится слово: на вкладке или в окне?", required: true },
-    { id: "ru197", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего! Слово в [English pronunciation] title [Русское произношение], поэтому оно на вкладке. Давай ещё пример.", required: true },
-    { id: "ru198", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Слово в [English pronunciation] body [Русское произношение], поэтому оно в окне. Давай ещё пример.", required: true },
-    { id: "ru199", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Отличная игра! Текст из [English pronunciation] title [Русское произношение], на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.", required: true },
-    { id: "ru200", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Название готово. Теперь заполним саму страницу! Вторая часть внутри [English pronunciation] HTML [Русское произношение], [English pronunciation] body [Русское произношение], как тело человечка. Смотри, что из него вылетит!", required: true },
-    { id: "ru201", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да! Текст, картинка и кнопка вылетели из тела в окно.", required: true },
-    { id: "ru202", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст, картинки и кнопки, которые видны на странице, располагаются внутри [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru203", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь напиши приветствие в пустом поле между тегами [English pronunciation] body [Русское произношение]. Например, Привет!.", required: true },
-    { id: "ru204", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст появится в окне. Потом нажми Готово.", required: true },
-    { id: "ru205", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Посмотри на код: между тегами [English pronunciation] body [Русское произношение] есть пустое поле.", required: true },
-    { id: "ru206", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Нажми пустое поле между тегами [English pronunciation] body [Русское произношение], напиши текст и нажми Готово.", required: true },
-    { id: "ru207", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Наведём порядок! Где живёт каждая вырезка: в [English pronunciation] head [Русское произношение] или в [English pronunciation] body [Русское произношение]? Перетащи её или нажми вырезку, а потом часть.", required: true },
-    { id: "ru208", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: это строка [English pronunciation] title [Русское произношение]. [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение], поэтому её место в [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru209", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Почти! Этот текст должен быть виден в окне, значит, он в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru210", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ничего! Картинку мы видим в окне, значит, она в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru211", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Порядок! [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение], текст, картинка и кнопка, в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru212", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Эту вещь видно в окне браузера?", required: true },
-    { id: "ru213", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст, картинки и кнопки страницы, в [English pronunciation] body [Русское произношение]. Строка [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru214", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь посмотрим весь код целиком. Как работает браузер? Читает код сверху вниз и собирает страницу. Смотри!", required: true },
-    { id: "ru215", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внимание, важный момент: сначала закрываем [English pronunciation] head [Русское произношение], потом открываем [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru216", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Хочешь услышать какую-то часть ещё раз? Нажми строку кода или часть справа, и я расскажу.", required: true },
-    { id: "ru217", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Первая строка [English pronunciation] doctype HTML [Русское произношение], особая. Она говорит браузеру: Это [English pronunciation] HTML [Русское произношение]-страница. Пары у неё нет.", required: true },
-    { id: "ru218", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Тег [English pronunciation] HTML [Русское произношение] обнимает всю страницу: внутри него [English pronunciation] head [Русское произношение] и [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru219", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А вот [English pronunciation] head [Русское произношение], голова страницы. В ней сведения о странице.", required: true },
-    { id: "ru220", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] head [Русское произношение], [English pronunciation] title [Русское произношение]. В нём пишут название страницы, браузер показывает это название на вкладке.", required: true },
-    { id: "ru221", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А вот [English pronunciation] body [Русское произношение], тело страницы. В нём текст, картинки и кнопки, которые видны на странице.", required: true },
-    { id: "ru222", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А вот и твой текст! Он внутри [English pronunciation] body [Русское произношение], поэтому в окне.", required: true },
-    { id: "ru223", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] А теперь главное испытание: собери весь код! Первая строка уже стоит. Нажми полоску, она встанет в следующую пустую строку.", required: true },
-    { id: "ru224", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Если нужно изменить порядок, сдвинь полоску стрелками вверх или вниз. Когда всё на местах, нажми Проверить.", required: true },
-    { id: "ru225", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] После строки [English pronunciation] doctype [Русское произношение] поставь открывающий тег [English pronunciation] HTML [Русское произношение]. Закрывающий, в самом конце.", required: true },
-    { id: "ru226", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] нужно закрыть до того, как начнётся [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru227", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение].", required: true },
-    { id: "ru228", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Текст страницы стоит внутри [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru229", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Какой тег стоит сразу после [English pronunciation] doctype [Русское произношение], а какой, в самом конце?", required: true },
-    { id: "ru230", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение] с [English pronunciation] title [Русское произношение], потом [English pronunciation] body [Русское произношение] с текстом.", required: true },
-    { id: "ru231", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Вот это да, код собран верно! Название, в [English pronunciation] head [Русское произношение], текст, в [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru232", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Ну и дела! На вкладку уехал весь текст страницы, а окно пустое. В строке [English pronunciation] title [Русское произношение] не хватает одного тега.", required: true },
-    { id: "ru233", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Починим? Перетащи нужный тег в пустое место или просто нажми его.", required: true },
-    { id: "ru234", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не спеши! [English pronunciation] head [Русское произношение] закроется позже. Сначала должно закончиться название, поэтому закрой [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru235", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] открыт. Нужен тег, который его закрывает.", required: true },
-    { id: "ru236", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Починили! Название на вкладке, текст в окне. Закрывающий тег [English pronunciation] title [Русское произношение] показал, где кончается название.", required: true },
-    { id: "ru237", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Теперь проверь себя! Новая страница: на вкладке должно быть Роботы, в окне, Привет!. Перетащи каждую фразу на её место в коде. Или нажми фразу, потом место.", required: true },
-    { id: "ru238", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В каком теге текст для вкладки?", required: true },
-    { id: "ru239", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Идеально! Роботы в [English pronunciation] title [Русское произношение], поэтому на вкладке. Привет! в [English pronunciation] body [Русское произношение], поэтому в окне.", required: true },
-    { id: "ru240", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] И последний вопрос. Как думаешь, зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]? Нажми ответ.", required: true },
-    { id: "ru241", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не совсем: закрывающий тег на странице не виден и название в окно не выводит.", required: true },
-    { id: "ru242", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Не совсем: этот тег не начинает новую страницу. Он показывает, где заканчивается название.", required: true },
-    { id: "ru243", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Вспомни страницу, где текст попал на вкладку. Какого тега там не хватало?", required: true },
-    { id: "ru244", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] Тег с косой чертой заканчивает часть. Что стоит внутри [English pronunciation] title [Русское произношение]?", required: true },
-    { id: "ru245", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [happy] Точно! Он показывает, где кончается название. Без него текст страницы уезжает на вкладку.", required: true },
-    { id: "ru246", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Помнишь? Тег, слово в угловых скобках. Браузер его не показывает, а читает.", required: true },
-    { id: "ru247", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Всю страницу собирает [English pronunciation] HTML [Русское произношение]: и [English pronunciation] head [Русское произношение], и [English pronunciation] body [Русское произношение], внутри него.", required: true },
-    { id: "ru248", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] head [Русское произношение] хранит сведения о странице.", required: true },
-    { id: "ru249", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение]. В нём пишут название страницы, браузер показывает это название на вкладке.", required: true },
-    { id: "ru250", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [excited] Ура! Твоя первая [English pronunciation] HTML [Русское произношение]-страница готова. Ты на шаг ближе к настоящему веб-программисту!", required: true },
-    { id: "ru251", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Молодец!", required: true },
-    { id: "ru252", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [friendly] Например: Привет!", required: true },
-    { id: "ru253", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Космос. Где оно появится?", required: true },
-    { id: "ru254", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Космос. Где оно появится?", required: true },
-    { id: "ru255", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Музыка. Где оно появится?", required: true },
-    { id: "ru256", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Музыка. Где оно появится?", required: true },
-    { id: "ru257", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Финал в пятницу!. Где оно появится?", required: true },
-    { id: "ru258", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Финал в пятницу. Где оно появится?", required: true },
-    { id: "ru259", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Финал в пятницу!. Где оно появится?", required: true },
-    { id: "ru260", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Финал в пятницу. Где оно появится?", required: true },
-    { id: "ru261", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Сегодня концерт!. Где оно появится?", required: true },
-    { id: "ru262", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] В [English pronunciation] title [Русское произношение] написано Сегодня концерт. Где оно появится?", required: true },
-    { id: "ru263", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Сегодня концерт!. Где оно появится?", required: true },
-    { id: "ru264", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [curious] А теперь в [English pronunciation] body [Русское произношение] написано Сегодня концерт. Где оно появится?", required: true },
-    { id: "ru265", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: Роботы попало в окно. Всё, что в [English pronunciation] body [Русское произношение], видно в окне. А для вкладки нужен [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru266", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: Роботы попало на вкладку. Всё, что в [English pronunciation] title [Русское произношение], видно на вкладке. А для окна нужен [English pronunciation] body [Русское произношение].", required: true },
-    { id: "ru267", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: Привет! попало в окно. Всё, что в [English pronunciation] body [Русское произношение], видно в окне. А для вкладки нужен [English pronunciation] title [Русское произношение].", required: true },
-    { id: "ru268", lang: "ru", voiceId: "agoC45V78njTIxYzwmSb", text: "[Русское произношение] [reassuring] Смотри: Привет! попало на вкладку. Всё, что в [English pronunciation] title [Русское произношение], видно на вкладке. А для окна нужен [English pronunciation] body [Русское произношение].", required: true },
-    { id: "en001", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hi! I’m Kodi. Look, here’s a web page.", required: true },
-    { id: "en002", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] See the little strip at the top? That’s the tab. It shows the page name.", required: true },
-    { id: "en003", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If a web page were a person, what would it look like? Let’s find out! Tap Transform.", required: true },
-    { id: "en004", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa! The page came alive and turned into a paper buddy!", required: true },
-    { id: "en005", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the page name went into its head. The head keeps information about the page.", required: true },
-    { id: "en006", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the body is made of what you see on the page: text, a picture and a button.", required: true },
-    { id: "en007", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll make your own page: you’ll name it and write a greeting. But first, let’s see what code looks like.", required: true },
-    { id: "en008", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is code. The browser builds the page from it. Watch how it reads it!", required: true },
-    { id: "en009", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did you notice? The browser reads code the way you read a book.", required: true },
-    { id: "en010", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Each line from left to right.", required: true },
-    { id: "en011", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the lines from top to bottom, one after another.", required: true },
-    { id: "en012", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Line by line, and the page is ready! Now let’s find out what this code says.", required: true },
-    { id: "en013", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the frame: it has two labels. Tap the top one.", required: true },
-    { id: "en014", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] See these two marks: less-than sign and greater-than sign? They’re called angle brackets.", required: true },
-    { id: "en015", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Between them is the word H T M L. That’s the tag’s name.", required: true },
-    { id: "en016", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The brackets and the name together make a tag. A tag is a note for the browser. The browser doesn’t show tags on the page, it just reads them.", required: true },
-    { id: "en017", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is the opening H T M L tag. It tells the browser: The page starts here. Now tap the bottom label.", required: true },
-    { id: "en018", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] See the difference? Right after the first bracket there’s a slash. This is the closing H T M L tag. It says: The page ends here.", required: true },
-    { id: "en019", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Opening tag: the start. Closing tag: the end. Everything on the page goes between them.", required: true },
-    { id: "en020", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A little secret: we drew the frame to make things clearer. A real browser doesn’t have it.", required: true },
-    { id: "en021", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Oops, the frame’s bottom edge is gone! The code is missing the closing H T M L tag. Type it in the empty line and tap Check.", required: true },
-    { id: "en022", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! That’s the opening tag. The closing tag has a slash before H T M L.", required: true },
-    { id: "en023", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The start is missing: a tag begins with less-than sign.", required: true },
-    { id: "en024", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] The end is missing: a tag ends with greater-than sign.", required: true },
-    { id: "en025", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the word inside the tag: you need H T M L here.", required: true },
-    { id: "en026", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Something’s mixed up. Compare it with the top tag: bracket, slash, H T M L, bracket.", required: true },
-    { id: "en027", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the top tag on the frame. The bottom one looks very similar.", required: true },
-    { id: "en028", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The closing tag is the same tag, just with a slash.", required: true },
-    { id: "en029", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the buttons in order: bracket, slash, H T M L, and bracket again.", required: true },
-    { id: "en030", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! The frame is closed. Now the whole page is between the two H T M L tags.", required: true },
-    { id: "en031", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn! The frame needs two tags: one on top, one at the bottom. Careful: one of the three tags below is extra.", required: true },
-    { id: "en032", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag a tag into place. Or tap a tag, then the place.", required: true },
-    { id: "en033", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! The page starts at the top, so it needs the opening tag, without a slash.", required: true },
-    { id: "en034", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] No worries! The page ends at the bottom, so it needs the closing tag, with a slash.", required: true },
-    { id: "en035", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There’s the trap! This slash leans the wrong way. In a closing tag it leans to the right.", required: true },
-    { id: "en036", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick a tag first.", required: true },
-    { id: "en037", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag starts the page, and which one ends it?", required: true },
-    { id: "en038", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Top: the tag without a slash. Bottom: the tag with a slash.", required: true },
-    { id: "en039", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag the glowing tag to the glowing place.", required: true },
-    { id: "en040", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, both tags are in place! The one with the wrong slash was extra.", required: true },
-    { id: "en041", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] There are two parts inside H T M L. The first is called head. The buddy’s head stands for it.", required: true },
-    { id: "en042", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head holds information about the page. You can’t see it in the browser window, this big area below. Tap the head and see what’s inside.", required: true },
-    { id: "en043", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s what’s inside: the page name! It goes in the title tag. Tap the paper with the name.", required: true },
-    { id: "en044", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name flew to the tab! That’s where the browser shows the text from title: up on the tab. It’s not in the window.", required: true },
-    { id: "en045", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now look at the code: the opening head tag is at the top, the closing one at the bottom.", required: true },
-    { id: "en046", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The title line sits between them. So title lives inside head.", required: true },
-    { id: "en047", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the fun part: come up with a name for your page! Type it between the title tags, for example Football. It’ll show up on the tab right away. Then tap Done.", required: true },
-    { id: "en048", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Cool! Now your page name is on the tab.", required: true },
-    { id: "en049", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where does the name go? Look at the code: there’s an empty spot.", required: true },
-    { id: "en050", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name goes between the two title tags.", required: true },
-    { id: "en051", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the empty spot between the title tags, type a name and tap Done.", required: true },
-    { id: "en052", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Only words here, no angle brackets.", required: true },
-    { id: "en053", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now a game: you’re the browser! Look at the line of code and decide where the word will show: on the tab or in the window?", required: true },
-    { id: "en054", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Right! The word from title is on the tab.", required: true },
-    { id: "en055", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Spot on! The word from body is in the window.", required: true },
-    { id: "en056", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] No worries! The word is in title, so it’s on the tab.", required: true },
-    { id: "en057", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! The word is in body, so it’s in the window.", required: true },
-    { id: "en058", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tags is the word between?", required: true },
-    { id: "en059", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Text from title shows on the tab, text from body in the window.", required: true },
-    { id: "en060", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Read the tag name: for title tap Tab, for body tap Window.", required: true },
-    { id: "en061", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] That’s it! Remember: text from title goes on the tab, text from body in the window.", required: true },
-    { id: "en062", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s try one more.", required: true },
-    { id: "en063", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name is ready. Now let’s fill the page itself! The second part inside H T M L is body. Watch what flies out of the buddy’s body!", required: true },
-    { id: "en064", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow! The text, the picture and the button flew out of the body right into the window.", required: true },
-    { id: "en065", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything you see in the window, text, pictures, buttons, lives inside body. Today we’ll write text in body; pictures and buttons come in later lessons.", required: true },
-    { id: "en066", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now type a greeting between the body tags. For example, Hello!.", required: true },
-    { id: "en067", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] It’ll show up in the window right away. Then tap Done.", required: true },
-    { id: "en068", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great! Your greeting is in the window.", required: true },
-    { id: "en069", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Where does the text for the window go? Look at the code.", required: true },
-    { id: "en070", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The text goes between the two body tags.", required: true },
-    { id: "en071", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the empty spot between the body tags, type your text and tap Done.", required: true },
-    { id: "en072", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s tidy up! Where does each cut-out go: in head or in body? Drag it. Or tap a cut-out, then the right part.", required: true },
-    { id: "en073", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: this is the title line. title lives inside head, so this goes in head.", required: true },
-    { id: "en074", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! Your greeting shows in the window, so it goes in body.", required: true },
-    { id: "en075", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] No worries! We see the picture in the window, so it goes in body.", required: true },
-    { id: "en076", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Think: where do we press the button? In the window! So it goes in body.", required: true },
-    { id: "en077", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All sorted! title is in head; the greeting, the picture and the button are in body.", required: true },
-    { id: "en078", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick a cut-out first.", required: true },
-    { id: "en079", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Think: can you see this in the browser window?", required: true },
-    { id: "en080", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything you see in the window goes in body. The title line goes in head.", required: true },
-    { id: "en081", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag the glowing cut-out to the glowing place.", required: true },
-    { id: "en082", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now you know all the parts. Let’s watch the browser read your code once more and go through each line.", required: true },
-    { id: "en083", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Important: head closes first, and only then body opens. They go one after the other, not one inside the other.", required: true },
-    { id: "en084", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Want to hear it again? Tap a code line or a part on the right.", required: true },
-    { id: "en085", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first line is doctype H T M L. It tells the browser: This is an H T M L page. It has no pair, so you don’t close it.", required: true },
-    { id: "en086", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L tag hugs the whole page. Inside it are head and body.", required: true },
-    { id: "en087", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is head, the page’s head. It keeps information about the page.", required: true },
-    { id: "en088", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside head is title, with the page name. The browser shows that name on the tab.", required: true },
-    { id: "en089", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is body, the page’s body. Everything you see in the window is here.", required: true },
-    { id: "en090", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And here’s your greeting! It’s inside body, so it shows in the window.", required: true },
-    { id: "en091", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the big challenge: build the whole code yourself! The first line is already there. Tap a strip, and it goes into the next empty line.", required: true },
-    { id: "en092", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Mixed up the order? No problem: move strips up and down with the arrows. When it’s all set, tap Check.", required: true },
-    { id: "en093", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The opening H T M L tag comes right after doctype. The closing H T M L tag goes at the very end.", required: true },
-    { id: "en094", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A closing tag comes after its opening tag.", required: true },
-    { id: "en095", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head comes first, then body.", required: true },
-    { id: "en096", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Close head first, then open body.", required: true },
-    { id: "en097", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title must be inside head.", required: true },
-    { id: "en098", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The greeting must be inside body.", required: true },
-    { id: "en099", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag comes right after doctype, and which one goes at the very end?", required: true },
-    { id: "en100", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside H T M L: first head with title, then body with the greeting.", required: true },
-    { id: "en101", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap one marked strip, then the other: they’ll swap places.", required: true },
-    { id: "en102", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Awesome, the code is right! The name is in head, the greeting is in body.", required: true },
-    { id: "en103", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [embarrassed] Uh-oh, something broke! All the page text went onto the tab, and the window is empty. One tag is missing in the title line.", required: true },
-    { id: "en104", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Shall we fix it? Drag the right tag into the empty spot, or just tap it.", required: true },
-    { id: "en105", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! That’s an opening tag, and title is already open. Now it needs to close.", required: true },
-    { id: "en106", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not so fast! head closes a bit later. First the name has to end, so close title.", required: true },
-    { id: "en107", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag is open but not closed?", required: true },
-    { id: "en108", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title is open. You need the tag that closes it.", required: true },
-    { id: "en109", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put the title tag with a slash into the empty spot.", required: true },
-    { id: "en110", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fixed it! The name is on the tab, the greeting is in the window. The closing title tag showed the browser where the name ends.", required: true },
-    { id: "en111", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now test yourself! Here’s a new page. The tab should say Robots, and the window Hello!. Drag each phrase to its place in the code.", required: true },
-    { id: "en112", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Which tag holds the text for the tab?", required: true },
-    { id: "en113", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For the tab: title. For the window: body.", required: true },
-    { id: "en114", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag the glowing phrase to the glowing place.", required: true },
-    { id: "en115", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Perfect! Robots is in title, so it’s on the tab. Hello! is in body, so it’s in the window.", required: true },
-    { id: "en116", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Pick a phrase first.", required: true },
-    { id: "en117", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the last question. What do you think: why do we need the closing title tag? Pick an answer.", required: true },
-    { id: "en118", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not quite: a closing tag doesn’t show on the page and doesn’t put anything in the window.", required: true },
-    { id: "en119", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not quite: the closing H T M L tag shows where the page ends. The closing title tag only closes title.", required: true },
-    { id: "en120", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the page where all the text ended up on the tab. Which tag was missing there?", required: true },
-    { id: "en121", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] A tag with a slash closes its own part. What’s inside title?", required: true },
-    { id: "en122", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The closing title tag ends the page name.", required: true },
-    { id: "en123", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly! It shows where the name ends. Without it, all the page text ends up on the tab.", required: true },
-    { id: "en124", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here it is, your very first page!", required: true },
-    { id: "en125", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember? A tag is a word in angle brackets. The browser doesn’t show it, it just reads it.", required: true },
-    { id: "en126", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H T M L wraps the whole page: both head and body are inside it.", required: true },
-    { id: "en127", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head keeps information about the page.", required: true },
-    { id: "en128", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title lives inside head. It holds the page name, and the browser shows that name on the tab.", required: true },
-    { id: "en129", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything you see in the window lives inside body.", required: true },
-    { id: "en130", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your first H T M L page is ready. You’re one step closer to becoming a real web developer!", required: true },
-    { id: "en131", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Wow, awesome!", required: true },
-    { id: "en132", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! You did it!", required: true },
-    { id: "en133", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Super!", required: true },
-    { id: "en134", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Brilliant!", required: true },
-    { id: "en135", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray!", required: true },
-    { id: "en136", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Amazing!", required: true },
-    { id: "en137", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Try once more.", required: true },
-    { id: "en138", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Take a closer look.", required: true },
-    { id: "en139", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] You are close. No rush.", required: true },
-    { id: "en140", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] How is code read?", required: true },
-    { id: "en141", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] What is a tag?", required: true },
-    { id: "en142", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Tab or window?", required: true },
-    { id: "en143", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The final is on Friday!", required: true },
-    { id: "en144", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Concert today!", required: true },
-    { id: "en145", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All the strips are in place! Now tap Check to see if the code is right.", required: true },
-    { id: "en146", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Move the marked strips up or down with the arrows, then tap Check again.", required: true },
-    { id: "en147", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello!", required: true },
-    { id: "en148", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Why closing tag title?", required: true },
-    { id: "en149", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [cheerful] Hello, world!", required: true },
-    { id: "en150", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap two strips: they swap places.", required: true },
-    { id: "en151", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] See the little spot at the top? That’s the browser tab. It shows the page name.", required: true },
-    { id: "en152", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If a web page were a person, what do you think it would look like? Let’s find out! Tap Transform.", required: true },
-    { id: "en153", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [amazed] Whoa, look! The page came alive as a paper buddy!", required: true },
-    { id: "en154", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did you notice? The page name went into its head. The head keeps information about the page.", required: true },
-    { id: "en155", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the body? It’s made of what you see on the page: text, a picture and a button.", required: true },
-    { id: "en156", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Today you’ll create a page with your own page name and greeting! First, let’s see what code looks like.", required: true },
-    { id: "en157", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] This is code! The browser builds the page from it. Watch how it reads it!", required: true },
-    { id: "en158", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Did you notice? The browser reads code like a book.", required: true },
-    { id: "en159", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Line by line, and the page is ready! Next, let’s figure out this code together.", required: true },
-    { id: "en160", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Look at the frame: there are two interesting labels on it. What are they?", required: true },
-    { id: "en161", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at these signs. They’re called angle brackets.", required: true },
-    { id: "en162", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Between them it says H T M L. That’s the tag’s name.", required: true },
-    { id: "en163", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All together, it’s the H T M L tag. The browser doesn’t show a tag on the page, it reads it.", required: true },
-    { id: "en164", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The top one is the opening H T M L tag. It tells the browser: The page starts here.", required: true },
-    { id: "en165", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] On the bottom one, a slash comes right after the first bracket. It’s the closing H T M L tag. It says: The page ends here.", required: true },
-    { id: "en166", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The opening tag marks the start, the closing tag marks the end. Everything on the page goes between them.", required: true },
-    { id: "en167", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] A little secret: we drew the frame to make it clear. You won’t see it in a browser.", required: true },
-    { id: "en168", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: the frame’s bottom edge is gone! The closing H T M L tag is missing from the code. Type it in the empty line and tap Check.", required: true },
-    { id: "en169", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Something is missing: a tag starts with the angle bracket. Add it at the start.", required: true },
-    { id: "en170", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Something is missing at the end: a tag ends with the angle bracket. Add it at the end.", required: true },
-    { id: "en171", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the word inside the tag: here you need H T M L.", required: true },
-    { id: "en172", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Check the order: angle bracket, slash, the word H T M L, angle bracket.", required: true },
-    { id: "en173", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the top tag on the frame.", required: true },
-    { id: "en174", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The closing tag is the same word with a slash.", required: true },
-    { id: "en175", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Start with the angle bracket, then add the slash. Then H T M L, and another angle bracket at the end.", required: true },
-    { id: "en176", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Yes! The frame is closed: the whole page is between the two H T M L tags now.", required: true },
-    { id: "en177", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Your turn! The frame needs two tags: top and bottom. Careful, one of the three tags below is extra.", required: true },
-    { id: "en178", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Grab a tag with your finger and carry it into place. Or simply tap the tag, then the place.", required: true },
-    { id: "en179", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s the trick! This slash leans the wrong way. In a closing tag it leans right: slash.", required: true },
-    { id: "en180", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Drag H T M L to the top place.", required: true },
-    { id: "en181", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great, both tags are in place! The one with the backslash was extra.", required: true },
-    { id: "en182", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Two parts live inside H T M L. The first is head. The buddy’s head stands for it.", required: true },
-    { id: "en183", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] head holds information about the page. Look at the big area below, the browser window: you can’t see it there.", required: true },
-    { id: "en184", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] What’s inside? Here, the page name! It’s written inside the title tag.", required: true },
-    { id: "en185", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name flew to the tab! The browser shows the text from title right there.", required: true },
-    { id: "en186", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the code: the opening head tag is at the top, the closing one at the bottom.", required: true },
-    { id: "en187", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The title line sits between them. So title is inside head.", required: true },
-    { id: "en188", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the fun part: name your page! Type it inside title, for example Football. It shows up on the tab right away. Then tap Done.", required: true },
-    { id: "en189", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Cool! Your page name is now on the tab.", required: true },
-    { id: "en190", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Which tag holds the name? Look at the code.", required: true },
-    { id: "en191", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] No worries! The word is in title, so it’s on the tab. Let’s try another one.", required: true },
-    { id: "en192", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! The word is in body, so it’s in the window. Let’s try another one.", required: true },
-    { id: "en193", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [happy] Great game! Text from title goes on the tab, text from body in the window.", required: true },
-    { id: "en194", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The name is ready. Now let’s fill the page itself! The second part inside H T M L is body, like the buddy’s body. Watch what comes out of it!", required: true },
-    { id: "en195", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] How about that! The text, the picture and the button flew from the body into the window.", required: true },
-    { id: "en196", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The text, pictures and buttons you see on the page go inside body.", required: true },
-    { id: "en197", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now type a greeting in the empty field between the body tags. For example, Hello!.", required: true },
-    { id: "en198", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The text will appear in the window. Then tap Done.", required: true },
-    { id: "en199", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Look at the code: there’s an empty field between the body tags.", required: true },
-    { id: "en200", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap the empty field between the body tags, type your text and tap Done.", required: true },
-    { id: "en201", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Let’s tidy up! Where does each cut-out live: in head or in body? Drag it, or tap a cut-out, then a part.", required: true },
-    { id: "en202", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: this is the title line. title sits inside head, so it belongs in head.", required: true },
-    { id: "en203", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Almost! This text should show in the window, so it goes in body.", required: true },
-    { id: "en204", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] All sorted! title is in head; the text, the picture and the button are in body.", required: true },
-    { id: "en205", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Can you see this in the browser window?", required: true },
-    { id: "en206", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The page’s text, pictures and buttons go in body. The title line goes in head.", required: true },
-    { id: "en207", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now let’s see all the code. How does the browser work? It reads the code from top to bottom and builds the page. Watch!", required: true },
-    { id: "en208", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s an important bit: first head closes, then body opens.", required: true },
-    { id: "en209", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Want to hear a part again? Tap a code line or a part on the right, and I’ll tell you.", required: true },
-    { id: "en210", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The first line, doctype H T M L, is special. It tells the browser: This is an H T M L page. It has no pair.", required: true },
-    { id: "en211", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The H T M L tag hugs the whole page: head and body are inside it.", required: true },
-    { id: "en212", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Here’s head, the page’s head. It holds information about the page.", required: true },
-    { id: "en213", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside head is title. Inside it goes the page name, and the browser shows that name on the tab.", required: true },
-    { id: "en214", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And here’s body, the page’s body. It holds the text, pictures and buttons you see on the page.", required: true },
-    { id: "en215", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And here’s your text! It’s inside body, so it’s in the window.", required: true },
-    { id: "en216", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now the big challenge: build the whole code! The first line is in place. Tap a strip, and it goes into the next empty line.", required: true },
-    { id: "en217", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] If you need to change the order, move a strip up or down with the arrows. When everything’s in place, tap Check.", required: true },
-    { id: "en218", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Put the opening H T M L tag right after the doctype line. The closing one goes at the very end.", required: true },
-    { id: "en219", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Close head before body starts.", required: true },
-    { id: "en220", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title goes inside head.", required: true },
-    { id: "en221", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] The page text goes inside body.", required: true },
-    { id: "en222", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Inside H T M L: first head with title, then body with the text.", required: true },
-    { id: "en223", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Tap one marked strip, then the other: they swap places.", required: true },
-    { id: "en224", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Look at that, the code is right! The page name is in head, the text is in body.", required: true },
-    { id: "en225", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Something broke! All the page text went to the tab, and the window is empty. One tag is missing in the title line.", required: true },
-    { id: "en226", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not so fast! head closes later. First the page name has to end, so close title.", required: true },
-    { id: "en227", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Fixed it! The name is on the tab, the text is in the window. The closing title tag showed where the name ends.", required: true },
-    { id: "en228", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Now test yourself! A new page: the tab should say Robots, the window Hello!. Drag each phrase to its place in the code. Or tap a phrase, then the place.", required: true },
-    { id: "en229", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] And the last question. What do you think: why do we need the closing title tag? Tap an answer.", required: true },
-    { id: "en230", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not quite: a closing tag doesn’t show on the page and doesn’t put the name in the window.", required: true },
-    { id: "en231", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Not quite: this tag doesn’t start a new page. It shows where the name ends.", required: true },
-    { id: "en232", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Remember the page where the text ended up on the tab. Which tag was missing there?", required: true },
-    { id: "en233", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] A tag with a slash ends a part. What’s inside title?", required: true },
-    { id: "en234", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Exactly! It shows where the name ends. Without it, the page text ends up on the tab.", required: true },
-    { id: "en235", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Remember? A tag is a word in angle brackets. The browser doesn’t show it, it reads it.", required: true },
-    { id: "en236", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] H T M L holds the whole page: both head and body are inside it.", required: true },
-    { id: "en237", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] title is inside head. Inside it goes the page name, and the browser shows that name on the tab.", required: true },
-    { id: "en238", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [excited] Hooray! Your first H T M L page is ready. You’re one step closer to being a real web developer!", required: true },
-    { id: "en239", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Well done!", required: true },
-    { id: "en240", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] Everything in the window lives inside body.", required: true },
-    { id: "en241", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [friendly] For example: Hello!", required: true },
-    { id: "en242", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says Space. Where will it show up?", required: true },
-    { id: "en243", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says Space. Where will it show up?", required: true },
-    { id: "en244", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says Music. Where will it show up?", required: true },
-    { id: "en245", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says Music. Where will it show up?", required: true },
-    { id: "en246", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says The final is on Friday!. Where will it show up?", required: true },
-    { id: "en247", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says The final is on Friday. Where will it show up?", required: true },
-    { id: "en248", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says The final is on Friday!. Where will it show up?", required: true },
-    { id: "en249", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says The final is on Friday. Where will it show up?", required: true },
-    { id: "en250", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says Concert today!. Where will it show up?", required: true },
-    { id: "en251", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] title says Concert today. Where will it show up?", required: true },
-    { id: "en252", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says Concert today!. Where will it show up?", required: true },
-    { id: "en253", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [curious] Now body says Concert today. Where will it show up?", required: true },
-    { id: "en254", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: Robots landed in the window. Whatever is in body shows in the window. The tab needs title.", required: true },
-    { id: "en255", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: Robots landed on the tab. Whatever is in title shows on the tab. The window needs body.", required: true },
-    { id: "en256", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: Hello! landed in the window. Whatever is in body shows in the window. The tab needs title.", required: true },
-    { id: "en257", lang: "en", voiceId: "agoC45V78njTIxYzwmSb", text: "[English pronunciation] [reassuring] Look: Hello! landed on the tab. Whatever is in title shows on the tab. The window needs body.", required: true },
-  ]
-};
-// Чистый текст реплики (как его отдаёт урок) → id записи, по языкам.
-const SPEECH_INDEX = {
-  uz: {
-    "Hammaga salom! Mening ismim Kodi. Hozir sizlarga bitta veb-sahifani ko‘rsataman. Nimaga deysizmi? Buni dars davomida bilib olasiz!": "uz001",
-    "Tepadagi mana bu kichkina joyni ko‘ryapsizmi? Bu yorliq deyiladi. Unga sahifaning nomi yozib qo‘yilgan.": "uz002",
-    "Endi bir narsani tasavvur qiling: shu sahifa odam bo‘lib qolsa, qanaqa bo‘larkin? Qani, ko‘ramiz! Aylantirish tugmasini bosing.": "uz003",
-    "Voy-voy, qarang! Sahifa jonlanib, odamchaga aylanib qoldi!": "uz004",
-    "Sezdingizmi? Sahifaning nomi endi uning boshida turibdi. Chunki boshda sahifa haqidagi ma’lumotlar saqlanadi.": "uz005",
-    "Tanasi-chi? U sahifada ko‘rinib turgan narsalardan yasalgan: matndan, rasmdan va tugmadan.": "uz006",
-    "Bugun siz ham o‘zingizning sahifangizni yasaysiz: unga nom qo‘yasiz, salom ham yozasiz. Lekin oldin kod degani qanaqa bo‘lishini ko‘rib olamiz.": "uz007",
-    "Mana, bu kod. Brauzer sahifani aynan shundan yig‘adi. Qani, qanday o‘qishini kuzatib turing!": "uz008",
-    "Sezdingizmi? Brauzer kodni xuddi biz kitob o‘qigandek o‘qiyapti.": "uz009",
-    "Har bir qatorni chapdan o‘ngga qarab o‘qiydi.": "uz010",
-    "Qatorlarni esa tepadan pastga, bittalab o‘qiydi.": "uz011",
-    "Brauzer kodni oxirigacha o‘qib chiqdi. mana, sahifa ham tayyor! Endi bu kodda nimalar yozilganini birga ko‘rib chiqamiz.": "uz012",
-    "Ramkaga bir qarang-chi: unda ikkita yozuv bor. Tepadagisini bosib ko‘ring.": "uz013",
-    "Mana bu chap burchakli qavs va o‘ng burchakli qavs belgilarini ko‘ryapsizmi? Ularni burchakli qavslar deyishadi.": "uz014",
-    "Ularning o‘rtasida [English pronunciation] HTML [O'zbekcha tallaffuz] degan so‘z turibdi. Bu [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi.": "uz015",
-    "Mana shu yozuv butunligicha [English pronunciation] tag [O'zbekcha tallaffuz] deyiladi. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni sahifada ko‘rsatmaydi, faqat o‘qiydi.": "uz016",
-    "Bunisi ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U brauzerga Sahifa shu yerdan boshlanadi, deb aytadi. Endi pastdagisini bosing.": "uz017",
-    "Farqini sezdingizmi? Bunda birinchi qavsdan keyin qiya chiziq bor. Bu yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U Sahifa shu yerda tugaydi, deydi.": "uz018",
-    "Demak, ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlaydi, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] tugatadi. Sahifadagi hamma narsa shu ikkalasining o‘rtasida turadi.": "uz019",
-    "Sizga bir sir aytaymi? Bu ramkani tushunarli bo‘lsin deb o‘zimiz chizdik. Haqiqiy brauzerda uni ko‘rmaysiz.": "uz020",
-    "Voy, ramkaning pastki cheti qayoqqa ketdi? Kodda yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i yo‘q ekan. Uni bo‘sh qatorga yozing-da, Tekshirishni bosing.": "uz021",
-    "Oz qoldi! Bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ku. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da [English pronunciation] HTML [O'zbekcha tallaffuz] so‘zidan oldin qiya chiziq bo‘ladi.": "uz022",
-    "Boshi tushib qolibdi: [English pronunciation] tag [O'zbekcha tallaffuz] doim qavsi bilan boshlanadi.": "uz023",
-    "Oxiri tushib qolibdi: [English pronunciation] tag [O'zbekcha tallaffuz] doim qavsi bilan tugaydi.": "uz024",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] ichidagi so‘zga qarang-chi: bu yerga [English pronunciation] HTML [O'zbekcha tallaffuz] yozilishi kerak.": "uz025",
-    "Nimadir chalkashib ketdi. Tepadagi [English pronunciation] tag [O'zbekcha tallaffuz] bilan solishtirib ko‘ring: qavs, qiya chiziq, [English pronunciation] HTML [O'zbekcha tallaffuz], qavs.": "uz026",
-    "Ramkaning tepasidagi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang. Pastdagisi unga juda o‘xshaydi.": "uz027",
-    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] ham xuddi o‘sha, faqat qiya chizig‘i bor.": "uz028",
-    "Tugmalarni ketma-ket bosing: qavs, qiya chiziq, [English pronunciation] HTML [O'zbekcha tallaffuz], keyin yana qavs.": "uz029",
-    "Zo‘r! Ramka yopildi. Endi butun sahifa ikkita [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ining o‘rtasida.": "uz030",
-    "Endi navbat sizga! Ramkaga ikkita [English pronunciation] tag [O'zbekcha tallaffuz] kerak: biri tepaga, biri pastga. Faqat ehtiyot bo‘ling: pastdagi uchta [English pronunciation] tag [O'zbekcha tallaffuz]-dan bittasi ortiqcha.": "uz031",
-    "[English pronunciation] tag [O'zbekcha tallaffuz]-ni ushlab, joyiga olib boring. Yoki oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin joyni bosing.": "uz032",
-    "Oz qoldi! Tepada sahifa boshlanadi, shuning uchun bu yerga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz033",
-    "Hechqisi yo‘q! Pastda sahifa tugaydi, bu yerga qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz034",
-    "Ana, tuzoq shu yerda ekan! Bu chiziq teskari tomonga qiyshaygan. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da chiziq o‘ngga qarab qiyshaygan bo‘ladi.": "uz035",
-    "Oldin [English pronunciation] tag [O'zbekcha tallaffuz]-ni tanlang.": "uz036",
-    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] sahifani boshlaydi-yu, qaysi biri tugatadi?": "uz037",
-    "Tepaga qiya chiziqsiz [English pronunciation] tag [O'zbekcha tallaffuz], pastga qiya chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] qo‘yiladi.": "uz038",
-    "Yonib turgan [English pronunciation] tag [O'zbekcha tallaffuz]-ni yonib turgan joyga olib boring.": "uz039",
-    "Barakalla, ikkala [English pronunciation] tag [O'zbekcha tallaffuz] ham joyida! Teskari chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] esa ortiqcha edi.": "uz040",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida ikkita qism yashaydi. Birinchisining nomi [English pronunciation] head [O'zbekcha tallaffuz], inglizchada bosh degani. Odamchaning boshi xuddi shu [English pronunciation] head [O'zbekcha tallaffuz].": "uz041",
-    "[English pronunciation] head [O'zbekcha tallaffuz] ichida sahifa haqidagi ma’lumotlar turadi. Pastdagi katta joy. brauzer oynasiga qarang: u yerda ular ko‘rinmaydi. Qani, boshni bosib, ichida nima borligini ko‘ring.": "uz042",
-    "Ana, ichida nima ekan: sahifaning nomi! U [English pronunciation] title tag [O'zbekcha tallaffuz]-ining ichiga yoziladi. Endi nom yozilgan qog‘ozchani bosing.": "uz043",
-    "Nom uchib, yorliqqa o‘tib oldi! Brauzer [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matnni mana shu yerda, tepada ko‘rsatadi. Oynada esa u yo‘q.": "uz044",
-    "Endi kodga qarang: tepada ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, pastda yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i turibdi.": "uz045",
-    "[English pronunciation] title [O'zbekcha tallaffuz] qatori ularning o‘rtasida. Demak, [English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi.": "uz046",
-    "Endi eng qiziq joyiga keldik: sahifangizga o‘zingiz nom qo‘ying! Uni [English pronunciation] title [O'zbekcha tallaffuz] teglarining o‘rtasiga yozing, masalan, Futbol. Nom shu zahoti yorliqda chiqadi. Keyin Tayyorni bosing.": "uz047",
-    "Zo‘r! Endi yorliqda sahifangizning nomi turibdi.": "uz048",
-    "Nom qayerga yoziladi? Kodga qarang: u yerda bo‘sh joy bor.": "uz049",
-    "Nom ikkita [English pronunciation] title tag [O'zbekcha tallaffuz]-ining o‘rtasiga yoziladi.": "uz050",
-    "Ikkita [English pronunciation] title tag [O'zbekcha tallaffuz]-i o‘rtasidagi bo‘sh joyni bosing, nom yozing va Tayyorni bosing.": "uz051",
-    "Bu yerga faqat so‘z yozing, burchakli qavslar kerak emas.": "uz052",
-    "Endi bir o‘yin o‘ynaymiz: siz brauzersiz! Kod qatoriga qarab, so‘z qayerda chiqishini toping: yorliqdami yoki oynada?": "uz053",
-    "To‘ppa-to‘g‘ri! [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi so‘z yorliqqa chiqdi.": "uz054",
-    "Topdingiz! [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi so‘z oynaga chiqdi.": "uz055",
-    "Hechqisi yo‘q! So‘z [English pronunciation] title tag [O'zbekcha tallaffuz]-ida turgan edi, shuning uchun yorliqqa chiqdi.": "uz056",
-    "Bu safar adashdingiz! So‘z [English pronunciation] body tag [O'zbekcha tallaffuz]-ida turgan edi, shuning uchun oynaga chiqdi.": "uz057",
-    "So‘z qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-larning o‘rtasida turibdi?": "uz058",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda, [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada ko‘rinadi.": "uz059",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] nomini o‘qing: [English pronunciation] title [O'zbekcha tallaffuz] bo‘lsa Yorliqni, [English pronunciation] body [O'zbekcha tallaffuz] bo‘lsa Oynani bosing.": "uz060",
-    "Mana, o‘yin tugadi! Esingizda bo‘lsin: [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda, [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi.": "uz061",
-    "Keling, yana bittasini ko‘ramiz.": "uz062",
-    "Nom tayyor. Endi sahifaning o‘zini to‘ldiramiz! [English pronunciation] HTML [O'zbekcha tallaffuz] ichidagi ikkinchi qismning nomi [English pronunciation] body [O'zbekcha tallaffuz], inglizchada tana degani. Qani, odamchaning tanasidan nima uchib chiqarkin?": "uz063",
-    "Voy, qarang! Matn, rasm, tugma. hammasi tanadan uchib chiqib, to‘ppa-to‘g‘ri oynaga tushdi.": "uz064",
-    "Oynada nima ko‘rinsa. matnmi, rasmmi, tugmami. hammasi [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi. Bugun [English pronunciation] body [O'zbekcha tallaffuz] ichiga matn yozamiz, rasm bilan tugmani keyingi darslarda qo‘shamiz.": "uz065",
-    "Endi [English pronunciation] body [O'zbekcha tallaffuz] teglarining o‘rtasiga Salom so‘zini yozing.": "uz066",
-    "U shu zahoti oynada paydo bo‘ladi. Keyin Tayyorni bosing.": "uz067",
-    "Ajoyib! Salomingiz oynada turibdi.": "uz068",
-    "Oyna uchun matn qayerga yoziladi? Kodga qarang.": "uz069",
-    "Matn ikkita [English pronunciation] body tag [O'zbekcha tallaffuz]-ining o‘rtasiga yoziladi.": "uz070",
-    "Ikkita [English pronunciation] body tag [O'zbekcha tallaffuz]-i o‘rtasidagi bo‘sh joyni bosing, matn yozing va Tayyorni bosing.": "uz071",
-    "Keling, endi hammasini joy-joyiga qo‘yamiz! Har bir bo‘lakning o‘z uyi bor. Qani, toping-chi: uyi [English pronunciation] head [O'zbekcha tallaffuz] ichidami yoki [English pronunciation] body [O'zbekcha tallaffuz] ichidami? Bo‘lakni olib boring yoki oldin bo‘lakni, keyin kerakli qismni bosing.": "uz072",
-    "Qarang: bu [English pronunciation] title [O'zbekcha tallaffuz] qatori-ku. [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida yashaydi, demak, uning joyi [English pronunciation] head [O'zbekcha tallaffuz].": "uz073",
-    "Yo‘q, bunisining uyi boshqa joyda! Salomingiz oynada ko‘rinadi-ku, demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida yashaydi.": "uz074",
-    "Hechqisi yo‘q! Rasmni oynada ko‘ramiz-ku, demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz075",
-    "O‘ylab ko‘ring-chi: tugmani qayerda bosamiz? Oynada! Demak, u [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz076",
-    "Hammasi joy-joyida! [English pronunciation] title head [O'zbekcha tallaffuz] ichida, salom, rasm va tugma esa [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz077",
-    "Oldin bo‘lakni tanlang.": "uz078",
-    "O‘ylab ko‘ring: bu narsa brauzer oynasida ko‘rinadimi?": "uz079",
-    "Oynada ko‘rinadigan hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida. [English pronunciation] title [O'zbekcha tallaffuz] qatori esa [English pronunciation] head [O'zbekcha tallaffuz] ichida.": "uz080",
-    "Yonib turgan bo‘lakni yonib turgan joyga olib boring.": "uz081",
-    "Endi siz hamma qismlarni bilasiz. Keling, brauzer sizning kodingizni qanday o‘qishini yana bir marta ko‘ramiz va har bir qatorni tushunib olamiz.": "uz082",
-    "Mana bu joyi muhim: oldin [English pronunciation] head [O'zbekcha tallaffuz] yopiladi, keyin [English pronunciation] body [O'zbekcha tallaffuz] ochiladi. Ular bir-birining ichida emas, ketma-ket turadi.": "uz083",
-    "Yana bir marta eshitmoqchimisiz? Kod qatorini yoki o‘ngdagi qismni bosing, men aytib beraman.": "uz084",
-    "Birinchi qator. [English pronunciation] doctype HTML [O'zbekcha tallaffuz]. U brauzerga Bu [English pronunciation] HTML [O'zbekcha tallaffuz] sahifa, deb aytadi. Uning jufti yo‘q, shuning uchun uni yopish shart emas.": "uz085",
-    "[English pronunciation] HTML tag [O'zbekcha tallaffuz]-i butun sahifani quchoqlab turadi. [English pronunciation] head [O'zbekcha tallaffuz] ham, [English pronunciation] body [O'zbekcha tallaffuz] ham uning ichida.": "uz086",
-    "Mana bu [English pronunciation] head [O'zbekcha tallaffuz], sahifaning boshi. Bu yerda sahifa haqidagi ma’lumotlar turadi.": "uz087",
-    "[English pronunciation] head [O'zbekcha tallaffuz] ichida [English pronunciation] title [O'zbekcha tallaffuz] bor, unda sahifaning nomi yozilgan. Brauzer shu nomni yorliqda ko‘rsatadi.": "uz088",
-    "Mana bu [English pronunciation] body [O'zbekcha tallaffuz], sahifaning tanasi. Oynada ko‘rinadigan hamma narsa shu yerda.": "uz089",
-    "Mana, sizning salomingiz! U [English pronunciation] body [O'zbekcha tallaffuz] ichida, shuning uchun oynada ko‘rinyapti.": "uz090",
-    "Mana, eng qiziq joyi keldi: endi butun kodni o‘zingiz yig‘asiz! Birinchi qatorni men qo‘yib qo‘ydim, qolgani sizdan. Qatorchani bossangiz, o‘zi keyingi bo‘sh joyga borib tushadi.": "uz091",
-    "Tartibni adashtirib qo‘ysangiz, qo‘rqmang: qatorchalarni o‘qchalar bilan tepaga yoki pastga suring. Hammasi tayyor bo‘lsa, Tekshirishni bosing.": "uz092",
-    "[English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin darrov ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i keladi. Yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i esa eng oxirida turadi.": "uz093",
-    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] doim o‘zining ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-idan keyin keladi.": "uz094",
-    "Oldin [English pronunciation] head [O'zbekcha tallaffuz] keladi, keyin [English pronunciation] body [O'zbekcha tallaffuz].": "uz095",
-    "Oldin [English pronunciation] head tag [O'zbekcha tallaffuz]-ini yoping, keyin [English pronunciation] body tag [O'zbekcha tallaffuz]-ini oching.": "uz096",
-    "[English pronunciation] title head [O'zbekcha tallaffuz] ichida turishi kerak.": "uz097",
-    "Salom [English pronunciation] body [O'zbekcha tallaffuz] ichida turishi kerak.": "uz098",
-    "[English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin qaysi [English pronunciation] tag [O'zbekcha tallaffuz] keladi, eng oxirida-chi?": "uz099",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida oldin [English pronunciation] title [O'zbekcha tallaffuz] bilan [English pronunciation] head [O'zbekcha tallaffuz], keyin salom bilan [English pronunciation] body [O'zbekcha tallaffuz] keladi.": "uz100",
-    "Belgilangan qatorlardan birini bosing, keyin boshqasini. Ular joyini almashtiradi.": "uz101",
-    "Qoyil! Kod to‘g‘ri yig‘ildi. Nom [English pronunciation] head [O'zbekcha tallaffuz] ichida, salom [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz102",
-    "Voy, nimadir buzilib qolibdi! Sahifadagi hamma matn yorliqqa chiqib ketibdi, oyna bo‘m-bo‘sh. [English pronunciation] title [O'zbekcha tallaffuz] qatorida bitta [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayapti.": "uz103",
-    "Keling, birga tuzatamiz! Kerakli [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo‘sh joyga olib boring yoki ustiga bir bosing.": "uz104",
-    "Yo‘q, bu ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ku! [English pronunciation] title [O'zbekcha tallaffuz] allaqachon ochilgan, endi uni yopadigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz105",
-    "Shoshilmang! [English pronunciation] head [O'zbekcha tallaffuz] keyinroq yopiladi. Oldin nom tugashi kerak, ya’ni [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yopamiz.": "uz106",
-    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan-u, lekin yopilmagan?": "uz107",
-    "[English pronunciation] title [O'zbekcha tallaffuz] ochilgan. Uni yopadigan [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz108",
-    "Qiya chiziqli [English pronunciation] title tag [O'zbekcha tallaffuz]-ini bo‘sh joyga qo‘ying.": "uz109",
-    "Mana, tuzaldi! Nom yorliqda, salom oynada. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i brauzerga nom qayerda tugashini ko‘rsatib berdi.": "uz110",
-    "Endi o‘zingizni sinab ko‘ring! Mana yangi sahifa. Yorliqda Robotlar, oynada esa Salom! chiqishi kerak. Har bir so‘zni koddagi o‘z joyiga olib boring.": "uz111",
-    "Yorliqdagi matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-ga yoziladi?": "uz112",
-    "Yorliq uchun [English pronunciation] title [O'zbekcha tallaffuz], oyna uchun [English pronunciation] body [O'zbekcha tallaffuz].": "uz113",
-    "Yonib turgan so‘zni yonib turgan joyga olib boring.": "uz114",
-    "Juda zo‘r! Robotlar [English pronunciation] title tag [O'zbekcha tallaffuz]-ida, shuning uchun yorliqda. Salom! [English pronunciation] body tag [O'zbekcha tallaffuz]-ida, shuning uchun oynada.": "uz115",
-    "Oldin so‘zni tanlang.": "uz116",
-    "Va oxirgi savol. Sizningcha, yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nimaga kerak? Javobni tanlang.": "uz117",
-    "Unday emas: yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] sahifada ko‘rinmaydi, oynaga ham hech narsa chiqarmaydi.": "uz118",
-    "Unday emas: sahifa qayerda tugashini yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i ko‘rsatadi. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i faqat [English pronunciation] title tag [O'zbekcha tallaffuz]-ini yopadi.": "uz119",
-    "Matn yorliqqa chiqib ketgan sahifa esingizdami? U yerda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yetishmagan edi?": "uz120",
-    "Qiya chiziqli [English pronunciation] tag [O'zbekcha tallaffuz] o‘z qismini yopadi. [English pronunciation] title [O'zbekcha tallaffuz] ichida nima turadi?": "uz121",
-    "Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i sahifa nomini tugatadi.": "uz122",
-    "Xuddi shunday! U nom qayerda tugashini ko‘rsatadi. U bo‘lmasa, sahifadagi hamma matn yorliqqa chiqib ketadi.": "uz123",
-    "Mana, sizning birinchi sahifangiz!": "uz124",
-    "Esingizdami? [English pronunciation] tag [O'zbekcha tallaffuz]. bu burchakli qavs ichidagi so‘z. Brauzer uni ko‘rsatmaydi, faqat o‘qiydi.": "uz125",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] butun sahifani o‘rab turadi: [English pronunciation] head [O'zbekcha tallaffuz] ham, [English pronunciation] body [O'zbekcha tallaffuz] ham uning ichida.": "uz126",
-    "[English pronunciation] head [O'zbekcha tallaffuz] sahifa haqidagi ma’lumotlarni saqlaydi.": "uz127",
-    "[English pronunciation] title head [O'zbekcha tallaffuz] ichida yashaydi. Unga sahifa nomi yoziladi, brauzer esa shu nomni yorliqda ko‘rsatadi.": "uz128",
-    "Oynada nima ko‘rinsa, hammasi [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz129",
-    "Barakalla! Birinchi [English pronunciation] HTML [O'zbekcha tallaffuz] sahifangiz tayyor. Endi siz haqiqiy veb-dasturchi bo‘lishga bir qadam yaqinlashdingiz!": "uz130",
-    "Voy, zo‘r!": "uz131",
-    "Ana! Chiqdi!": "uz132",
-    "Super!": "uz133",
-    "Qoyil!": "uz134",
-    "Ura!": "uz135",
-    "Zo‘r-ku!": "uz136",
-    "Yana bir bor urinib ko‘ring.": "uz137",
-    "Diqqat bilan qarang.": "uz138",
-    "Yaqin qoldingiz. Shoshilmang.": "uz139",
-    "Kod qanday o‘qiladi?": "uz140",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] nima?": "uz141",
-    "Yorliqmi yoki oyna?": "uz142",
-    "Juma kuni final!": "uz143",
-    "Bugun konsert!": "uz144",
-    "Hamma qatorlar joyida! Endi Tekshirish tugmasini bosing, kod to‘g‘ri yig‘ilganini bilib olamiz.": "uz145",
-    "Belgilangan qatorlarni strelkalar bilan yuqoriga yoki pastga suring, keyin yana Tekshirishni bosing.": "uz146",
-    "Salom!": "uz147",
-    "yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nimaga kerak?": "uz148",
-    "Salom, dunyo!": "uz149",
-    "Bu yerga faqat so‘z yozing, burchakli qavslarsiz.": "uz150",
-    "Ikki qatorni bosing. ular joy almashadi.": "uz151",
-    "Salom! Men Kodi. Qarang, mana bu veb-sahifa.": "uz152",
-    "Tepadagi kichkina joyni ko‘ryapsizmi? Bu brauzer varag‘i, unda sahifa nomi yozilgan.": "uz153",
-    "Agar veb-sahifa odam bo‘lsa, nima deb o‘ylaysiz, u qanday ko‘rinardi? Keling, shuni ko‘ramiz. Aylantirish tugmasini bosing.": "uz154",
-    "Voy, qarang! Sahifa jonlanib, odamchaga aylandi!": "uz155",
-    "Sezdingizmi? Sahifa nomi odamchaning boshiga joylashdi. Boshda sahifa haqidagi ma’lumotlar saqlanadi.": "uz156",
-    "Tanasi-chi? U sahifada ko‘rinadigan narsalardan yig‘ildi: matn, rasm va tugmadan.": "uz157",
-    "Bugun o‘z sahifangizni yaratasiz, unga nom berasiz va salomlashish matnini yozasiz! Keling, avval buning kodi qanday ko‘rinishini ko‘rib chiqamiz.": "uz158",
-    "Mana, sahifaning kodi! Brauzer shu kod asosida sahifani yaratadi. U kodni qanday o‘qishini kuzating!": "uz159",
-    "Sezdingizmi? Brauzer kodni xuddi kitob o‘qigandek o‘qiydi.": "uz160",
-    "Har bir qatorni chapdan o‘ngga o‘qiydi.": "uz161",
-    "Qatorlarni esa yuqoridan pastga, birin-ketin o‘qiydi.": "uz162",
-    "Mana, sahifa tayyor! Endi kodning har bir qismi nimani anglatishini birga bilib olamiz.": "uz163",
-    "Ramkaga qarang: unda ikkita qiziq yozuv bor. Ular nimani bildiradi?": "uz164",
-    "Mana bu belgilarga qarang. Ular burchakli qavslar deyiladi.": "uz165",
-    "Qavslar orasida [English pronunciation] HTML [O'zbekcha tallaffuz] deb yozilgan. Bu. [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi.": "uz166",
-    "Qavslar va ular orasidagi nom birgalikda [English pronunciation] tag [O'zbekcha tallaffuz] deyiladi. Mana bu. [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni o‘qiydi, lekin sahifada ko‘rsatmaydi.": "uz167",
-    "Yuqoridagi [English pronunciation] HTML [O'zbekcha tallaffuz]. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. U brauzerga: Sahifa shu yerdan boshlanadi, deydi.": "uz168",
-    "Pastdagi yozuvga qarang: birinchi qavsdan keyin qiya chiziq bor. Bu. yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i. U brauzerga: Sahifa shu yerda tugaydi, deydi.": "uz169",
-    "Ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlanishni, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] esa tugashni bildiradi. Sahifaning barcha mazmuni shu ikki [English pronunciation] tag [O'zbekcha tallaffuz] orasida joylashadi.": "uz170",
-    "Bir sirni aytaymi? Bu ramkani tushunish oson bo‘lishi uchun chizdik. Aslida brauzer bu ramkani ko‘rsatmaydi.": "uz171",
-    "Qarang, ramkaning pastki cheti yo‘q! Kodda yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i yetishmayapti. Uni bo‘sh qatorga yozing va Tekshirish tugmasini bosing.": "uz172",
-    "Deyarli to‘g‘ri! Bu. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-da [English pronunciation] HTML [O'zbekcha tallaffuz] nomidan oldin qiya chiziq bo‘ladi.": "uz173",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] boshida chap burchakli qavs yetishmayapti. Uni qo‘shing.": "uz174",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] oxirida o‘ng burchakli qavs yetishmayapti. Uni qo‘shing.": "uz175",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] nomini tekshiring: bu yerda [English pronunciation] HTML [O'zbekcha tallaffuz] bo‘lishi kerak.": "uz176",
-    "Belgilar tartibini tekshiring: avval chap burchakli qavs, keyin qiya chiziq, undan keyin [English pronunciation] HTML [O'zbekcha tallaffuz] va oxirida o‘ng burchakli qavs.": "uz177",
-    "Ramkaning yuqorisidagi ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ga qarang.": "uz178",
-    "Yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ning nomi ham [English pronunciation] HTML [O'zbekcha tallaffuz]. Faqat nomidan oldin qiya chiziq qo‘yiladi.": "uz179",
-    "Avval chap burchakli qavsni, keyin qiya chiziqni yozing. So‘ng [English pronunciation] HTML [O'zbekcha tallaffuz] deb yozing va oxiriga o‘ng burchakli qavsni qo‘ying.": "uz180",
-    "Zo‘r, ramka yopildi! Endi sahifaning barcha mazmuni ikki [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i orasida.": "uz181",
-    "Endi [English pronunciation] tag [O'zbekcha tallaffuz]-larni joyiga qo‘ying! Biri ramkaning yuqorisiga, ikkinchisi pastiga qo‘yiladi. Diqqat: uchta [English pronunciation] tag [O'zbekcha tallaffuz]-dan bittasi ortiqcha!": "uz182",
-    "[English pronunciation] tag [O'zbekcha tallaffuz]-ni barmog‘ingiz bilan bosib turing va kerakli joyga suring. Yoki avval [English pronunciation] tag [O'zbekcha tallaffuz]-ni, keyin uning joyini bosing.": "uz183",
-    "Deyarli to‘g‘ri! Yuqorida sahifa boshlanadi. Bu yerga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz184",
-    "Yana bir bor urinib ko‘ring! Pastda sahifa tugaydi. Bu yerga qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak.": "uz185",
-    "Bu tegdagi chiziqqa qarang: uning yuqori uchi chap tomonda. Yopuvchi tegdagi qiya chiziqning yuqori uchi esa o‘ng tomonda bo‘lishi kerak.": "uz186",
-    "Avval [English pronunciation] tag [O'zbekcha tallaffuz]-ni tanlang.": "uz187",
-    "Qaysi [English pronunciation] tag [O'zbekcha tallaffuz] sahifaning boshlanishini, qaysi biri tugashini bildiradi?": "uz188",
-    "Yuqoriga qiya chiziqsiz ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni, pastga esa qiya chiziqli yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz]-ni qo‘ying.": "uz189",
-    "Ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ini ramkaning yuqorisidagi joyga suring.": "uz190",
-    "Ajoyib, ikkala [English pronunciation] tag [O'zbekcha tallaffuz] ham joyida! Chizig‘i teskari tomonga qiyalangan [English pronunciation] tag [O'zbekcha tallaffuz] ortiqcha edi.": "uz191",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida ikkita asosiy qism bor. Birinchisi. [English pronunciation] head [O'zbekcha tallaffuz]. Ingliz tilida [English pronunciation] head [O'zbekcha tallaffuz] bosh degani. Odamchaning boshi bu qismni eslab qolishga yordam beradi.": "uz192",
-    "[English pronunciation] head [O'zbekcha tallaffuz] qismida sahifa haqidagi ma’lumotlar saqlanadi. Bu ma’lumotlar sahifaning asosiy qismida ko‘rinmaydi.": "uz193",
-    "[English pronunciation] head [O'zbekcha tallaffuz] ichida nima bor ekan? Mana, sahifaning nomi! U ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.": "uz194",
-    "Sahifaning nomi brauzer varag‘iga ko‘chdi! Brauzer [English pronunciation] title [O'zbekcha tallaffuz] ichidagi nomni shu yerda ko‘rsatadi.": "uz195",
-    "Kodga qarang: yuqorida ochuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i, pastda esa yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-i bor.": "uz196",
-    "[English pronunciation] title [O'zbekcha tallaffuz] qatori shu ikki [English pronunciation] tag [O'zbekcha tallaffuz] orasida joylashgan. Demak, [English pronunciation] title head [O'zbekcha tallaffuz] qismining ichida.": "uz197",
-    "Endi sahifangizga nom bering! Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga o‘zingiz tanlagan nomni yozing. Masalan, Futbol. Nom darhol brauzer varag‘ida paydo bo‘ladi. So‘ng Tayyor tugmasini bosing.": "uz198",
-    "Zo‘r! Endi brauzer varag‘ida sahifangizning nomi ko‘rinib turibdi.": "uz199",
-    "Sahifaning nomi qayerga yoziladi? Kodga qarang.": "uz200",
-    "Sahifaning nomi ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.": "uz201",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasidagi bo‘sh joyni bosing va sahifangizga nom yozing. So‘ng Tayyor tugmasini bosing.": "uz202",
-    "Bu yerga faqat sahifa nomini yozing. Burchakli qavslar kerak emas.": "uz203",
-    "Varaqmi yoki oyna?": "uz204",
-    "Endi o‘ynaymiz: o‘zingizni brauzer deb tasavvur qiling! Kodga qarang va matn qayerda paydo bo‘lishini toping: brauzer varag‘idami yoki oynadami?": "uz205",
-    "Final juma kuni!": "uz206",
-    "To‘g‘ri! [English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag‘ida paydo bo‘ldi.": "uz207",
-    "Topdingiz! [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn brauzer oynasida paydo bo‘ldi.": "uz208",
-    "Yana bir bor urinib ko‘ramiz! Matn [English pronunciation] title [O'zbekcha tallaffuz] ichida yozilgan, shuning uchun u brauzer varag‘ida paydo bo‘ldi. Keling, yana bir misolni ko‘ramiz.": "uz209",
-    "Yana bir bor urinib ko‘ramiz! Matn [English pronunciation] body [O'zbekcha tallaffuz] ichida yozilgan, shuning uchun u brauzer oynasida paydo bo‘ldi. Keling, yana bir misolni ko‘ramiz.": "uz210",
-    "Matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-lar orasida yozilgan?": "uz211",
-    "[English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag‘ida, [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn esa brauzer oynasida ko‘rinadi.": "uz212",
-    "[English pronunciation] tag [O'zbekcha tallaffuz] nomiga qarang: [English pronunciation] title [O'zbekcha tallaffuz] bo‘lsa, Varaq tugmasini bosing. [English pronunciation] body [O'zbekcha tallaffuz] bo‘lsa, Oyna tugmasini bosing.": "uz213",
-    "Ajoyib! Endi bilasiz: [English pronunciation] title [O'zbekcha tallaffuz] ichidagi matn brauzer varag‘ida, [English pronunciation] body [O'zbekcha tallaffuz] ichidagi matn esa brauzer oynasida ko‘rinadi.": "uz214",
-    "Sahifangizning nomi tayyor! Endi uning ichini to‘ldiramiz. [English pronunciation] HTML [O'zbekcha tallaffuz] ichidagi ikkinchi asosiy qism. [English pronunciation] body [O'zbekcha tallaffuz]. Ingliz tilida [English pronunciation] body [O'zbekcha tallaffuz] tana degani. Odamchaning tanasiga qarang: undan nimalar chiqarkin?": "uz215",
-    "Mana! Matn, rasm va tugma odamchaning tanasidan uchib chiqib, sahifada paydo bo‘ldi.": "uz216",
-    "Sahifada ko‘rinadigan matnlar, rasmlar va tugmalar [English pronunciation] body [O'zbekcha tallaffuz] qismida joylashadi.": "uz217",
-    "Endi ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo‘sh joyga salomlashish matnini yozing. Masalan, Salom!.": "uz218",
-    "Yozgan matningiz darhol sahifada paydo bo‘ladi. So‘ng Tayyor tugmasini bosing.": "uz219",
-    "Ajoyib! Siz yozgan salomlashish matni endi sahifada ko‘rinib turibdi.": "uz220",
-    "Kodga qarang: [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo‘sh joyni toping.": "uz221",
-    "Salomlashish matni ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.": "uz222",
-    "[English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasidagi bo‘sh joyni bosing va Salom! deb yozing. So‘ng Tayyor tugmasini bosing.": "uz223",
-    "Bu yerga faqat matn yozing. Burchakli qavslar kerak emas.": "uz224",
-    "Keling, har bir bo‘lakni o‘z joyiga qo‘yamiz! Uning joyi qayerda: [English pronunciation] head [O'zbekcha tallaffuz] qismidami yoki [English pronunciation] body [O'zbekcha tallaffuz] qismidami? Bo‘lakni kerakli qismga suring. Yoki avval bo‘lakni, keyin kerakli qismni bosing.": "uz225",
-    "Qarang, bu. [English pronunciation] title [O'zbekcha tallaffuz] qatori. [English pronunciation] title head [O'zbekcha tallaffuz] ichida joylashadi. Bu bo‘lakni [English pronunciation] head [O'zbekcha tallaffuz] qismiga qo‘ying.": "uz226",
-    "Bu matn sahifada ko‘rinishi kerak. Shuning uchun uni [English pronunciation] body [O'zbekcha tallaffuz] qismiga qo‘ying.": "uz227",
-    "Rasm ham sahifada ko‘rinadi. Shuning uchun uning joyi [English pronunciation] body [O'zbekcha tallaffuz] qismida.": "uz228",
-    "O‘ynash tugmasi sahifada ko‘rinishi kerak. Demak, uning joyi ham [English pronunciation] body [O'zbekcha tallaffuz] qismida.": "uz229",
-    "Ajoyib, hammasi o‘z joyida! [English pronunciation] title head [O'zbekcha tallaffuz] ichida, matn, rasm va tugma esa [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz230",
-    "Avval bo‘lakni tanlang.": "uz231",
-    "O‘ylab ko‘ring: bu bo‘lakdagi narsa sahifada ko‘rinadimi yoki brauzer varag‘idami?": "uz232",
-    "Sahifada ko‘rinadigan matnlar, rasmlar va tugmalar [English pronunciation] body [O'zbekcha tallaffuz] qismida joylashadi. [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida bo‘ladi.": "uz233",
-    "Ajratib ko‘rsatilgan bo‘lakni ajratib ko‘rsatilgan joyga suring.": "uz234",
-    "Endi sahifangizning to‘liq kodini ko‘rib chiqamiz. Brauzer kodni yuqoridan pastga o‘qib, sahifani yaratadi. Qanday o‘qishini kuzating!": "uz235",
-    "Bu joyga e’tibor bering: avval [English pronunciation] head [O'zbekcha tallaffuz] qismi yopiladi, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi ochiladi.": "uz236",
-    "Biror qism haqidagi tushuntirishni yana eshitmoqchimisiz? Kod qatorini yoki o‘ngdagi mos qismni bosing. Men yana tushuntirib beraman.": "uz237",
-    "Birinchi qatorda [English pronunciation] doctype HTML [O'zbekcha tallaffuz] deb yozilgan. Bu. maxsus ko‘rsatma. U brauzerga: Bu [English pronunciation] HTML [O'zbekcha tallaffuz] hujjati, deb bildiradi. Unga yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kerak emas.": "uz238",
-    "Ochuvchi va yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-lari orasida sahifaning barcha mazmuni joylashadi. [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] body [O'zbekcha tallaffuz] qismlari ham shu yerda.": "uz239",
-    "Mana, [English pronunciation] head [O'zbekcha tallaffuz]. sahifaning boshi. Bu qismda sahifa haqidagi ma’lumotlar saqlanadi.": "uz240",
-    "[English pronunciation] head [O'zbekcha tallaffuz] ichida [English pronunciation] title [O'zbekcha tallaffuz] joylashadi. Ochuvchi va yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga sahifaning nomi yoziladi. Brauzer bu nomni brauzer varag‘ida ko‘rsatadi.": "uz241",
-    "Mana, [English pronunciation] body [O'zbekcha tallaffuz]. sahifaning tanasi. Sahifada ko‘rinadigan matnlar, rasmlar va tugmalar shu qismda joylashadi.": "uz242",
-    "Mana, siz yozgan matn! U [English pronunciation] body [O'zbekcha tallaffuz] ichida yozilgani uchun sahifada ko‘rinadi.": "uz243",
-    "Endi sahifangizning to‘liq kodini o‘zingiz yig‘ing! Birinchi qator allaqachon joyida. O‘ngdagi bo‘laklardan birini bosing. u navbatdagi bo‘sh qatorga joylashadi.": "uz244",
-    "Tartibni o‘zgartirish uchun bo‘lakni yuqoriga yoki pastga yo‘nalgan strelkalar yordamida suring. Barcha qatorlarni joyiga qo‘ygach, Tekshirish tugmasini bosing.": "uz245",
-    "[English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan so‘ng darhol ochuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-ini qo‘ying. Yopuvchi [English pronunciation] HTML tag [O'zbekcha tallaffuz]-i esa eng oxirida bo‘lishi kerak.": "uz246",
-    "Avval ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz], undan keyin unga mos yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] kelishi kerak.": "uz247",
-    "Avval [English pronunciation] head [O'zbekcha tallaffuz] qismi, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismi keladi.": "uz248",
-    "Avval [English pronunciation] head [O'zbekcha tallaffuz] qismini yoping, keyin [English pronunciation] body [O'zbekcha tallaffuz] qismini oching.": "uz249",
-    "[English pronunciation] title [O'zbekcha tallaffuz] qatorini ochuvchi va yopuvchi [English pronunciation] head tag [O'zbekcha tallaffuz]-lari orasiga qo‘ying.": "uz250",
-    "Siz yozgan matnni ochuvchi va yopuvchi [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga qo‘ying.": "uz251",
-    "[English pronunciation] doctype [O'zbekcha tallaffuz] qatoridan keyin qaysi [English pronunciation] tag [O'zbekcha tallaffuz] keladi? Eng oxirida-chi?": "uz252",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida avval [English pronunciation] head [O'zbekcha tallaffuz], keyin [English pronunciation] body [O'zbekcha tallaffuz] joylashadi. [English pronunciation] title [O'zbekcha tallaffuz] qatori [English pronunciation] head [O'zbekcha tallaffuz] ichida, siz yozgan matn esa [English pronunciation] body [O'zbekcha tallaffuz] ichida bo‘ladi.": "uz253",
-    "Belgilangan bo‘laklardan birini, keyin ikkinchisini bosing. Ular o‘rin almashadi.": "uz254",
-    "Qoyil, kodni to‘g‘ri yig‘dingiz! Sahifaning nomi [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasida, [English pronunciation] title [O'zbekcha tallaffuz] esa [English pronunciation] head [O'zbekcha tallaffuz] ichida. Siz yozgan matn [English pronunciation] body [O'zbekcha tallaffuz] ichida.": "uz255",
-    "Qarang, nimadir noto‘g‘ri! Sahifaning barcha matni brauzer varag‘ida paydo bo‘ldi, oyna esa bo‘sh qoldi. [English pronunciation] title [O'zbekcha tallaffuz] qatorida bitta [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayapti.": "uz256",
-    "Keling, xatoni tuzatamiz! Kerakli [English pronunciation] tag [O'zbekcha tallaffuz]-ni bo‘sh joyga suring yoki [English pronunciation] tag [O'zbekcha tallaffuz]-ning o‘zini bosing.": "uz257",
-    "Bu. ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz]. [English pronunciation] title [O'zbekcha tallaffuz] allaqachon ochilgan. Endi uni yopish kerak.": "uz258",
-    "Bu [English pronunciation] tag head [O'zbekcha tallaffuz] qismini yopadi. Avval [English pronunciation] title [O'zbekcha tallaffuz] qismini yopish kerak, keyin [English pronunciation] head [O'zbekcha tallaffuz] yopiladi.": "uz259",
-    "Kodga qarang: qaysi [English pronunciation] tag [O'zbekcha tallaffuz] ochilgan, lekin hali yopilmagan?": "uz260",
-    "[English pronunciation] title [O'zbekcha tallaffuz] ochilgan, lekin yopilmagan. Uni yopish uchun qaysi [English pronunciation] tag [O'zbekcha tallaffuz] kerak?": "uz261",
-    "Qiya chiziqli yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-ini bo‘sh joyga qo‘ying.": "uz262",
-    "Ajoyib, xato tuzatildi! Endi sahifaning nomi brauzer varag‘ida, salomlashish matni esa oynada. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nom qayerda tugashini bildirdi.": "uz263",
-    "Endi o‘zingizni sinab ko‘ring! Yangi sahifada Robotlar brauzer varag‘ida, Salom! esa oynada ko‘rinishi kerak. Har bir matnni koddagi kerakli joyga suring. Yoki avval matnni, keyin uning joyini bosing.": "uz264",
-    "Brauzer varag‘ida ko‘rinadigan matn qaysi [English pronunciation] tag [O'zbekcha tallaffuz]-lar orasiga yoziladi?": "uz265",
-    "Brauzer varag‘idagi nom [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga, oynadagi matn esa [English pronunciation] body tag [O'zbekcha tallaffuz]-lari orasiga yoziladi.": "uz266",
-    "Ajratib ko‘rsatilgan matnni ajratib ko‘rsatilgan joyga suring.": "uz267",
-    "Ajoyib! Robotlar [English pronunciation] title [O'zbekcha tallaffuz] ichida, shuning uchun brauzer varag‘ida ko‘rinadi. Salom! esa [English pronunciation] body [O'zbekcha tallaffuz] ichida, shuning uchun oynada ko‘rinadi.": "uz268",
-    "Avval matnni tanlang.": "uz269",
-    "Nega yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i kerak?": "uz270",
-    "Endi oxirgi savol! Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i nima uchun kerak? To‘g‘ri javobni tanlang.": "uz271",
-    "Yana o‘ylab ko‘ring: sahifaning nomi oynada emas, brauzer varag‘ida ko‘rinadi. Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i esa nom qayerda tugashini bildiradi.": "uz272",
-    "Yana o‘ylab ko‘ring: bu [English pronunciation] tag [O'zbekcha tallaffuz] yangi sahifani boshlamaydi. U sahifa nomi qayerda tugashini bildiradi.": "uz273",
-    "Sahifa matni brauzer varag‘ida paydo bo‘lgan misolni eslang. O‘shanda qaysi [English pronunciation] tag [O'zbekcha tallaffuz] yetishmayotgan edi?": "uz274",
-    "Ochuvchi [English pronunciation] tag [O'zbekcha tallaffuz] boshlanishni, yopuvchi [English pronunciation] tag [O'zbekcha tallaffuz] esa tugashni bildiradi. [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga nima yoziladi?": "uz275",
-    "Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i sahifa nomi qayerda tugashini bildiradi.": "uz276",
-    "To‘g‘ri! Yopuvchi [English pronunciation] title tag [O'zbekcha tallaffuz]-i brauzerga sahifa nomi qayerda tugashini bildiradi. Usiz sahifaning qolgan matni ham brauzer varag‘ida paydo bo‘lishi mumkin.": "uz277",
-    "Mana, siz yaratgan birinchi sahifa!": "uz278",
-    "Esingizdami? [English pronunciation] tag [O'zbekcha tallaffuz] nomi burchakli qavslar orasiga yoziladi. Brauzer [English pronunciation] tag [O'zbekcha tallaffuz]-ni o‘qiydi, lekin uni sahifada ko‘rsatmaydi.": "uz279",
-    "[English pronunciation] HTML [O'zbekcha tallaffuz] ichida sahifaning ikkita asosiy qismi joylashadi: [English pronunciation] head [O'zbekcha tallaffuz] va [English pronunciation] body [O'zbekcha tallaffuz].": "uz280",
-    "[English pronunciation] head [O'zbekcha tallaffuz] qismida sahifa haqidagi ma’lumotlar saqlanadi.": "uz281",
-    "[English pronunciation] title head [O'zbekcha tallaffuz] ichida joylashadi. [English pronunciation] title tag [O'zbekcha tallaffuz]-lari orasiga sahifaning nomi yoziladi. Brauzer bu nomni brauzer varag‘ida ko‘rsatadi.": "uz282",
-    "Tabriklayman! Birinchi [English pronunciation] HTML [O'zbekcha tallaffuz] sahifangizni yaratdingiz! Keyingi darsda sahifangizga katta sarlavha va matn uchun abzatslar qo‘shamiz.": "uz283",
-    "Barakalla!": "uz284",
-    "Oynadagi hamma narsa [English pronunciation] body [O'zbekcha tallaffuz] ichida turadi.": "uz285",
-    "Masalan: Salom!": "uz286",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Kosmos deb yozilgan. Qani, u qayerda chiqadi?": "uz287",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Kosmos deb yozilgan. Bu safar qayerda chiqadi?": "uz288",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Musiqa deb yozilgan. Qani, u qayerda chiqadi?": "uz289",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Musiqa deb yozilgan. Bu safar qayerda chiqadi?": "uz290",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Juma kuni final! deb yozilgan. Qani, u qayerda chiqadi?": "uz291",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Juma kuni final deb yozilgan. Qani, u qayerda chiqadi?": "uz292",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Juma kuni final! deb yozilgan. Bu safar qayerda chiqadi?": "uz293",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Juma kuni final deb yozilgan. Bu safar qayerda chiqadi?": "uz294",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Bugun konsert! deb yozilgan. Qani, u qayerda chiqadi?": "uz295",
-    "[English pronunciation] title tag [O'zbekcha tallaffuz]-ida Bugun konsert deb yozilgan. Qani, u qayerda chiqadi?": "uz296",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Bugun konsert! deb yozilgan. Bu safar qayerda chiqadi?": "uz297",
-    "Endi [English pronunciation] body tag [O'zbekcha tallaffuz]-ida Bugun konsert deb yozilgan. Bu safar qayerda chiqadi?": "uz298",
-    "Qarang: Robotlar oynaga tushib qoldi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi, yorliq uchun esa [English pronunciation] title [O'zbekcha tallaffuz] kerak.": "uz299",
-    "Qarang: Robotlar yorliqqa chiqib qoldi. [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda chiqadi, oyna uchun esa [English pronunciation] body [O'zbekcha tallaffuz] kerak.": "uz300",
-    "Qarang: Salom! oynaga tushib qoldi. [English pronunciation] body tag [O'zbekcha tallaffuz]-idagi matn oynada chiqadi, yorliq uchun esa [English pronunciation] title [O'zbekcha tallaffuz] kerak.": "uz301",
-    "Qarang: Salom! yorliqqa chiqib qoldi. [English pronunciation] title tag [O'zbekcha tallaffuz]-idagi matn yorliqda chiqadi, oyna uchun esa [English pronunciation] body [O'zbekcha tallaffuz] kerak.": "uz302",
-  },
-  ru: {
-    "Привет! Я Коди. Смотри, это веб-страница.": "ru001",
-    "Видишь маленькую полоску сверху? Это вкладка. На ней написано название страницы.": "ru002",
-    "А если бы страница была человеком, какой бы она была? Давай проверим! Нажми Превратить.": "ru003",
-    "Ого! Страница ожила и стала человечком!": "ru004",
-    "Смотри: название страницы спряталось у него в голове. В голове хранится информация о странице.": "ru005",
-    "А тело собрано из того, что видно на странице: из текста, картинки и кнопки.": "ru006",
-    "Сегодня ты сделаешь свою страницу: придумаешь ей название и напишешь приветствие. Но сначала посмотрим, как выглядит код.": "ru007",
-    "Это код. По нему браузер собирает страницу. Смотри, как он его читает!": "ru008",
-    "Заметил? Браузер читает код так же, как ты читаешь книжку.": "ru009",
-    "Каждую строчку, слева направо.": "ru010",
-    "А строчки, сверху вниз, одну за другой.": "ru011",
-    "Строчка за строчкой, и страница готова! Сейчас разберёмся, что написано в этом коде.": "ru012",
-    "Посмотри на рамку: на ней две надписи. Нажми на верхнюю.": "ru013",
-    "Видишь знаки левый уголок и правый уголок? Это угловые скобки.": "ru014",
-    "Между ними слово [English pronunciation] HTML [Русское произношение]. Это имя тега.": "ru015",
-    "Скобки и имя вместе, это тег. Тег, подсказка для браузера. Браузер не показывает тег на странице, а только читает его.": "ru016",
-    "Это открывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит браузеру: Здесь страница начинается. Теперь нажми на нижнюю надпись.": "ru017",
-    "Видишь разницу? Сразу после первой скобки стоит косая черта. Это закрывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит: Здесь страница заканчивается.": "ru018",
-    "Открывающий тег, начало, закрывающий, конец. Всё, что есть на странице, стоит между ними.": "ru019",
-    "Маленький секрет: рамку мы нарисовали, чтобы было понятнее. В настоящем браузере её нет.": "ru020",
-    "Ой, у рамки пропал нижний край! В коде не хватает закрывающего тега [English pronunciation] HTML [Русское произношение]. Напиши его в пустой строке и нажми Проверить.": "ru021",
-    "Почти! Это открывающий тег. В закрывающем перед словом [English pronunciation] HTML [Русское произношение] стоит косая черта.": "ru022",
-    "Не хватает начала: тег начинается со скобки.": "ru023",
-    "Не хватает конца: тег заканчивается скобкой.": "ru024",
-    "Посмотри на слово внутри тега: здесь нужно [English pronunciation] HTML [Русское произношение].": "ru025",
-    "Что-то перепуталось. Сравни с верхним тегом: скобка, косая черта, [English pronunciation] HTML [Русское произношение], скобка.": "ru026",
-    "Посмотри на верхний тег на рамке. Нижний очень на него похож.": "ru027",
-    "Закрывающий тег, тот же самый, только с косой чертой.": "ru028",
-    "Нажимай кнопки по порядку: скобка, косая черта, [English pronunciation] HTML [Русское произношение] и снова скобка.": "ru029",
-    "Есть! Рамка закрылась. Теперь вся страница стоит между двумя тегами [English pronunciation] HTML [Русское произношение].": "ru030",
-    "Теперь сам! Рамке нужны два тега: сверху и снизу. Осторожно: один из трёх тегов внизу, лишний.": "ru031",
-    "Перетащи тег на место. Или нажми тег, а потом место.": "ru032",
-    "Почти! Сверху страница начинается. Здесь нужен открывающий тег, без косой черты.": "ru033",
-    "Ничего страшного! Снизу страница заканчивается. Здесь нужен закрывающий тег, с косой чертой.": "ru034",
-    "Вот она, ловушка! Эта черта наклонена не в ту сторону. В закрывающем теге черта наклонена вправо.": "ru035",
-    "Сначала выбери тег.": "ru036",
-    "Какой тег начинает страницу, а какой заканчивает?": "ru037",
-    "Сверху, тег без косой черты. Снизу, тег с косой чертой.": "ru038",
-    "Перетащи светящийся тег на светящееся место.": "ru039",
-    "Отлично, оба тега на месте! А тег с неправильной чертой был лишним.": "ru040",
-    "Внутри [English pronunciation] HTML [Русское произношение] есть две части. Первая называется [English pronunciation] head [Русское произношение], по-английски голова. Голова человечка, это и есть [English pronunciation] head [Русское произношение].": "ru041",
-    "В [English pronunciation] head [Русское произношение] лежит информация о странице. В окне браузера, в этой большой части внизу, её не видно. Нажми на голову и посмотри, что там.": "ru042",
-    "Вот что внутри: название страницы! Его пишут в теге [English pronunciation] title [Русское произношение]. Нажми на бумажку с названием.": "ru043",
-    "Название перелетело на вкладку! Вот где браузер показывает текст из [English pronunciation] title [Русское произношение]: наверху, на вкладке. А в окне его нет.": "ru044",
-    "Теперь посмотри на код: сверху открывающий тег [English pronunciation] head [Русское произношение], снизу закрывающий.": "ru045",
-    "Строка [English pronunciation] title [Русское произношение] стоит между ними. Значит, [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение].": "ru046",
-    "А теперь самое интересное: придумай название для своей страницы! Напиши его между тегами [English pronunciation] title [Русское произношение], например Футбол. Название сразу появится на вкладке. Потом нажми Готово.": "ru047",
-    "Класс! Теперь на вкладке название твоей страницы.": "ru048",
-    "Куда пишется название? Посмотри на код: там есть пустое место.": "ru049",
-    "Название пишут между двумя тегами [English pronunciation] title [Русское произношение].": "ru050",
-    "Нажми на пустое место между тегами [English pronunciation] title [Русское произношение], напиши название и нажми Готово.": "ru051",
-    "Здесь пиши только слова, без угловых скобок.": "ru052",
-    "А теперь игра: ты, браузер! Смотри на строку кода и решай, где появится слово: на вкладке или в окне?": "ru053",
-    "Верно! Слово из [English pronunciation] title [Русское произношение], на вкладке.": "ru054",
-    "В точку! Слово из [English pronunciation] body [Русское произношение], в окне.": "ru055",
-    "Ничего страшного! Слово стоит в [English pronunciation] title [Русское произношение], поэтому оно на вкладке.": "ru056",
-    "Почти! Слово стоит в [English pronunciation] body [Русское произношение], поэтому оно в окне.": "ru057",
-    "Между какими тегами стоит слово?": "ru058",
-    "Текст из [English pronunciation] title [Русское произношение] видно на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.": "ru059",
-    "Прочитай имя тега: [English pronunciation] title [Русское произношение], жми Вкладка, [English pronunciation] body [Русское произношение], жми Окно.": "ru060",
-    "Вот и всё! Запомни: текст из [English pronunciation] title [Русское произношение], на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.": "ru061",
-    "Давай ещё один пример.": "ru062",
-    "Название готово. Теперь заполним саму страницу! Вторая часть внутри [English pronunciation] HTML [Русское произношение], [English pronunciation] body [Русское произношение], по-английски тело. Смотри, что вылетит из тела человечка!": "ru063",
-    "Вот это да! Текст, картинка и кнопка вылетели из тела прямо в окно.": "ru064",
-    "Всё, что видно в окне,, текст, картинки, кнопки, живёт внутри [English pronunciation] body [Русское произношение]. Сегодня мы напишем в [English pronunciation] body [Русское произношение] текст, а картинки и кнопки добавим на следующих уроках.": "ru065",
-    "Теперь напиши приветствие между тегами [English pronunciation] body [Русское произношение]. Например, Привет!.": "ru066",
-    "Оно сразу появится в окне. Потом нажми Готово.": "ru067",
-    "Отлично! Твоё приветствие уже в окне.": "ru068",
-    "Куда пишется текст для окна? Посмотри на код.": "ru069",
-    "Текст пишут между двумя тегами [English pronunciation] body [Русское произношение].": "ru070",
-    "Нажми на пустое место между тегами [English pronunciation] body [Русское произношение], напиши текст и нажми Готово.": "ru071",
-    "Наведём порядок! Куда положить каждую вырезку: в [English pronunciation] head [Русское произношение] или в [English pronunciation] body [Русское произношение]? Перетащи её. Или нажми вырезку, а потом нужную часть.": "ru072",
-    "Смотри: это строка [English pronunciation] title [Русское произношение]. А [English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]. Значит, её место в [English pronunciation] head [Русское произношение].": "ru073",
-    "Почти! Твоё приветствие видно в окне. Значит, оно в [English pronunciation] body [Русское произношение].": "ru074",
-    "Ничего страшного! Картинку мы видим в окне. Значит, она в [English pronunciation] body [Русское произношение].": "ru075",
-    "Подумай: где мы нажимаем кнопку? В окне! Значит, она в [English pronunciation] body [Русское произношение].": "ru076",
-    "Порядок! [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение], а приветствие, картинка и кнопка, в [English pronunciation] body [Русское произношение].": "ru077",
-    "Сначала выбери вырезку.": "ru078",
-    "Подумай: эту вещь видно в окне браузера?": "ru079",
-    "Всё, что видно в окне,, в [English pronunciation] body [Русское произношение]. Строка [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение].": "ru080",
-    "Перетащи светящуюся вырезку в светящееся место.": "ru081",
-    "Теперь ты знаешь все части. Давай ещё раз посмотрим, как браузер читает твой код, и разберём каждую строчку.": "ru082",
-    "Важный момент: сначала [English pronunciation] head [Русское произношение] закрывается, и только потом открывается [English pronunciation] body [Русское произношение]. Они стоят друг за другом, а не друг в друге.": "ru083",
-    "Хочешь послушать ещё раз? Нажми на строку кода или на часть справа.": "ru084",
-    "Первая строка, [English pronunciation] doctype HTML [Русское произношение]. Она говорит браузеру: Это [English pronunciation] HTML [Русское произношение]-страница. Пары у неё нет, закрывать её не нужно.": "ru085",
-    "Тег [English pronunciation] HTML [Русское произношение] обнимает всю страницу. Внутри него, [English pronunciation] head [Русское произношение] и [English pronunciation] body [Русское произношение].": "ru086",
-    "Это [English pronunciation] head [Русское произношение], голова страницы. Здесь хранится информация о странице.": "ru087",
-    "Внутри [English pronunciation] head [Русское произношение], [English pronunciation] title [Русское произношение] с названием страницы. Это название браузер показывает на вкладке.": "ru088",
-    "Это [English pronunciation] body [Русское произношение], тело страницы. Здесь всё, что видно в окне.": "ru089",
-    "А вот и твоё приветствие! Оно внутри [English pronunciation] body [Русское произношение], поэтому его видно в окне.": "ru090",
-    "А теперь главное испытание: собери весь код сам! Первая строка уже стоит. Нажми на полоску, она встанет в следующую пустую строку.": "ru091",
-    "Ошибся с порядком, не беда: двигай полоски стрелками вверх и вниз. Когда всё готово, нажми Проверить.": "ru092",
-    "Сразу после [English pronunciation] doctype [Русское произношение] идёт открывающий тег [English pronunciation] HTML [Русское произношение]. А закрывающий [English pronunciation] HTML [Русское произношение], в самом конце.": "ru093",
-    "Закрывающий тег стоит после своего открывающего.": "ru094",
-    "Сначала идёт [English pronunciation] head [Русское произношение], потом [English pronunciation] body [Русское произношение].": "ru095",
-    "Сначала закрой [English pronunciation] head [Русское произношение], потом открывай [English pronunciation] body [Русское произношение].": "ru096",
-    "[English pronunciation] title [Русское произношение] должен стоять внутри [English pronunciation] head [Русское произношение].": "ru097",
-    "Приветствие должно стоять внутри [English pronunciation] body [Русское произношение].": "ru098",
-    "Какой тег идёт сразу после [English pronunciation] doctype [Русское произношение], а какой стоит в самом конце?": "ru099",
-    "Внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение] с [English pronunciation] title [Русское произношение], потом [English pronunciation] body [Русское произношение] с приветствием.": "ru100",
-    "Нажми одну отмеченную полоску, потом другую, они поменяются местами.": "ru101",
-    "Супер, код собран верно! Название, в [English pronunciation] head [Русское произношение], приветствие, в [English pronunciation] body [Русское произношение].": "ru102",
-    "Ой, что-то сломалось! Весь текст страницы уехал на вкладку, а окно пустое. В строке [English pronunciation] title [Русское произношение] не хватает одного тега.": "ru103",
-    "Починим? Перетащи нужный тег в пустое место или просто нажми на него.": "ru104",
-    "Почти! Это открывающий тег, а [English pronunciation] title [Русское произношение] уже открыт. Теперь его нужно закрыть.": "ru105",
-    "Не спеши! [English pronunciation] head [Русское произношение] закроется чуть позже. Сначала нужно закончить название, закрыть [English pronunciation] title [Русское произношение].": "ru106",
-    "Какой тег открыт, но не закрыт?": "ru107",
-    "[English pronunciation] title [Русское произношение] открыт. Нужен тег, который его закроет.": "ru108",
-    "Поставь в пустое место тег [English pronunciation] title [Русское произношение] с косой чертой.": "ru109",
-    "Починили! Название на вкладке, приветствие в окне. Закрывающий тег [English pronunciation] title [Русское произношение] показал браузеру, где кончается название.": "ru110",
-    "Теперь проверь себя! Вот новая страница. На вкладке должно быть Роботы, а в окне, Привет!. Перетащи каждую фразу на её место в коде.": "ru111",
-    "В какой тег пишут текст для вкладки?": "ru112",
-    "Для вкладки, [English pronunciation] title [Русское произношение], для окна, [English pronunciation] body [Русское произношение].": "ru113",
-    "Перетащи светящуюся фразу в светящееся место.": "ru114",
-    "Идеально! Роботы стоит в [English pronunciation] title [Русское произношение], поэтому на вкладке. Привет! стоит в [English pronunciation] body [Русское произношение], поэтому в окне.": "ru115",
-    "Сначала выбери фразу.": "ru116",
-    "И последний вопрос. Как думаешь, зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]? Выбери ответ.": "ru117",
-    "Не совсем: закрывающий тег на странице не виден и ничего не выводит в окно.": "ru118",
-    "Не совсем: где кончается страница, показывает закрывающий тег [English pronunciation] HTML [Русское произношение]. А закрывающий [English pronunciation] title [Русское произношение] закрывает только [English pronunciation] title [Русское произношение].": "ru119",
-    "Вспомни страницу, где весь текст уехал на вкладку. Какого тега там не хватало?": "ru120",
-    "Тег с косой чертой закрывает свою часть. Что стоит внутри [English pronunciation] title [Русское произношение]?": "ru121",
-    "Закрывающий тег [English pronunciation] title [Русское произношение] заканчивает название страницы.": "ru122",
-    "Точно! Он показывает, где кончается название. Без него весь текст страницы уезжает на вкладку.": "ru123",
-    "Вот она, твоя первая страница!": "ru124",
-    "Помнишь? Тег, это слово в угловых скобках. Браузер его не показывает, а только читает.": "ru125",
-    "[English pronunciation] HTML [Русское произношение] обнимает всю страницу: и [English pronunciation] head [Русское произношение], и [English pronunciation] body [Русское произношение], внутри него.": "ru126",
-    "[English pronunciation] head [Русское произношение] хранит информацию о странице.": "ru127",
-    "[English pronunciation] title [Русское произношение] живёт внутри [English pronunciation] head [Русское произношение]. В нём пишут название страницы, а браузер показывает его на вкладке.": "ru128",
-    "Всё, что видно в окне, живёт внутри [English pronunciation] body [Русское произношение].": "ru129",
-    "Ура! Твоя первая [English pronunciation] HTML [Русское произношение]-страница готова. Ты на шаг ближе к тому, чтобы стать настоящим веб-разработчиком!": "ru130",
-    "Вау, классно!": "ru131",
-    "Есть! Получилось!": "ru132",
-    "Супер!": "ru133",
-    "Огонь!": "ru134",
-    "Ура!": "ru135",
-    "Вот это да!": "ru136",
-    "Попробуй ещё раз.": "ru137",
-    "Посмотри внимательно.": "ru138",
-    "Уже близко. Не спеши.": "ru139",
-    "Как читают код?": "ru140",
-    "Что такое тег?": "ru141",
-    "Вкладка или окно?": "ru142",
-    "Финал в пятницу!": "ru143",
-    "Сегодня концерт!": "ru144",
-    "Все полоски на местах! Теперь нажми Проверить, узнаем, верно ли собран код.": "ru145",
-    "Сдвинь отмеченные полоски стрелками вверх или вниз и снова нажми Проверить.": "ru146",
-    "Привет!": "ru147",
-    "Зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]?": "ru148",
-    "Привет, мир!": "ru149",
-    "Здесь нужны только слова, без угловых скобок.": "ru150",
-    "Нажми две полоски, они поменяются местами.": "ru151",
-    "Привет! Я Коди. Смотри, вот веб-страница.": "ru152",
-    "Видишь маленькое место сверху? Это вкладка браузера, на ней написано название страницы.": "ru153",
-    "А если бы веб-страница была человеком, как думаешь, какой бы она была? Давай проверим! Нажми Превратить.": "ru154",
-    "Ого, смотри! Страница ожила и стала человечком!": "ru155",
-    "Смотри-ка! Название страницы спряталось у него в голове. В голове хранятся сведения о странице.": "ru156",
-    "А тело? Оно собралось из того, что видно на странице: текста, картинки и кнопки.": "ru157",
-    "Сегодня ты создашь страницу со своим названием и приветствием! Сначала посмотрим, как выглядит код.": "ru158",
-    "Вот это код! Из него браузер и собирает страницу. Смотри, как он его читает!": "ru159",
-    "Смотри-ка: браузер читает код, как книжку.": "ru160",
-    "Строчка за строчкой, и страница готова! Дальше разберёмся с этим кодом вместе.": "ru161",
-    "Посмотри на рамку: на ней две интересные надписи. Что же это такое?": "ru162",
-    "Посмотри на эти знаки. Они называются угловыми скобками.": "ru163",
-    "Между ними написано [English pronunciation] HTML [Русское произношение]. Это название тега.": "ru164",
-    "Вся запись вместе, тег [English pronunciation] HTML [Русское произношение]. Браузер не показывает тег на странице, а читает его.": "ru165",
-    "Верхний, открывающий тег [English pronunciation] HTML [Русское произношение]. Он говорит браузеру: Здесь страница начинается.": "ru166",
-    "А на нижнем сразу после первой скобки стоит косая черта. Это закрывающий тег [English pronunciation] HTML [Русское произношение], он говорит: Здесь страница заканчивается.": "ru167",
-    "Открывающий тег обозначает начало, закрывающий, конец. Всё содержимое страницы стоит между ними.": "ru168",
-    "Маленький секрет: рамку мы нарисовали для наглядности. В браузере её не увидишь.": "ru169",
-    "Смотри: у рамки пропал нижний край! В коде не хватает закрывающего тега [English pronunciation] HTML [Русское произношение]. Напиши его в пустой строке и нажми Проверить.": "ru170",
-    "Чего-то не хватает: тег начинается с угловой скобки. Добавь её в начало.": "ru171",
-    "В конце чего-то не хватает: тег заканчивается угловой скобкой. Добавь её в конец.": "ru172",
-    "Посмотри на слово внутри тега: здесь нужен [English pronunciation] HTML [Русское произношение].": "ru173",
-    "Проверь порядок знаков: угловая скобка, косая черта, слово [English pronunciation] HTML [Русское произношение] и угловая скобка.": "ru174",
-    "Посмотри на верхний тег на рамке.": "ru175",
-    "Закрывающий тег, то же слово, но с косой чертой.": "ru176",
-    "Начни с угловой скобки, потом поставь косую черту. Дальше [English pronunciation] HTML [Русское произношение] и в конце снова угловая скобка.": "ru177",
-    "Есть! Рамка закрылась: вся страница теперь между двумя тегами [English pronunciation] HTML [Русское произношение].": "ru178",
-    "Теперь твоя очередь! Рамке нужны два тега: сверху и снизу. Осторожно, один из трёх тегов внизу лишний.": "ru179",
-    "Хватай тег пальцем и неси на место. Или проще: нажми тег, а потом место.": "ru180",
-    "Почти! Сверху страница начинается, здесь нужен открывающий тег, без косой черты.": "ru181",
-    "Ничего! Снизу страница заканчивается, здесь нужен закрывающий тег, с косой чертой.": "ru182",
-    "А вот и хитрость! Эта черта наклонена не в ту сторону. В закрывающем теге она наклонена вправо: косая черта.": "ru183",
-    "Перетащи [English pronunciation] HTML [Русское произношение] на верхнее место.": "ru184",
-    "Отлично, оба тега на месте! А тег с обратной чертой был лишним.": "ru185",
-    "Внутри [English pronunciation] HTML [Русское произношение] живут две части. Первая, [English pronunciation] head [Русское произношение]. Голова человечка как раз про неё.": "ru186",
-    "В [English pronunciation] head [Русское произношение], сведения о странице. Посмотри на большое место внизу, на окно браузера: там их не видно.": "ru187",
-    "А что внутри? Вот, название страницы! Его пишут внутри тега [English pronunciation] title [Русское произношение].": "ru188",
-    "Название перелетело на вкладку! Браузер показывает текст из [English pronunciation] title [Русское произношение] именно там.": "ru189",
-    "Посмотри на код: сверху открывающий тег [English pronunciation] head [Русское произношение], снизу закрывающий.": "ru190",
-    "Строка [English pronunciation] title [Русское произношение] стоит между ними. Значит, [English pronunciation] title [Русское произношение] находится внутри [English pronunciation] head [Русское произношение].": "ru191",
-    "А теперь самое интересное: придумай своей странице название! Напиши его внутри [English pronunciation] title [Русское произношение], например Футбол. Оно сразу появится на вкладке. Потом нажми Готово.": "ru192",
-    "Класс! Теперь на вкладке видно название твоей страницы.": "ru193",
-    "В каком теге пишут название? Посмотри на код.": "ru194",
-    "Нажми пустое место между тегами [English pronunciation] title [Русское произношение], напиши название и нажми Готово.": "ru195",
-    "А теперь игра: ты, браузер! Посмотри на строку кода и реши, где появится слово: на вкладке или в окне?": "ru196",
-    "Ничего! Слово в [English pronunciation] title [Русское произношение], поэтому оно на вкладке. Давай ещё пример.": "ru197",
-    "Почти! Слово в [English pronunciation] body [Русское произношение], поэтому оно в окне. Давай ещё пример.": "ru198",
-    "Отличная игра! Текст из [English pronunciation] title [Русское произношение], на вкладке, текст из [English pronunciation] body [Русское произношение], в окне.": "ru199",
-    "Название готово. Теперь заполним саму страницу! Вторая часть внутри [English pronunciation] HTML [Русское произношение], [English pronunciation] body [Русское произношение], как тело человечка. Смотри, что из него вылетит!": "ru200",
-    "Вот это да! Текст, картинка и кнопка вылетели из тела в окно.": "ru201",
-    "Текст, картинки и кнопки, которые видны на странице, располагаются внутри [English pronunciation] body [Русское произношение].": "ru202",
-    "Теперь напиши приветствие в пустом поле между тегами [English pronunciation] body [Русское произношение]. Например, Привет!.": "ru203",
-    "Текст появится в окне. Потом нажми Готово.": "ru204",
-    "Посмотри на код: между тегами [English pronunciation] body [Русское произношение] есть пустое поле.": "ru205",
-    "Нажми пустое поле между тегами [English pronunciation] body [Русское произношение], напиши текст и нажми Готово.": "ru206",
-    "Наведём порядок! Где живёт каждая вырезка: в [English pronunciation] head [Русское произношение] или в [English pronunciation] body [Русское произношение]? Перетащи её или нажми вырезку, а потом часть.": "ru207",
-    "Смотри: это строка [English pronunciation] title [Русское произношение]. [English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение], поэтому её место в [English pronunciation] head [Русское произношение].": "ru208",
-    "Почти! Этот текст должен быть виден в окне, значит, он в [English pronunciation] body [Русское произношение].": "ru209",
-    "Ничего! Картинку мы видим в окне, значит, она в [English pronunciation] body [Русское произношение].": "ru210",
-    "Порядок! [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение], текст, картинка и кнопка, в [English pronunciation] body [Русское произношение].": "ru211",
-    "Эту вещь видно в окне браузера?": "ru212",
-    "Текст, картинки и кнопки страницы, в [English pronunciation] body [Русское произношение]. Строка [English pronunciation] title [Русское произношение], в [English pronunciation] head [Русское произношение].": "ru213",
-    "Теперь посмотрим весь код целиком. Как работает браузер? Читает код сверху вниз и собирает страницу. Смотри!": "ru214",
-    "Внимание, важный момент: сначала закрываем [English pronunciation] head [Русское произношение], потом открываем [English pronunciation] body [Русское произношение].": "ru215",
-    "Хочешь услышать какую-то часть ещё раз? Нажми строку кода или часть справа, и я расскажу.": "ru216",
-    "Первая строка [English pronunciation] doctype HTML [Русское произношение], особая. Она говорит браузеру: Это [English pronunciation] HTML [Русское произношение]-страница. Пары у неё нет.": "ru217",
-    "Тег [English pronunciation] HTML [Русское произношение] обнимает всю страницу: внутри него [English pronunciation] head [Русское произношение] и [English pronunciation] body [Русское произношение].": "ru218",
-    "А вот [English pronunciation] head [Русское произношение], голова страницы. В ней сведения о странице.": "ru219",
-    "Внутри [English pronunciation] head [Русское произношение], [English pronunciation] title [Русское произношение]. В нём пишут название страницы, браузер показывает это название на вкладке.": "ru220",
-    "А вот [English pronunciation] body [Русское произношение], тело страницы. В нём текст, картинки и кнопки, которые видны на странице.": "ru221",
-    "А вот и твой текст! Он внутри [English pronunciation] body [Русское произношение], поэтому в окне.": "ru222",
-    "А теперь главное испытание: собери весь код! Первая строка уже стоит. Нажми полоску, она встанет в следующую пустую строку.": "ru223",
-    "Если нужно изменить порядок, сдвинь полоску стрелками вверх или вниз. Когда всё на местах, нажми Проверить.": "ru224",
-    "После строки [English pronunciation] doctype [Русское произношение] поставь открывающий тег [English pronunciation] HTML [Русское произношение]. Закрывающий, в самом конце.": "ru225",
-    "[English pronunciation] head [Русское произношение] нужно закрыть до того, как начнётся [English pronunciation] body [Русское произношение].": "ru226",
-    "[English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение].": "ru227",
-    "Текст страницы стоит внутри [English pronunciation] body [Русское произношение].": "ru228",
-    "Какой тег стоит сразу после [English pronunciation] doctype [Русское произношение], а какой, в самом конце?": "ru229",
-    "Внутри [English pronunciation] HTML [Русское произношение] сначала [English pronunciation] head [Русское произношение] с [English pronunciation] title [Русское произношение], потом [English pronunciation] body [Русское произношение] с текстом.": "ru230",
-    "Вот это да, код собран верно! Название, в [English pronunciation] head [Русское произношение], текст, в [English pronunciation] body [Русское произношение].": "ru231",
-    "Ну и дела! На вкладку уехал весь текст страницы, а окно пустое. В строке [English pronunciation] title [Русское произношение] не хватает одного тега.": "ru232",
-    "Починим? Перетащи нужный тег в пустое место или просто нажми его.": "ru233",
-    "Не спеши! [English pronunciation] head [Русское произношение] закроется позже. Сначала должно закончиться название, поэтому закрой [English pronunciation] title [Русское произношение].": "ru234",
-    "[English pronunciation] title [Русское произношение] открыт. Нужен тег, который его закрывает.": "ru235",
-    "Починили! Название на вкладке, текст в окне. Закрывающий тег [English pronunciation] title [Русское произношение] показал, где кончается название.": "ru236",
-    "Теперь проверь себя! Новая страница: на вкладке должно быть Роботы, в окне, Привет!. Перетащи каждую фразу на её место в коде. Или нажми фразу, потом место.": "ru237",
-    "В каком теге текст для вкладки?": "ru238",
-    "Идеально! Роботы в [English pronunciation] title [Русское произношение], поэтому на вкладке. Привет! в [English pronunciation] body [Русское произношение], поэтому в окне.": "ru239",
-    "И последний вопрос. Как думаешь, зачем нужен закрывающий тег [English pronunciation] title [Русское произношение]? Нажми ответ.": "ru240",
-    "Не совсем: закрывающий тег на странице не виден и название в окно не выводит.": "ru241",
-    "Не совсем: этот тег не начинает новую страницу. Он показывает, где заканчивается название.": "ru242",
-    "Вспомни страницу, где текст попал на вкладку. Какого тега там не хватало?": "ru243",
-    "Тег с косой чертой заканчивает часть. Что стоит внутри [English pronunciation] title [Русское произношение]?": "ru244",
-    "Точно! Он показывает, где кончается название. Без него текст страницы уезжает на вкладку.": "ru245",
-    "Помнишь? Тег, слово в угловых скобках. Браузер его не показывает, а читает.": "ru246",
-    "Всю страницу собирает [English pronunciation] HTML [Русское произношение]: и [English pronunciation] head [Русское произношение], и [English pronunciation] body [Русское произношение], внутри него.": "ru247",
-    "[English pronunciation] head [Русское произношение] хранит сведения о странице.": "ru248",
-    "[English pronunciation] title [Русское произношение] стоит внутри [English pronunciation] head [Русское произношение]. В нём пишут название страницы, браузер показывает это название на вкладке.": "ru249",
-    "Ура! Твоя первая [English pronunciation] HTML [Русское произношение]-страница готова. Ты на шаг ближе к настоящему веб-программисту!": "ru250",
-    "Молодец!": "ru251",
-    "Например: Привет!": "ru252",
-    "В [English pronunciation] title [Русское произношение] написано Космос. Где оно появится?": "ru253",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Космос. Где оно появится?": "ru254",
-    "В [English pronunciation] title [Русское произношение] написано Музыка. Где оно появится?": "ru255",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Музыка. Где оно появится?": "ru256",
-    "В [English pronunciation] title [Русское произношение] написано Финал в пятницу!. Где оно появится?": "ru257",
-    "В [English pronunciation] title [Русское произношение] написано Финал в пятницу. Где оно появится?": "ru258",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Финал в пятницу!. Где оно появится?": "ru259",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Финал в пятницу. Где оно появится?": "ru260",
-    "В [English pronunciation] title [Русское произношение] написано Сегодня концерт!. Где оно появится?": "ru261",
-    "В [English pronunciation] title [Русское произношение] написано Сегодня концерт. Где оно появится?": "ru262",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Сегодня концерт!. Где оно появится?": "ru263",
-    "А теперь в [English pronunciation] body [Русское произношение] написано Сегодня концерт. Где оно появится?": "ru264",
-    "Смотри: Роботы попало в окно. Всё, что в [English pronunciation] body [Русское произношение], видно в окне. А для вкладки нужен [English pronunciation] title [Русское произношение].": "ru265",
-    "Смотри: Роботы попало на вкладку. Всё, что в [English pronunciation] title [Русское произношение], видно на вкладке. А для окна нужен [English pronunciation] body [Русское произношение].": "ru266",
-    "Смотри: Привет! попало в окно. Всё, что в [English pronunciation] body [Русское произношение], видно в окне. А для вкладки нужен [English pronunciation] title [Русское произношение].": "ru267",
-    "Смотри: Привет! попало на вкладку. Всё, что в [English pronunciation] title [Русское произношение], видно на вкладке. А для окна нужен [English pronunciation] body [Русское произношение].": "ru268",
-  },
-  en: {
-    "Hi! I’m Kodi. Look, here’s a web page.": "en001",
-    "See the little strip at the top? That’s the tab. It shows the page name.": "en002",
-    "If a web page were a person, what would it look like? Let’s find out! Tap Transform.": "en003",
-    "Whoa! The page came alive and turned into a paper buddy!": "en004",
-    "Look: the page name went into its head. The head keeps information about the page.": "en005",
-    "And the body is made of what you see on the page: text, a picture and a button.": "en006",
-    "Today you’ll make your own page: you’ll name it and write a greeting. But first, let’s see what code looks like.": "en007",
-    "This is code. The browser builds the page from it. Watch how it reads it!": "en008",
-    "Did you notice? The browser reads code the way you read a book.": "en009",
-    "Each line from left to right.": "en010",
-    "And the lines from top to bottom, one after another.": "en011",
-    "Line by line, and the page is ready! Now let’s find out what this code says.": "en012",
-    "Look at the frame: it has two labels. Tap the top one.": "en013",
-    "See these two marks: less-than sign and greater-than sign? They’re called angle brackets.": "en014",
-    "Between them is the word H T M L. That’s the tag’s name.": "en015",
-    "The brackets and the name together make a tag. A tag is a note for the browser. The browser doesn’t show tags on the page, it just reads them.": "en016",
-    "This is the opening H T M L tag. It tells the browser: The page starts here. Now tap the bottom label.": "en017",
-    "See the difference? Right after the first bracket there’s a slash. This is the closing H T M L tag. It says: The page ends here.": "en018",
-    "Opening tag: the start. Closing tag: the end. Everything on the page goes between them.": "en019",
-    "A little secret: we drew the frame to make things clearer. A real browser doesn’t have it.": "en020",
-    "Oops, the frame’s bottom edge is gone! The code is missing the closing H T M L tag. Type it in the empty line and tap Check.": "en021",
-    "Almost! That’s the opening tag. The closing tag has a slash before H T M L.": "en022",
-    "The start is missing: a tag begins with less-than sign.": "en023",
-    "The end is missing: a tag ends with greater-than sign.": "en024",
-    "Check the word inside the tag: you need H T M L here.": "en025",
-    "Something’s mixed up. Compare it with the top tag: bracket, slash, H T M L, bracket.": "en026",
-    "Look at the top tag on the frame. The bottom one looks very similar.": "en027",
-    "The closing tag is the same tag, just with a slash.": "en028",
-    "Tap the buttons in order: bracket, slash, H T M L, and bracket again.": "en029",
-    "Yes! The frame is closed. Now the whole page is between the two H T M L tags.": "en030",
-    "Your turn! The frame needs two tags: one on top, one at the bottom. Careful: one of the three tags below is extra.": "en031",
-    "Drag a tag into place. Or tap a tag, then the place.": "en032",
-    "Almost! The page starts at the top, so it needs the opening tag, without a slash.": "en033",
-    "No worries! The page ends at the bottom, so it needs the closing tag, with a slash.": "en034",
-    "There’s the trap! This slash leans the wrong way. In a closing tag it leans to the right.": "en035",
-    "Pick a tag first.": "en036",
-    "Which tag starts the page, and which one ends it?": "en037",
-    "Top: the tag without a slash. Bottom: the tag with a slash.": "en038",
-    "Drag the glowing tag to the glowing place.": "en039",
-    "Great, both tags are in place! The one with the wrong slash was extra.": "en040",
-    "There are two parts inside H T M L. The first is called head. The buddy’s head stands for it.": "en041",
-    "head holds information about the page. You can’t see it in the browser window, this big area below. Tap the head and see what’s inside.": "en042",
-    "Here’s what’s inside: the page name! It goes in the title tag. Tap the paper with the name.": "en043",
-    "The name flew to the tab! That’s where the browser shows the text from title: up on the tab. It’s not in the window.": "en044",
-    "Now look at the code: the opening head tag is at the top, the closing one at the bottom.": "en045",
-    "The title line sits between them. So title lives inside head.": "en046",
-    "Now the fun part: come up with a name for your page! Type it between the title tags, for example Football. It’ll show up on the tab right away. Then tap Done.": "en047",
-    "Cool! Now your page name is on the tab.": "en048",
-    "Where does the name go? Look at the code: there’s an empty spot.": "en049",
-    "The name goes between the two title tags.": "en050",
-    "Tap the empty spot between the title tags, type a name and tap Done.": "en051",
-    "Only words here, no angle brackets.": "en052",
-    "Now a game: you’re the browser! Look at the line of code and decide where the word will show: on the tab or in the window?": "en053",
-    "Right! The word from title is on the tab.": "en054",
-    "Spot on! The word from body is in the window.": "en055",
-    "No worries! The word is in title, so it’s on the tab.": "en056",
-    "Almost! The word is in body, so it’s in the window.": "en057",
-    "Which tags is the word between?": "en058",
-    "Text from title shows on the tab, text from body in the window.": "en059",
-    "Read the tag name: for title tap Tab, for body tap Window.": "en060",
-    "That’s it! Remember: text from title goes on the tab, text from body in the window.": "en061",
-    "Let’s try one more.": "en062",
-    "The name is ready. Now let’s fill the page itself! The second part inside H T M L is body. Watch what flies out of the buddy’s body!": "en063",
-    "Wow! The text, the picture and the button flew out of the body right into the window.": "en064",
-    "Everything you see in the window, text, pictures, buttons, lives inside body. Today we’ll write text in body; pictures and buttons come in later lessons.": "en065",
-    "Now type a greeting between the body tags. For example, Hello!.": "en066",
-    "It’ll show up in the window right away. Then tap Done.": "en067",
-    "Great! Your greeting is in the window.": "en068",
-    "Where does the text for the window go? Look at the code.": "en069",
-    "The text goes between the two body tags.": "en070",
-    "Tap the empty spot between the body tags, type your text and tap Done.": "en071",
-    "Let’s tidy up! Where does each cut-out go: in head or in body? Drag it. Or tap a cut-out, then the right part.": "en072",
-    "Look: this is the title line. title lives inside head, so this goes in head.": "en073",
-    "Almost! Your greeting shows in the window, so it goes in body.": "en074",
-    "No worries! We see the picture in the window, so it goes in body.": "en075",
-    "Think: where do we press the button? In the window! So it goes in body.": "en076",
-    "All sorted! title is in head; the greeting, the picture and the button are in body.": "en077",
-    "Pick a cut-out first.": "en078",
-    "Think: can you see this in the browser window?": "en079",
-    "Everything you see in the window goes in body. The title line goes in head.": "en080",
-    "Drag the glowing cut-out to the glowing place.": "en081",
-    "Now you know all the parts. Let’s watch the browser read your code once more and go through each line.": "en082",
-    "Important: head closes first, and only then body opens. They go one after the other, not one inside the other.": "en083",
-    "Want to hear it again? Tap a code line or a part on the right.": "en084",
-    "The first line is doctype H T M L. It tells the browser: This is an H T M L page. It has no pair, so you don’t close it.": "en085",
-    "The H T M L tag hugs the whole page. Inside it are head and body.": "en086",
-    "This is head, the page’s head. It keeps information about the page.": "en087",
-    "Inside head is title, with the page name. The browser shows that name on the tab.": "en088",
-    "This is body, the page’s body. Everything you see in the window is here.": "en089",
-    "And here’s your greeting! It’s inside body, so it shows in the window.": "en090",
-    "Now the big challenge: build the whole code yourself! The first line is already there. Tap a strip, and it goes into the next empty line.": "en091",
-    "Mixed up the order? No problem: move strips up and down with the arrows. When it’s all set, tap Check.": "en092",
-    "The opening H T M L tag comes right after doctype. The closing H T M L tag goes at the very end.": "en093",
-    "A closing tag comes after its opening tag.": "en094",
-    "head comes first, then body.": "en095",
-    "Close head first, then open body.": "en096",
-    "title must be inside head.": "en097",
-    "The greeting must be inside body.": "en098",
-    "Which tag comes right after doctype, and which one goes at the very end?": "en099",
-    "Inside H T M L: first head with title, then body with the greeting.": "en100",
-    "Tap one marked strip, then the other: they’ll swap places.": "en101",
-    "Awesome, the code is right! The name is in head, the greeting is in body.": "en102",
-    "Uh-oh, something broke! All the page text went onto the tab, and the window is empty. One tag is missing in the title line.": "en103",
-    "Shall we fix it? Drag the right tag into the empty spot, or just tap it.": "en104",
-    "Almost! That’s an opening tag, and title is already open. Now it needs to close.": "en105",
-    "Not so fast! head closes a bit later. First the name has to end, so close title.": "en106",
-    "Which tag is open but not closed?": "en107",
-    "title is open. You need the tag that closes it.": "en108",
-    "Put the title tag with a slash into the empty spot.": "en109",
-    "Fixed it! The name is on the tab, the greeting is in the window. The closing title tag showed the browser where the name ends.": "en110",
-    "Now test yourself! Here’s a new page. The tab should say Robots, and the window Hello!. Drag each phrase to its place in the code.": "en111",
-    "Which tag holds the text for the tab?": "en112",
-    "For the tab: title. For the window: body.": "en113",
-    "Drag the glowing phrase to the glowing place.": "en114",
-    "Perfect! Robots is in title, so it’s on the tab. Hello! is in body, so it’s in the window.": "en115",
-    "Pick a phrase first.": "en116",
-    "And the last question. What do you think: why do we need the closing title tag? Pick an answer.": "en117",
-    "Not quite: a closing tag doesn’t show on the page and doesn’t put anything in the window.": "en118",
-    "Not quite: the closing H T M L tag shows where the page ends. The closing title tag only closes title.": "en119",
-    "Remember the page where all the text ended up on the tab. Which tag was missing there?": "en120",
-    "A tag with a slash closes its own part. What’s inside title?": "en121",
-    "The closing title tag ends the page name.": "en122",
-    "Exactly! It shows where the name ends. Without it, all the page text ends up on the tab.": "en123",
-    "Here it is, your very first page!": "en124",
-    "Remember? A tag is a word in angle brackets. The browser doesn’t show it, it just reads it.": "en125",
-    "H T M L wraps the whole page: both head and body are inside it.": "en126",
-    "head keeps information about the page.": "en127",
-    "title lives inside head. It holds the page name, and the browser shows that name on the tab.": "en128",
-    "Everything you see in the window lives inside body.": "en129",
-    "Hooray! Your first H T M L page is ready. You’re one step closer to becoming a real web developer!": "en130",
-    "Wow, awesome!": "en131",
-    "Yes! You did it!": "en132",
-    "Super!": "en133",
-    "Brilliant!": "en134",
-    "Hooray!": "en135",
-    "Amazing!": "en136",
-    "Try once more.": "en137",
-    "Take a closer look.": "en138",
-    "You are close. No rush.": "en139",
-    "How is code read?": "en140",
-    "What is a tag?": "en141",
-    "Tab or window?": "en142",
-    "The final is on Friday!": "en143",
-    "Concert today!": "en144",
-    "All the strips are in place! Now tap Check to see if the code is right.": "en145",
-    "Move the marked strips up or down with the arrows, then tap Check again.": "en146",
-    "Hello!": "en147",
-    "Why closing tag title?": "en148",
-    "Hello, world!": "en149",
-    "Tap two strips: they swap places.": "en150",
-    "See the little spot at the top? That’s the browser tab. It shows the page name.": "en151",
-    "If a web page were a person, what do you think it would look like? Let’s find out! Tap Transform.": "en152",
-    "Whoa, look! The page came alive as a paper buddy!": "en153",
-    "Did you notice? The page name went into its head. The head keeps information about the page.": "en154",
-    "And the body? It’s made of what you see on the page: text, a picture and a button.": "en155",
-    "Today you’ll create a page with your own page name and greeting! First, let’s see what code looks like.": "en156",
-    "This is code! The browser builds the page from it. Watch how it reads it!": "en157",
-    "Did you notice? The browser reads code like a book.": "en158",
-    "Line by line, and the page is ready! Next, let’s figure out this code together.": "en159",
-    "Look at the frame: there are two interesting labels on it. What are they?": "en160",
-    "Look at these signs. They’re called angle brackets.": "en161",
-    "Between them it says H T M L. That’s the tag’s name.": "en162",
-    "All together, it’s the H T M L tag. The browser doesn’t show a tag on the page, it reads it.": "en163",
-    "The top one is the opening H T M L tag. It tells the browser: The page starts here.": "en164",
-    "On the bottom one, a slash comes right after the first bracket. It’s the closing H T M L tag. It says: The page ends here.": "en165",
-    "The opening tag marks the start, the closing tag marks the end. Everything on the page goes between them.": "en166",
-    "A little secret: we drew the frame to make it clear. You won’t see it in a browser.": "en167",
-    "Look: the frame’s bottom edge is gone! The closing H T M L tag is missing from the code. Type it in the empty line and tap Check.": "en168",
-    "Something is missing: a tag starts with the angle bracket. Add it at the start.": "en169",
-    "Something is missing at the end: a tag ends with the angle bracket. Add it at the end.": "en170",
-    "Check the word inside the tag: here you need H T M L.": "en171",
-    "Check the order: angle bracket, slash, the word H T M L, angle bracket.": "en172",
-    "Look at the top tag on the frame.": "en173",
-    "The closing tag is the same word with a slash.": "en174",
-    "Start with the angle bracket, then add the slash. Then H T M L, and another angle bracket at the end.": "en175",
-    "Yes! The frame is closed: the whole page is between the two H T M L tags now.": "en176",
-    "Your turn! The frame needs two tags: top and bottom. Careful, one of the three tags below is extra.": "en177",
-    "Grab a tag with your finger and carry it into place. Or simply tap the tag, then the place.": "en178",
-    "Here’s the trick! This slash leans the wrong way. In a closing tag it leans right: slash.": "en179",
-    "Drag H T M L to the top place.": "en180",
-    "Great, both tags are in place! The one with the backslash was extra.": "en181",
-    "Two parts live inside H T M L. The first is head. The buddy’s head stands for it.": "en182",
-    "head holds information about the page. Look at the big area below, the browser window: you can’t see it there.": "en183",
-    "What’s inside? Here, the page name! It’s written inside the title tag.": "en184",
-    "The name flew to the tab! The browser shows the text from title right there.": "en185",
-    "Look at the code: the opening head tag is at the top, the closing one at the bottom.": "en186",
-    "The title line sits between them. So title is inside head.": "en187",
-    "Now the fun part: name your page! Type it inside title, for example Football. It shows up on the tab right away. Then tap Done.": "en188",
-    "Cool! Your page name is now on the tab.": "en189",
-    "Which tag holds the name? Look at the code.": "en190",
-    "No worries! The word is in title, so it’s on the tab. Let’s try another one.": "en191",
-    "Almost! The word is in body, so it’s in the window. Let’s try another one.": "en192",
-    "Great game! Text from title goes on the tab, text from body in the window.": "en193",
-    "The name is ready. Now let’s fill the page itself! The second part inside H T M L is body, like the buddy’s body. Watch what comes out of it!": "en194",
-    "How about that! The text, the picture and the button flew from the body into the window.": "en195",
-    "The text, pictures and buttons you see on the page go inside body.": "en196",
-    "Now type a greeting in the empty field between the body tags. For example, Hello!.": "en197",
-    "The text will appear in the window. Then tap Done.": "en198",
-    "Look at the code: there’s an empty field between the body tags.": "en199",
-    "Tap the empty field between the body tags, type your text and tap Done.": "en200",
-    "Let’s tidy up! Where does each cut-out live: in head or in body? Drag it, or tap a cut-out, then a part.": "en201",
-    "Look: this is the title line. title sits inside head, so it belongs in head.": "en202",
-    "Almost! This text should show in the window, so it goes in body.": "en203",
-    "All sorted! title is in head; the text, the picture and the button are in body.": "en204",
-    "Can you see this in the browser window?": "en205",
-    "The page’s text, pictures and buttons go in body. The title line goes in head.": "en206",
-    "Now let’s see all the code. How does the browser work? It reads the code from top to bottom and builds the page. Watch!": "en207",
-    "Here’s an important bit: first head closes, then body opens.": "en208",
-    "Want to hear a part again? Tap a code line or a part on the right, and I’ll tell you.": "en209",
-    "The first line, doctype H T M L, is special. It tells the browser: This is an H T M L page. It has no pair.": "en210",
-    "The H T M L tag hugs the whole page: head and body are inside it.": "en211",
-    "Here’s head, the page’s head. It holds information about the page.": "en212",
-    "Inside head is title. Inside it goes the page name, and the browser shows that name on the tab.": "en213",
-    "And here’s body, the page’s body. It holds the text, pictures and buttons you see on the page.": "en214",
-    "And here’s your text! It’s inside body, so it’s in the window.": "en215",
-    "Now the big challenge: build the whole code! The first line is in place. Tap a strip, and it goes into the next empty line.": "en216",
-    "If you need to change the order, move a strip up or down with the arrows. When everything’s in place, tap Check.": "en217",
-    "Put the opening H T M L tag right after the doctype line. The closing one goes at the very end.": "en218",
-    "Close head before body starts.": "en219",
-    "title goes inside head.": "en220",
-    "The page text goes inside body.": "en221",
-    "Inside H T M L: first head with title, then body with the text.": "en222",
-    "Tap one marked strip, then the other: they swap places.": "en223",
-    "Look at that, the code is right! The page name is in head, the text is in body.": "en224",
-    "Something broke! All the page text went to the tab, and the window is empty. One tag is missing in the title line.": "en225",
-    "Not so fast! head closes later. First the page name has to end, so close title.": "en226",
-    "Fixed it! The name is on the tab, the text is in the window. The closing title tag showed where the name ends.": "en227",
-    "Now test yourself! A new page: the tab should say Robots, the window Hello!. Drag each phrase to its place in the code. Or tap a phrase, then the place.": "en228",
-    "And the last question. What do you think: why do we need the closing title tag? Tap an answer.": "en229",
-    "Not quite: a closing tag doesn’t show on the page and doesn’t put the name in the window.": "en230",
-    "Not quite: this tag doesn’t start a new page. It shows where the name ends.": "en231",
-    "Remember the page where the text ended up on the tab. Which tag was missing there?": "en232",
-    "A tag with a slash ends a part. What’s inside title?": "en233",
-    "Exactly! It shows where the name ends. Without it, the page text ends up on the tab.": "en234",
-    "Remember? A tag is a word in angle brackets. The browser doesn’t show it, it reads it.": "en235",
-    "H T M L holds the whole page: both head and body are inside it.": "en236",
-    "title is inside head. Inside it goes the page name, and the browser shows that name on the tab.": "en237",
-    "Hooray! Your first H T M L page is ready. You’re one step closer to being a real web developer!": "en238",
-    "Well done!": "en239",
-    "Everything in the window lives inside body.": "en240",
-    "For example: Hello!": "en241",
-    "title says Space. Where will it show up?": "en242",
-    "Now body says Space. Where will it show up?": "en243",
-    "title says Music. Where will it show up?": "en244",
-    "Now body says Music. Where will it show up?": "en245",
-    "title says The final is on Friday!. Where will it show up?": "en246",
-    "title says The final is on Friday. Where will it show up?": "en247",
-    "Now body says The final is on Friday!. Where will it show up?": "en248",
-    "Now body says The final is on Friday. Where will it show up?": "en249",
-    "title says Concert today!. Where will it show up?": "en250",
-    "title says Concert today. Where will it show up?": "en251",
-    "Now body says Concert today!. Where will it show up?": "en252",
-    "Now body says Concert today. Where will it show up?": "en253",
-    "Look: Robots landed in the window. Whatever is in body shows in the window. The tab needs title.": "en254",
-    "Look: Robots landed on the tab. Whatever is in title shows on the tab. The window needs body.": "en255",
-    "Look: Hello! landed in the window. Whatever is in body shows in the window. The tab needs title.": "en256",
-    "Look: Hello! landed on the tab. Whatever is in title shows on the tab. The window needs body.": "en257",
-  }
-};
-// ── КОНЕЦ ПОДГОТОВЛЕННОЙ ОЗВУЧКИ ──

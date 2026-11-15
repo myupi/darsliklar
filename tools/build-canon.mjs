@@ -121,7 +121,14 @@ swapNoBubble();
 // для нашего просмотрщика оставь голос браузера»). Урок говорит только через useAudio из '@lesson/runtime'
 // записями LESSON_AUDIO (их пишет в урок tools/ovoz/ovoz.mjs); свой сервис ttsApiBase, <audio> и голос браузера
 // убраны. В просмотрщике эмуляция useAudio играет те же записи голосом браузера.
-swapPreparedVoice();
+// ОЗВУЧКА КАК В Dars001 (заказчик, 14.11.2026: «перенеси все наши уроки на такую tts как на примере… абсолютно
+// все уроки»). Подготовленная озвучка LESSON_AUDIO (swapPreparedVoice, 13.11.2026) выключена: урок снова сам
+// заказывает каждую реплику у сервиса платформы по пропсу ttsApiBase — свой движок канона, <audio>, без
+// ожидания касания; нет сервиса или он не ответил — голос браузера. Адрес — как у Dars001 (5-sinf):
+// /api/tts?text=…&g=m&lesson_id=…&lesson_name=…&student_uuid=…&voice_id=agoC45V78njTIxYzwmSb&k=<ttsKey>.
+// Функция swapPreparedVoice оставлена ниже — история.
+// swapPreparedVoice();
+swapDarsTts();
 swapContractV1();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
@@ -1123,6 +1130,50 @@ function useAudioEngine(ttsApiBase, lang) {
 }
 
 `, 'движок озвучки');
+}
+
+// ── ОЗВУЧКА КАК В Dars001 (14.11.2026) ───────────────────────────────────────────────────────────────────
+// Движок канона по ttsApiBase (swapTts, swapAutoplay, swapUzPace, swapEmotion…) + параметры адреса Dars001:
+// voice_id (голос курса), student_uuid и ключ k — из пропсов LMS ttsKey и studentUuid / student_uuid
+// (корень урока передаёт их в useLessonRoot). Нет пропса — параметра в адресе нет.
+function swapDarsTts() {
+  swap(`//   · ttsApiBase — база сервиса озвучки:
+//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке
+//     ученика); student_uuid LMS уроку не передаёт
+`, `//   · ttsApiBase — база сервиса озвучки (как в Dars001, 14.11.2026):
+//     GET {ttsApiBase}/api/tts?text=…&g=m&lesson_id=…&lesson_name=…&student_uuid=…&voice_id=…&k=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
+//     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
+//     voice_id — голос курса TTS_VOICE_ID. Нет сервиса или он не ответил — голос браузера.
+`);
+  swap(`let LMS_VOICE = null;`, `let LMS_VOICE = null;
+// КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
+// при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
+const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
+const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };`);
+  swap(`    if (name) url += '&lesson_name=' + encodeURIComponent(name);
+  }
+  return url;`, `    if (name) url += '&lesson_name=' + encodeURIComponent(name);
+  }
+  // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
+  if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
+  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
+  return url;`);
+  // Валидатор IT (Y09): переменные модуля, безопасные при повторном открытии урока во вкладке, — помечены.
+  swap(`let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль`,
+    `let _ttsFirstLogged = false;   // jsx-tekshir: ataylab — faqat konsol diagnostikasi (диагностика: первый запрос к сервису — в консоль)`);
+  swap(`\nlet _botUid = 0;`, `\nlet _botUid = 0;   // jsx-tekshir: ataylab — id hisoblagichi, eski qiymat zarar qilmaydi`);
+  swap(`\nlet _hintText = null;`, `\nlet _hintText = null;   // jsx-tekshir: ataylab — unmount'da null bo'ladi`);
+  swap(`function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, onFinished, extraPayload, startAt, onExit }) {`,
+    `function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, ttsKey, studentUuid, onFinished, extraPayload, startAt, onExit }) {
+  setTtsAuth(ttsKey, studentUuid);   // КУРС HTML (14.11.2026): ключ сервиса озвучки и ученик — в адрес реплик`);
 }
 
 // ── КОНТРАКТ ЗАВЕРШЕНИЯ v1 (13.11.2026) ──────────────────────────────────────────────────────────

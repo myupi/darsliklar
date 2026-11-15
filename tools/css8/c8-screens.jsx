@@ -972,10 +972,10 @@ function lessonCss8Artifact(store) {
       ['    </style>', '  </head>', '  <body>', "    <h1>To'garaklar</h1>", '    <p>Futbol: seshanba</p>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssKartochki({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssKartochki({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss8Artifact(store) })
   });
   useParallax();

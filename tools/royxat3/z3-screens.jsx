@@ -1243,10 +1243,10 @@ function lesson3Artifact(store) {
       '    <h2>' + escHtml(t || '') + '</h2>', '    <ul>'].concat(li, ['    </ul>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function HtmlSpiski({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlSpiski({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lesson3Artifact(store) })
   });
   useParallax();

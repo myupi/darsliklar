@@ -323,10 +323,10 @@ function lessonAi1Artifact(store) {
   return own ? { type: 'ai-prompt', what: own.what, why: own.why } : null;
 }
 
-export default function AiWhatWhy({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function AiWhatWhy({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonAi1Artifact(store) })
   });
   useParallax();

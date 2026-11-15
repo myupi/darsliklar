@@ -1021,10 +1021,10 @@ function lessonCss12Artifact(store) {
       ['    </style>', '  </head>', '  <body>', '    <div class="karta"><span class="belgi">YANGI</span> Bugun yangi o\'yin chiqdi!</div>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssPozicionirovanie({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssPozicionirovanie({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss12Artifact(store) })
   });
   useParallax();

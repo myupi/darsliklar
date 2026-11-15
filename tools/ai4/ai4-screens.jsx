@@ -318,10 +318,10 @@ function lessonAi4Artifact(store) {
   return own ? { type: 'ai-prompt', what: own.what, why: own.why, who: own.who, inside: own.inside, look: own.look } : null;
 }
 
-export default function AiHowItLooks({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function AiHowItLooks({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonAi4Artifact(store) })
   });
   useParallax();

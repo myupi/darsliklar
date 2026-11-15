@@ -1278,10 +1278,10 @@ function lessonCss4Artifact(store) {
       '    <h1>Mening saytim</h1>', "    <p>Bizga qo'shiling!</p>", '  </body>', '</html>'].join('\n') };
 }
 
-export default function CssFon({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssFon({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss4Artifact(store) })
   });
   useParallax();

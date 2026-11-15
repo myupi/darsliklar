@@ -1773,10 +1773,10 @@ const SCREENS = [
 // artifact) и достижения (ach) сохраняются.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'], s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'] };
 
-export default function HtmlPervayaStranitsa({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlPervayaStranitsa({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: makeArtifact(store), achievements: store.get('ach') || {} })
   });
   const cur = SCREENS[R.i];

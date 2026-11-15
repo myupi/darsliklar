@@ -10206,11 +10206,11 @@ const SCREEN_RESET = {
 // =============================================================================
 // КОРНЕВОЙ КОМПОНЕНТ
 // =============================================================================
-export default function HtmlLesson02({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlLesson02({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   // Голос от LMS (как у эталона математики): если передан, он главнее голоса реплики.
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: makeArtifact(store) })
   });
   const cur = SCREENS[R.i];

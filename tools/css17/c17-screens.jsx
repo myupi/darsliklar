@@ -825,10 +825,10 @@ function lessonCss17Artifact(store) {
         '    <button class="tugma">Yozilish</button>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssFinalProject({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssFinalProject({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss17Artifact(store) })
   });
   useParallax();

@@ -913,10 +913,10 @@ function lessonCss9Artifact(store) {
         ['    </style>', '  </head>', '  <body>', '    <a href="index.html">Bosh sahifa</a>', "    <a href=\"oyinlar.html\">O'yinlar</a>", '    <a href="aloqa.html">Aloqa</a>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssDisplay({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssDisplay({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss9Artifact(store) })
   });
   useParallax();

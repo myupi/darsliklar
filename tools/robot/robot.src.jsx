@@ -2184,10 +2184,10 @@ const SCREENS = [
 const SCREEN_RESET = { r1: ['r1'], r2: ['r2'], m: ['m', 'mc'], s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'],
   s9: ['s9'], s10: ['s10'], s13: ['s13'] };
 
-export default function HtmlStrukturaRobot({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlStrukturaRobot({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: makeArtifact(store), achievements: store.get('ach') || {} })
   });
   const cur = SCREENS[R.i];

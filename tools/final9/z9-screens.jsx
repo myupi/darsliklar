@@ -1044,10 +1044,10 @@ function lesson9Artifact(store) {
   return { type: 'course-review', topics, mix: store.get('ft9'), boss: store.get('ftBoss') };
 }
 
-export default function HtmlYakuniy({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlYakuniy({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lesson9Artifact(store) })
   });
   useParallax();

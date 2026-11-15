@@ -949,10 +949,10 @@ function lessonCss6Artifact(store) {
       '    <img src="tog.jpg" alt="Tog\'lar">', "    <p>Bu suratni tog'da oldim.</p>", '  </body>', '</html>'].join('\n') };
 }
 
-export default function CssRazmery({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssRazmery({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss6Artifact(store) })
   });
   useParallax();

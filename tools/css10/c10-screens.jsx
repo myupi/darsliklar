@@ -984,10 +984,10 @@ function lessonCss10Artifact(store) {
         ['    </style>', '  </head>', '  <body>', '    <div class="javon">', '      <div class="karta">Futbol</div>', '      <div class="karta">Shaxmat</div>', '      <div class="karta">Suzish</div>', '    </div>', '  </body>', '</html>']).join('\n') };
 }
 
-export default function CssFlexOsi({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function CssFlexOsi({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: lessonCss10Artifact(store) })
   });
   useParallax();

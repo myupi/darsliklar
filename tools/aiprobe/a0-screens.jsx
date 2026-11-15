@@ -183,10 +183,10 @@ function P1({ p }) {
 const SCREENS = [{ id: 'p1', code: 'LEVEL-1', Comp: P1 }];
 const SCREEN_RESET = { p1: ['p1'] };
 
-export default function AiProbe({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function AiProbe({ studentName, lang, ttsApiBase, ttsKey, voiceGender, studentUuid, student_uuid, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
-    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
+    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, ttsKey, studentUuid: studentUuid || student_uuid, onFinished, startAt, onExit,
     extraPayload: (store) => ({ artifact: store.get('aiWhat') ? { type: 'ai-prompt', what: store.get('aiWhat'), why: store.get('aiWhy') } : null })
   });
   useParallax();
