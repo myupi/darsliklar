@@ -1,0 +1,201 @@
+Курс: Dasturlash kursi
+Модуль: ИИ (AI)
+Задания для компилятора к модулю «ИИ» (16.11.2026, заказчик: «мы ему дадим задачу, ему ИИ скинет код, а он этот код
+должен поставить в компилятор и загрузить»; «результат не показывать, а только дать задания, но сделать максимально
+понятным для ученика, даже для младших классов»). Ученик сам кода не пишет: пишет промпт по формуле модуля
+(Nima? Nega? Kim uchun? Ichida nima? Ko'rinishi? Qanday ishlaydi? Qoidalar?), отправляет его ИИ (ChatGPT и др.),
+копирует код, вставляет в компилятор и загружает. По одному заданию на урок 1–8, каждое добавляет строку формулы своего
+урока. Задание — короткая история и шаги: в каждом шаге сказано, что именно написать ИИ (слова в «»); последний шаг всегда
+одинаковый — «скопируй код → вставь в компилятор → загрузи». Результата на слайде нет. Проверяется сайт из кода: в нём видно,
+что ученик написал нужные строки (данные заказа, аудитория, порядок блоков, цвет, поведение, правила); в заданиях 7–8 ученик
+кладёт свой промпт в код комментарием — проверяется и сам промпт.
+
+======================================================================
+
+1. НАЗВАНИЕ УРОКА: Amaliy ish. Nima yaratamiz va nega?
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Futbol to'garagiga sayt kerak. Saytni sun'iy intellekt yasaydi, siz esa unga nima kerakligini yozasiz.
+- ChatGPT ni (yoki boshqa sun'iy intellektni) oching
+- `Nima?` — shunday boshlang: «Futbol to'garagi uchun …» va davom ettiring
+- `Nega?` — shunday boshlang: «Sayt kerak, chunki …» (bolalar nima qilsin?)
+- Oxiriga yozing: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Yuboring. Chiqqan kodni nusxalang
+- Kodni kompilyatorga qo'ying va yuklang
+(RU: Футбольному кружку нужен сайт. Сайт сделает ИИ, а ты напишешь ему, что нужно: открой ChatGPT (или другой ИИ); `Что?` — начни так: «Для футбольного кружка …» и продолжи;
+`Зачем?` — начни так: «Сайт нужен, чтобы …» (что должны сделать дети?); в конце напиши: «Всё в `одном HTML-файле`»; отправь. Скопируй код, который появится;
+вставь код в компилятор и загрузи.)
+(EN: The football club needs a website. The AI will make it, and you will tell it what is needed: open ChatGPT (or another AI); `What?` — start like this: "For the football club …" and continue; `Why?` — start like this: "The site is needed so that …" (what should the kids do?); at the end write: "Everything in `one HTML file`"; send it. Copy the code that appears; paste the code into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a website about a football club or football classes.
+The page has a main heading that names the football club or the classes.
+The page has a clear button or link that asks to sign up or join.
+Text language, colors, layout and exact words do not matter.
+
+======================================================================
+
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Kim uchun yaratamiz?
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Suzish kursiga 7–10 yoshli bolalar keladi, ularni ota-onalari yozdiradi. Sun'iy intellektga sayt kimlar uchun ekanini ayting.
+- `Nima?` va `Nega?` — o'zingiz yozing, 1-vazifadagidek
+- `Kim uchun?` — shunday boshlang: «Sayt … uchun» (yoshini ham yozing)
+- Yana boshlang: «Bolalar yaxshi ko'radi: …» (ular nimani yoqtiradi?)
+- Yana boshlang: «Ota-onalar uchun blok: …» (ularga nima muhim?)
+- Oxiriga yozing: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Kodni nusxalang, kompilyatorga qo'ying va yuklang
+(RU: На курс плавания приходят дети 7–10 лет, записывают их родители. Скажи ИИ, для кого сайт: `Что?` и `Зачем?` — напиши сам, как в задании 1;
+`Для кого?` — начни так: «Сайт для …» (напиши и возраст); ещё начни: «Дети любят: …» (что им нравится?); ещё начни: «Блок для родителей: …» (что им важно?);
+в конце напиши: «Всё в `одном HTML-файле`»; скопируй код, вставь в компилятор и загрузи.)
+(EN: Children aged 7–10 come to the swimming course, and their parents sign them up. Tell the AI who the site is for: `What?` and `Why?` — write them yourself, like in task 1; `For whom?` — start like this: "A site for …" (write the age too); start another line: "Kids love: …" (what do they like?); start another line: "A block for parents: …" (what matters to them?); at the end write: "Everything in `one HTML file`"; copy the code, paste it into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a website about swimming classes and has a sign-up button or link.
+The age 7–10 is written on the page.
+The page speaks to children in simple words and mentions things kids like.
+The page has a separate section for parents (for example about safety, the coach, schedule or price).
+Text language, colors and exact words do not matter.
+
+======================================================================
+
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Saytda nima bo'lishi kerak?
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Lazzat» kafesiga sayt kerak. Kafe ma'lumotlarini promptga to'liq yozing.
+- `Nima?`, `Nega?`, `Kim uchun?` — o'zingiz o'ylab yozing
+- `Ichida nima?` — yozing: «Banner, menyu, biz haqimizda, aloqa — shu tartibda»
+- Menyuni yozing: Lag'mon — 35 000 so'm, Osh — 40 000 so'm, Somsa — 8 000 so'm
+- Aloqani yozing: +998 90 123 45 67, Toshkent, Chilonzor 5
+- Oxiriga yozing: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Kodni nusxalang, kompilyatorga qo'ying va yuklang
+(RU: Кафе «Lazzat» нужен сайт. Напиши в промпте все данные кафе: `Что?`, `Зачем?`, `Для кого?` — придумай и напиши сам;
+`Что внутри?` — напиши: «Баннер, меню, о нас, контакты — в таком порядке»; напиши меню: Лагман — 35 000 сумов, Плов — 40 000 сумов, Самса — 8 000 сумов;
+напиши контакты: +998 90 123 45 67, Ташкент, Чиланзар 5; в конце напиши: «Всё в `одном HTML-файле`»; скопируй код, вставь в компилятор и загрузи.)
+(EN: The cafe "Lazzat" needs a website. Write all the cafe's details in the prompt: `What?`, `Why?`, `For whom?` — think them up and write them yourself; `What's inside?` — write: "Banner, menu, about us, contacts — in this order"; write the menu: Lag'mon — 35 000 so'm, Osh — 40 000 so'm, Somsa — 8 000 so'm; write the contacts: +998 90 123 45 67, Tashkent, Chilonzor 5; at the end write: "Everything in `one HTML file`"; copy the code, paste it into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a one-page website for a cafe named "Lazzat".
+The sections go from top to bottom in this order: banner with the cafe name, menu, about us, contacts.
+The menu shows these dishes with these prices: Lag'mon (lagman) 35 000, Osh (plov) 40 000, Somsa (samsa) 8 000 (spaces in numbers and the currency word may differ).
+The contacts show the phone +998 90 123 45 67 and the address Tashkent, Chilonzor 5.
+No other phone numbers and no other dishes or prices are invented.
+Text language, colors and design do not matter.
+
+======================================================================
+
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Sayt qanday ko'rinishi kerak?
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Bahor» gul do'koniga chiroyli sayt kerak. Sayt qanday ko'rinishini o'zingiz ayting.
+- `Nima?`, `Nega?`, `Kim uchun?` — o'zingiz o'ylab yozing
+- `Ichida nima?` — yozing: «Banner va 3 ta gul kartasi»
+- `Ko'rinishi?` — yozing: «Asosiy rang pushti #E91E63, fon oq»
+- Yana yozing: «Kartalar burchagi yumaloq, soyasi bor, tugmalar pushti»
+- Oxiriga yozing: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Kodni nusxalang, kompilyatorga qo'ying va yuklang
+(RU: Цветочному магазину «Bahor» нужен красивый сайт. Сам скажи, как он выглядит: `Что?`, `Зачем?`, `Для кого?` — придумай и напиши сам;
+`Что внутри?` — напиши: «Баннер и 3 карточки с цветами»; `Как выглядит?` — напиши: «Главный цвет розовый #E91E63, фон белый»;
+ещё напиши: «У карточек круглые углы и тень, кнопки розовые»; в конце напиши: «Всё в `одном HTML-файле`»; скопируй код, вставь в компилятор и загрузи.)
+(EN: The flower shop "Bahor" needs a beautiful website. Say yourself how it should look: `What?`, `Why?`, `For whom?` — think them up and write them yourself; `What's inside?` — write: "A banner and 3 flower cards"; `How it looks?` — write: "Main color pink #E91E63, white background"; also write: "Cards have round corners and a shadow, buttons are pink"; at the end write: "Everything in `one HTML file`"; copy the code, paste it into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a website for a flower shop named "Bahor".
+The color #E91E63 is used as the main color (case does not matter), and buttons use it as background-color.
+The page background is white or very light.
+There are 3 flower cards; the cards have border-radius and box-shadow.
+Text language and exact words do not matter.
+
+======================================================================
+
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Sayt o'zini qanday tutishi kerak?
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Robot to'garagi sayti jonli bo'lsin: sichqonchaga va telefonga javob bersin.
+- Birinchi 5 qatorni o'zingiz yozing: `Nima?` dan `Ko'rinishi?` gacha
+- `Qanday ishlaydi?` — yozing: «Sichqoncha tugmaga kelsa, rangi o'zgarsin»
+- Yana: «Sichqoncha kartaga kelsa, karta biroz ko'tarilsin»
+- Yana: «Sahifa ochilganda sarlavha sekin paydo bo'lsin»
+- Yana: «Telefonda kartalar ustma-ust tursin»
+- Oxiriga «Hammasi `bitta HTML fayl`da bo'lsin» deb yozing. Kodni kompilyatorga qo'ying va yuklang
+(RU: Сайт кружка роботов должен быть живым — отвечать мышке и телефону: первые 5 строк напиши сам: от `Что?` до `Как выглядит?`;
+`Как ведёт себя?` — напиши: «Когда мышка над кнопкой, её цвет меняется»; ещё: «Когда мышка над карточкой, карточка немного поднимается»;
+ещё: «Когда страница открывается, заголовок плавно появляется»; ещё: «На телефоне карточки стоят друг под другом»;
+в конце напиши «Всё в `одном HTML-файле`». Вставь код в компилятор и загрузи.)
+(EN: The robotics club site should be alive — it should react to the mouse and the phone: write the first 5 lines yourself: from `What?` to `How it looks?`; `How it behaves?` — write: "When the mouse is over a button, its color changes"; also: "When the mouse is over a card, the card lifts a little"; also: "When the page opens, the heading slowly appears"; also: "On a phone, the cards stand one under another"; at the end write "Everything in `one HTML file`". Paste the code into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a website about a robotics club.
+Buttons have a :hover rule that changes background-color or color.
+Cards have a :hover rule with transform, and the cards have a transition.
+The heading has an animation made with @keyframes that runs when the page opens.
+There is @media with max-width that puts the cards in one column.
+Text language, colors and exact values do not matter.
+
+======================================================================
+
+6. НАЗВАНИЕ УРОКА: Amaliy ish. Sun'iy intellektga aniq talablar
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Musiqa maktabi sayt buyurtma qildi. Mijozning qoidalarini promptga yozing.
+- Birinchi 6 qatorni o'zingiz yozing: `Nima?` dan `Qanday ishlaydi?` gacha
+- `Qoidalar?` — majburiy: telefon +998 71 200 30 40, darslar dushanba–juma 14:00–19:00
+- Faqat bitta tugma bo'lsin: «Darsga yozilish»
+- Mumkin emas: obuna oynasi, chegirma, chat, boshqa telefon
+- Ko'pi bilan 4 ta blok. Oxiriga: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Kodni nusxalang, kompilyatorga qo'ying va yuklang
+(RU: Музыкальная школа заказала сайт. Напиши в промпте правила клиента: первые 6 строк напиши сам: от `Что?` до `Как ведёт себя?`;
+`Какие правила?` — обязательно: телефон +998 71 200 30 40, занятия понедельник–пятница 14:00–19:00; только одна кнопка: «Записаться на урок»;
+нельзя: окно подписки, скидки, чат, другой телефон; не больше 4 блоков. В конце: «Всё в `одном HTML-файле`»; скопируй код, вставь в компилятор и загрузи.)
+(EN: A music school ordered a website. Write the client's rules in the prompt: write the first 6 lines yourself: from `What?` to `How it behaves?`; `What rules?` — required: phone +998 71 200 30 40, lessons Monday–Friday 14:00–19:00; only one button: "Sign up for a lesson"; not allowed: a subscription popup, discounts, a chat, another phone number; no more than 4 blocks. At the end: "Everything in `one HTML file`"; copy the code, paste it into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code is one HTML page; CSS, if there is any, is inside <style>.
+The page is a website about a music school.
+The phone +998 71 200 30 40 and the schedule Monday to Friday 14:00–19:00 are on the page (day names may be in any language).
+There is only one button or button-like link, and it is about signing up for lessons.
+There is no popup, no subscription form, no discount and no chat widget.
+No other phone numbers appear.
+The page has at most 4 main sections below the header.
+Text language, colors and design do not matter.
+
+======================================================================
+
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Sun'iy intellekt natijasini yaxshilash
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Tennis klubi sayti buyurtmaga to'liq mos bo'lishi kerak. Siz ikkita prompt yozasiz.
+- Buyurtma: sarlavha «Tennis klubi», rang #2E7D32, narx oyiga 300 000 so'm, katta «Yozilish» tugmasi
+- `1-prompt`: shu buyurtma bo'yicha sayt so'rang, «`bitta HTML fayl`da»
+- Kodni kompilyatorga qo'yib ko'ring: buyurtmadan nima yetishmaydi?
+- `2-prompt`: nimani va qanday o'zgartirish + «Qolganini o'zgartirma»
+- Yangi kod boshiga 2-promptni yozing: `<!-- 2-prompt: ... -->`
+- Kodni kompilyatorga qo'ying va yuklang
+(RU: Сайт теннисного клуба должен полностью совпасть с заказом. Ты напишешь два промпта: заказ — заголовок «Tennis klubi», цвет #2E7D32, цена 300 000 сумов в месяц,
+большая кнопка «Записаться»; `1-prompt` — попроси сайт по этому заказу, «в `одном HTML-файле`»; вставь код в компилятор и посмотри: чего из заказа не хватает?;
+`2-prompt` — что и как изменить + «Остальное не меняй»; в начало нового кода впиши второй промпт: `<!-- 2-prompt: ... -->`; вставь код в компилятор и загрузи.)
+(EN: The tennis club site must fully match the order. You will write two prompts: the order — heading "Tennis klubi", color #2E7D32, price 300 000 so'm per month, a big "Sign up" button; `1-prompt` — ask for a site for this order, "in `one HTML file`"; paste the code into the compiler and look: what from the order is missing?; `2-prompt` — what and how to change + "Don't change the rest"; at the top of the new code write the second prompt: `<!-- 2-prompt: ... -->`; paste the code into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code has an HTML comment that starts with "2-prompt:" and contains the student's second prompt.
+The second prompt names what to change and how (concrete values, not just "make it better") and asks to keep the rest unchanged.
+The page heading is "Tennis klubi".
+The color #2E7D32 is used as the main color (case does not matter).
+The price 300 000 per month is on the page (spaces and the currency word may differ).
+There is one large sign-up button (font-size at least 18px or padding at least 12px).
+Text language of the page does not matter.
+
+======================================================================
+
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Yakuniy loyiha
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Robotlar festivaliga sayt kerak. Butun formulani ishlating!
+- 7 qator yozing: `Nima?` `Nega?` `Kim uchun?` `Ichida nima?` `Ko'rinishi?` `Qanday ishlaydi?` `Qoidalar?`
+- Ma'lumotlar: 20-dekabr, Toshkent, IT Park, chipta 50 000 so'm
+- Oxiriga yozing: «Hammasi `bitta HTML fayl`da bo'lsin»
+- Saytni kompilyatorda ko'ring. Kerak bo'lsa `2-prompt` bilan tuzating
+- Kod boshiga promptingizni yozing: `<!-- prompt: ... -->`
+- Kodni kompilyatorga qo'ying va yuklang
+(RU: Фестивалю роботов нужен сайт. Используй всю формулу: напиши 7 строк — `Что?` `Зачем?` `Для кого?` `Что внутри?` `Как выглядит?` `Как ведёт себя?` `Какие правила?`;
+данные: 20 декабря, Ташкент, IT Park, билет 50 000 сумов; в конце напиши: «Всё в `одном HTML-файле`»; посмотри сайт в компиляторе. Если нужно, исправь его `2-prompt`;
+в начало кода впиши свой промпт: `<!-- prompt: ... -->`; вставь код в компилятор и загрузи.)
+(EN: The robot festival needs a website. Use the whole formula: write 7 lines — `What?` `Why?` `For whom?` `What's inside?` `How it looks?` `How it behaves?` `What rules?`; details: December 20, Tashkent, IT Park, ticket 50 000 so'm; at the end write: "Everything in `one HTML file`"; look at the site in the compiler. If needed, fix it with a `2-prompt`; at the top of the code write your prompt: `<!-- prompt: ... -->`; paste the code into the compiler and upload it.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+The code has an HTML comment that starts with "prompt:" and contains the student's prompt.
+The prompt answers all seven questions: what, why, for whom, what is inside, how it looks, how it behaves, which rules (labels may be in any language).
+The page is a website for a robot festival.
+The date December 20, the place Tashkent IT Park and the ticket price 50 000 are on the page.
+The blocks, colors and behaviour that the prompt names are on the page: :hover with transition, and @media with max-width.
+No phone numbers, prices or discounts appear that are not in the prompt.
+Text language of the page does not matter.

@@ -447,6 +447,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .cmp-slide-card { position: absolute; left: 2cqw; top: 14.75cqw; width: 62cqw; min-height: 25.85cqw; max-height: 39cqw; box-sizing: border-box;
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2cqw; align-items: center; padding: 2.2cqw 2.4cqw;
   border-radius: 1.4cqw; background: #fff; box-shadow: 0 .4cqw 1.6cqw rgba(27, 31, 46, .08); }
+/* Задание без результата (модуль «ИИ»): одна колонка текста во всю карточку. */
+.cmp-slide-card.is-text { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.cmp-slide-card.is-text .cmp-slide-intro { font-size: 1.8cqw; }
+.cmp-slide-card.is-text .cmp-slide-list { padding-left: 2.6cqw; font-size: 1.7cqw; line-height: 1.45; }
+.cmp-slide-card.is-text .cmp-slide-list li { margin: .5cqw 0; }
 .cmp-slide-intro { margin: 0 0 1cqw; font-size: 1.55cqw; font-weight: 600; line-height: 1.45; }
 .cmp-slide-list { margin: 0; padding-left: 2.2cqw; font-size: 1.45cqw; font-weight: 500; line-height: 1.5; }
 .cmp-slide-list li { margin: .6cqw 0; }

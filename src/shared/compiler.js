@@ -1,7 +1,7 @@
 // Задания для компилятора платформы (14.11.2026): ученик сам пишет код, ИИ платформы проверяет по промпту.
 // Источник — docs/kompilyator-amaliy-<курс>.txt в формате файла заказчика HTML_practice_prompts.txt:
 //   N. НАЗВАНИЕ УРОКА: …
-//   ЗАДАНИЕ ДЛЯ УЧЕНИКА:  (строки на узбекском; перевод — «(RU: …)»)
+//   ЗАДАНИЕ ДЛЯ УЧЕНИКА:  (строки на узбекском; перевод — «(RU: …)», затем «(EN: …)»)
 //   ПРОМПТ ДЛЯ ПРОВЕРКИ: (строки на английском)
 // Задания разделяет строка из «=». Просмотрщик показывает их в своём режиме «Компилятор» (не в списке курсов).
 const RAW = import.meta.glob('/docs/kompilyator-amaliy-*.txt', { query: '?raw', import: 'default', eager: true });
@@ -18,7 +18,10 @@ function parse(text) {
     const checkAt = b.indexOf('ПРОМПТ ДЛЯ ПРОВЕРКИ:');
     if (checkAt < 0) continue;
     let task = taskAt >= 0 ? b.slice(taskAt + 'ЗАДАНИЕ ДЛЯ УЧЕНИКА:'.length, checkAt).trim() : '';
-    let ru = '';
+    // Перевод: «(RU: …)», за ним «(EN: …)» (16.11.2026: слайд ученика на трёх языках).
+    let ru = '', en = '';
+    const e = /\(EN:\s*([\s\S]*?)\)\s*$/.exec(task);
+    if (e) { en = e[1].replace(/\s*\n\s*/g, ' ').trim(); task = task.slice(0, e.index).trim(); }
     const r = /\(RU:\s*([\s\S]*?)\)\s*$/.exec(task);
     if (r) { ru = r[1].replace(/\s*\n\s*/g, ' ').trim(); task = task.slice(0, r.index).trim(); }
     const lines = task.split('\n').map((s) => s.trim()).filter(Boolean);
@@ -28,6 +31,7 @@ function parse(text) {
       intro: lines.filter((s) => !s.startsWith('- ')),
       steps: lines.filter((s) => s.startsWith('- ')).map((s) => s.slice(2)),
       ru,
+      en,
       check: b.slice(checkAt + 'ПРОМПТ ДЛЯ ПРОВЕРКИ:'.length).trim()
     });
   }

@@ -21,6 +21,7 @@
 - Menyu ro'yxati <li> ga yana boshqa `color`
 (RU: Сделай цветными тексты сайта «Пицца за 30 минут»: правила CSS напиши внутри тега <style>; заголовку <h1> — `color`;
 тексту предложения <p> — другой `color`; списку меню <li> — ещё один `color`.)
+(EN: Color the texts of the "Pizza in 30 minutes" site: write the CSS rules inside the <style> tag; give the heading <h1> a `color`; give the offer text <p> another `color`; give the menu list <li> one more `color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use a <style> tag.
 Use <h1>, <p> and a list with <li>.
@@ -39,6 +40,7 @@ Kibersport jamoasi sayti uchun menyu yasang.
 - `#hozir` boshqa `background-color` bilan ajralib tursin
 (RU: Сделай меню сайта киберспортивной команды: ссылкам меню <a> дай цвет селектором `a`; всем ссылкам — class="menyu", для `.menyu` — `background-color`;
 ссылке на открытую сейчас страницу добавь ещё id="hozir"; `#hozir` выделяется другим `background-color`.)
+(EN: Make the menu of an esports team site: color the menu links <a> with the `a` selector; give all links class="menyu" and give `.menyu` a `background-color`; add id="hozir" to the link of the page that is open now; make `#hozir` stand out with another `background-color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use the element selector a { } with color.
 Use a class selector that matches several links.
@@ -57,6 +59,7 @@ Ob-havo sayti uchun haroratlarni rang bilan ko'rsating.
 - Sovuq kun −5°: `color` `rgb()` bilan
 (RU: Покажи температуру цветом на сайте погоды: у каждого дня свой class; жаркий день +35° — `color` названием, например `orangered`;
 прохладный день +18° — `color` в hex, например `#1E88E5`; холодный день −5° — `color` через `rgb()`.)
+(EN: Show the temperature with color on a weather site: each day has its own class; hot day +35° — `color` as a name, for example `orangered`; cool day +18° — `color` in hex, for example `#1E88E5`; cold day −5° — `color` with `rgb()`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use color written as a color name, as a hex color and with rgb(), each in a different class rule.
 Each class rule matches an element with that class.
@@ -74,6 +77,7 @@ Sayohat sayti uchun bosh bannerni yasang.
 - Banner ichidagi sarlavha va matnga `color`
 (RU: Сделай главный баннер сайта путешествий: body — `background-color`; <div class="banner"> — `background-image`: url("dengiz.svg");
 картинка заполняет баннер — `no-repeat` и `cover`; если картинка не загрузится — баннеру запасной `background-color`; заголовку и тексту в баннере — `color`.)
+(EN: Make the main banner of a travel site: body — `background-color`; <div class="banner"> — `background-image`: url("dengiz.svg"); the picture fills the banner — `no-repeat` and `cover`; if the picture does not load — a backup `background-color` for the banner; the heading and text in the banner — `color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use background-color on body.
 Use background-image with url() on an element inside body.
@@ -94,6 +98,7 @@ O'yin yangiliklari blogi uchun maqola sahifasini bezang.
 - Sanaga `text-align: right`
 (RU: Оформи страницу статьи блога игровых новостей: заголовку статьи <h1> — `font-size` и `text-align: center`; тексту статьи — `font-family` с запасным шрифтом: Georgia, serif;
 имени автора — `font-weight: bold` и `color`; ссылке «Batafsil» — `text-decoration: none`; дате — `text-align: right`.)
+(EN: Style an article page of a gaming news blog: the article heading <h1> — `font-size` and `text-align: center`; the article text — `font-family` with a backup font: Georgia, serif; the author's name — `font-weight: bold` and `color`; the "Batafsil" link — `text-decoration: none`; the date — `text-align: right`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use font-size and text-align: center on the main heading.
 Use font-family with a fallback font (for example Georgia, serif).
@@ -113,6 +118,7 @@ Onlayn kurslar sayti uchun «Mening kurslarim» sahifasini yasang.
 - Tashqi va ichki <div> ga har xil `background-color`
 (RU: Сделай страницу «Мои курсы» сайта онлайн-курсов: картинке курса <img> — `width` и `height` в px; полоске прогресса — внешнему <div> `width` и `height` в px;
 пройденной части — внутреннему <div> `width` в % и `height: 100%`; внешнему и внутреннему <div> — разный `background-color`.)
+(EN: Make the "My courses" page of an online course site: the course picture <img> — `width` and `height` in px; the progress bar — the outer <div> gets `width` and `height` in px; the completed part — the inner <div> gets `width` in % and `height: 100%`; the outer and inner <div> — different `background-color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <img> with width and height in px.
 Use width and height in px on an outer element.
@@ -132,6 +138,7 @@ Sayt uchun «Kirish» oynasini yasang.
 - <input> larga ham `box-sizing: border-box`
 (RU: Сделай окно «Вход» для сайта: окну <form> — `width` и `padding` двумя значениями: 20px 24px; окну — `border` и `box-sizing: border-box`;
 вокруг окна — `margin`; полям <input> — `width: 100%`, `padding` и `margin`; полям <input> тоже — `box-sizing: border-box`.)
+(EN: Make a "Log in" box for a site: the box <form> — `width` and `padding` with two values: 20px 24px; the box — `border` and `box-sizing: border-box`; around the box — `margin`; the fields <input> — `width: 100%`, `padding` and `margin`; the fields <input> also get `box-sizing: border-box`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <form> with <input> inside it.
 Use width and padding with two values (for example padding: 20px 24px) on the form.
@@ -151,6 +158,7 @@ Krossovka do'koni uchun mahsulot kartasini yasang.
 - Narx belgisiga `border-radius`, `padding` va `background-color`
 (RU: Сделай карточку товара для магазина кроссовок: в <div class="karta"> — картинка, <h2>, <p> и цена; карточке — `width`, `padding` и `border-radius`;
 карточке — `box-shadow` и полоса с одной стороны: `border-top`; метке цены — `border-radius`, `padding` и `background-color`.)
+(EN: Make a product card for a sneaker shop: inside <div class="karta"> — a picture, <h2>, <p> and a price; the card — `width`, `padding` and `border-radius`; the card — `box-shadow` and a stripe on one side: `border-top`; the price tag — `border-radius`, `padding` and `background-color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use a <div> with a class, with <h2> and <p> inside it.
 On that element use width, padding and border-radius.
@@ -170,6 +178,7 @@ Do'kon uchun futbolka sahifasini yasang.
 - «Savatga» <a>: `display: block`, `text-align: center`
 (RU: Сделай страницу футболки для магазина: цвета <span> — `display: inline-block`, `width`, `height`; цветам — `background-color` и `border-radius`;
 размеры <span> — `display: inline-block`, `padding`, `border`; закончившемуся размеру XL — `display: none`; «Savatga» <a> — `display: block`, `text-align: center`.)
+(EN: Make a T-shirt page for a shop: the colors <span> — `display: inline-block`, `width`, `height`; the colors — `background-color` and `border-radius`; the sizes <span> — `display: inline-block`, `padding`, `border`; the sold-out size XL — `display: none`; "Savatga" <a> — `display: block`, `text-align: center`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <span> with display: inline-block, width and height.
 Use background-color and border-radius on these spans.
@@ -189,6 +198,7 @@ Ijtimoiy tarmoq uchun profil sahifasini yasang.
 - Profil rasmiga `width`, `height` va `border-radius`
 (RU: Сделай страницу профиля для соцсети: профиль — фото слева, данные справа — `display: flex` и `flex-direction: row`; данные — имя, ник и био друг под другом — `display: flex` и `flex-direction: column`;
 цифры (посты, подписчики) рядом — `display: flex`; фото профиля — `width`, `height` и `border-radius`.)
+(EN: Make a profile page for a social network: the profile — photo on the left, info on the right — `display: flex` and `flex-direction: row`; the info — name, nickname and bio one under another — `display: flex` and `flex-direction: column`; the numbers (posts, followers) side by side — `display: flex`; the profile photo — `width`, `height` and `border-radius`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use display: flex with flex-direction: row on an element.
 Inside it, use display: flex with flex-direction: column on another element.
@@ -208,6 +218,7 @@ Internet do'kon katalogi sahifasini yasang.
 - Sahifa raqamlari 1 2 3: `display: flex`, `justify-content: center`, `gap`
 (RU: Сделай страницу каталога интернет-магазина: верхняя строка — «12 товаров» слева, «Сортировка» справа — `justify-content: space-between`; верхней строке — `align-items: center`;
 товарам — `display: flex`, `flex-wrap: wrap` и `gap`; товары по центру — `justify-content: center`; номерам страниц 1 2 3 — `display: flex`, `justify-content: center`, `gap`.)
+(EN: Make a catalog page of an online shop: the top row — "12 products" on the left, "Sort" on the right — `justify-content: space-between`; the top row — `align-items: center`; the products — `display: flex`, `flex-wrap: wrap` and `gap`; the products in the center — `justify-content: center`; the page numbers 1 2 3 — `display: flex`, `justify-content: center`, `gap`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use display: flex with justify-content: space-between and align-items: center on one element.
 Use display: flex with flex-wrap: wrap, gap and justify-content: center on another element.
@@ -226,6 +237,7 @@ Internet do'kon uchun mahsulot kartasi va savatni yasang.
 - «Yordam» chati: `position: fixed`, `bottom` va `right`
 (RU: Сделай карточку товара и корзину интернет-магазина: блоку картинки товара — `position: relative`; метка «−50%» в углу картинки — `position: absolute`, `top` и `left`;
 кнопка «Избранное» ❤ — `position: absolute`, `top` и `right`; число «3» в корзине — корзине `relative`, числу `absolute`; чат «Yordam» — `position: fixed`, `bottom` и `right`.)
+(EN: Make a product card and a cart for an online shop: the product picture block — `position: relative`; the "−50%" tag in the corner of the picture — `position: absolute`, `top` and `left`; the ❤ "Favourite" button — `position: absolute`, `top` and `right`; the number "3" on the cart — the cart `relative`, the number `absolute`; the "Yordam" chat — `position: fixed`, `bottom` and `right`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use position: relative on an element (the image block).
 Inside it, use position: absolute with top and left on one element and with top and right on another.
@@ -245,6 +257,7 @@ Musiqa sayti albomlarini sichqoncha bilan jonlantiring.
 - 🔄 ga `display: inline-block`, `:hover` da aylansin: `rotate()`
 (RU: Оживи альбомы музыкального сайта под мышкой: карточкам и кнопкам — `cursor: pointer`; карточка альбома при `:hover` поднимается — `translate()`;
 кнопка ▶ при `:hover` увеличивается — `scale()`; ❤ при `:hover` увеличивается и краснеет — `scale()` и `color`; 🔄 — `display: inline-block`, при `:hover` поворачивается — `rotate()`.)
+(EN: Bring the albums of a music site to life under the mouse: cards and buttons — `cursor: pointer`; an album card rises on `:hover` — `translate()`; the ▶ button grows on `:hover` — `scale()`; ❤ grows and turns red on `:hover` — `scale()` and `color`; 🔄 — `display: inline-block`, turns on `:hover` — `rotate()`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use cursor: pointer.
 Use :hover with transform: translate() on a card.
@@ -265,6 +278,7 @@ Onlayn kinoteatr sayti uchun tariflar blokini yasang.
 - Tugma `:hover` da `background-color` o'zgarsin
 (RU: Сделай блок тарифов сайта онлайн-кинотеатра: карточки тарифов рядом — `display: flex` и `gap`; карточкам — `transition: all`, время в `s`, `ease`;
 карточка при `:hover` поднимается — `transform` и `box-shadow`; кнопке «Tanlash» — свой `transition`, время в `ms`, `linear`; кнопка при `:hover` меняет `background-color`.)
+(EN: Make the plans block of an online cinema site: the plan cards side by side — `display: flex` and `gap`; the cards — `transition: all`, time in `s`, `ease`; a card rises on `:hover` — `transform` and `box-shadow`; the "Tanlash" button — its own `transition`, time in `ms`, `linear`; the button changes `background-color` on `:hover`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use display: flex and gap on the element that holds the cards.
 Use transition with all, a time in s and ease on the cards.
@@ -284,6 +298,7 @@ Sayt bosh sahifasidagi «Pastga» strelkasini sakratib qo'ying.
 - `animation` ga `infinite` va `alternate` qo'shing
 (RU: Заставь стрелку «Вниз» на главной странице сайта прыгать: напиши `@keyframes` с именем, например `sakrash`; в `from` — `transform: translate(0px, 0px)`, в `to` — ниже;
 стрелке ↓ — `display: inline-block` и `animation`: имя и время; в `animation` добавь `infinite` и `alternate`.)
+(EN: Make the "Down" arrow on the home page jump: write `@keyframes` with a name, for example `sakrash`; in `from` — `transform: translate(0px, 0px)`, in `to` — lower; the arrow ↓ — `display: inline-block` and `animation`: name and time; add `infinite` and `alternate` to `animation`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use @keyframes with a name.
 Use from and to with transform: translate() inside it.
@@ -302,6 +317,7 @@ To'garaklar sayti: kompyuterda kartalar yonma-yon, telefonda — ustma-ust.
 - `@media` ichida kartalarga `width: 100%`
 (RU: Сайт кружков — на компьютере карточки рядом, на телефоне — друг под другом: коробке карточек — `display: flex`, карточкам — `width: 30%`;
 правила для телефона — `@media (max-width: 600px)`; внутри `@media` коробке — `flex-direction: column`; внутри `@media` карточкам — `width: 100%`.)
+(EN: A clubs site — cards side by side on a computer, one under another on a phone: the card box — `display: flex`, the cards — `width: 30%`; rules for phones — `@media (max-width: 600px)`; inside `@media`, the box — `flex-direction: column`; inside `@media`, the cards — `width: 100%`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use display: flex on an element with child cards.
 Use width in % on the cards.
@@ -324,6 +340,7 @@ O'z o'yin do'koningiz saytini yarating.
 (RU: Сделай сайт своего магазина игр: <header> и <nav> — `display: flex`, `justify-content: space-between`; коробка карточек — `display: flex` и `gap`;
 карточка — `border-radius`, `box-shadow`, `position: relative`; метка «−30%» — `position: absolute`; карточка при `:hover` — `transform` и `transition`;
 на телефоне — `@media`: `flex-direction: column`.)
+(EN: Make a site for your game store: <header> and <nav> — `display: flex`, `justify-content: space-between`; card box — `display: flex`, `gap`; card — `border-radius`, `box-shadow`, `position: relative`; "−30%" tag — `position: absolute`; card on `:hover` — `transform`, `transition`; phone — `@media`: `flex-direction: column`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <header> with <nav> inside it; use display: flex with justify-content on <header>.
 Use display: flex with gap on the element that holds the cards.

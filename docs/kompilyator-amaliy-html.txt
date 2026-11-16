@@ -17,6 +17,7 @@ O'yin profilingiz sahifasini yarating.
 - <body> ichida o'zingiz haqingizda yozing
 (RU: Сделай страницу своего игрового профиля: напиши теги <!DOCTYPE html>, <html>, <head>, <body>; в <head> в <title> — твой ник;
 в <body> — пара слов о себе.)
+(EN: Make a page for your gaming profile: write the tags <!DOCTYPE html>, <html>, <head>, <body>; in <head>, put your nickname in <title>; in <body>, write a few words about yourself.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <!DOCTYPE html> at the start of the code.
 Use <html>, <head> and <body>.
@@ -33,6 +34,7 @@ Bugungi film afishasini yarating.
 - Matnni <p> tegiga yozing
 - <b> va <i> formatlash teglarini ishlating
 (RU: Сделай афишу сегодняшнего фильма: используй заголовки <h1> и <h2>; текст напиши в <p>; используй теги форматирования <b> и <i>.)
+(EN: Make a poster for today's movie: use the headings <h1> and <h2>; write the text in <p>; use the formatting tags <b> and <i>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <h1>.
 Use <h2>.
@@ -50,6 +52,7 @@ Do'stingizga sendvich retseptini yozing.
 - <li> ro'yxat tegi ichida bo'lsin
 (RU: Напиши другу рецепт сэндвича: используй один из заголовков <h1>–<h6>; продукты — в <ul>, шаги — в <ol>;
 <li> — внутри тега списка.)
+(EN: Write a sandwich recipe for a friend: use one of the headings <h1>–<h6>; put the ingredients in <ul> and the steps in <ol>; <li> goes inside the list tag.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
 Use <ul> and <ol>.
@@ -66,6 +69,7 @@ Text content and the number of tags do not matter.
 - href="" atributiga sahifa nomini yozing: eshik1.html
 (RU: Сделай игру «Таинственный замок»: используй заголовок <h1>–<h6>; три ссылки <a>: 1-eshik, 2-eshik, 3-eshik;
 в атрибут href="" впиши имя страницы: eshik1.html.)
+(EN: Make the game "Mystery Castle": use a heading <h1>–<h6>; three links <a>: 1-eshik, 2-eshik, 3-eshik; in the href="" attribute, write the page name: eshik1.html.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
 Use the <a> tag.
@@ -84,6 +88,7 @@ The addresses, texts and the number of tags do not matter; the pages do not have
 - Har bir rasm ostiga <p> yozing
 (RU: Сделай страницу «Космический зал»: используй <img> два раза; в src="" — адрес картинки; в alt="" — что на картинке;
 под каждой картинкой — <p>.)
+(EN: Make the page "Space Hall": use <img> twice; in src="" — the picture address; in alt="" — what is in the picture; under each picture — a <p>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use the <img> tag.
 Every <img> must have a filled src attribute.
@@ -102,6 +107,7 @@ Marsga uchadigan ekipaj anketasini yarating.
 - Har bir <input> da placeholder="" bo'lsin
 (RU: Сделай анкету в экипаж на Марс: в <form> используй <label> и <input>; type="": text, number и password;
 у каждого <input> — placeholder="".)
+(EN: Make an application form for the Mars crew: inside <form>, use <label> and <input>; type="": text, number and password; every <input> has a placeholder="".)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <form>.
 Use <input> with type text, number and password.
@@ -120,6 +126,7 @@ Pitsa buyurtmasi formasini yarating.
 - <button> tegini ishlating
 - Hammasi <form> ichida bo'lsin
 (RU: Сделай форму заказа пиццы: в <select> не меньше 3 <option>; используй <textarea>; используй <button>; всё — внутри <form>.)
+(EN: Make a pizza order form: at least 3 <option> in <select>; use <textarea>; use <button>; everything goes inside <form>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <form>.
 Use <select> with <option> tags inside it.
@@ -139,6 +146,7 @@ Kibersport jamoasi saytini yarating.
 - <footer> tegini ishlating
 (RU: Сделай сайт киберспортивной команды: в <header> — <h1>; в <nav> — 2 ссылки <a>; в <main> — 2 раздела <section>;
 используй <footer>.)
+(EN: Make a website for an esports team: <h1> in <header>; 2 links <a> in <nav>; 2 <section> blocks in <main>; use <footer>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <header>, <nav>, <main> and <footer>.
 Use a heading tag inside <header>.
@@ -156,6 +164,7 @@ Sevimli mashg'ulotingiz haqida sayt yarating. Kursda o'rgangan teglarni ishlatin
 - <form>, <input>, <button>
 (RU: Сделай сайт о своём любимом занятии, используй теги курса: <title>, <header>, <nav>, <main>, <footer>; <p>, <ul> или <ol>, <img>;
 <form>, <input>, <button>.)
+(EN: Make a website about your favourite hobby with the course tags: <title>, <header>, <nav>, <main>, <footer>; <p>, <ul> or <ol>, <img>; <form>, <input>, <button>.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <title> inside <head>.
 Use <header>, <nav>, <main> and <footer>.
