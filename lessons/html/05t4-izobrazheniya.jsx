@@ -60,9 +60,9 @@ function AqPrompt({ L, rows }) {
 // главная кнопка, карточки, раздел цели, подвал. Страница рисуется в ширину 800 px (на телефоне — 390 px, мобильная
 // версия, 480 px) и уменьшается под окно, как в уроках; сайт виден целиком, без прокрутки внутри окна.
 // site: { title, em, nav: [3], badge, sub, cta, cards: [{ ic, h, p }], goal: { h, fields: [], btn } | null, foot, noFoot, focus, c, c2, bg }
-function AqBrowser({ title, children, phone, innerRef, style }) {
+function AqBrowser({ title, children, phone, compact, innerRef, style }) {
   return (
-    <div ref={innerRef} style={style} className={'aq-br' + (phone ? ' is-phone' : '')}>
+    <div ref={innerRef} style={style} className={'aq-br' + (phone ? ' is-phone' : '') + (compact ? ' is-compact' : '')}>
       <div className="aq-br-bar">
         <span className="aq-br-tab"><i className="aq-br-fav" /><span className="aq-br-tt">{title}</span><i className="aq-br-x" /></span>
         <i className="aq-br-plus" />
@@ -141,7 +141,13 @@ function AqSite({ site }) {
     const narrow = !f.wide && f.width < 560;
     const vw = phone ? 390 : narrow ? 480 : 800;
     const maxW = phone ? Math.min(f.width, 300) : Math.min(f.width, f.wide ? 640 : 520);
-    const chrome = frame.current.offsetHeight - (frame.current.querySelector('.aq-page') || frame.current).offsetHeight;
+    // Высота полос Chrome — по самим полосам: у спрятанного окна высота 0, разность уходила в минус, и окно после ответа
+    // мигало «спрятано — показано обрезанным» (тест 03t4 на 360×640; 16.11.2026).
+    const barEl = frame.current.querySelector('.aq-br-bar'); const toolEl = frame.current.querySelector('.aq-br-tool');
+    let chrome = ((barEl && barEl.offsetHeight) || 31) + ((toolEl && toolEl.offsetHeight) || 0);
+    // Телефон и тесно (после ответа на маленьком экране): полоса вкладки прячется — всё место сайту (03t4, 16.11.2026).
+    const compact = narrow && f.free - chrome < 90;
+    if (compact) chrome = 0;
     const docH = doc.offsetHeight;
     const kW = maxW / vw, kH = (f.free - chrome) / docH;
     const kMin = Math.min(kW, phone ? 0.62 : narrow ? 0.6 : 0.42);   // мельче — текст сайта не прочитать
@@ -153,8 +159,8 @@ function AqSite({ site }) {
       const el = doc.querySelector(S.focus);
       if (el) off = Math.min(fullH - viewH, Math.max(0, Math.round((el.offsetTop - 8) * k)));
     }
-    const next = { vw, k, viewH, off, hide: viewH < 70 };
-    setFit((p) => (p && p.vw === next.vw && Math.abs(p.k - next.k) < 0.002 && p.viewH === next.viewH && p.off === next.off && p.hide === next.hide ? p : next));
+    const next = { vw, k, viewH, off, compact, hide: viewH < 56 };   // полоса от focus в 56+ px ещё читается (03t4 после ответа; 16.11.2026)
+    setFit((p) => (p && p.vw === next.vw && Math.abs(p.k - next.k) < 0.002 && p.viewH === next.viewH && p.off === next.off && p.hide === next.hide && p.compact === next.compact ? p : next));
   }, [tick, site, fit && fit.vw]); // eslint-disable-line react-hooks/exhaustive-deps
   const vw = fit ? fit.vw : (S.mobile ? 390 : 800);
   const k = fit ? fit.k : 0;
@@ -166,7 +172,7 @@ function AqSite({ site }) {
   const cls = 'aq-doc' + (vw < 600 ? ' is-m' : '') + (S.dark ? ' is-dark' : '') + (S.shadow === 'big' ? ' sh-big' : S.shadow === 'none' ? ' sh-none' : '') + (S.heroBg ? ' has-hero' : '') + (S.btn ? ' has-btn' : '');
   const hot = S.cursor === 'hover' && S.ctaHot ? { background: S.ctaHot.bg || undefined, color: S.ctaHot.fg || undefined, transform: 'scale(' + (S.ctaHot.scale || 1) + ')' } : null;
   return (
-    <AqBrowser title={S.title} phone={!!S.mobile} innerRef={frame} style={fit ? { width: Math.round(vw * k), visibility: fit.hide ? 'hidden' : 'visible', height: fit.hide ? 0 : undefined } : { visibility: 'hidden' }}>
+    <AqBrowser title={S.title} phone={!!S.mobile} compact={!!(fit && fit.compact)} innerRef={frame} style={fit ? { width: Math.round(vw * k), visibility: fit.hide ? 'hidden' : 'visible', height: fit.hide ? 0 : undefined } : { visibility: 'hidden' }}>
       <div className="aq-page" style={{ height: fit ? fit.viewH : 1 }}>
         <div className="aq-scale" style={{ transform: fit ? 'translateY(' + -fit.off + 'px)' : undefined }}>
           <div ref={docRef} className={cls} style={Object.assign({ width: vw, transform: 'scale(' + (k || 1) + ')' }, vars)}>
@@ -235,6 +241,14 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
     const m = mainRef.current;
     if (!m) return;
     if (m.querySelector('.aq-br')) { if (tight) setTight(false); return; }
+    // Карточка промпта или сообщение не влезли (после ответа на маленьком телефоне) — карточка уменьшается целиком,
+    // а не срезается снизу; мельче 62% — прячется, как раньше (тесты 02t3, 03t1 на 360×640; 16.11.2026).
+    const vis = m.querySelector('.aq-vis'); const card = vis && vis.firstElementChild;
+    if (card && card.matches('.aq-prompt, .aq-msg')) {
+      card.style.zoom = '';
+      const need = card.offsetHeight, have = vis.clientHeight;
+      if (need > have + 1) { const k = have / need; if (k >= 0.62) card.style.zoom = String(Math.floor(k * 1000) / 1000); else if (!tight) setTight(true); }
+    }
     if (!tight && m.scrollHeight > m.clientHeight + 1) setTight(true);
   }, [fitTick, checked, tight]);
   const fb = checked ? (
@@ -371,6 +385,7 @@ const AQ_CSS = `
 .aq-doc .btn2 { background-color: var(--c); color: white; padding: 12px 22px; border: none; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700; }
 .aq-doc .foot { padding: 14px 28px; color: #64748B; font-size: 13px; text-align: center; }
 .aq-br.is-phone { width: min(100%, 300px); }
+.aq-br.is-compact .aq-br-bar { display: none; }   /* тесно на телефоне — без полосы вкладки, всё место сайту */
 .aq-doc { position: relative; }
 .aq-doc .cards .card, .aq-doc .it, .aq-doc .goal { border-radius: var(--rad); }
 .aq-doc.sh-big .card, .aq-doc.sh-big .it { box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22); }
@@ -600,6 +615,7 @@ function WqVis({ code, file, mark, html, css, vw: vwOwn, focus, title }) {
     const wide = f.width >= 600;
     const both = hasCode && hasPage;
     const row = both && wide;
+    const wideDoc = vwOwn > 520;   // широкая страница (vw 800 — «компьютер» в @media): рядом с кодом ей — 60% ширины
     const gap = 12;
     // Код: шрифт уменьшается (не мельче 10 px), пока редактор не влезет в свою долю высоты; не влез и так — редактор
     // показывает часть кода от первой выделенной строки (как окно сайта в тестах «ИИ» — часть от focus).
@@ -642,7 +658,7 @@ function WqVis({ code, file, mark, html, css, vw: vwOwn, focus, title }) {
     let pg = null;
     if (hasPage && frame.current && docH) {
       const vw = vwOwn || (row ? 420 : wide ? 560 : 360);   // текст страницы — почти в натуральную величину
-      const maxW = row ? Math.floor((f.width - gap) * 0.5) : Math.min(f.width, wide ? 640 : 480);
+      const maxW = row ? Math.floor((f.width - gap) * (wideDoc ? 0.6 : 0.5)) : Math.min(f.width, wide ? 640 : 480);
       // высота полос Chrome — по самим полосам: у спрятанного окна высота 0, и разность ушла бы в минус (окно мигало бы)
       const chrome = Array.prototype.reduce.call(frame.current.querySelectorAll('.aq-br-bar, .aq-br-tool'), (n, el) => n + el.offsetHeight, 0);
       const freeH = (both && !row ? f.free - codeH - gap : f.free) - chrome;
@@ -658,14 +674,14 @@ function WqVis({ code, file, mark, html, css, vw: vwOwn, focus, title }) {
       }
       pg = { vw, k, viewH, off, hide: dropPage || viewH < 70 };   // места на окно нет (телефон после ответа) — окно прячется, как в тестах «ИИ»
     }
-    const next = { row, fs, cut, pg };
+    const next = { row, wideDoc: row && wideDoc, fs, cut, pg };
     setFit((p) => (JSON.stringify(p) === JSON.stringify(next) ? p : next));
   }, [tick, docH, code, html, css]); // eslint-disable-line react-hooks/exhaustive-deps
   const pg = fit && fit.pg;
   const vw = pg ? pg.vw : (vwOwn || 360);
   useEffect(() => { if (hasPage) measure(); }, [vw]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div ref={box} className={'wq-vis' + (fit && fit.row ? ' is-row' : '') + (hasCode && hasPage ? ' is-both' : '')}>
+    <div ref={box} className={'wq-vis' + (fit && fit.row ? ' is-row' : '') + (fit && fit.wideDoc ? ' is-wide-doc' : '') + (hasCode && hasPage ? ' is-both' : '')}>
       {hasCode ? <WqCode code={code} file={file} mark={mark} fs={fit && fit.fs} cut={fit && fit.cut} innerRef={edRef} /> : null}
       {hasPage ? (
         <AqBrowser title={tabTitle} innerRef={frame} style={pg ? (pg.hide ? { width: Math.round(vw * pg.k), visibility: 'hidden', height: 0, position: 'absolute' } : { width: Math.round(vw * pg.k) }) : { visibility: 'hidden', width: 240 }}>
@@ -683,6 +699,7 @@ const WQ_CSS = `
 .wq-vis { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; min-height: 0; }
 .wq-vis.is-row { flex-direction: row; align-items: flex-start; justify-content: center; }
 .wq-vis.is-row > .wq-ed { flex: 1 1 50%; min-width: 0; }
+.wq-vis.is-row.is-wide-doc > .wq-ed { flex-basis: 38%; }
 .wq-ed { flex: none; align-self: stretch; overflow: hidden; border-radius: 12px; background: #1E1E1E; box-shadow: 0 10px 26px rgba(15, 23, 42, .14); font: 600 13px/1.45 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #D4D4D4; text-align: left; }
 .wq-vis.is-row > .wq-ed { align-self: flex-start; }
 .wq-ed-tabs { display: flex; background: #252526; }
