@@ -38,12 +38,12 @@
 // КОНТРАКТ УРОКА
 //   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
 //   · ttsApiBase — база сервиса озвучки (как в Dars001, 14.11.2026):
-//     GET {ttsApiBase}/api/tts?text=…&g=m&lesson_id=…&lesson_name=…&student_uuid=…&voice_id=…&k=… отдаёт
+//     GET {ttsApiBase}/api/tts?text=…&g=m&lesson_id=…&lesson_name=…&student_uuid=…&voice_id=…&voice=…&k=… отдаёт
 //     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id — голос курса TTS_VOICE_ID. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -963,6 +963,9 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
   url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
+  // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
+  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
