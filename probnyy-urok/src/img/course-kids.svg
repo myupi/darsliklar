@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <!-- course-kids: обложка курса Kids — робот-космонавт летит между четырьмя планетами курса.
+       Стиль как у обложки «Математика» с сайта Junior IT: мягкая плоская графика, градиентный фон, лёгкие тени. -->
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#5B3FD6"/><stop offset="1" stop-color="#2A1D73"/></linearGradient>
+    <radialGradient id="neb" cx="70%" cy="30%" r="60%"><stop stop-color="#B79BFF" stop-opacity=".45"/><stop offset="1" stop-color="#B79BFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="p1" x2="1" y2="1"><stop stop-color="#7CE3D6"/><stop offset="1" stop-color="#1FA393"/></linearGradient>
+    <linearGradient id="p2" x2="1" y2="1"><stop stop-color="#FFB37A"/><stop offset="1" stop-color="#FA4F28"/></linearGradient>
+    <linearGradient id="p3" x2="1" y2="1"><stop stop-color="#8EC5FF"/><stop offset="1" stop-color="#3B7BEA"/></linearGradient>
+    <linearGradient id="p4" x2="1" y2="1"><stop stop-color="#FFE38A"/><stop offset="1" stop-color="#F2B01E"/></linearGradient>
+    <linearGradient id="suit" x2=".6" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#D9DEF0"/></linearGradient>
+    <filter id="s"><feDropShadow dy="6" stdDeviation="5" flood-color="#140C45" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="400" height="250" rx="25" fill="url(#bg)"/>
+  <rect width="400" height="250" rx="25" fill="url(#neb)"/>
+  <!-- звёзды -->
+  <g fill="#FFFFFF">
+    <circle cx="34" cy="30" r="1.6"/><circle cx="92" cy="58" r="1.2"/><circle cx="150" cy="22" r="1.8"/><circle cx="238" cy="40" r="1.2"/>
+    <circle cx="372" cy="26" r="1.6"/><circle cx="352" cy="118" r="1.2"/><circle cx="26" cy="210" r="1.4"/><circle cx="118" cy="226" r="1.2"/>
+    <circle cx="300" cy="226" r="1.6"/><circle cx="384" cy="196" r="1.2"/>
+  </g>
+  <path d="M210 214 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 z" fill="#FFE38A"/>
+  <path d="M60 104 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z" fill="#FFFFFF" opacity=".85"/>
+  <!-- орбита -->
+  <ellipse cx="200" cy="132" rx="168" ry="70" fill="none" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="2" stroke-dasharray="4 8"/>
+
+  <!-- планета 1: компьютер -->
+  <g filter="url(#s)">
+    <circle cx="62" cy="150" r="30" fill="url(#p1)"/>
+    <path d="M38 138 q24 -12 48 0" fill="none" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="5" stroke-linecap="round"/>
+    <rect x="49" y="141" width="26" height="18" rx="3" fill="#123A4F"/>
+    <rect x="52" y="144" width="20" height="12" rx="1.5" fill="#7CE3D6"/>
+    <rect x="58" y="160" width="8" height="5" fill="#123A4F"/>
+  </g>
+  <!-- планета 2: игры -->
+  <g filter="url(#s)">
+    <circle cx="128" cy="64" r="24" fill="url(#p2)"/>
+    <ellipse cx="128" cy="64" rx="38" ry="9" fill="none" stroke="#FFD2B8" stroke-width="4" transform="rotate(-14 128 64)"/>
+    <rect x="114" y="57" width="28" height="15" rx="7.5" fill="#FFF3EA"/>
+    <path d="M121 61 v7 M117.5 64.5 h7" stroke="#FA4F28" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="134" cy="62" r="2" fill="#7C5CFA"/><circle cx="137.5" cy="66" r="2" fill="#1FA393"/>
+  </g>
+  <!-- планета 3: код и логика -->
+  <g filter="url(#s)">
+    <circle cx="300" cy="70" r="27" fill="url(#p3)"/>
+    <path d="M280 58 q20 -10 40 0" fill="none" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="5" stroke-linecap="round"/>
+    <rect x="286" y="66" width="13" height="11" rx="2.5" fill="#FFE38A"/>
+    <rect x="299" y="66" width="13" height="11" rx="2.5" fill="#FFFFFF"/>
+    <rect x="292" y="77" width="13" height="10" rx="2.5" fill="#7CE3D6"/>
+    <circle cx="299" cy="66" r="2.6" fill="#FFE38A"/>
+  </g>
+  <!-- планета 4: свой проект (кубок) -->
+  <g filter="url(#s)">
+    <circle cx="350" cy="168" r="28" fill="url(#p4)"/>
+    <path d="M330 156 q20 -11 40 0" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/>
+    <path d="M340 158 h20 v6 a10 10 0 0 1 -20 0 z" fill="#FFFFFF"/>
+    <path d="M340 160 h-5 a5 5 0 0 0 5 7 M360 160 h5 a5 5 0 0 1 -5 7" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>
+    <rect x="347" y="173" width="6" height="6" fill="#FFFFFF"/><rect x="342" y="179" width="16" height="4" rx="2" fill="#FFFFFF"/>
+  </g>
+
+  <!-- след ракеты -->
+  <path d="M90 214 q60 -10 104 -54" fill="none" stroke="#FFB37A" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 12" opacity=".9"/>
+  <!-- робот-космонавт -->
+  <g filter="url(#s)" transform="rotate(-12 214 136)">
+    <path d="M196 172 l-10 22 l18 -8 z" fill="#FA4F28"/>
+    <path d="M232 172 l10 22 l-18 -8 z" fill="#FA4F28"/>
+    <path d="M206 178 q8 18 16 0 z" fill="#FFB020"/>
+    <path d="M209 178 q5 11 10 0 z" fill="#FFE38A"/>
+    <rect x="192" y="128" width="44" height="52" rx="18" fill="url(#suit)"/>
+    <rect x="207" y="146" width="14" height="12" rx="3" fill="#7C5CFA"/>
+    <circle cx="214" cy="152" r="2.6" fill="#7CE3D6"/>
+    <circle cx="214" cy="112" r="26" fill="url(#suit)"/>
+    <rect x="198" y="100" width="32" height="22" rx="10" fill="#1C1550"/>
+    <ellipse cx="207" cy="111" rx="3.6" ry="4.6" fill="#7CE3D6"/><ellipse cx="221" cy="111" rx="3.6" ry="4.6" fill="#7CE3D6"/>
+    <path d="M207 117 q7 4 14 0" fill="none" stroke="#7CE3D6" stroke-width="2" stroke-linecap="round"/>
+    <path d="M200 94 q6 -6 14 -6" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <path d="M214 86 v-10" stroke="#D9DEF0" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="214" cy="73" r="5" fill="#FA4F28"/>
+    <rect x="182" y="136" width="12" height="24" rx="6" fill="url(#suit)" transform="rotate(20 188 148)"/>
+    <rect x="234" y="128" width="12" height="24" rx="6" fill="url(#suit)" transform="rotate(-38 240 140)"/>
+  </g>
+</svg>

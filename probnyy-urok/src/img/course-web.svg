@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <!-- course-web: обложка курса «Веб-программирование» — сайт собирается из трёх слоёв: HTML (каркас),
+       CSS (цвет и форма), JS (действие). Стиль как у обложки «Математика»: мягкая плоская графика, градиент, тени. -->
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#FFE7DC"/><stop offset="1" stop-color="#FFB49A"/></linearGradient>
+    <linearGradient id="hero" x2="1" y2="1"><stop stop-color="#FF8A5C"/><stop offset="1" stop-color="#FA4F28"/></linearGradient>
+    <filter id="s"><feDropShadow dy="8" stdDeviation="6" flood-color="#B0401F" flood-opacity=".25"/></filter>
+  </defs>
+  <rect width="400" height="250" rx="25" fill="url(#bg)"/>
+  <circle cx="62" cy="40" r="64" fill="#FFFFFF" opacity=".25"/>
+  <circle cx="356" cy="222" r="56" fill="#FFFFFF" opacity=".18"/>
+
+  <!-- слой 1: HTML-каркас (позади, слева) -->
+  <g filter="url(#s)" transform="rotate(-8 92 128)">
+    <rect x="34" y="70" width="118" height="96" rx="12" fill="#FFFFFF" opacity=".9"/>
+    <g fill="none" stroke="#C9B8AE" stroke-width="3" stroke-dasharray="6 5">
+      <rect x="46" y="84" width="94" height="14" rx="4"/>
+      <rect x="46" y="106" width="56" height="44" rx="4"/>
+      <rect x="110" y="106" width="30" height="20" rx="4"/>
+    </g>
+    <text x="93" y="161" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="13" fill="#E86A3C">&lt;/&gt;</text>
+  </g>
+  <!-- слой 2: CSS — палитра и форма (позади, справа) -->
+  <g filter="url(#s)" transform="rotate(8 318 96)">
+    <rect x="262" y="48" width="112" height="96" rx="12" fill="#FFFFFF" opacity=".92"/>
+    <circle cx="288" cy="76" r="11" fill="#FA4F28"/><circle cx="318" cy="76" r="11" fill="#7C5CFA"/><circle cx="348" cy="76" r="11" fill="#0FA38E"/>
+    <rect x="276" y="98" width="84" height="16" rx="8" fill="#FFE38A"/>
+    <rect x="276" y="120" width="48" height="12" rx="6" fill="#FFD2C2"/>
+  </g>
+
+  <!-- готовый сайт (впереди) -->
+  <g filter="url(#s)">
+    <rect x="112" y="40" width="180" height="168" rx="14" fill="#FFFFFF"/>
+    <path d="M112 54 a14 14 0 0 1 14 -14 h152 a14 14 0 0 1 14 14 v10 h-180 z" fill="#2B2140"/>
+    <circle cx="126" cy="52" r="3.5" fill="#FF5F57"/><circle cx="137" cy="52" r="3.5" fill="#FEBC2E"/><circle cx="148" cy="52" r="3.5" fill="#28C840"/>
+    <rect x="160" y="47" width="118" height="10" rx="5" fill="#4A4266"/>
+    <rect x="124" y="74" width="156" height="58" rx="10" fill="url(#hero)"/>
+    <circle cx="256" cy="92" r="10" fill="#FFE38A"/>
+    <path d="M124 122 q26 -22 52 -6 q22 -18 46 -2 q24 -14 58 6 v4 a10 10 0 0 1 -10 10 h-136 a10 10 0 0 1 -10 -10 z" fill="#D53A17" opacity=".55"/>
+    <rect x="136" y="84" width="70" height="9" rx="4.5" fill="#FFFFFF"/>
+    <rect x="136" y="99" width="46" height="7" rx="3.5" fill="#FFFFFF" opacity=".75"/>
+    <rect x="124" y="142" width="48" height="40" rx="8" fill="#F1ECFF"/>
+    <rect x="178" y="142" width="48" height="40" rx="8" fill="#E3F7F3"/>
+    <rect x="232" y="142" width="48" height="40" rx="8" fill="#FFF3D6"/>
+    <circle cx="148" cy="157" r="7" fill="#7C5CFA"/><circle cx="202" cy="157" r="7" fill="#0FA38E"/><circle cx="256" cy="157" r="7" fill="#F2B01E"/>
+    <rect x="134" y="169" width="28" height="5" rx="2.5" fill="#C9C2E0"/><rect x="188" y="169" width="28" height="5" rx="2.5" fill="#BFE3DC"/><rect x="242" y="169" width="28" height="5" rx="2.5" fill="#F1DDB0"/>
+    <rect x="166" y="190" width="72" height="12" rx="6" fill="#FA4F28"/>
+  </g>
+  <!-- слой 3: JS — молния-действие и курсор, нажимающий кнопку -->
+  <g filter="url(#s)">
+    <circle cx="322" cy="176" r="24" fill="#0FA38E"/>
+    <path d="M326 160 l-14 20 h10 l-4 14 l14 -20 h-10 z" fill="#FFFFFF"/>
+  </g>
+  <path d="M226 196 l0 26 l7 -6 l5 11 l6 -3 l-5 -10 l9 -1 z" fill="#2B2140" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+  <g fill="#FFFFFF"><circle cx="212" cy="190" r="2.5"/><circle cx="248" cy="186" r="2"/><circle cx="244" cy="204" r="2"/></g>
+</svg>
