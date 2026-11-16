@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Home, BookOpen, Gift, Award, Flame, Coins, Zap, Check, ChevronRight, Rocket, Code2, Calculator, Languages } from 'lucide-react';
 import { Head, useNav } from '../ui/kit.jsx';
 import { sfx, confetti } from '../ui/fx.js';
@@ -9,7 +9,7 @@ import Art from '../ui/Art.jsx';
 const GIFTS = [['vr', '🥽', 900], ['phone', '📱', 2500], ['laptop', '💻', 4000], ['ultrabook', '💻', 3500], ['tablet', '📲', 1800], ['speaker', '🔊', 700], ['headphones', '🎧', 600], ['keyboard', '⌨️', 800]];
 const COURSES = [['kids', Rocket, '#7C5CFA'], ['web', Code2, '#FA4F28'], ['math', Calculator, '#0FA38E'], ['eng', Languages, '#E6A100']];
 
-export default function Platform({ t, st, set, setNav }) {
+export default function Platform({ t, st, set, setNav, bot, say, award }) {
   const s = t.s4;
   const [tab, setTab] = useState('home');
   const [course, setCourse] = useState(null);
@@ -30,9 +30,9 @@ export default function Platform({ t, st, set, setNav }) {
         </nav>
         <div className="lms-body">
           <div className="lms-demo">{s.demo}</div>
-          {tab === 'home' ? <HomeTab s={s} st={st} open={open} /> : null}
-          {tab === 'courses' ? <CoursesTab s={s} course={course} setCourse={setCourse} /> : null}
-          {tab === 'shop' ? <ShopTab s={s} st={st} set={set} /> : null}
+          {tab === 'home' ? <HomeTab s={s} st={st} open={open} bot={bot} /> : null}
+          {tab === 'courses' ? <CoursesTab s={s} course={course} setCourse={setCourse} bot={bot} say={say} award={award} /> : null}
+          {tab === 'shop' ? <ShopTab s={s} st={st} set={set} bot={bot} say={say} award={award} /> : null}
           {tab === 'certs' ? <CertsTab s={s} /> : null}
         </div>
       </div>
@@ -40,23 +40,23 @@ export default function Platform({ t, st, set, setNav }) {
   );
 }
 
-function HomeTab({ s, st, open }) {
+function HomeTab({ s, st, open, bot }) {
   const goal = st.goal ? s.gifts[st.goal] : null;
   return (
     <div className="lms-home">
       <div className="lms-hero">
         <div><small>{s.hello}</small><b>{s.helloSub}</b></div>
         <div className="lms-stats">
-          <span><Coins size={16} /> 80 {s.coins}</span>
+          <span className="lms-coins"><span className="coin sm" /> {st.coins} {s.coins}</span>
           <span><Flame size={16} /> 3 {s.streak}</span>
           <span><Zap size={16} /> 120 {s.points}</span>
         </div>
       </div>
       {goal ? <div className="lms-goal"><Gift size={16} /> {s.goal}: <b>{goal}</b></div> : null}
       <div className="lms-h">{s.myCourses}</div>
-      <div className="lms-courses">
+      <div className="lms-courses stagger">
         {COURSES.map(([id, Ic, c]) => (
-          <button key={id} type="button" className="lms-course" style={{ '--c': c }} onClick={() => open(id)}>
+          <button key={id} type="button" className="lms-course tilt" style={{ '--c': c }} onClick={() => open(id)}>
             <Art id={'course-' + id} className="lms-cover" />
             <span className="lms-course-ic"><Ic size={22} /></span>
             <b>{s.courses[id].name}</b>
@@ -69,7 +69,7 @@ function HomeTab({ s, st, open }) {
   );
 }
 
-function CoursesTab({ s, course, setCourse }) {
+function CoursesTab({ s, course, setCourse, bot, say, award }) {
   const cur = course || 'kids';
   const d = s.courses[cur];
   return (
@@ -84,15 +84,15 @@ function CoursesTab({ s, course, setCourse }) {
       <div className="lms-cpanel" key={cur}>
         <Art id={'course-' + cur} className="lms-cover lms-cover-big" />
         <b className="lms-cname">{d.name}</b> <small>{d.sub}</small>
-        {cur === 'math' ? <MathTask d={d} /> : cur === 'eng' ? <EngCards d={d} /> : (
-          <ol className="lms-steps">{d.items.map((x, i) => <li key={i}><span>{i + 1}</span>{x}</li>)}</ol>
+        {cur === 'math' ? <MathTask d={d} bot={bot} say={say} award={award} /> : cur === 'eng' ? <EngCards d={d} bot={bot} say={say} award={award} /> : (
+          <ol className="lms-steps stagger">{d.items.map((x, i) => <li key={i}><span>{i + 1}</span>{x}</li>)}</ol>
         )}
       </div>
     </div>
   );
 }
 
-function MathTask({ d }) {
+function MathTask({ d, bot, say, award }) {
   const [pick, setPick] = useState(null);
   const ok = pick === '32';
   return (
@@ -101,7 +101,7 @@ function MathTask({ d }) {
       <p>{d.q}</p>
       <div className="math-opts">
         {d.opts.map((o) => (
-          <button key={o} type="button" className={pick === o ? (o === '32' ? 'is-ok' : 'is-no') : ''} onClick={() => { setPick(o); sfx(o === '32' ? 'win' : 'error'); if (o === '32') confetti(0.5, 0.6, 40); }}>{o}</button>
+          <button key={o} type="button" className={pick === o ? (o === '32' ? 'is-ok' : 'is-no') : ''} onClick={(e) => { setPick(o); sfx(o === '32' ? 'win' : 'error'); if (o === '32') { confetti(0.5, 0.6, 40); say(bot.mathOk); award('math', e.currentTarget); } else say(bot.mathNo); }}>{o}</button>
         ))}
       </div>
       {pick ? <div className={'note ' + (ok ? 'note-ok' : 'note-warn')}>{ok ? d.ok : d.no}</div> : null}
@@ -109,14 +109,15 @@ function MathTask({ d }) {
   );
 }
 
-function EngCards({ d }) {
+function EngCards({ d, bot, say, award }) {
   const [flip, setFlip] = useState({});
+  const seen = useRef(new Set());
   return (
     <div className="eng">
       <small>{d.hint}</small>
       <div className="eng-row">
         {d.words.map(([en, tr]) => (
-          <button key={en} type="button" className={'eng-card' + (flip[en] ? ' is-flip' : '')} onClick={() => { sfx('click'); setFlip((f) => Object.assign({}, f, { [en]: !f[en] })); }}>
+          <button key={en} type="button" className={'eng-card' + (flip[en] ? ' is-flip' : '')} onClick={(e) => { sfx('click'); seen.current.add(en); setFlip(Object.assign({}, flip, { [en]: !flip[en] })); if (d.words.every(([w]) => seen.current.has(w))) { const el = e.currentTarget; setTimeout(() => { say(bot.eng); award('eng', el); }, 300); } }}>
             <span className="eng-f"><b>{en}</b></span>
             <span className="eng-b">{tr}</span>
           </button>
@@ -126,14 +127,14 @@ function EngCards({ d }) {
   );
 }
 
-function ShopTab({ s, st, set }) {
+function ShopTab({ s, st, set, bot, say, award }) {
   return (
     <div className="shop">
       <b className="shop-h">{s.shopTitle}</b>
       <small>{s.shopSub}</small>
-      <div className="shop-grid">
+      <div className="shop-grid stagger">
         {GIFTS.map(([id, ic, price]) => (
-          <button key={id} type="button" className={'gift' + (st.goal === id ? ' is-on' : '')} onClick={() => { sfx('pick'); set({ goal: st.goal === id ? null : id }); if (st.goal !== id) confetti(0.5, 0.6, 30); }} aria-pressed={st.goal === id}>
+          <button key={id} type="button" className={'gift tilt' + (st.goal === id ? ' is-on' : '')} onClick={(e) => { sfx('pick'); set({ goal: st.goal === id ? null : id }); if (st.goal !== id) { confetti(0.5, 0.6, 30); say(bot.goal(s.gifts[id])); award('goal', e.currentTarget); } }} aria-pressed={st.goal === id}>
             <span className="gift-ic" aria-hidden="true"><Art id={'gift-' + id} fallback={ic} /></span>
             <b>{s.gifts[id]}</b>
             <small><Coins size={12} /> {price}</small>
@@ -141,7 +142,12 @@ function ShopTab({ s, st, set }) {
           </button>
         ))}
       </div>
-      <div className="shop-goal">{s.goal}: <b>{st.goal ? s.gifts[st.goal] : s.noGoal}</b></div>
+      <div className="shop-goal">
+        <span>{s.goal}: <b>{st.goal ? s.gifts[st.goal] : s.noGoal}</b></span>
+        {st.goal ? (() => { const price = GIFTS.find((g) => g[0] === st.goal)[2]; const p = Math.min(100, Math.round((st.coins / price) * 100)); return (
+          <span className="goal-bar"><span className="goal-fill" style={{ width: Math.max(2, p) + '%' }} /><small><span className="coin sm" /> {st.coins} / {price}</small></span>
+        ); })() : null}
+      </div>
     </div>
   );
 }

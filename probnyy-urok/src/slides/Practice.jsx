@@ -6,7 +6,7 @@ import Art from '../ui/Art.jsx';
 
 // Слайд 5. Практика: «Веб-студия» (Teens) и «Лабиринт» (Kids). Возраст выбирает, какая открыта сначала;
 // вторая — на соседней вкладке. Любая доведённая до конца практика отмечается в итоге на финале.
-export default function Practice({ t, st, set, setNav }) {
+export default function Practice({ t, st, set, setNav, bot, say, award }) {
   const s = t.s5;
   const [tab, setTab] = useState(st.age === 'kids' ? 'maze' : 'web');
   useNav(setNav, [st.lang], () => ({ label: s.next, ok: true }));
@@ -23,7 +23,7 @@ export default function Practice({ t, st, set, setNav }) {
           ))}
         </div>
       </div>
-      {tab === 'web' ? <WebStudio s={s.web} done={done} /> : <Maze s={s.maze} done={done} />}
+      {tab === 'web' ? <WebStudio s={s.web} done={done} bot={bot} say={say} award={award} /> : <Maze s={s.maze} done={done} bot={bot} say={say} award={award} />}
     </section>
   );
 }
@@ -32,7 +32,7 @@ export default function Practice({ t, st, set, setNav }) {
 const COLORS = ['#FA4F28', '#0FA38E', '#7C5CFA', '#E6A100', '#E2366F'];
 const QUICK_ICONS = ['🤖', '🚀', '⚽'];
 
-function WebStudio({ s, done }) {
+function WebStudio({ s, done, bot, say, award }) {
   const [layer, setLayer] = useState('html');           // html | css | js — слои добавляются по порядку
   const [title, setTitle] = useState('');
   const [slogan, setSlogan] = useState('');
@@ -45,10 +45,11 @@ function WebStudio({ s, done }) {
   const T1 = title.trim() || s.defTitle, S1 = slogan.trim() || s.defSlogan, B1 = btn.trim() || s.defBtn;
 
   const quick = (i) => { sfx('pick'); setTitle(s.quick[i]); setIcon(QUICK_ICONS[i]); };
-  const press = () => {
+  const press = (e) => {
     if (L < 3) return;                                   // без JS кнопка на странице ничего не делает
     sfx('win'); confetti(0.72, 0.5, 60);
     setPlayers((p) => p + 1); done();
+    if (!players) { say(bot.webJs); award('web', e.currentTarget); }
   };
   const Line = ({ n, children, dim }) => <div className={'ed-ln' + (dim ? ' is-dim' : '')}><span className="ed-n">{n}</span><span className="ed-c">{children}</span></div>;
   const Tag = ({ c }) => <span className="tk-t">{c}</span>;
@@ -59,7 +60,7 @@ function WebStudio({ s, done }) {
       <Task>{s.task}</Task>
       <div className="layers">
         {['html', 'css', 'js'].map((id, i) => (
-          <button key={id} type="button" className={'layer layer-' + id + (L > i ? ' is-on' : '')} onClick={() => { sfx('click'); setLayer(id); }} aria-pressed={layer === id}>
+          <button key={id} type="button" className={'layer layer-' + id + (L > i ? ' is-on' : '')} onClick={() => { sfx('click'); setLayer(id); say(bot.layer[id]); }} aria-pressed={layer === id}>
             <span className="layer-n">{i + 1}</span> {s.layers[id]}
           </button>
         ))}
@@ -126,7 +127,7 @@ const DIRS = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
 const DIR_IC = { up: ArrowUp, down: ArrowDown, left: ArrowLeft, right: ArrowRight };
 const has = (list, r, c) => list.some(([a, b]) => a === r && b === c);
 
-function Maze({ s, done }) {
+function Maze({ s, done, bot, say, award }) {
   const [lv, setLv] = useState(0);
   const [prog, setProg] = useState([]);                // [{ dir, rep, jump }]
   const [mod, setMod] = useState(null);                // 2 | 3 | 'jump' — ждёт направления
@@ -136,6 +137,7 @@ function Maze({ s, done }) {
   const [run, setRun] = useState(false);
   const [won, setWon] = useState([]);                  // пройденные уровни
   const timer = useRef(null);
+  const boardRef = useRef(null);
   // Программа и модификатор — ещё и в ref: нажатия подряд (быстрее перерисовки) не теряют блоки.
   const progRef = useRef([]); const modRef = useRef(null);
   const setP = (v) => { progRef.current = v; setProg(v); };
@@ -166,7 +168,7 @@ function Maze({ s, done }) {
     let [r, c] = L.start; let coins = []; let i = 0;
     setPos(L.start); setGot([]); setRun(true); setMsg({ kind: 'info', text: s.running });
     const fail = (key) => {
-      sfx('error'); setMsg({ kind: 'err', text: s.msg[key] });
+      sfx('error'); setMsg({ kind: 'err', text: s.msg[key] }); say(bot.mazeErr);
       timer.current = setTimeout(() => { setPos(L.start); setGot([]); setRun(false); }, 900);
     };
     const tick = () => {
@@ -187,7 +189,7 @@ function Maze({ s, done }) {
       if (r === L.goal[0] && c === L.goal[1]) {
         setRun(false); sfx('win'); confetti(0.5, 0.55);
         const all = won.includes(lv) ? won : won.concat(lv);
-        setWon(all); done();
+        setWon(all); done(); say(bot.mazeWin); award('maze' + lv, boardRef.current);
         setMsg({ kind: 'ok', text: all.length === LEVELS.length ? s.msg.winAll : s.msg.win });
         return;
       }
@@ -216,7 +218,7 @@ function Maze({ s, done }) {
         ))}
       </div>
       <div className="mz-grid-wrap">
-        <div className="mz-board" style={{ gridTemplateColumns: `repeat(${L.size}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${L.size}, minmax(0, 1fr))` }}>
+        <div className="mz-board" ref={boardRef} style={{ gridTemplateColumns: `repeat(${L.size}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${L.size}, minmax(0, 1fr))` }}>
           {Array.from({ length: L.size }).map((_, r) => Array.from({ length: L.size }).map((__, c) => cell(r, c)))}
         </div>
         <div className="mz-side">

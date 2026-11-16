@@ -6,7 +6,7 @@ import Art from '../ui/Art.jsx';
 
 // Слайд 6. «Один год — два результата»: потреблять или создавать. Итог урока — что ученик сделал сегодня.
 // Главная кнопка следует выбору (у Junior IT она всегда звала «создавать», даже если выбрано «потреблять»).
-export default function Final({ t, st, set, restart, setNav }) {
+export default function Final({ t, st, set, restart, setNav, bot, say, coinMax }) {
   const s = t.s6;
   const create = st.path !== 'consume';
   useNav(setNav, [st.lang, st.path], () => ({
@@ -18,7 +18,7 @@ export default function Final({ t, st, set, restart, setNav }) {
       setTimeout(() => { window.location.href = LINK_AFTER; }, 900);
     },
   }));
-  const pick = (p) => { sfx('pick'); set({ path: p }); };
+  const pick = (p) => { sfx('pick'); set({ path: p }); say(p === 'create' ? bot.create : bot.consume); if (p === 'create') confetti(0.7, 0.5, 40); };
   const sum = [
     s.sumAge(st.age === 'kids' ? 'Kids' : 'Teens'),
     st.apps.length ? s.sumApps(st.apps.length) : null,
@@ -27,7 +27,7 @@ export default function Final({ t, st, set, restart, setNav }) {
   ].filter(Boolean);
 
   const Side = ({ id, d, Ic }) => (
-    <button type="button" className={'path path-' + id + ((id === 'create') === create ? ' is-on' : '')} onClick={() => pick(id)} aria-pressed={(id === 'create') === create}>
+    <button type="button" className={'path tilt path-' + id + ((id === 'create') === create ? ' is-on' : '')} onClick={() => pick(id)} aria-pressed={(id === 'create') === create}>
       <Art id={'final-' + id} className="path-art" />
       <span className="path-tag"><Ic size={16} /> {d.tag}</span>
       <b>{d.lead}</b>
@@ -44,6 +44,11 @@ export default function Final({ t, st, set, restart, setNav }) {
         <Side id="create" d={s.create} Ic={Wrench} />
       </div>
       <div className="summary">
+        <div className="sum-coins">
+          <span className="coin big" aria-hidden="true" />
+          <span><b className="sum-n">{st.coins}</b><small> / {coinMax} Junior Coins</small></span>
+          <span className="sum-bar"><i style={{ width: Math.round((st.coins / coinMax) * 100) + '%' }} /></span>
+        </div>
         <b>{s.summary}</b>
         <ul>{sum.map((x) => <li key={x}><CheckCircle2 size={18} /> {x}</li>)}</ul>
         <button type="button" className="btn-ghost" onClick={() => { sfx('click'); restart(); }}><RotateCcw size={16} /> {s.restart}</button>

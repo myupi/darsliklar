@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { T } from './i18n.js';
+import { BOT } from './i18n-bot.js';
+import { Ambient, flyCoin, useTilt } from './ui/live.jsx';
 import { sfx, setSound } from './ui/fx.js';
 import Start from './slides/Start.jsx';
 import Apps from './slides/Apps.jsx';
@@ -16,7 +18,8 @@ import Final from './slides/Final.jsx';
 
 const KEY = 'probnyy-urok:v1';
 const SLIDES = [Start, Apps, Team, Platform, Practice, Final];
-const INITIAL = { lang: 'ru', slide: 0, age: 'teens', plus14: false, apps: [], goal: null, practiced: false, sound: true, path: 'create' };
+const INITIAL = { lang: 'ru', slide: 0, age: 'teens', plus14: false, apps: [], goal: null, practiced: false, sound: true, path: 'create', coins: 0, earned: [] };
+const COIN_MAX = 50;   // Junior Coins за урок: по 5 за действие, 10 действий
 
 function load() {
   try {
@@ -32,6 +35,22 @@ export default function App() {
   const [st, setSt] = useState(load);
   const set = (patch) => setSt((o) => Object.assign({}, o, typeof patch === 'function' ? patch(o) : patch));
   const t = T[st.lang];
+  const bot = BOT[st.lang];
+  useTilt();
+
+  // Робота-помощника внизу убрали (заказчик, 16.11.2026: «убери робота снизу») — реплики слайдов больше не показываются.
+  const say = () => {};
+  // Монеты: каждое действие (key) — один раз; монета летит от элемента el в счётчик шапки.
+  const awarded = useRef(null);
+  if (!awarded.current) awarded.current = { keys: new Set(st.earned), coins: st.coins };
+  const award = (key, el, n = 5) => {
+    const A = awarded.current;
+    if (A.keys.has(key) || A.coins >= COIN_MAX) return;
+    A.keys.add(key); A.coins = Math.min(COIN_MAX, A.coins + n);
+    set((o) => ({ coins: Math.min(COIN_MAX, o.coins + n), earned: o.earned.concat(key) }));
+    flyCoin(el, n);
+    setTimeout(() => sfx('coin'), 650);
+  };
 
   useEffect(() => { try { window.localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* без хранилища — урок с начала */ } }, [st]);
   useEffect(() => { setSound(st.sound); }, [st.sound]);
@@ -44,7 +63,7 @@ export default function App() {
     set({ slide: to });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const restart = () => { set(Object.assign({}, INITIAL, { lang: st.lang, sound: st.sound })); window.scrollTo({ top: 0 }); };
+  const restart = () => { awarded.current = { keys: new Set(), coins: 0 }; set(Object.assign({}, INITIAL, { lang: st.lang, sound: st.sound })); window.scrollTo({ top: 0 }); };
 
   const Slide = SLIDES[st.slide];
   const pct = Math.round((st.slide / (SLIDES.length - 1)) * 100);
@@ -66,6 +85,7 @@ export default function App() {
             <i style={{ width: pct + '%' }} />
           </div>
           <span className="hud-pct">{pct}%</span>
+          <span className="hud-coins" title={bot.coinsTitle} aria-label={bot.coinsTitle + ': ' + st.coins}><span className="coin sm" aria-hidden="true" /> {st.coins}</span>
           <div className="hud-lang" role="radiogroup" aria-label="Til / Язык">
             {['ru', 'uz'].map((l) => (
               <button key={l} type="button" role="radio" aria-checked={st.lang === l} className={st.lang === l ? 'is-on' : ''} onClick={() => { sfx('click'); set({ lang: l }); }}>{l.toUpperCase()}</button>
@@ -78,16 +98,19 @@ export default function App() {
       </header>
 
       <main className="desk">
+        <Ambient />
         <div className="desk-in" key={st.slide}>
-          <Slide t={t} lang={st.lang} st={st} set={set} go={go} restart={restart} setNav={setNav} />
+          <Slide t={t} lang={st.lang} st={st} set={set} go={go} restart={restart} setNav={setNav} bot={bot} say={say} award={award} coinMax={COIN_MAX} />
         </div>
       </main>
 
       <footer className="foot">
         <div className="foot-in">
-          {st.slide > 0 ? (
-            <button type="button" className="btn-back" onClick={() => go(st.slide - 1)}><ChevronLeft size={18} /> {t.back}</button>
-          ) : <span />}
+          <div className="foot-left">
+            {st.slide > 0 ? (
+              <button type="button" className="btn-back" onClick={() => go(st.slide - 1)}><ChevronLeft size={18} /> <span className="btn-back-t">{t.back}</span></button>
+            ) : null}
+          </div>
           <div className="foot-right">
             {nav.skip && st.slide < SLIDES.length - 1 ? (
               <button type="button" className="btn-skip" onClick={() => go(st.slide + 1)}>{t.skip}</button>
