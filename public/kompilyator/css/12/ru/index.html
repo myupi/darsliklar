@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Магазин</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding-top: 14px; padding-bottom: 50px; }
+      .cart { position: relative; padding: 6px 12px; font-size: 22px; background-color: #ECEFF1; border: 0; }
+      .count { position: absolute; top: -6px; right: -6px; padding: 2px 7px; border-radius: 10px; background-color: red; color: white; font-size: 12px; }
+      .card { width: 220px; padding: 10px; border-radius: 12px; background-color: white; box-shadow: 0px 4px 12px silver; margin-top: 12px; }
+      .image { position: relative; font-size: 80px; text-align: center; border-radius: 10px; background-color: #FFF3E0; }
+      .sale { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 6px; background-color: #FA4F28; color: white; font-size: 13px; }
+      .favorite { position: absolute; top: 8px; right: 8px; font-size: 20px; }
+      .price { color: #FA4F28; font-weight: bold; }
+      .help { position: fixed; bottom: 10px; right: 10px; padding: 10px 16px; border-radius: 20px; border: 0; background-color: #1E88E5; color: white; }
+    </style>
+  </head>
+  <body>
+    <button class="cart">🛒<span class="count">3</span></button>
+    <div class="card">
+      <div class="image">🎧<span class="sale">−50%</span><span class="favorite">❤</span></div>
+      <p><b>Беспроводные наушники</b></p>
+      <span class="price">150 000 сум</span> <s>300 000</s>
+    </div>
+    <button class="help">💬 Помощь</button>
+  </body>
+</html>

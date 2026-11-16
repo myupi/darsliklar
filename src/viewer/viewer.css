@@ -465,3 +465,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .cmp-dl-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 1px solid var(--line, #2A2F3A); border-radius: 9px; background: var(--panel, #1B1F27); color: inherit; font: 600 13px Inter, system-ui, sans-serif; cursor: pointer; }
 .cmp-dl-btn:hover:not(:disabled) { border-color: #FA4F28; color: #FA4F28; }
 .cmp-dl-btn:disabled { opacity: .55; cursor: default; }
+
+/* Пример решения компилятора: язык примера (16.11.2026) */
+.cmp-langs { display: inline-flex; gap: 2px; margin-left: 8px; padding: 2px; border-radius: 8px; background: var(--line); }
+.cmp-lang { border: 0; border-radius: 6px; padding: 3px 9px; background: transparent; color: var(--ink-2); font: 600 12px/1.2 inherit; cursor: pointer; }
+.cmp-lang:hover { color: var(--ink, #0F172A); }
+.cmp-lang.is-on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }

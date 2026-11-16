@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Кружки</title>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .cards { display: flex; gap: 5%; }
+      .card { width: 30%; padding: 12px; border-radius: 10px; background-color: #E3F2FD; text-align: center; box-sizing: border-box; }
+      .icon { font-size: 34px; }
+      @media (max-width: 600px) {
+        .cards { flex-direction: column; }
+        .card { width: 100%; margin-bottom: 8px; }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Наши кружки</h2>
+    <div class="cards">
+      <div class="card"><div class="icon">⚽</div><b>Футбол</b></div>
+      <div class="card"><div class="icon">🤖</div><b>Робототехника</b></div>
+      <div class="card"><div class="icon">🎨</div><b>Рисование</b></div>
+    </div>
+  </body>
+</html>

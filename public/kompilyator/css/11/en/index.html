@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Catalog</title>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .top { display: flex; justify-content: space-between; align-items: center; padding: 8px; background-color: #F5F5F5; }
+      .products { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0px; }
+      .product { width: 78px; padding: 8px; border-radius: 10px; background-color: #FFF3E0; text-align: center; font-size: 13px; }
+      .icon { font-size: 34px; }
+      .pages { display: flex; justify-content: center; gap: 6px; }
+      .page { padding: 4px 10px; border: 1px solid #BDBDBD; border-radius: 6px; }
+      #current { background-color: #FA4F28; color: white; }
+    </style>
+  </head>
+  <body>
+    <div class="top"><span>12 products</span><span>Sort ▾</span></div>
+    <div class="products">
+      <div class="product"><div class="icon">🎧</div>Headphones</div>
+      <div class="product"><div class="icon">⌚</div>Watch</div>
+      <div class="product"><div class="icon">🎮</div>Gamepad</div>
+      <div class="product"><div class="icon">📷</div>Camera</div>
+      <div class="product"><div class="icon">🔋</div>Power bank</div>
+      <div class="product"><div class="icon">🖱</div>Mouse</div>
+    </div>
+    <div class="pages"><span class="page" id="current">1</span><span class="page">2</span><span class="page">3</span></div>
+  </body>
+</html>

@@ -38,9 +38,9 @@ Kibersport jamoasi sayti uchun menyu yasang.
 - Hamma havolalarga class="menyu", `.menyu` ga `background-color`
 - Hozir ochiq sahifa havolasiga id="hozir" ham qo'shing
 - `#hozir` boshqa `background-color` bilan ajralib tursin
-(RU: Сделай меню сайта киберспортивной команды: ссылкам меню <a> дай цвет селектором `a`; всем ссылкам — class="menyu", для `.menyu` — `background-color`;
-ссылке на открытую сейчас страницу добавь ещё id="hozir"; `#hozir` выделяется другим `background-color`.)
-(EN: Make the menu of an esports team site: color the menu links <a> with the `a` selector; give all links class="menyu" and give `.menyu` a `background-color`; add id="hozir" to the link of the page that is open now; make `#hozir` stand out with another `background-color`.)
+(RU: Сделай меню сайта киберспортивной команды: ссылкам меню <a> дай цвет селектором `a`; всем ссылкам — class="menu", для `.menu` — `background-color`;
+ссылке на открытую сейчас страницу добавь ещё id="current"; `#current` выделяется другим `background-color`.)
+(EN: Make the menu of an esports team site: color the menu links <a> with the `a` selector; give all links class="menu" and give `.menu` a `background-color`; add id="current" to the link of the page that is open now; make `#current` stand out with another `background-color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use the element selector a { } with color.
 Use a class selector that matches several links.
@@ -97,8 +97,8 @@ O'yin yangiliklari blogi uchun maqola sahifasini bezang.
 - «Batafsil» havolasiga `text-decoration: none`
 - Sanaga `text-align: right`
 (RU: Оформи страницу статьи блога игровых новостей: заголовку статьи <h1> — `font-size` и `text-align: center`; тексту статьи — `font-family` с запасным шрифтом: Georgia, serif;
-имени автора — `font-weight: bold` и `color`; ссылке «Batafsil» — `text-decoration: none`; дате — `text-align: right`.)
-(EN: Style an article page of a gaming news blog: the article heading <h1> — `font-size` and `text-align: center`; the article text — `font-family` with a backup font: Georgia, serif; the author's name — `font-weight: bold` and `color`; the "Batafsil" link — `text-decoration: none`; the date — `text-align: right`.)
+имени автора — `font-weight: bold` и `color`; ссылке «Подробнее» — `text-decoration: none`; дате — `text-align: right`.)
+(EN: Style an article page of a gaming news blog: the article heading <h1> — `font-size` and `text-align: center`; the article text — `font-family` with a backup font: Georgia, serif; the author's name — `font-weight: bold` and `color`; the "Read more" link — `text-decoration: none`; the date — `text-align: right`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use font-size and text-align: center on the main heading.
 Use font-family with a fallback font (for example Georgia, serif).
@@ -156,9 +156,9 @@ Krossovka do'koni uchun mahsulot kartasini yasang.
 - Kartaga `width`, `padding` va `border-radius`
 - Kartaga `box-shadow` va bitta tomonda chiziq: `border-top`
 - Narx belgisiga `border-radius`, `padding` va `background-color`
-(RU: Сделай карточку товара для магазина кроссовок: в <div class="karta"> — картинка, <h2>, <p> и цена; карточке — `width`, `padding` и `border-radius`;
+(RU: Сделай карточку товара для магазина кроссовок: в <div class="card"> — картинка, <h2>, <p> и цена; карточке — `width`, `padding` и `border-radius`;
 карточке — `box-shadow` и полоса с одной стороны: `border-top`; метке цены — `border-radius`, `padding` и `background-color`.)
-(EN: Make a product card for a sneaker shop: inside <div class="karta"> — a picture, <h2>, <p> and a price; the card — `width`, `padding` and `border-radius`; the card — `box-shadow` and a stripe on one side: `border-top`; the price tag — `border-radius`, `padding` and `background-color`.)
+(EN: Make a product card for a sneaker shop: inside <div class="card"> — a picture, <h2>, <p> and a price; the card — `width`, `padding` and `border-radius`; the card — `box-shadow` and a stripe on one side: `border-top`; the price tag — `border-radius`, `padding` and `background-color`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use a <div> with a class, with <h2> and <p> inside it.
 On that element use width, padding and border-radius.
@@ -177,8 +177,8 @@ Do'kon uchun futbolka sahifasini yasang.
 - Tugagan XL o'lchamiga `display: none`
 - «Savatga» <a>: `display: block`, `text-align: center`
 (RU: Сделай страницу футболки для магазина: цвета <span> — `display: inline-block`, `width`, `height`; цветам — `background-color` и `border-radius`;
-размеры <span> — `display: inline-block`, `padding`, `border`; закончившемуся размеру XL — `display: none`; «Savatga» <a> — `display: block`, `text-align: center`.)
-(EN: Make a T-shirt page for a shop: the colors <span> — `display: inline-block`, `width`, `height`; the colors — `background-color` and `border-radius`; the sizes <span> — `display: inline-block`, `padding`, `border`; the sold-out size XL — `display: none`; "Savatga" <a> — `display: block`, `text-align: center`.)
+размеры <span> — `display: inline-block`, `padding`, `border`; закончившемуся размеру XL — `display: none`; «В корзину» <a> — `display: block`, `text-align: center`.)
+(EN: Make a T-shirt page for a shop: the colors <span> — `display: inline-block`, `width`, `height`; the colors — `background-color` and `border-radius`; the sizes <span> — `display: inline-block`, `padding`, `border`; the sold-out size XL — `display: none`; "Add to cart" <a> — `display: block`, `text-align: center`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use <span> with display: inline-block, width and height.
 Use background-color and border-radius on these spans.
@@ -236,8 +236,8 @@ Internet do'kon uchun mahsulot kartasi va savatni yasang.
 - Savatdagi son «3»: savatga `relative`, songa `absolute`
 - «Yordam» chati: `position: fixed`, `bottom` va `right`
 (RU: Сделай карточку товара и корзину интернет-магазина: блоку картинки товара — `position: relative`; метка «−50%» в углу картинки — `position: absolute`, `top` и `left`;
-кнопка «Избранное» ❤ — `position: absolute`, `top` и `right`; число «3» в корзине — корзине `relative`, числу `absolute`; чат «Yordam» — `position: fixed`, `bottom` и `right`.)
-(EN: Make a product card and a cart for an online shop: the product picture block — `position: relative`; the "−50%" tag in the corner of the picture — `position: absolute`, `top` and `left`; the ❤ "Favourite" button — `position: absolute`, `top` and `right`; the number "3" on the cart — the cart `relative`, the number `absolute`; the "Yordam" chat — `position: fixed`, `bottom` and `right`.)
+кнопка «Избранное» ❤ — `position: absolute`, `top` и `right`; число «3» в корзине — корзине `relative`, числу `absolute`; чат «Помощь» — `position: fixed`, `bottom` и `right`.)
+(EN: Make a product card and a cart for an online shop: the product picture block — `position: relative`; the "−50%" tag in the corner of the picture — `position: absolute`, `top` and `left`; the ❤ "Favourite" button — `position: absolute`, `top` and `right`; the number "3" on the cart — the cart `relative`, the number `absolute`; the "Help" chat — `position: fixed`, `bottom` and `right`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use position: relative on an element (the image block).
 Inside it, use position: absolute with top and left on one element and with top and right on another.
@@ -277,8 +277,8 @@ Onlayn kinoteatr sayti uchun tariflar blokini yasang.
 - «Tanlash» tugmasiga o'z `transition` i: vaqt `ms` da, `linear`
 - Tugma `:hover` da `background-color` o'zgarsin
 (RU: Сделай блок тарифов сайта онлайн-кинотеатра: карточки тарифов рядом — `display: flex` и `gap`; карточкам — `transition: all`, время в `s`, `ease`;
-карточка при `:hover` поднимается — `transform` и `box-shadow`; кнопке «Tanlash» — свой `transition`, время в `ms`, `linear`; кнопка при `:hover` меняет `background-color`.)
-(EN: Make the plans block of an online cinema site: the plan cards side by side — `display: flex` and `gap`; the cards — `transition: all`, time in `s`, `ease`; a card rises on `:hover` — `transform` and `box-shadow`; the "Tanlash" button — its own `transition`, time in `ms`, `linear`; the button changes `background-color` on `:hover`.)
+карточка при `:hover` поднимается — `transform` и `box-shadow`; кнопке «Выбрать» — свой `transition`, время в `ms`, `linear`; кнопка при `:hover` меняет `background-color`.)
+(EN: Make the plans block of an online cinema site: the plan cards side by side — `display: flex` and `gap`; the cards — `transition: all`, time in `s`, `ease`; a card rises on `:hover` — `transform` and `box-shadow`; the "Choose" button — its own `transition`, time in `ms`, `linear`; the button changes `background-color` on `:hover`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use display: flex and gap on the element that holds the cards.
 Use transition with all, a time in s and ease on the cards.
@@ -296,9 +296,9 @@ Sayt bosh sahifasidagi «Pastga» strelkasini sakratib qo'ying.
 - `from` da `transform: translate(0px, 0px)`, `to` da pastroq
 - Strelka ↓ ga `display: inline-block` va `animation`: nom va vaqt
 - `animation` ga `infinite` va `alternate` qo'shing
-(RU: Заставь стрелку «Вниз» на главной странице сайта прыгать: напиши `@keyframes` с именем, например `sakrash`; в `from` — `transform: translate(0px, 0px)`, в `to` — ниже;
+(RU: Заставь стрелку «Вниз» на главной странице сайта прыгать: напиши `@keyframes` с именем, например `jump`; в `from` — `transform: translate(0px, 0px)`, в `to` — ниже;
 стрелке ↓ — `display: inline-block` и `animation`: имя и время; в `animation` добавь `infinite` и `alternate`.)
-(EN: Make the "Down" arrow on the home page jump: write `@keyframes` with a name, for example `sakrash`; in `from` — `transform: translate(0px, 0px)`, in `to` — lower; the arrow ↓ — `display: inline-block` and `animation`: name and time; add `infinite` and `alternate` to `animation`.)
+(EN: Make the "Down" arrow on the home page jump: write `@keyframes` with a name, for example `jump`; in `from` — `transform: translate(0px, 0px)`, in `to` — lower; the arrow ↓ — `display: inline-block` and `animation`: name and time; add `infinite` and `alternate` to `animation`.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use @keyframes with a name.
 Use from and to with transform: translate() inside it.

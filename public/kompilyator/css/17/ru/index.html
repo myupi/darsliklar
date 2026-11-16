@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Магазин игр</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background-color: #12141C; color: white; }
+      header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+      a { color: #B0BEC5; text-decoration: none; margin-left: 14px; }
+      .banner {
+        padding: 36px 20px;
+        background-color: #3949AB;
+        background-image: url("banner.svg");
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
+      .cards { display: flex; gap: 14px; padding: 20px; }
+      .card {
+        position: relative;
+        width: 33%;
+        padding: 14px;
+        border-radius: 14px;
+        background-color: #232838;
+        box-shadow: 0px 6px 14px black;
+        transition: transform 0.3s ease;
+      }
+      .card:hover { transform: scale(1.05); }
+      .sale { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 8px; background-color: #FA4F28; font-size: 12px; }
+      .image { font-size: 40px; }
+      @media (max-width: 600px) {
+        .cards { flex-direction: column; }
+        .card { width: 100%; box-sizing: border-box; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <b>🎮 Мир игр</b>
+      <nav><a href="#">Магазин</a><a href="#">Библиотека</a><a href="#">Войти</a></nav>
+    </header>
+    <div class="banner">
+      <h1>Осенние скидки!</h1>
+      <p>Лучшие игры — со скидкой до −30%</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="image">🏎</div><b>Космическая гонка</b><p>120 000 сум</p><span class="sale">−30%</span></div>
+      <div class="card"><div class="image">🐉</div><b>Замок дракона</b><p>95 000 сум</p></div>
+      <div class="card"><div class="image">⚽</div><b>Футбол 26</b><p>150 000 сум</p></div>
+    </div>
+  </body>
+</html>

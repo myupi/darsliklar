@@ -67,9 +67,9 @@ Text content and the number of tags do not matter.
 - Sarlavha (<h1> - <h6>) teglaridan ishlating
 - Uchta <a> havola: 1-eshik, 2-eshik, 3-eshik
 - href="" atributiga sahifa nomini yozing: eshik1.html
-(RU: Сделай игру «Таинственный замок»: используй заголовок <h1>–<h6>; три ссылки <a>: 1-eshik, 2-eshik, 3-eshik;
+(RU: Сделай игру «Таинственный замок»: используй заголовок <h1>–<h6>; три ссылки <a>: Дверь 1, Дверь 2, Дверь 3;
 в атрибут href="" впиши имя страницы: eshik1.html.)
-(EN: Make the game "Mystery Castle": use a heading <h1>–<h6>; three links <a>: 1-eshik, 2-eshik, 3-eshik; in the href="" attribute, write the page name: eshik1.html.)
+(EN: Make the game "Mystery Castle": use a heading <h1>–<h6>; three links <a>: Door 1, Door 2, Door 3; in the href="" attribute, write the page name: eshik1.html.)
 ПРОМПТ ДЛЯ ПРОВЕРКИ:
 Use one of the heading tags <h1> to <h6>.
 Use the <a> tag.

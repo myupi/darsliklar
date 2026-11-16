@@ -8,7 +8,9 @@ import { MenuButton } from './Toolbar.jsx';
 // справа) и промпт, по которому работу проверяет ИИ платформы. Данные — docs/kompilyator-amaliy-<модуль>.txt.
 // Модули без результата на слайде и без примера решения (заказчик, 16.11.2026, «ИИ»: «результат не показывать, а только дать задания»).
 const NO_RESULT = new Set(['ai']);
-const exampleUrl = (it) => '/kompilyator/' + it.module + '/' + String(it.n).padStart(2, '0') + '/index.html';
+// Страница-пример на языке слайда (16.11.2026: «результат везде узбекский, сделай соответствующими языками»):
+// узбекская — <NN>/index.html, русская и английская — <NN>/ru/index.html и <NN>/en/index.html (картинки рядом, те же имена).
+const exampleUrl = (it, lang) => '/kompilyator/' + it.module + '/' + String(it.n).padStart(2, '0') + '/' + (lang && lang !== 'uz' ? lang + '/' : '') + 'index.html';
 
 // Теги и атрибуты в условии — красным, как на прежних слайдах «Amaliy vazifa».
 // Свойства CSS в тексте задания отмечены обратными кавычками: `width` (кавычки не показываются).
@@ -29,7 +31,7 @@ function ruParts(ru) {
 // результат: страница-пример целиком, уменьшенная, без вкладки браузера и без прокрутки.
 const PAGE_W = 340;   // ширина страницы-примера до уменьшения, px: меньше — крупнее текст в рамке (заказчик, 14.11.2026)
 // Заголовок слайда на языке слайда (16.11.2026: «Как видит ученик» — на трёх языках).
-const SLIDE_TITLE = { uz: 'Amaliy vazifa', ru: 'Практическое задание', en: 'Practice task' };
+const SLIDE_TITLE = { uz: 'Amaliy vazifa', ru: 'Практика', en: 'Practice task' };   // ru — «Практика» (заказчик, 16.11.2026)
 const SLIDE_LANGS = [['uz', "O'zbekcha"], ['ru', 'Русский'], ['en', 'English']];
 function StudentView({ it, lang }) {
   const [fit, setFit] = useState(null);   // { s: масштаб, ch: высота страницы }
@@ -39,7 +41,7 @@ function StudentView({ it, lang }) {
   const sFloor = useRef(Infinity);
   const slideRef = useRef(null);
   const [busy, setBusy] = useState('');
-  const url = exampleUrl(it);
+  const url = exampleUrl(it, lang);
   const noRes = NO_RESULT.has(it.module);
   const measure = () => {
     const f = frame.current, v = view.current;
@@ -106,13 +108,15 @@ function StudentView({ it, lang }) {
 }
 
 // Пример решения — готовая страница public/kompilyator/<модуль>/<NN>/index.html, рядом её картинки и страницы ссылок
-// (её можно открыть ученику во весь экран).
+// (её можно открыть ученику во весь экран). На трёх языках — переключатель над кодом (16.11.2026).
+const RES_LABEL = { uz: 'Natija', ru: 'Результат', en: 'Result' };
 function Example({ it }) {
-  const url = exampleUrl(it);
+  const [lang, setLang] = useState('uz');
+  const url = exampleUrl(it, lang);
   const [code, setCode] = useState(null);
   useEffect(() => {
     let dead = false;
-    setCode(null);
+    // Смена языка — прежний код остаётся, пока не придёт новый (без прыжка раздела).
     // Нет файла — сервер отдаёт страницу просмотрщика (в ней @vite/client и /src/): это не пример.
     fetch(url).then((r) => (r.ok ? r.text() : null)).then((t) => { if (!dead) setCode(t && t.indexOf('@vite/client') < 0 && t.indexOf('/src/') < 0 ? t : ''); }).catch(() => { if (!dead) setCode(''); });
     return () => { dead = true; };
@@ -123,6 +127,11 @@ function Example({ it }) {
   return (
     <section>
       <div className="cmp-label"><Sparkles size={14} aria-hidden="true" /> Пример решения — можно показать ученику
+        <span className="cmp-langs" role="tablist" aria-label="Язык примера">
+          {SLIDE_LANGS.map(([l, name]) => (
+            <button key={l} type="button" role="tab" aria-selected={lang === l} className={'cmp-lang' + (lang === l ? ' is-on' : '')} onClick={() => setLang(l)}>{name}</button>
+          ))}
+        </span>
         <CopyButton text={code} label="Скопировать код примера" />
         <a className="icon-btn sm" href={url} target="_blank" rel="noreferrer" title="Открыть результат во весь экран" aria-label="Открыть результат во весь экран"><ExternalLink size={14} /></a>
       </div>
@@ -134,7 +143,7 @@ function Example({ it }) {
           </div>
         </div>
         <div className="cmp-result">
-          <div className="cmp-result-bar"><i /><i /><i /><span>Natija</span></div>
+          <div className="cmp-result-bar"><i /><i /><i /><span>{RES_LABEL[lang]}</span></div>
           <iframe title={'Пример ' + it.n} src={url} sandbox="allow-same-origin" />
         </div>
       </div>
