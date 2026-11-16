@@ -1,6 +1,6 @@
-Курс HTML — названия уроков и практик на трёх языках и имена файлов
-Darslar va amaliyotlar nomlari — uch tilda va fayl nomi
-Lesson and practice titles in three languages with file names
+Курс HTML — названия уроков, практик и тестов на трёх языках и имена файлов
+Darslar, amaliyotlar va testlar nomlari — uch tilda va fayl nomi
+Lesson, practice and test titles in three languages with file names
 Пересобрать список: node tools/nomlar.mjs
 
 Файл / Fayl / File:  01-struktura-dokumenta.jsx
@@ -13,6 +13,33 @@ Lesson and practice titles in three languages with file names
   UZ: 1-amaliyot. Kodining beshta varag'i
   EN: Practice 1. Kodi’s five tabs
 
+--- Тесты к уроку 1 / 1-dars testlari / Tests for lesson 1 ---
+
+Файл / Fayl / File:  01t1-struktura-dokumenta.jsx
+  RU: Урок 1, тест 1/5. Где виден текст из тега title?
+  UZ: 1-dars, 1/5-test. title tegidagi matn qayerda ko'rinadi?
+  EN: Lesson 1, test 1/5. Where does the text from the title tag show up?
+
+Файл / Fayl / File:  01t2-struktura-dokumenta.jsx
+  RU: Урок 1, тест 2/5. Какой тег пишется на пустое место?
+  UZ: 1-dars, 2/5-test. Bo'sh joyga qaysi teg yoziladi?
+  EN: Lesson 1, test 2/5. Which tag goes in the empty spot?
+
+Файл / Fayl / File:  01t3-struktura-dokumenta.jsx
+  RU: Урок 1, тест 3/5. Какой тег обнимает всю страницу?
+  UZ: 1-dars, 3/5-test. Qaysi teg butun sahifani quchoqlab turadi?
+  EN: Lesson 1, test 3/5. Which tag wraps the whole page?
+
+Файл / Fayl / File:  01t4-struktura-dokumenta.jsx
+  RU: Урок 1, тест 4/5. Что потерялось в коде?
+  UZ: 1-dars, 4/5-test. Kodda nima tushib qolibdi?
+  EN: Lesson 1, test 4/5. What is missing in the code?
+
+Файл / Fayl / File:  01t5-struktura-dokumenta.jsx
+  RU: Урок 1, тест 5/5. В какую строку её написать?
+  UZ: 1-dars, 5/5-test. Uni qaysi qatorga yozamiz?
+  EN: Lesson 1, test 5/5. Which line should it go on?
+
 Файл / Fayl / File:  02-zagolovki-i-tekst.jsx
   RU: Урок 2. Заголовки и текст
   UZ: 2-dars. Sarlavhalar va matn
@@ -22,6 +49,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 2. Газета Коди
   UZ: 2-amaliyot. Kodining gazetasi
   EN: Practice 2. Kodi’s newspaper
+
+--- Тесты к уроку 2 / 2-dars testlari / Tests for lesson 2 ---
+
+Файл / Fayl / File:  02t1-zagolovki-i-tekst.jsx
+  RU: Урок 2, тест 1/5. Какой заголовок в браузере будет самым крупным?
+  UZ: 2-dars, 1/5-test. Brauzerda qaysi sarlavha eng katta chiqadi?
+  EN: Lesson 2, test 1/5. Which heading will be the biggest in the browser?
+
+Файл / Fayl / File:  02t2-zagolovki-i-tekst.jsx
+  RU: Урок 2, тест 2/5. Сколько абзацев покажет браузер?
+  UZ: 2-dars, 2/5-test. Brauzerda nechta abzas chiqadi?
+  EN: Lesson 2, test 2/5. How many paragraphs will the browser show?
+
+Файл / Fayl / File:  02t3-zagolovki-i-tekst.jsx
+  RU: Урок 2, тест 3/5. Что потерялось в коде?
+  UZ: 2-dars, 3/5-test. Kodda nima tushib qolibdi?
+  EN: Lesson 2, test 3/5. What is missing in the code?
+
+Файл / Fayl / File:  02t4-zagolovki-i-tekst.jsx
+  RU: Урок 2, тест 4/5. Какой тег написан на пустых местах?
+  UZ: 2-dars, 4/5-test. Bo'sh joylarga qaysi teg yozilgan?
+  EN: Lesson 2, test 4/5. Which tag is written in the empty spots?
+
+Файл / Fayl / File:  02t5-zagolovki-i-tekst.jsx
+  RU: Урок 2, тест 5/5. В какой строке ловушка?
+  UZ: 2-dars, 5/5-test. Qaysi qatorda tuzoq bor?
+  EN: Lesson 2, test 5/5. Which line has the trap?
 
 Файл / Fayl / File:  03-spiski.jsx
   RU: Урок 3. Списки
@@ -33,6 +87,33 @@ Lesson and practice titles in three languages with file names
   UZ: 3-amaliyot. Kodining bayrami
   EN: Practice 3. Kodi’s party
 
+--- Тесты к уроку 3 / 3-dars testlari / Tests for lesson 3 ---
+
+Файл / Fayl / File:  03t1-spiski.jsx
+  RU: Урок 3, тест 1/5. Почему так получилось?
+  UZ: 3-dars, 1/5-test. Nega shunday bo'ldi?
+  EN: Lesson 3, test 1/5. Why did that happen?
+
+Файл / Fayl / File:  03t2-spiski.jsx
+  RU: Урок 3, тест 2/5. Какой тег потерялся?
+  UZ: 3-dars, 2/5-test. Qaysi teg tushib qolibdi?
+  EN: Lesson 3, test 2/5. Which tag is missing?
+
+Файл / Fayl / File:  03t3-spiski.jsx
+  RU: Урок 3, тест 3/5. Какой тег подходит на пустые места?
+  UZ: 3-dars, 3/5-test. Bo'sh joylarga qaysi teg mos?
+  EN: Lesson 3, test 3/5. Which tag fits the empty spots?
+
+Файл / Fayl / File:  03t4-spiski.jsx
+  RU: Урок 3, тест 4/5. Что появится перед пунктами?
+  UZ: 3-dars, 4/5-test. Bandlarning oldida nima chiqadi?
+  EN: Lesson 3, test 4/5. What will appear before the items?
+
+Файл / Fayl / File:  03t5-spiski.jsx
+  RU: Урок 3, тест 5/5. Какой список подходит?
+  UZ: 3-dars, 5/5-test. Qaysi ro'yxat mos keladi?
+  EN: Lesson 3, test 5/5. Which list fits?
+
 Файл / Fayl / File:  04-ssylki-i-atributy.jsx
   RU: Урок 4. Ссылки и атрибуты
   UZ: 4-dars. Havolalar va atributlar
@@ -42,6 +123,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 4. Путешествие Коди
   UZ: 4-amaliyot. Kodining sayohati
   EN: Practice 4. Kodi’s trip
+
+--- Тесты к уроку 4 / 4-dars testlari / Tests for lesson 4 ---
+
+Файл / Fayl / File:  04t1-ssylki-i-atributy.jsx
+  RU: Урок 4, тест 1/5. Чего ему не хватает?
+  UZ: 4-dars, 1/5-test. Unga nima yetishmayapti?
+  EN: Lesson 4, test 1/5. What is it missing?
+
+Файл / Fayl / File:  04t2-ssylki-i-atributy.jsx
+  RU: Урок 4, тест 2/5. Что такое href в этом коде?
+  UZ: 4-dars, 2/5-test. Bu koddagi href nima?
+  EN: Lesson 4, test 2/5. What is href in this code?
+
+Файл / Fayl / File:  04t3-ssylki-i-atributy.jsx
+  RU: Урок 4, тест 3/5. Какая строка работает?
+  UZ: 4-dars, 3/5-test. Qaysi qator ishlaydi?
+  EN: Lesson 4, test 3/5. Which line works?
+
+Файл / Fayl / File:  04t4-ssylki-i-atributy.jsx
+  RU: Урок 4, тест 4/5. Почему так вышло?
+  UZ: 4-dars, 4/5-test. Nega shunday bo'ldi?
+  EN: Lesson 4, test 4/5. Why did that happen?
+
+Файл / Fayl / File:  04t5-ssylki-i-atributy.jsx
+  RU: Урок 4, тест 5/5. Что потерялось в коде?
+  UZ: 4-dars, 5/5-test. Kodda nima tushib qolibdi?
+  EN: Lesson 4, test 5/5. What is missing in the code?
 
 Файл / Fayl / File:  05-izobrazheniya.jsx
   RU: Урок 5. Изображения
@@ -53,6 +161,33 @@ Lesson and practice titles in three languages with file names
   UZ: 5-amaliyot. Kodining hayvonot bog'i
   EN: Practice 5. Kodi’s zoo
 
+--- Тесты к уроку 5 / 5-dars testlari / Tests for lesson 5 ---
+
+Файл / Fayl / File:  05t1-izobrazheniya.jsx
+  RU: Урок 5, тест 1/5. Почему картинка не открылась?
+  UZ: 5-dars, 1/5-test. Nega rasm ochilmadi?
+  EN: Lesson 5, test 1/5. Why didn’t the picture open?
+
+Файл / Fayl / File:  05t2-izobrazheniya.jsx
+  RU: Урок 5, тест 2/5. Какой атрибут пишется на пустое место?
+  UZ: 5-dars, 2/5-test. Bo'sh joyga qaysi atribut yoziladi?
+  EN: Lesson 5, test 2/5. Which attribute goes in the empty spot?
+
+Файл / Fayl / File:  05t3-izobrazheniya.jsx
+  RU: Урок 5, тест 3/5. Зачем нужен атрибут alt?
+  UZ: 5-dars, 3/5-test. alt atributi nimaga kerak?
+  EN: Lesson 5, test 3/5. What is the alt attribute for?
+
+Файл / Fayl / File:  05t4-izobrazheniya.jsx
+  RU: Урок 5, тест 4/5. Какая строка покажет картинку?
+  UZ: 5-dars, 4/5-test. Qaysi qator rasmni ko'rsatadi?
+  EN: Lesson 5, test 4/5. Which line shows the picture?
+
+Файл / Fayl / File:  05t5-izobrazheniya.jsx
+  RU: Урок 5, тест 5/5. Чего не хватает в адресе?
+  UZ: 5-dars, 5/5-test. Manzilga nima yetishmayapti?
+  EN: Lesson 5, test 5/5. What is missing in the address?
+
 Файл / Fayl / File:  06-formy-vvod.jsx
   RU: Урок 6. Формы, часть 1: ввод данных
   UZ: 6-dars. Formalar, 1-qism: ma'lumot kiritish
@@ -62,6 +197,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 6. Анкеты Коди
   UZ: 6-amaliyot. Kodining anketalari
   EN: Practice 6. Kodi’s forms
+
+--- Тесты к уроку 6 / 6-dars testlari / Tests for lesson 6 ---
+
+Файл / Fayl / File:  06t1-formy-vvod.jsx
+  RU: Урок 6, тест 1/5. Что написать в атрибут type?
+  UZ: 6-dars, 1/5-test. type atributiga nima yozamiz?
+  EN: Lesson 6, test 1/5. What goes in the type attribute?
+
+Файл / Fayl / File:  06t2-formy-vvod.jsx
+  RU: Урок 6, тест 2/5. Что это за серая надпись?
+  UZ: 6-dars, 2/5-test. Bu kulrang yozuv nima?
+  EN: Lesson 6, test 2/5. What is this grey text?
+
+Файл / Fayl / File:  06t3-formy-vvod.jsx
+  RU: Урок 6, тест 3/5. Почему так получилось?
+  UZ: 6-dars, 3/5-test. Nega shunday bo'ldi?
+  EN: Lesson 6, test 3/5. Why did that happen?
+
+Файл / Fayl / File:  06t4-formy-vvod.jsx
+  RU: Урок 6, тест 4/5. Какой тег пишется на пустые места?
+  UZ: 6-dars, 4/5-test. Bo'sh joylarga qaysi teg yoziladi?
+  EN: Lesson 6, test 4/5. Which tag goes in the empty spots?
+
+Файл / Fayl / File:  06t5-formy-vvod.jsx
+  RU: Урок 6, тест 5/5. Какую строку нужно удалить?
+  UZ: 6-dars, 5/5-test. Qaysi qatorni o'chirish kerak?
+  EN: Lesson 6, test 5/5. Which line should be deleted?
 
 Файл / Fayl / File:  07-formy-vybor.jsx
   RU: Урок 7. Формы, часть 2: выбор и отправка
@@ -73,6 +235,33 @@ Lesson and practice titles in three languages with file names
   UZ: 7-amaliyot. Kodining lageri
   EN: Practice 7. Kodi’s camp
 
+--- Тесты к уроку 7 / 7-dars testlari / Tests for lesson 7 ---
+
+Файл / Fayl / File:  07t1-formy-vybor.jsx
+  RU: Урок 7, тест 1/5. Почему Суп не появился?
+  UZ: 7-dars, 1/5-test. Nega Sho'rva chiqmadi?
+  EN: Lesson 7, test 1/5. Why didn’t Soup show up?
+
+Файл / Fayl / File:  07t2-formy-vybor.jsx
+  RU: Урок 7, тест 2/5. Что потерялось в коде?
+  UZ: 7-dars, 2/5-test. Kodda nima tushib qolibdi?
+  EN: Lesson 7, test 2/5. What is missing in the code?
+
+Файл / Fayl / File:  07t3-formy-vybor.jsx
+  RU: Урок 7, тест 3/5. Какая строка правильная?
+  UZ: 7-dars, 3/5-test. Qaysi qator to'g'ri?
+  EN: Lesson 7, test 3/5. Which line is correct?
+
+Файл / Fayl / File:  07t4-formy-vybor.jsx
+  RU: Урок 7, тест 4/5. Какой тег подходит на пустые места?
+  UZ: 7-dars, 4/5-test. Bo'sh joylarga qaysi teg mos?
+  EN: Lesson 7, test 4/5. Which tag fits the empty spots?
+
+Файл / Fayl / File:  07t5-formy-vybor.jsx
+  RU: Урок 7, тест 5/5. Какая замена его починит?
+  UZ: 7-dars, 5/5-test. Qaysi almashtirish uni tuzatadi?
+  EN: Lesson 7, test 5/5. Which swap fixes it?
+
 Файл / Fayl / File:  08-struktura-sajta.jsx
   RU: Урок 8. Структура настоящего сайта
   UZ: 8-dars. Haqiqiy sayt tuzilishi
@@ -82,6 +271,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 8. Сайт школы Коди
   UZ: 8-amaliyot. Kodining maktab sayti
   EN: Practice 8. Kodi’s school site
+
+--- Тесты к уроку 8 / 8-dars testlari / Tests for lesson 8 ---
+
+Файл / Fayl / File:  08t1-struktura-sajta.jsx
+  RU: Урок 8, тест 1/5. Какой тег пишется на пустые места?
+  UZ: 8-dars, 1/5-test. Bo'sh joylarga qaysi teg yoziladi?
+  EN: Lesson 8, test 1/5. Which tag goes in the empty spots?
+
+Файл / Fayl / File:  08t2-struktura-sajta.jsx
+  RU: Урок 8, тест 2/5. В каком порядке они идут?
+  UZ: 8-dars, 2/5-test. Ular qaysi tartibda keladi?
+  EN: Lesson 8, test 2/5. In what order do they go?
+
+Файл / Fayl / File:  08t3-struktura-sajta.jsx
+  RU: Урок 8, тест 3/5. Каким тегом их обернуть?
+  UZ: 8-dars, 3/5-test. Ularni qaysi teg bilan o'raymiz?
+  EN: Lesson 8, test 3/5. Which tag should wrap them?
+
+Файл / Fayl / File:  08t4-struktura-sajta.jsx
+  RU: Урок 8, тест 4/5. Каким тегом обернуть каждую?
+  UZ: 8-dars, 4/5-test. Har birini qaysi teg bilan o'raymiz?
+  EN: Lesson 8, test 4/5. Which tag should wrap each one?
+
+Файл / Fayl / File:  08t5-struktura-sajta.jsx
+  RU: Урок 8, тест 5/5. Зачем тогда эти теги?
+  UZ: 8-dars, 5/5-test. Unda bu teglar nimaga kerak?
+  EN: Lesson 8, test 5/5. Then what are these tags for?
 
 Файл / Fayl / File:  09-final-proekt.jsx
   RU: Урок 9. Финальный HTML-проект

@@ -11,6 +11,7 @@ export default {
   color: '#1572B6',
   order: 2,
   practice: true,   // после каждого урока — практика (<NN>p-<slug>.jsx)
+  tests: true,      // после практики — 5 тестов «Тест 1/5…5/5» (<NN>t<K>-<slug>.jsx; формат CRM, как в модуле «ИИ»; 16.11.2026)
   lessons: [
     { n: 1, slug: 'chto-takoe-css', title: 'Что такое CSS и как он меняет сайт', topics: ['подключение CSS', 'property: value', 'первый стиль'], practiceTitle: 'Кафе Коди' },
     { n: 2, slug: 'selektory', title: 'Как выбрать элемент для стилизации', topics: ['селектор по тегу', '.class', '#id'], practiceTitle: 'Кинотеатр Коди' },

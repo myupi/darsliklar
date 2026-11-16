@@ -1,6 +1,6 @@
-Курс CSS — названия уроков и практик на трёх языках и имена файлов
-Darslar va amaliyotlar nomlari — uch tilda va fayl nomi
-Lesson and practice titles in three languages with file names
+Курс CSS — названия уроков, практик и тестов на трёх языках и имена файлов
+Darslar, amaliyotlar va testlar nomlari — uch tilda va fayl nomi
+Lesson, practice and test titles in three languages with file names
 Пересобрать список: node tools/nomlar.mjs
 
 Файл / Fayl / File:  01-chto-takoe-css.jsx
@@ -13,6 +13,33 @@ Lesson and practice titles in three languages with file names
   UZ: 1-amaliyot. Kodining kafesi
   EN: Practice 1. Kodi’s café
 
+--- Тесты к уроку 1 / 1-dars testlari / Tests for lesson 1 ---
+
+Файл / Fayl / File:  01t1-chto-takoe-css.jsx
+  RU: Урок 1, тест 1/5. Какой тег пишется на пустое место?
+  UZ: 1-dars, 1/5-test. Bo'sh joyga qaysi teg yoziladi?
+  EN: Lesson 1, test 1/5. Which tag goes in the empty spot?
+
+Файл / Fayl / File:  01t2-chto-takoe-css.jsx
+  RU: Урок 1, тест 2/5. Что такое color в этом правиле?
+  UZ: 1-dars, 2/5-test. Bu qoidada color nima?
+  EN: Lesson 1, test 2/5. What is color in this rule?
+
+Файл / Fayl / File:  01t3-chto-takoe-css.jsx
+  RU: Урок 1, тест 3/5. Какой селектор пишется на пустое место?
+  UZ: 1-dars, 3/5-test. Bo'sh joyga qaysi selektor yoziladi?
+  EN: Lesson 1, test 3/5. Which selector goes in the empty spot?
+
+Файл / Fayl / File:  01t4-chto-takoe-css.jsx
+  RU: Урок 1, тест 4/5. Почему правило не работает?
+  UZ: 1-dars, 4/5-test. Qoida nega ishlamayapti?
+  EN: Lesson 1, test 4/5. Why doesn’t the rule work?
+
+Файл / Fayl / File:  01t5-chto-takoe-css.jsx
+  RU: Урок 1, тест 5/5. Какой знак потерялся в строке 4?
+  UZ: 1-dars, 5/5-test. 4-qatorda qaysi belgi tushib qolibdi?
+  EN: Lesson 1, test 5/5. Which sign is missing on line 4?
+
 Файл / Fayl / File:  02-selektory.jsx
   RU: Урок 2. Как выбрать элемент для стилизации
   UZ: 2-dars. Bezash uchun elementni qanday tanlash
@@ -22,6 +49,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 2. Кинотеатр Коди
   UZ: 2-amaliyot. Kodining kinoteatri
   EN: Practice 2. Kodi’s cinema
+
+--- Тесты к уроку 2 / 2-dars testlari / Tests for lesson 2 ---
+
+Файл / Fayl / File:  02t1-selektory.jsx
+  RU: Урок 2, тест 1/5. Какой селектор пишется на пустое место?
+  UZ: 2-dars, 1/5-test. Bo'sh joyga qaysi selektor yoziladi?
+  EN: Lesson 2, test 1/5. Which selector goes in the empty spot?
+
+Файл / Fayl / File:  02t2-selektory.jsx
+  RU: Урок 2, тест 2/5. Какой селектор выберет этот заголовок?
+  UZ: 2-dars, 2/5-test. Qaysi selektor shu sarlavhani tanlaydi?
+  EN: Lesson 2, test 2/5. Which selector picks this heading?
+
+Файл / Fayl / File:  02t3-selektory.jsx
+  RU: Урок 2, тест 3/5. Сколько элементов это правило сделает синими?
+  UZ: 2-dars, 3/5-test. Bu qoida nechta elementni ko'k qiladi?
+  EN: Lesson 2, test 3/5. How many elements will this rule turn blue?
+
+Файл / Fayl / File:  02t4-selektory.jsx
+  RU: Урок 2, тест 4/5. Почему правило не работает?
+  UZ: 2-dars, 4/5-test. Qoida nega ishlamayapti?
+  EN: Lesson 2, test 4/5. Why doesn’t the rule work?
+
+Файл / Fayl / File:  02t5-selektory.jsx
+  RU: Урок 2, тест 5/5. Что мы им дадим?
+  UZ: 2-dars, 5/5-test. Ularga nima beramiz?
+  EN: Lesson 2, test 5/5. What do we give them?
 
 Файл / Fayl / File:  03-cveta.jsx
   RU: Урок 3. Цвета
@@ -33,6 +87,33 @@ Lesson and practice titles in three languages with file names
   UZ: 3-amaliyot. Kodining koinoti
   EN: Practice 3. Kodi’s space
 
+--- Тесты к уроку 3 / 3-dars testlari / Tests for lesson 3 ---
+
+Файл / Fayl / File:  03t1-cveta.jsx
+  RU: Урок 3, тест 1/5. Какое название цвета пишется на пустое место?
+  UZ: 3-dars, 1/5-test. Bo'sh joyga qaysi rang nomi yoziladi?
+  EN: Lesson 3, test 1/5. Which colour name goes in the empty spot?
+
+Файл / Fayl / File:  03t2-cveta.jsx
+  RU: Урок 3, тест 2/5. В какой строке цвет работает?
+  UZ: 3-dars, 2/5-test. Qaysi qatordagi rang ishlaydi?
+  EN: Lesson 3, test 2/5. On which line does the colour work?
+
+Файл / Fayl / File:  03t3-cveta.jsx
+  RU: Урок 3, тест 3/5. Каким цветом будет заголовок?
+  UZ: 3-dars, 3/5-test. Sarlavha qanday rangda bo'ladi?
+  EN: Lesson 3, test 3/5. What colour will the heading be?
+
+Файл / Fayl / File:  03t4-cveta.jsx
+  RU: Урок 3, тест 4/5. Какой код пишется на пустое место?
+  UZ: 3-dars, 4/5-test. Bo'sh joyga qaysi kod yoziladi?
+  EN: Lesson 3, test 4/5. Which code goes in the empty spot?
+
+Файл / Fayl / File:  03t5-cveta.jsx
+  RU: Урок 3, тест 5/5. Почему правило не работает?
+  UZ: 3-dars, 5/5-test. Qoida nega ishlamayapti?
+  EN: Lesson 3, test 5/5. Why doesn’t the rule work?
+
 Файл / Fayl / File:  04-fon.jsx
   RU: Урок 4. Фон
   UZ: 4-dars. Fon
@@ -42,6 +123,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 4. Выходной Коди
   UZ: 4-amaliyot. Kodining dam olish kuni
   EN: Practice 4. Kodi’s day off
+
+--- Тесты к уроку 4 / 4-dars testlari / Tests for lesson 4 ---
+
+Файл / Fayl / File:  04t1-fon.jsx
+  RU: Урок 4, тест 1/5. Что покрасил background-color?
+  UZ: 4-dars, 1/5-test. background-color nimani bo'yadi?
+  EN: Lesson 4, test 1/5. What did background-color paint?
+
+Файл / Fayl / File:  04t2-fon.jsx
+  RU: Урок 4, тест 2/5. Что пишется на пустое место?
+  UZ: 4-dars, 2/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 4, test 2/5. What goes in the empty spot?
+
+Файл / Fayl / File:  04t3-fon.jsx
+  RU: Урок 4, тест 3/5. Какую строку добавим в правило?
+  UZ: 4-dars, 3/5-test. Qoidaga qaysi qatorni qo'shamiz?
+  EN: Lesson 4, test 3/5. Which line do we add to the rule?
+
+Файл / Fayl / File:  04t4-fon.jsx
+  RU: Урок 4, тест 4/5. Что пишется на пустое место?
+  UZ: 4-dars, 4/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 4, test 4/5. What goes in the empty spot?
+
+Файл / Fayl / File:  04t5-fon.jsx
+  RU: Урок 4, тест 5/5. Почему так вышло?
+  UZ: 4-dars, 5/5-test. Nega shunday bo'ldi?
+  EN: Lesson 4, test 5/5. Why did that happen?
 
 Файл / Fayl / File:  05-tekst-i-shrifty.jsx
   RU: Урок 5. Текст и шрифты
@@ -53,6 +161,33 @@ Lesson and practice titles in three languages with file names
   UZ: 5-amaliyot. Kodining kitob klubi
   EN: Practice 5. Kodi’s book club
 
+--- Тесты к уроку 5 / 5-dars testlari / Tests for lesson 5 ---
+
+Файл / Fayl / File:  05t1-tekst-i-shrifty.jsx
+  RU: Урок 5, тест 1/5. Что нужно добавить к значению?
+  UZ: 5-dars, 1/5-test. Qiymatga nima qo'shish kerak?
+  EN: Lesson 5, test 1/5. What must be added to the value?
+
+Файл / Fayl / File:  05t2-tekst-i-shrifty.jsx
+  RU: Урок 5, тест 2/5. Какое значение пишется на пустое место?
+  UZ: 5-dars, 2/5-test. Bo'sh joyga qaysi qiymat yoziladi?
+  EN: Lesson 5, test 2/5. Which value goes in the empty spot?
+
+Файл / Fayl / File:  05t3-tekst-i-shrifty.jsx
+  RU: Урок 5, тест 3/5. Какое правило написать?
+  UZ: 5-dars, 3/5-test. Qaysi qoida yoziladi?
+  EN: Lesson 5, test 3/5. Which rule do we write?
+
+Файл / Fayl / File:  05t4-tekst-i-shrifty.jsx
+  RU: Урок 5, тест 4/5. Какое свойство пишется на пустое место?
+  UZ: 5-dars, 4/5-test. Bo'sh joyga qaysi xususiyat yoziladi?
+  EN: Lesson 5, test 4/5. Which property goes in the empty spot?
+
+Файл / Fayl / File:  05t5-tekst-i-shrifty.jsx
+  RU: Урок 5, тест 5/5. Как будет выглядеть абзац на таком компьютере?
+  UZ: 5-dars, 5/5-test. Shunday kompyuterda abzas qanday ko'rinadi?
+  EN: Lesson 5, test 5/5. How will the paragraph look on such a computer?
+
 Файл / Fayl / File:  06-razmery.jsx
   RU: Урок 6. Размеры элементов
   UZ: 6-dars. Elementlar o'lchami
@@ -62,6 +197,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 6. Игра Коди
   UZ: 6-amaliyot. Kodining o'yini
   EN: Practice 6. Kodi’s game
+
+--- Тесты к уроку 6 / 6-dars testlari / Tests for lesson 6 ---
+
+Файл / Fayl / File:  06t1-razmery.jsx
+  RU: Урок 6, тест 1/5. Что написать на пустое место?
+  UZ: 6-dars, 1/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 6, test 1/5. What goes in the empty spot?
+
+Файл / Fayl / File:  06t2-razmery.jsx
+  RU: Урок 6, тест 2/5. Какой элемент тоже станет уже?
+  UZ: 6-dars, 2/5-test. Qaysi element ham oyna bilan torayadi?
+  EN: Lesson 6, test 2/5. Which element gets narrower too?
+
+Файл / Fayl / File:  06t3-razmery.jsx
+  RU: Урок 6, тест 3/5. Почему фото растянулось?
+  UZ: 6-dars, 3/5-test. Surat nimaga cho'zilib qoldi?
+  EN: Lesson 6, test 3/5. Why did the photo get stretched?
+
+Файл / Fayl / File:  06t4-razmery.jsx
+  RU: Урок 6, тест 4/5. Какая строка работает?
+  UZ: 6-dars, 4/5-test. Qaysi qator ishlaydi?
+  EN: Lesson 6, test 4/5. Which line works?
+
+Файл / Fayl / File:  06t5-razmery.jsx
+  RU: Урок 6, тест 5/5. Какой будет ширина коробки?
+  UZ: 6-dars, 5/5-test. Quti necha piksel keng bo'ladi?
+  EN: Lesson 6, test 5/5. How wide will the box be?
 
 Файл / Fayl / File:  07-box-model.jsx
   RU: Урок 7. Box Model
@@ -73,6 +235,33 @@ Lesson and practice titles in three languages with file names
   UZ: 7-amaliyot. Kinoteatrni ta'mirlash
   EN: Practice 7. Cinema repair
 
+--- Тесты к уроку 7 / 7-dars testlari / Tests for lesson 7 ---
+
+Файл / Fayl / File:  07t1-box-model.jsx
+  RU: Урок 7, тест 1/5. Какое свойство на пустом месте?
+  UZ: 7-dars, 1/5-test. Bo'sh joyda qaysi xususiyat turibdi?
+  EN: Lesson 7, test 1/5. Which property is in the empty spot?
+
+Файл / Fayl / File:  07t2-box-model.jsx
+  RU: Урок 7, тест 2/5. Чего не хватает в значении border?
+  UZ: 7-dars, 2/5-test. border qiymatida nima tushib qolibdi?
+  EN: Lesson 7, test 2/5. What is missing from the border value?
+
+Файл / Fayl / File:  07t3-box-model.jsx
+  RU: Урок 7, тест 3/5. Какое свойство на пустом месте?
+  UZ: 7-dars, 3/5-test. Bo'sh joyda qaysi xususiyat turibdi?
+  EN: Lesson 7, test 3/5. Which property is in the empty spot?
+
+Файл / Fayl / File:  07t4-box-model.jsx
+  RU: Урок 7, тест 4/5. Какой будет ширина всей коробки?
+  UZ: 7-dars, 4/5-test. Butun quti necha piksel keng bo'ladi?
+  EN: Lesson 7, test 4/5. How wide will the whole box be?
+
+Файл / Fayl / File:  07t5-box-model.jsx
+  RU: Урок 7, тест 5/5. Что написать на пустое место?
+  UZ: 7-dars, 5/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 7, test 5/5. What goes in the empty spot?
+
 Файл / Fayl / File:  08-kartochki.jsx
   RU: Урок 8. Красивые карточки
   UZ: 8-dars. Chiroyli kartochkalar
@@ -82,6 +271,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 8. Магазин игр Коди
   UZ: 8-amaliyot. Kodining o'yinlar do'koni
   EN: Practice 8. Kodi’s game store
+
+--- Тесты к уроку 8 / 8-dars testlari / Tests for lesson 8 ---
+
+Файл / Fayl / File:  08t1-kartochki.jsx
+  RU: Урок 8, тест 1/5. Почему углы не скруглились?
+  UZ: 8-dars, 1/5-test. Burchaklar nimaga yumaloqlanmadi?
+  EN: Lesson 8, test 1/5. Why didn’t the corners get rounded?
+
+Файл / Fayl / File:  08t2-kartochki.jsx
+  RU: Урок 8, тест 2/5. В какую сторону упадёт тень?
+  UZ: 8-dars, 2/5-test. Soya qaysi tomonga tushadi?
+  EN: Lesson 8, test 2/5. Which way will the shadow fall?
+
+Файл / Fayl / File:  08t3-kartochki.jsx
+  RU: Урок 8, тест 3/5. Как исправить значение?
+  UZ: 8-dars, 3/5-test. Qiymatni qanday tuzatamiz?
+  EN: Lesson 8, test 3/5. How do we fix the value?
+
+Файл / Fayl / File:  08t4-kartochki.jsx
+  RU: Урок 8, тест 4/5. Какая строка это даёт?
+  UZ: 8-dars, 4/5-test. Qaysi qator shuni beradi?
+  EN: Lesson 8, test 4/5. Which line gives this?
+
+Файл / Fayl / File:  08t5-kartochki.jsx
+  RU: Урок 8, тест 5/5. Что написать на пустое место?
+  UZ: 8-dars, 5/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 8, test 5/5. What goes in the empty spot?
 
 Файл / Fayl / File:  09-display.jsx
   RU: Урок 9. Как элементы ведут себя на странице
@@ -93,6 +309,33 @@ Lesson and practice titles in three languages with file names
   UZ: 9-amaliyot. Kinoteatr tugmalari
   EN: Practice 9. Cinema buttons
 
+--- Тесты к уроку 9 / 9-dars testlari / Tests for lesson 9 ---
+
+Файл / Fayl / File:  09t1-display.jsx
+  RU: Урок 9, тест 1/5. Какие теги стоят рядом?
+  UZ: 9-dars, 1/5-test. Qaysi teglar yonma-yon turibdi?
+  EN: Lesson 9, test 1/5. Which tags sit side by side?
+
+Файл / Fayl / File:  09t2-display.jsx
+  RU: Урок 9, тест 2/5. Почему width не сработал?
+  UZ: 9-dars, 2/5-test. Nimaga width ishlamadi?
+  EN: Lesson 9, test 2/5. Why didn’t width work?
+
+Файл / Fayl / File:  09t3-display.jsx
+  RU: Урок 9, тест 3/5. Что написать на пустое место?
+  UZ: 9-dars, 3/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 9, test 3/5. What goes in the empty spot?
+
+Файл / Fayl / File:  09t4-display.jsx
+  RU: Урок 9, тест 4/5. Что браузер сделает со вторым абзацем?
+  UZ: 9-dars, 4/5-test. Brauzer ikkinchi abzas bilan nima qiladi?
+  EN: Lesson 9, test 4/5. What will the browser do with the second paragraph?
+
+Файл / Fayl / File:  09t5-display.jsx
+  RU: Урок 9, тест 5/5. Как исправить значение?
+  UZ: 9-dars, 5/5-test. Qiymatni qanday tuzatamiz?
+  EN: Lesson 9, test 5/5. How do we fix the value?
+
 Файл / Fayl / File:  10-flexbox-osi.jsx
   RU: Урок 10. Flexbox: расположение элементов
   UZ: 10-dars. Flexbox: elementlarni joylashtirish
@@ -102,6 +345,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 10. Планеты в ряд
   UZ: 10-amaliyot. Sayyoralar qatorda
   EN: Practice 10. Planets in a row
+
+--- Тесты к уроку 10 / 10-dars testlari / Tests for lesson 10 ---
+
+Файл / Fayl / File:  10t1-flexbox-osi.jsx
+  RU: Урок 10, тест 1/5. Какому селектору пишут display: flex?
+  UZ: 10-dars, 1/5-test. display: flex qaysi selektorga yoziladi?
+  EN: Lesson 10, test 1/5. Which selector gets display: flex?
+
+Файл / Fayl / File:  10t2-flexbox-osi.jsx
+  RU: Урок 10, тест 2/5. Какое значение на пустом месте?
+  UZ: 10-dars, 2/5-test. Bo'sh joyda qaysi qiymat turibdi?
+  EN: Lesson 10, test 2/5. Which value is in the empty spot?
+
+Файл / Fayl / File:  10t3-flexbox-osi.jsx
+  RU: Урок 10, тест 3/5. Куда здесь смотрит главная ось?
+  UZ: 10-dars, 3/5-test. Bu yerda asosiy o'q qayerga qaraydi?
+  EN: Lesson 10, test 3/5. Where does the main axis point here?
+
+Файл / Fayl / File:  10t4-flexbox-osi.jsx
+  RU: Урок 10, тест 4/5. Почему правило не сработало?
+  UZ: 10-dars, 4/5-test. Nimaga qoida ishlamadi?
+  EN: Lesson 10, test 4/5. Why didn’t the rule work?
+
+Файл / Fayl / File:  10t5-flexbox-osi.jsx
+  RU: Урок 10, тест 5/5. Почему карточки вытянулись?
+  UZ: 10-dars, 5/5-test. Kartochkalar nimaga cho'zildi?
+  EN: Lesson 10, test 5/5. Why did the cards stretch?
 
 Файл / Fayl / File:  11-flexbox-vyravnivanie.jsx
   RU: Урок 11. Flexbox: выравнивание
@@ -113,6 +383,33 @@ Lesson and practice titles in three languages with file names
   UZ: 11-amaliyot. Afisha javonlari
   EN: Practice 11. Poster shelves
 
+--- Тесты к уроку 11 / 11-dars testlari / Tests for lesson 11 ---
+
+Файл / Fayl / File:  11t1-flexbox-vyravnivanie.jsx
+  RU: Урок 11, тест 1/5. Какое значение на пустом месте?
+  UZ: 11-dars, 1/5-test. Bo'sh joyda qaysi qiymat turibdi?
+  EN: Lesson 11, test 1/5. Which value is in the empty spot?
+
+Файл / Fayl / File:  11t2-flexbox-vyravnivanie.jsx
+  RU: Урок 11, тест 2/5. Что написать в пустую строку?
+  UZ: 11-dars, 2/5-test. Bo'sh qatorga nima yoziladi?
+  EN: Lesson 11, test 2/5. What goes on the empty line?
+
+Файл / Fayl / File:  11t3-flexbox-vyravnivanie.jsx
+  RU: Урок 11, тест 3/5. Какое значение на пустом месте?
+  UZ: 11-dars, 3/5-test. Bo'sh joyda qaysi qiymat turibdi?
+  EN: Lesson 11, test 3/5. Which value is in the empty spot?
+
+Файл / Fayl / File:  11t4-flexbox-vyravnivanie.jsx
+  RU: Урок 11, тест 4/5. Почему gap не сработал?
+  UZ: 11-dars, 4/5-test. Nimaga gap ishlamadi?
+  EN: Lesson 11, test 4/5. Why didn’t gap work?
+
+Файл / Fayl / File:  11t5-flexbox-vyravnivanie.jsx
+  RU: Урок 11, тест 5/5. Как перенести карточки на новую строку?
+  UZ: 11-dars, 5/5-test. Ularni yangi qatorga qanday o'tkazamiz?
+  EN: Lesson 11, test 5/5. How do we move them to a new line?
+
 Файл / Fayl / File:  12-pozicionirovanie.jsx
   RU: Урок 12. Позиционирование
   UZ: 12-dars. Pozitsiyalash
@@ -122,6 +419,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 12. Метки и ракеты
   UZ: 12-amaliyot. Belgilar va raketalar
   EN: Practice 12. Badges and rockets
+
+--- Тесты к уроку 12 / 12-dars testlari / Tests for lesson 12 ---
+
+Файл / Fayl / File:  12t1-pozicionirovanie.jsx
+  RU: Урок 12, тест 1/5. Какое значение пишется на пустое место?
+  UZ: 12-dars, 1/5-test. Bo'sh joyga qaysi qiymat yoziladi?
+  EN: Lesson 12, test 1/5. Which value goes in the empty spot?
+
+Файл / Fayl / File:  12t2-pozicionirovanie.jsx
+  RU: Урок 12, тест 2/5. Какая строка вернёт её в угол карточки?
+  UZ: 12-dars, 2/5-test. Qaysi qator uni kartochka burchagiga qaytaradi?
+  EN: Lesson 12, test 2/5. Which line brings it back to the card’s corner?
+
+Файл / Fayl / File:  12t3-pozicionirovanie.jsx
+  RU: Урок 12, тест 3/5. Какое значение пишется на пустое место?
+  UZ: 12-dars, 3/5-test. Bo'sh joyga qaysi qiymat yoziladi?
+  EN: Lesson 12, test 3/5. Which value goes in the empty spot?
+
+Файл / Fayl / File:  12t4-pozicionirovanie.jsx
+  RU: Урок 12, тест 4/5. Почему коробка не сдвинулась?
+  UZ: 12-dars, 4/5-test. Quti nimaga siljimadi?
+  EN: Lesson 12, test 4/5. Why didn’t the box move?
+
+Файл / Fayl / File:  12t5-pozicionirovanie.jsx
+  RU: Урок 12, тест 5/5. Какие сдвиги поставили метку сюда?
+  UZ: 12-dars, 5/5-test. Qaysi siljishlar belgini shu yerga qo'ydi?
+  EN: Lesson 12, test 5/5. Which offsets put the label here?
 
 Файл / Fayl / File:  13-hover-transform.jsx
   RU: Урок 13. Hover и transform
@@ -133,6 +457,33 @@ Lesson and practice titles in three languages with file names
   UZ: 13-amaliyot. Kodining musiqa sayti
   EN: Practice 13. Kodi’s music site
 
+--- Тесты к уроку 13 / 13-dars testlari / Tests for lesson 13 ---
+
+Файл / Fayl / File:  13t1-hover-transform.jsx
+  RU: Урок 13, тест 1/5. Когда кнопка станет оранжевой?
+  UZ: 13-dars, 1/5-test. Tugma qachon to'q sariq bo'ladi?
+  EN: Lesson 13, test 1/5. When does the button turn orange?
+
+Файл / Fayl / File:  13t2-hover-transform.jsx
+  RU: Урок 13, тест 2/5. Что мешает?
+  UZ: 13-dars, 2/5-test. Nima xalaqit beryapti?
+  EN: Lesson 13, test 2/5. What is getting in the way?
+
+Файл / Fayl / File:  13t3-hover-transform.jsx
+  RU: Урок 13, тест 3/5. А абзац под кнопкой?
+  UZ: 13-dars, 3/5-test. Tugma ostidagi abzas-chi?
+  EN: Lesson 13, test 3/5. What about the paragraph under the button?
+
+Файл / Fayl / File:  13t4-hover-transform.jsx
+  RU: Урок 13, тест 4/5. Что пишется в скобках?
+  UZ: 13-dars, 4/5-test. Qavs ichiga nima yoziladi?
+  EN: Lesson 13, test 4/5. What goes inside the brackets?
+
+Файл / Fayl / File:  13t5-hover-transform.jsx
+  RU: Урок 13, тест 5/5. Какое свойство пишется на пустое место?
+  UZ: 13-dars, 5/5-test. Bo'sh joyga qaysi xususiyat yoziladi?
+  EN: Lesson 13, test 5/5. Which property goes in the empty spot?
+
 Файл / Fayl / File:  14-transition.jsx
   RU: Урок 14. Плавные эффекты
   UZ: 14-dars. Silliq effektlar
@@ -142,6 +493,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 14. Плавные эффекты кино
   UZ: 14-amaliyot. Kinoning silliq effektlari
   EN: Practice 14. Smooth cinema effects
+
+--- Тесты к уроку 14 / 14-dars testlari / Tests for lesson 14 ---
+
+Файл / Fayl / File:  14t1-transition.jsx
+  RU: Урок 14, тест 1/5. А когда мышка уходит?
+  UZ: 14-dars, 1/5-test. Sichqoncha ketganda-chi?
+  EN: Lesson 14, test 1/5. And when the mouse leaves?
+
+Файл / Fayl / File:  14t2-transition.jsx
+  RU: Урок 14, тест 2/5. Что равно 0.5s?
+  UZ: 14-dars, 2/5-test. Qaysi biri 0.5s bilan bir xil?
+  EN: Lesson 14, test 2/5. Which one equals 0.5s?
+
+Файл / Fayl / File:  14t3-transition.jsx
+  RU: Урок 14, тест 3/5. Что написать на пустое место, чтобы фон менялся плавно?
+  UZ: 14-dars, 3/5-test. Fon silliq o'zgarishi uchun bo'sh joyga nima yoziladi?
+  EN: Lesson 14, test 3/5. What goes in the gap so the background changes smoothly?
+
+Файл / Fayl / File:  14t4-transition.jsx
+  RU: Урок 14, тест 4/5. Что сломалось в строке 2?
+  UZ: 14-dars, 4/5-test. 2-qatorda nima buzilib qolibdi?
+  EN: Lesson 14, test 4/5. What broke on line 2?
+
+Файл / Fayl / File:  14t5-transition.jsx
+  RU: Урок 14, тест 5/5. Что пишется на пустое место?
+  UZ: 14-dars, 5/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 14, test 5/5. What goes in the empty spot?
 
 Файл / Fayl / File:  15-animacii.jsx
   RU: Урок 15. CSS-анимации
@@ -153,6 +531,33 @@ Lesson and practice titles in three languages with file names
   UZ: 15-amaliyot. Koinotga parvoz
   EN: Practice 15. Flight to space
 
+--- Тесты к уроку 15 / 15-dars testlari / Tests for lesson 15 ---
+
+Файл / Fayl / File:  15t1-animacii.jsx
+  RU: Урок 15, тест 1/5. Что сломалось?
+  UZ: 15-dars, 1/5-test. Nima buzilib qolibdi?
+  EN: Lesson 15, test 1/5. What broke?
+
+Файл / Fayl / File:  15t2-animacii.jsx
+  RU: Урок 15, тест 2/5. Что пишется на пустое место?
+  UZ: 15-dars, 2/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 15, test 2/5. What goes in the empty spot?
+
+Файл / Fayl / File:  15t3-animacii.jsx
+  RU: Урок 15, тест 3/5. Сколько раз прыгнет кубик?
+  UZ: 15-dars, 3/5-test. Kubik necha marta sakraydi?
+  EN: Lesson 15, test 3/5. How many times will the cube jump?
+
+Файл / Fayl / File:  15t4-animacii.jsx
+  RU: Урок 15, тест 4/5. Что для этого нужно?
+  UZ: 15-dars, 4/5-test. Buning uchun nima kerak?
+  EN: Lesson 15, test 4/5. What does this need?
+
+Файл / Fayl / File:  15t5-animacii.jsx
+  RU: Урок 15, тест 5/5. Что потерялось в плане?
+  UZ: 15-dars, 5/5-test. Rejada nima tushib qolibdi?
+  EN: Lesson 15, test 5/5. What is missing in the plan?
+
 Файл / Fayl / File:  16-adaptivnost.jsx
   RU: Урок 16. Адаптивность
   UZ: 16-dars. Moslashuvchan sayt
@@ -162,6 +567,33 @@ Lesson and practice titles in three languages with file names
   RU: Практика 16. Футбольный клуб Коди
   UZ: 16-amaliyot. Kodining futbol klubi
   EN: Practice 16. Kodi’s football club
+
+--- Тесты к уроку 16 / 16-dars testlari / Tests for lesson 16 ---
+
+Файл / Fayl / File:  16t1-adaptivnost.jsx
+  RU: Урок 16, тест 1/5. Какое значение сделает его шириной в окно на любом экране?
+  UZ: 16-dars, 1/5-test. Har qanday oynada eniga teng bo'lishi uchun qaysi qiymat kerak?
+  EN: Lesson 16, test 1/5. Which value makes it window-wide on any screen?
+
+Файл / Fayl / File:  16t2-adaptivnost.jsx
+  RU: Урок 16, тест 2/5. Как встанут карточки?
+  UZ: 16-dars, 2/5-test. Kartochkalar qanday turadi?
+  EN: Lesson 16, test 2/5. How will the cards line up?
+
+Файл / Fayl / File:  16t3-adaptivnost.jsx
+  RU: Урок 16, тест 3/5. Что пишется на пустое место?
+  UZ: 16-dars, 3/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 16, test 3/5. What goes in the empty spot?
+
+Файл / Fayl / File:  16t4-adaptivnost.jsx
+  RU: Урок 16, тест 4/5. Что сломалось?
+  UZ: 16-dars, 4/5-test. Nima buzilib qolibdi?
+  EN: Lesson 16, test 4/5. What broke?
+
+Файл / Fayl / File:  16t5-adaptivnost.jsx
+  RU: Урок 16, тест 5/5. Почему?
+  UZ: 16-dars, 5/5-test. Nimaga?
+  EN: Lesson 16, test 5/5. Why?
 
 Файл / Fayl / File:  17-final-proekt.jsx
   RU: Урок 17. Финальный проект

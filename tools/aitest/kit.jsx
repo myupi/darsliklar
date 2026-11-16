@@ -11,6 +11,7 @@
 // Своей кнопки «Tekshirish» у теста нет, как у образцов (заказчик, 13.11.2026): её рисует платформа, в просмотрщике —
 // эмуляция платформы src/player/QuizShell.jsx. Отклик — плашка под вариантами, как у образцов.
 // Языки: uz, ru (как у образцов) и en для просмотрщика.
+// Тот же набор — у тестов курсов HTML и CSS (16.11.2026, tools/webtest/): Q.ptype — 'HTML' / 'CSS', Q.mono — варианты-код.
 // =============================================================================
 
 const AQ_LETTERS = ['A', 'B', 'C', 'D'];
@@ -217,7 +218,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
   const check = () => {
     if (!answering || sel === null || sent.current) return;
     sent.current = true; setChecked(true);
-    if (onSubmit) onSubmit({ correct: sel === Q.correct, questionText: T.q, studentAnswer: T.opts[sel], correctAnswer: T.opts[Q.correct], options: T.opts.slice(), meta: { target: Q.target, ptype: 'AI', level: 1, tag: Q.tag } });
+    if (onSubmit) onSubmit({ correct: sel === Q.correct, questionText: T.q, studentAnswer: T.opts[sel], correctAnswer: T.opts[Q.correct], options: T.opts.slice(), meta: { target: Q.target, ptype: Q.ptype || 'AI', level: 1, tag: Q.tag } });
   };
   useEffect(() => { if (onReady) onReady(answering && sel !== null && !checked); return () => { if (onReady) onReady(false); }; }, [sel, checked, answering, onReady]);
   useEffect(() => { if (!registerCheck) return undefined; registerCheck(check); return () => registerCheck(null); }); // eslint-disable-line react-hooks/exhaustive-deps
@@ -251,7 +252,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
           {T.ctx ? <p className="aq-ctx">{T.ctx}</p> : null}
         </div>
         {Q.vis ? <div className="aq-vis" role="img" aria-label={T.alt || U.art}>{Q.vis(L, T)}</div> : null}
-        <div className="aq-opts" role="group" aria-label={T.q}>
+        <div className={'aq-opts' + (Q.mono ? ' is-mono' : '') + (T.opts.every((o) => String(o).length <= 14) ? ' is-short' : '')} role="group" aria-label={T.q}>
           {T.opts.map((o, i) => {
             const on = sel === i;
             const st = checked && on ? (i === Q.correct ? ' is-ok' : ' is-bad') : on ? ' is-sel' : '';
@@ -293,6 +294,8 @@ const AQ_CSS = `
 .aq-opt:not(:disabled):hover { border-color: #D5D2DE; }
 .aq-badge { flex: 0 0 34px; width: 34px; height: 34px; margin-right: 14px; border-radius: 10px; background: #F4F4F7; color: #77738F; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; }
 .aq-txt { min-width: 0; flex: 1 1 auto; overflow-wrap: break-word; }
+/* Варианты-код (тесты HTML и CSS, Q.mono): моноширинный шрифт, как в редакторе. */
+.aq-opts.is-mono .aq-txt { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; font-weight: 600; white-space: pre-wrap; }
 .aq-opt.is-sel { background: #FFF2ED; border-color: #FA4F28; }
 .aq-opt.is-sel .aq-badge { background: #FA4F28; color: #fff; }
 .aq-opt.is-ok { background: #ECFAF5; border-color: #09B163; }
@@ -434,6 +437,9 @@ const AQ_CSS = `
   .aq-opts { margin-top: 10px; }
   .aq-opt { min-height: 46px; margin: 3px 0; padding: 6px 12px; font-size: 15px; border-radius: 12px; }
   .aq-badge { flex-basis: 28px; width: 28px; height: 28px; margin-right: 10px; font-size: 13px; border-radius: 8px; }
+  /* Короткие варианты (до 14 знаков: теги, свойства — тесты HTML и CSS) — по два в ряд, чтобы картинке осталось место. */
+  .aq-opts.is-short { gap: 0 8px; }
+  .aq-opts.is-short .aq-opt { width: calc(50% - 4px); }
   .aq-fb { margin-top: 10px; border-radius: 16px; }
   .aq-fb-in { padding: 10px 12px; gap: 10px; }
   .aq-fb-ic { flex-basis: 30px; width: 30px; height: 30px; }

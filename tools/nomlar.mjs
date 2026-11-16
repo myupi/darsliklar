@@ -17,9 +17,9 @@ const HEAD = { html: 'Курс HTML', css: 'Курс CSS', ai: 'Модуль «�
 for (const c of ['html', 'css', 'ai']) {
   const files = readdirSync(join(R, c)).filter((f) => /^\d\d(p|t\d)?-.*\.jsx$/.test(f)).sort();
   const course = (await import(join(R, c, '_course.js'))).default;
-  const lines = [c === 'ai' ? `${HEAD[c]} — названия уроков и тестов на трёх языках и имена файлов` : `${HEAD[c]} — названия уроков и практик на трёх языках и имена файлов`,
-    c === 'ai' ? 'Darslar va testlar nomlari — uch tilda va fayl nomi' : 'Darslar va amaliyotlar nomlari — uch tilda va fayl nomi',
-    c === 'ai' ? 'Lesson and test titles in three languages with file names' : 'Lesson and practice titles in three languages with file names',
+  const lines = [c === 'ai' ? `${HEAD[c]} — названия уроков и тестов на трёх языках и имена файлов` : `${HEAD[c]} — названия уроков, практик и тестов на трёх языках и имена файлов`,
+    c === 'ai' ? 'Darslar va testlar nomlari — uch tilda va fayl nomi' : 'Darslar, amaliyotlar va testlar nomlari — uch tilda va fayl nomi',
+    c === 'ai' ? 'Lesson and test titles in three languages with file names' : 'Lesson, practice and test titles in three languages with file names',
     'Пересобрать список: node tools/nomlar.mjs', ''];
   const titles = {};
   for (const f of files) {
@@ -30,7 +30,7 @@ for (const c of ['html', 'css', 'ai']) {
       const k = +m[3];
       const base = titles[n] || {};
       const qs = src.indexOf('const QS = ['); let pos = qs;
-      for (let i = 0; i < k; i++) pos = src.indexOf("{ id: 'ai-", pos + 1);
+      for (let i = 0; i < k; i++) pos = src.indexOf("{ id: '", pos + 1);   // ai-, html-, css- (тесты HTML и CSS — 16.11.2026)
       const uzAt = src.indexOf('uz: {', pos), ruAt = src.indexOf('ru: {', pos), enAt = src.indexOf('en: {', pos);
       t = { kind: 'test', k, base,
         uz: `${n}-dars, ${k}/5-test. ` + field(src, 'q', uzAt),
