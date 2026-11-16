@@ -1,0 +1,94 @@
+Курс HTML — названия уроков и практик на трёх языках и имена файлов
+Darslar va amaliyotlar nomlari — uch tilda va fayl nomi
+Lesson and practice titles in three languages with file names
+Пересобрать список: node tools/nomlar.mjs
+
+Файл / Fayl / File:  01-struktura-dokumenta.jsx
+  RU: Урок 1. Структура HTML-документа
+  UZ: 1-dars. HTML hujjatining tuzilishi
+  EN: Lesson 1. HTML document structure
+
+Файл / Fayl / File:  01p-struktura-dokumenta.jsx
+  RU: Практика 1. Пять вкладок Коди
+  UZ: 1-amaliyot. Kodining beshta varag'i
+  EN: Practice 1. Kodi’s five tabs
+
+Файл / Fayl / File:  02-zagolovki-i-tekst.jsx
+  RU: Урок 2. Заголовки и текст
+  UZ: 2-dars. Sarlavhalar va matn
+  EN: Lesson 2. Headings and text
+
+Файл / Fayl / File:  02p-zagolovki-i-tekst.jsx
+  RU: Практика 2. Газета Коди
+  UZ: 2-amaliyot. Kodining gazetasi
+  EN: Practice 2. Kodi’s newspaper
+
+Файл / Fayl / File:  03-spiski.jsx
+  RU: Урок 3. Списки
+  UZ: 3-dars. Ro'yxatlar
+  EN: Lesson 3. Lists
+
+Файл / Fayl / File:  03p-spiski.jsx
+  RU: Практика 3. Праздник Коди
+  UZ: 3-amaliyot. Kodining bayrami
+  EN: Practice 3. Kodi’s party
+
+Файл / Fayl / File:  04-ssylki-i-atributy.jsx
+  RU: Урок 4. Ссылки и атрибуты
+  UZ: 4-dars. Havolalar va atributlar
+  EN: Lesson 4. Links and attributes
+
+Файл / Fayl / File:  04p-ssylki-i-atributy.jsx
+  RU: Практика 4. Путешествие Коди
+  UZ: 4-amaliyot. Kodining sayohati
+  EN: Practice 4. Kodi’s trip
+
+Файл / Fayl / File:  05-izobrazheniya.jsx
+  RU: Урок 5. Изображения
+  UZ: 5-dars. Rasmlar
+  EN: Lesson 5. Images
+
+Файл / Fayl / File:  05p-izobrazheniya.jsx
+  RU: Практика 5. Зоопарк Коди
+  UZ: 5-amaliyot. Kodining hayvonot bog'i
+  EN: Practice 5. Kodi’s zoo
+
+Файл / Fayl / File:  06-formy-vvod.jsx
+  RU: Урок 6. Формы, часть 1: ввод данных
+  UZ: 6-dars. Formalar, 1-qism: ma'lumot kiritish
+  EN: Lesson 6. Forms, part 1: entering data
+
+Файл / Fayl / File:  06p-formy-vvod.jsx
+  RU: Практика 6. Анкеты Коди
+  UZ: 6-amaliyot. Kodining anketalari
+  EN: Practice 6. Kodi’s forms
+
+Файл / Fayl / File:  07-formy-vybor.jsx
+  RU: Урок 7. Формы, часть 2: выбор и отправка
+  UZ: 7-dars. Formalar, 2-qism: tanlash va yuborish
+  EN: Lesson 7. Forms, part 2: choosing and sending
+
+Файл / Fayl / File:  07p-formy-vybor.jsx
+  RU: Практика 7. Лагерь Коди
+  UZ: 7-amaliyot. Kodining lageri
+  EN: Practice 7. Kodi’s camp
+
+Файл / Fayl / File:  08-struktura-sajta.jsx
+  RU: Урок 8. Структура настоящего сайта
+  UZ: 8-dars. Haqiqiy sayt tuzilishi
+  EN: Lesson 8. The structure of a real site
+
+Файл / Fayl / File:  08p-struktura-sajta.jsx
+  RU: Практика 8. Сайт школы Коди
+  UZ: 8-amaliyot. Kodining maktab sayti
+  EN: Practice 8. Kodi’s school site
+
+Файл / Fayl / File:  09-final-proekt.jsx
+  RU: Урок 9. Финальный HTML-проект
+  UZ: 9-dars. Yakuniy HTML loyiha
+  EN: Lesson 9. The final HTML project
+
+Файл / Fayl / File:  09p-final-proekt.jsx
+  RU: Практика 9. Мой сайт от и до
+  UZ: 9-amaliyot. Saytimni boshidan oxirigacha yasayman
+  EN: Practice 9. My site from start to finish

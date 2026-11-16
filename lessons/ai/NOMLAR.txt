@@ -1,0 +1,233 @@
+Модуль «ИИ» — названия уроков и тестов на трёх языках и имена файлов
+Darslar va testlar nomlari — uch tilda va fayl nomi
+Lesson and test titles in three languages with file names
+Пересобрать список: node tools/nomlar.mjs
+
+Файл / Fayl / File:  01-chto-i-zachem.jsx
+  RU: Урок 1. Что создаём и зачем?
+  UZ: 1-dars. Nima yaratamiz va nega?
+  EN: Lesson 1. What are we making and why?
+
+--- Тесты к уроку 1 / 1-dars testlari / Tests for lesson 1 ---
+
+Файл / Fayl / File:  01t1-chto-i-zachem.jsx
+  RU: Урок 1, тест 1/5. Что точнее подходит в строку «Что?»?
+  UZ: 1-dars, 1/5-test. «Nima?» qatoriga qaysi biri aniqroq?
+  EN: Lesson 1, test 1/5. Which fits the “What?” line best?
+
+Файл / Fayl / File:  01t2-chto-i-zachem.jsx
+  RU: Урок 1, тест 2/5. Какая строка «Зачем?» дала этот сайт?
+  UZ: 1-dars, 2/5-test. Qaysi «Nega?» qatori shu saytni bergan?
+  EN: Lesson 1, test 2/5. Which “Why?” line gave this site?
+
+Файл / Fayl / File:  01t3-chto-i-zachem.jsx
+  RU: Урок 1, тест 3/5. Какая строка ничего не говорит ИИ?
+  UZ: 1-dars, 3/5-test. Qaysi qator sun'iy intellektga hech narsa demaydi?
+  EN: Lesson 1, test 3/5. Which line tells the AI nothing?
+
+Файл / Fayl / File:  01t4-chto-i-zachem.jsx
+  RU: Урок 1, тест 4/5. Какой промпт ему подходит?
+  UZ: 1-dars, 4/5-test. Unga qaysi prompt mos?
+  EN: Lesson 1, test 4/5. Which prompt fits it?
+
+Файл / Fayl / File:  01t5-chto-i-zachem.jsx
+  RU: Урок 1, тест 5/5. Что написать в строку «Зачем?»?
+  UZ: 1-dars, 5/5-test. «Nega?» qatoriga nima yozamiz?
+  EN: Lesson 1, test 5/5. What goes in the “Why?” line?
+
+Файл / Fayl / File:  02-dlya-kogo.jsx
+  RU: Урок 2. Для кого создаём?
+  UZ: 2-dars. Kim uchun yaratamiz?
+  EN: Lesson 2. Who are we making it for?
+
+--- Тесты к уроку 2 / 2-dars testlari / Tests for lesson 2 ---
+
+Файл / Fayl / File:  02t1-dlya-kogo.jsx
+  RU: Урок 2, тест 1/5. Что точнее подходит в строку «Для кого?»?
+  UZ: 2-dars, 1/5-test. «Kim uchun?» qatoriga qaysi biri aniqroq?
+  EN: Lesson 2, test 1/5. Which fits the “For whom?” line best?
+
+Файл / Fayl / File:  02t2-dlya-kogo.jsx
+  RU: Урок 2, тест 2/5. Для кого сделан этот сайт?
+  UZ: 2-dars, 2/5-test. Bu sayt kim uchun yaratilgan?
+  EN: Lesson 2, test 2/5. Who was this site made for?
+
+Файл / Fayl / File:  02t3-dlya-kogo.jsx
+  RU: Урок 2, тест 3/5. Как написать строку «Для кого?»?
+  UZ: 2-dars, 3/5-test. «Kim uchun?» qatorini qanday yozamiz?
+  EN: Lesson 2, test 3/5. How should we write the “For whom?” line?
+
+Файл / Fayl / File:  02t4-dlya-kogo.jsx
+  RU: Урок 2, тест 4/5. Что написать в строку «Для кого?»?
+  UZ: 2-dars, 4/5-test. «Kim uchun?» qatoriga nima yozamiz?
+  EN: Lesson 2, test 4/5. What goes in the “For whom?” line?
+
+Файл / Fayl / File:  02t5-dlya-kogo.jsx
+  RU: Урок 2, тест 5/5. В какую строку пишем «ученики 12–14 лет, любят роботов»?
+  UZ: 2-dars, 5/5-test. «12–14 yoshli o'quvchilar, robotlarni yaxshi ko'radi» qaysi qatorga yoziladi?
+  EN: Lesson 2, test 5/5. Which line does “students aged 12–14 who love robots” go in?
+
+Файл / Fayl / File:  03-chto-na-sajte.jsx
+  RU: Урок 3. Что должно быть на сайте?
+  UZ: 3-dars. Saytda nima bo'ladi?
+  EN: Lesson 3. What goes on the site?
+
+--- Тесты к уроку 3 / 3-dars testlari / Tests for lesson 3 ---
+
+Файл / Fayl / File:  03t1-chto-na-sajte.jsx
+  RU: Урок 3, тест 1/5. Что точнее подходит в строку «Что внутри?»?
+  UZ: 3-dars, 1/5-test. «Ichida nima?» qatoriga qaysi biri aniqroq?
+  EN: Lesson 3, test 1/5. Which fits the “What’s inside?” line best?
+
+Файл / Fayl / File:  03t2-chto-na-sajte.jsx
+  RU: Урок 3, тест 2/5. Какая строка «Что внутри?» дала этот сайт?
+  UZ: 3-dars, 2/5-test. Qaysi «Ichida nima?» shu saytni bergan?
+  EN: Lesson 3, test 2/5. Which “What’s inside?” line gave this site?
+
+Файл / Fayl / File:  03t3-chto-na-sajte.jsx
+  RU: Урок 3, тест 3/5. Какой блок отвечает на этот вопрос?
+  UZ: 3-dars, 3/5-test. Qaysi blok bu savolga javob beradi?
+  EN: Lesson 3, test 3/5. Which block answers this question?
+
+Файл / Fayl / File:  03t4-chto-na-sajte.jsx
+  RU: Урок 3, тест 4/5. Почему рядом с ценой и телефоном стоит «Догадка»?
+  UZ: 3-dars, 4/5-test. Nega narx va telefon yonida «Taxmin» turibdi?
+  EN: Lesson 3, test 4/5. Why is there a “Guess” tag next to the price and phone?
+
+Файл / Fayl / File:  03t5-chto-na-sajte.jsx
+  RU: Урок 3, тест 5/5. Какой блок нужно добавить на сайт?
+  UZ: 3-dars, 5/5-test. Saytga qaysi blokni qo'shish kerak?
+  EN: Lesson 3, test 5/5. Which block should be added to the site?
+
+Файл / Fayl / File:  04-kak-vyglyadit.jsx
+  RU: Урок 4. Как должен выглядеть сайт?
+  UZ: 4-dars. Sayt qanday ko'rinadi?
+  EN: Lesson 4. How should the site look?
+
+--- Тесты к уроку 4 / 4-dars testlari / Tests for lesson 4 ---
+
+Файл / Fayl / File:  04t1-kak-vyglyadit.jsx
+  RU: Урок 4, тест 1/5. Почему сайт для игроков стал розовым?
+  UZ: 4-dars, 1/5-test. Nega o'yinchilar uchun sayt pushti bo'lib qoldi?
+  EN: Lesson 4, test 1/5. Why did the gamers’ site turn pink?
+
+Файл / Fayl / File:  04t2-kak-vyglyadit.jsx
+  RU: Урок 4, тест 2/5. Какая строка «Как выглядит?» подходит игрокам?
+  UZ: 4-dars, 2/5-test. Qaysi «Ko'rinishi?» o'yinchilarga mos?
+  EN: Lesson 4, test 2/5. Which “How it looks?” line suits gamers?
+
+Файл / Fayl / File:  04t3-kak-vyglyadit.jsx
+  RU: Урок 4, тест 3/5. Какая строка «Как выглядит?» дала этот сайт?
+  UZ: 4-dars, 3/5-test. Qaysi «Ko'rinishi?» shu saytni bergan?
+  EN: Lesson 4, test 3/5. Which “How it looks?” line gave this site?
+
+Файл / Fayl / File:  04t4-kak-vyglyadit.jsx
+  RU: Урок 4, тест 4/5. Какая строка «Как выглядит?» подходит?
+  UZ: 4-dars, 4/5-test. Qaysi «Ko'rinishi?» mos keladi?
+  EN: Lesson 4, test 4/5. Which “How it looks?” line fits?
+
+Файл / Fayl / File:  04t5-kak-vyglyadit.jsx
+  RU: Урок 4, тест 5/5. Что написано про карточки в строке «Как выглядит?»?
+  UZ: 4-dars, 5/5-test. Kartochkalar uchun «Ko'rinishi?» ga nima yozilgan?
+  EN: Lesson 4, test 5/5. What does the “How it looks?” line say about the cards?
+
+Файл / Fayl / File:  05-kak-vedet-sebya.jsx
+  RU: Урок 5. Как сайт должен вести себя?
+  UZ: 5-dars. Sayt qanday ishlaydi?
+  EN: Lesson 5. How should the site behave?
+
+--- Тесты к уроку 5 / 5-dars testlari / Tests for lesson 5 ---
+
+Файл / Fayl / File:  05t1-kak-vedet-sebya.jsx
+  RU: Урок 5, тест 1/5. Какая строка точная: когда, что и что происходит?
+  UZ: 5-dars, 1/5-test. Qaysi qator aniq: qachon, nima va nima bo'ladi?
+  EN: Lesson 5, test 1/5. Which line is exact: when, what, and what happens?
+
+Файл / Fayl / File:  05t2-kak-vedet-sebya.jsx
+  RU: Урок 5, тест 2/5. Почему кнопка всегда огромная?
+  UZ: 5-dars, 2/5-test. Nega tugma doim katta bo'lib qoldi?
+  EN: Lesson 5, test 2/5. Why is the button always huge?
+
+Файл / Fayl / File:  05t3-kak-vedet-sebya.jsx
+  RU: Урок 5, тест 3/5. Когда появилось это сообщение?
+  UZ: 5-dars, 3/5-test. Bu xabar qachon chiqdi?
+  EN: Lesson 5, test 3/5. When did this message appear?
+
+Файл / Fayl / File:  05t4-kak-vedet-sebya.jsx
+  RU: Урок 5, тест 4/5. Какая строка «Как ведёт себя?» дала такой результат?
+  UZ: 5-dars, 4/5-test. Qaysi «Qanday ishlaydi?» shu natijani bergan?
+  EN: Lesson 5, test 4/5. Which “How it behaves?” line gave this result?
+
+Файл / Fayl / File:  05t5-kak-vedet-sebya.jsx
+  RU: Урок 5, тест 5/5. Какая строка «Как ведёт себя?» сделает сайт лучше?
+  UZ: 5-dars, 5/5-test. Qaysi «Qanday ishlaydi?» saytni yaxshilaydi?
+  EN: Lesson 5, test 5/5. Which “How it behaves?” line makes the site better?
+
+Файл / Fayl / File:  06-tochnye-trebovaniya.jsx
+  RU: Урок 6. Как дать ИИ точные требования?
+  UZ: 6-dars. Aniq talablar qanday beriladi?
+  EN: Lesson 6. How to give the AI exact requirements?
+
+--- Тесты к уроку 6 / 6-dars testlari / Tests for lesson 6 ---
+
+Файл / Fayl / File:  06t1-tochnye-trebovaniya.jsx
+  RU: Урок 6, тест 1/5. Что точнее подходит в строку «Какие правила?»?
+  UZ: 6-dars, 1/5-test. «Qoidalar?» qatoriga qaysi biri aniqroq?
+  EN: Lesson 6, test 1/5. Which fits the “What rules?” line best?
+
+Файл / Fayl / File:  06t2-tochnye-trebovaniya.jsx
+  RU: Урок 6, тест 2/5. Почему на сайте появились скидка, окно подписки и чат?
+  UZ: 6-dars, 2/5-test. Nega saytda chegirma, obuna oynasi va chat paydo bo'ldi?
+  EN: Lesson 6, test 2/5. Why did a discount, a pop-up and a chat appear on the site?
+
+Файл / Fayl / File:  06t3-tochnye-trebovaniya.jsx
+  RU: Урок 6, тест 3/5. Какие правила следуют из этого сообщения?
+  UZ: 6-dars, 3/5-test. Bu xabardan qaysi qoidalar chiqadi?
+  EN: Lesson 6, test 3/5. Which rules come from this message?
+
+Файл / Fayl / File:  06t4-tochnye-trebovaniya.jsx
+  RU: Урок 6, тест 4/5. Почему рядом с телефоном стоит «Догадка»?
+  UZ: 6-dars, 4/5-test. Nega telefon yonida «Taxmin» turibdi?
+  EN: Lesson 6, test 4/5. Why is there a “Guess” tag next to the phone?
+
+Файл / Fayl / File:  06t5-tochnye-trebovaniya.jsx
+  RU: Урок 6, тест 5/5. Какие правила дали этот сайт?
+  UZ: 6-dars, 5/5-test. Qaysi qoidalar shu saytni bergan?
+  EN: Lesson 6, test 5/5. Which rules gave this site?
+
+Файл / Fayl / File:  07-uluchshit-rezultat.jsx
+  RU: Урок 7. Как улучшить результат ИИ?
+  UZ: 7-dars. Natijani qanday yaxshilaymiz?
+  EN: Lesson 7. How to improve the AI’s result?
+
+--- Тесты к уроку 7 / 7-dars testlari / Tests for lesson 7 ---
+
+Файл / Fayl / File:  07t1-uluchshit-rezultat.jsx
+  RU: Урок 7, тест 1/5. Какое наблюдение точное?
+  UZ: 7-dars, 1/5-test. Qaysi kuzatuv aniq?
+  EN: Lesson 7, test 1/5. Which observation is exact?
+
+Файл / Fayl / File:  07t2-uluchshit-rezultat.jsx
+  RU: Урок 7, тест 2/5. Какой второй промпт меняет только нужное?
+  UZ: 7-dars, 2/5-test. Qaysi ikkinchi prompt faqat kerakli narsani o'zgartiradi?
+  EN: Lesson 7, test 2/5. Which second prompt changes only what’s needed?
+
+Файл / Fayl / File:  07t3-uluchshit-rezultat.jsx
+  RU: Урок 7, тест 3/5. Какой второй промпт правильный?
+  UZ: 7-dars, 3/5-test. Qaysi ikkinchi prompt to'g'ri?
+  EN: Lesson 7, test 3/5. Which second prompt is right?
+
+Файл / Fayl / File:  07t4-uluchshit-rezultat.jsx
+  RU: Урок 7, тест 4/5. Почему поменялись и цвет, и название?
+  UZ: 7-dars, 4/5-test. Nega rang va nom ham o'zgarib ketdi?
+  EN: Lesson 7, test 4/5. Why did the colour and the name change too?
+
+Файл / Fayl / File:  07t5-uluchshit-rezultat.jsx
+  RU: Урок 7, тест 5/5. Что делаем теперь?
+  UZ: 7-dars, 5/5-test. Endi nima qilamiz?
+  EN: Lesson 7, test 5/5. What do we do now?
+
+Файл / Fayl / File:  08-final-proekt.jsx
+  RU: Урок 8. Финальный ИИ-проект
+  UZ: 8-dars. Yakuniy loyiha
+  EN: Lesson 8. The final AI project

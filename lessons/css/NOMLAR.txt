@@ -1,0 +1,169 @@
+Курс CSS — названия уроков и практик на трёх языках и имена файлов
+Darslar va amaliyotlar nomlari — uch tilda va fayl nomi
+Lesson and practice titles in three languages with file names
+Пересобрать список: node tools/nomlar.mjs
+
+Файл / Fayl / File:  01-chto-takoe-css.jsx
+  RU: Урок 1. Что такое CSS и как он меняет сайт
+  UZ: 1-dars. CSS nima va u saytni qanday o'zgartiradi
+  EN: Lesson 1. What CSS is and how it changes a site
+
+Файл / Fayl / File:  01p-chto-takoe-css.jsx
+  RU: Практика 1. Кафе Коди
+  UZ: 1-amaliyot. Kodining kafesi
+  EN: Practice 1. Kodi’s café
+
+Файл / Fayl / File:  02-selektory.jsx
+  RU: Урок 2. Как выбрать элемент для стилизации
+  UZ: 2-dars. Bezash uchun elementni qanday tanlash
+  EN: Lesson 2. How to pick an element to style
+
+Файл / Fayl / File:  02p-selektory.jsx
+  RU: Практика 2. Кинотеатр Коди
+  UZ: 2-amaliyot. Kodining kinoteatri
+  EN: Practice 2. Kodi’s cinema
+
+Файл / Fayl / File:  03-cveta.jsx
+  RU: Урок 3. Цвета
+  UZ: 3-dars. Ranglar
+  EN: Lesson 3. Colors
+
+Файл / Fayl / File:  03p-cveta.jsx
+  RU: Практика 3. Космос Коди
+  UZ: 3-amaliyot. Kodining koinoti
+  EN: Practice 3. Kodi’s space
+
+Файл / Fayl / File:  04-fon.jsx
+  RU: Урок 4. Фон
+  UZ: 4-dars. Fon
+  EN: Lesson 4. Backgrounds
+
+Файл / Fayl / File:  04p-fon.jsx
+  RU: Практика 4. Выходной Коди
+  UZ: 4-amaliyot. Kodining dam olish kuni
+  EN: Practice 4. Kodi’s day off
+
+Файл / Fayl / File:  05-tekst-i-shrifty.jsx
+  RU: Урок 5. Текст и шрифты
+  UZ: 5-dars. Matn va shriftlar
+  EN: Lesson 5. Text and fonts
+
+Файл / Fayl / File:  05p-tekst-i-shrifty.jsx
+  RU: Практика 5. Книжный клуб Коди
+  UZ: 5-amaliyot. Kodining kitob klubi
+  EN: Practice 5. Kodi’s book club
+
+Файл / Fayl / File:  06-razmery.jsx
+  RU: Урок 6. Размеры элементов
+  UZ: 6-dars. Elementlar o'lchami
+  EN: Lesson 6. Element sizes
+
+Файл / Fayl / File:  06p-razmery.jsx
+  RU: Практика 6. Игра Коди
+  UZ: 6-amaliyot. Kodining o'yini
+  EN: Practice 6. Kodi’s game
+
+Файл / Fayl / File:  07-box-model.jsx
+  RU: Урок 7. Box Model
+  UZ: 7-dars. Box Model
+  EN: Lesson 7. Box Model
+
+Файл / Fayl / File:  07p-box-model.jsx
+  RU: Практика 7. Ремонт кинотеатра
+  UZ: 7-amaliyot. Kinoteatrni ta'mirlash
+  EN: Practice 7. Cinema repair
+
+Файл / Fayl / File:  08-kartochki.jsx
+  RU: Урок 8. Красивые карточки
+  UZ: 8-dars. Chiroyli kartochkalar
+  EN: Lesson 8. Beautiful cards
+
+Файл / Fayl / File:  08p-kartochki.jsx
+  RU: Практика 8. Магазин игр Коди
+  UZ: 8-amaliyot. Kodining o'yinlar do'koni
+  EN: Practice 8. Kodi’s game store
+
+Файл / Fayl / File:  09-display.jsx
+  RU: Урок 9. Как элементы ведут себя на странице
+  UZ: 9-dars. Elementlar sahifada qanday turadi
+  EN: Lesson 9. How elements behave on a page
+
+Файл / Fayl / File:  09p-display.jsx
+  RU: Практика 9. Кнопки кинотеатра
+  UZ: 9-amaliyot. Kinoteatr tugmalari
+  EN: Practice 9. Cinema buttons
+
+Файл / Fayl / File:  10-flexbox-osi.jsx
+  RU: Урок 10. Flexbox: расположение элементов
+  UZ: 10-dars. Flexbox: elementlarni joylashtirish
+  EN: Lesson 10. Flexbox: arranging elements
+
+Файл / Fayl / File:  10p-flexbox-osi.jsx
+  RU: Практика 10. Планеты в ряд
+  UZ: 10-amaliyot. Sayyoralar qatorda
+  EN: Practice 10. Planets in a row
+
+Файл / Fayl / File:  11-flexbox-vyravnivanie.jsx
+  RU: Урок 11. Flexbox: выравнивание
+  UZ: 11-dars. Flexbox: tekislash
+  EN: Lesson 11. Flexbox: alignment
+
+Файл / Fayl / File:  11p-flexbox-vyravnivanie.jsx
+  RU: Практика 11. Полки с афишами
+  UZ: 11-amaliyot. Afisha javonlari
+  EN: Practice 11. Poster shelves
+
+Файл / Fayl / File:  12-pozicionirovanie.jsx
+  RU: Урок 12. Позиционирование
+  UZ: 12-dars. Pozitsiyalash
+  EN: Lesson 12. Positioning
+
+Файл / Fayl / File:  12p-pozicionirovanie.jsx
+  RU: Практика 12. Метки и ракеты
+  UZ: 12-amaliyot. Belgilar va raketalar
+  EN: Practice 12. Badges and rockets
+
+Файл / Fayl / File:  13-hover-transform.jsx
+  RU: Урок 13. Hover и transform
+  UZ: 13-dars. Hover va transform
+  EN: Lesson 13. Hover and transform
+
+Файл / Fayl / File:  13p-hover-transform.jsx
+  RU: Практика 13. Музыкальный сайт Коди
+  UZ: 13-amaliyot. Kodining musiqa sayti
+  EN: Practice 13. Kodi’s music site
+
+Файл / Fayl / File:  14-transition.jsx
+  RU: Урок 14. Плавные эффекты
+  UZ: 14-dars. Silliq effektlar
+  EN: Lesson 14. Smooth effects
+
+Файл / Fayl / File:  14p-transition.jsx
+  RU: Практика 14. Плавные эффекты кино
+  UZ: 14-amaliyot. Kinoning silliq effektlari
+  EN: Practice 14. Smooth cinema effects
+
+Файл / Fayl / File:  15-animacii.jsx
+  RU: Урок 15. CSS-анимации
+  UZ: 15-dars. CSS animatsiyalar
+  EN: Lesson 15. CSS animations
+
+Файл / Fayl / File:  15p-animacii.jsx
+  RU: Практика 15. Полёт в космос
+  UZ: 15-amaliyot. Koinotga parvoz
+  EN: Practice 15. Flight to space
+
+Файл / Fayl / File:  16-adaptivnost.jsx
+  RU: Урок 16. Адаптивность
+  UZ: 16-dars. Moslashuvchan sayt
+  EN: Lesson 16. Responsive design
+
+Файл / Fayl / File:  16p-adaptivnost.jsx
+  RU: Практика 16. Футбольный клуб Коди
+  UZ: 16-amaliyot. Kodining futbol klubi
+  EN: Practice 16. Kodi’s football club
+
+Файл / Fayl / File:  17-final-proekt.jsx
+  RU: Урок 17. Финальный проект
+  UZ: 17-dars. Yakuniy loyiha
+  EN: Lesson 17. Final project
