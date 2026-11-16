@@ -129,6 +129,9 @@ swapNoBubble();
 // Функция swapPreparedVoice оставлена ниже — история.
 // swapPreparedVoice();
 swapDarsTts();
+// ТЕМП ГОЛОСА 0,9 (заказчик, 16.11.2026: «поставь 0,9 во всех уроках»): Коди говорит медленнее — как реплики
+// Afandi в уроке финансов (playbackRate 0,9 с сохранением высоты). См. swapSlowVoice.
+swapSlowVoice();
 // УРОК ПОД ПЛАТФОРМУ (15.11.2026; пакет IT dars-mashina, валидатор jsx-tekshir): отметка первого экрана и шрифт
 // Inter ресурсами WOFF2 — во всех уроках через канон (было только в уроке 1, tools/redaktor28/r28-lms.jsx).
 swapLmsPlatform();
@@ -1180,6 +1183,21 @@ const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid
   swap(`function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, onFinished, extraPayload, startAt, onExit }) {`,
     `function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, ttsKey, studentUuid, onFinished, extraPayload, startAt, onExit }) {
   setTtsAuth(ttsKey, studentUuid);   // КУРС HTML (14.11.2026): ключ сервиса озвучки и ученик — в адрес реплик`);
+}
+
+// ── ТЕМП ГОЛОСА (заказчик, 16.11.2026: «можем ли то что читает Коди сделать медленнее… поставь 0,9 во всех уроках») ──
+// Параметра скорости у сервиса озвучки нет (запрос — только текст, пол, голос), поэтому темп ставит сам урок, как
+// в уроке Afandi: <audio> играет реплику сервиса с playbackRate 0,9 и сохранённой высотой (preservesPitch) — голос
+// медленнее, но не ниже. Новый src сбрасывает playbackRate к defaultPlaybackRate — ставим оба после src.
+// Страховочный таймер реплики растягивается на тот же темп. Запасной голос браузера — тоже на 0,9 медленнее прежнего.
+function swapSlowVoice() {
+  swap(`const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';`, `const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)`);
+  swap(`    const est = estimateMs(clean);`, `    const est = estimateMs(clean) / TTS_RATE;   // КУРС HTML: реплика звучит медленнее — и страховка дольше`);
+  swap(`            a.src = url + (attempt > 1 ? '&r=' + attempt : '');`, `            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            // КУРС HTML (16.11.2026): темп 0,9, высота голоса та же (как реплики Afandi в уроке финансов).
+            try { a.preservesPitch = true; a.mozPreservesPitch = true; a.webkitPreservesPitch = true; a.defaultPlaybackRate = TTS_RATE; a.playbackRate = TTS_RATE; } catch (e) { /* no-op */ }`);
+  swap(`    u.rate = 0.94;`, `    u.rate = 0.94 * TTS_RATE;   // КУРС HTML (16.11.2026): и запасной голос — в темпе 0,9`);
 }
 
 // ── УРОК ПОД ПЛАТФОРМУ (15.11.2026) ─────────────────────────────────────────────────────────────────────

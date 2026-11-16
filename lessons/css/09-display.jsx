@@ -940,6 +940,7 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
 let _ttsFirstLogged = false;   // jsx-tekshir: ataylab — faqat konsol diagnostikasi (диагностика: первый запрос к сервису — в консоль)
@@ -1063,7 +1064,7 @@ const speakLocal = (text, gender, lang, onDone) => {
     const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
     u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
     // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
-    u.rate = 0.94;
+    u.rate = 0.94 * TTS_RATE;   // КУРС HTML (16.11.2026): и запасной голос — в темпе 0,9
     u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
     u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
     _utter = u;              // см. комментарий выше — без этого речь пропадает
@@ -1304,7 +1305,7 @@ function useAudioEngine(ttsApiBase, lang) {
   const speak = useCallback((text, gender) => {
     const clean = sanitizeForTts(text, lang);
     if (!clean) return Promise.resolve();
-    const est = estimateMs(clean);
+    const est = estimateMs(clean) / TTS_RATE;   // КУРС HTML: реплика звучит медленнее — и страховка дольше
     return new Promise((resolve) => {
       let done = false;
       const finish = () => {
@@ -1460,6 +1461,8 @@ function useAudioEngine(ttsApiBase, lang) {
             const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
             warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
             a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            // КУРС HTML (16.11.2026): темп 0,9, высота голоса та же (как реплики Afandi в уроке финансов).
+            try { a.preservesPitch = true; a.mozPreservesPitch = true; a.webkitPreservesPitch = true; a.defaultPlaybackRate = TTS_RATE; a.playbackRate = TTS_RATE; } catch (e) { /* no-op */ }
             // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
             if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
             a.onended = finish;
