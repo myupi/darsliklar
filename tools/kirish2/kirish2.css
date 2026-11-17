@@ -223,6 +223,8 @@
 
 /* Телефон. */
 @media (max-width: 759px) {
+  /* карточка с кнопками — под окном сайта, ближе к большому пальцу (заказчик, 17.11.2026) */
+  .r28 .kz-scene.a1-scene.k2-side:not(.k2-finw) > .a1-left { order: 2; }
   .r28 .k2-topics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .r28 .k2-topic { padding: 4px 2px 6px; font-size: 12px; border-radius: 12px; }
   .r28 .k2-topic img { max-width: 56px; }

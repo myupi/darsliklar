@@ -12314,7 +12314,10 @@ function S5({ p }) {
     if (!canTap) return;
     sfx('pop', true); setPh(1);
     const host = hostRef.current;
-    k2FlyEl(host && host.querySelector('.kz-br'), cardRef.current && cardRef.current.querySelector('.k2-globe'), { fade: true, scale: 0.12, ms: 950, arc: 40, rot: 12 });
+    // цель — глобус; на телефоне он спрятан (размер 0) — тогда сама кнопка «В интернет»
+    const card = cardRef.current, globe = card && card.querySelector('.k2-globe');
+    const dst = globe && globe.getBoundingClientRect().width > 0 ? globe : card && card.querySelector('.k2-pub-btn');
+    k2FlyEl(host && host.querySelector('.kz-br'), dst, { fade: true, scale: 0.12, ms: 950, arc: 40, rot: 12 });
     later(reduceMotion() ? 200 : 1700, () => {
       setPh(2); sfx('win', true); put({ done: true });
       log({ screenId: 's5', type: 'tap', correct: true, firstTry: true, attempts: 1, hints: 0, depth: 0 });
@@ -17667,6 +17670,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 
 /* Телефон. */
 @media (max-width: 759px) {
+  /* карточка с кнопками — под окном сайта, ближе к большому пальцу (заказчик, 17.11.2026) */
+  .r28 .kz-scene.a1-scene.k2-side:not(.k2-finw) > .a1-left { order: 2; }
   .r28 .k2-topics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .r28 .k2-topic { padding: 4px 2px 6px; font-size: 12px; border-radius: 12px; }
   .r28 .k2-topic img { max-width: 56px; }

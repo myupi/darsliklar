@@ -864,7 +864,10 @@ function S5({ p }) {
     if (!canTap) return;
     sfx('pop', true); setPh(1);
     const host = hostRef.current;
-    k2FlyEl(host && host.querySelector('.kz-br'), cardRef.current && cardRef.current.querySelector('.k2-globe'), { fade: true, scale: 0.12, ms: 950, arc: 40, rot: 12 });
+    // цель — глобус; на телефоне он спрятан (размер 0) — тогда сама кнопка «В интернет»
+    const card = cardRef.current, globe = card && card.querySelector('.k2-globe');
+    const dst = globe && globe.getBoundingClientRect().width > 0 ? globe : card && card.querySelector('.k2-pub-btn');
+    k2FlyEl(host && host.querySelector('.kz-br'), dst, { fade: true, scale: 0.12, ms: 950, arc: 40, rot: 12 });
     later(reduceMotion() ? 200 : 1700, () => {
       setPh(2); sfx('win', true); put({ done: true });
       log({ screenId: 's5', type: 'tap', correct: true, firstTry: true, attempts: 1, hints: 0, depth: 0 });
