@@ -209,7 +209,38 @@ function AqMsg({ who, text }) {
 }
 
 // ── ВОПРОС ──
+// Высота теста — по месту, которое платформа оставила (заказчик, 17.11.2026: «платформа сама ставит верхнюю и нижнюю часть,
+// у меня в тестах появляется скролл»). В CRM над тестом — шапка платформы, под ним — её «Tekshirish»; «весь экран минус 80 px»
+// оказывался выше свободного места. Тест меряет, где он начинается, оставляет снизу место кнопке и, если страница или
+// прокручиваемый родитель всё равно выходят за экран, ужимается ровно на этот хвост. В просмотрщике высоту задаёт QuizShell
+// (--aq-h) — там не трогаем.
+const AQ_RESERVE = 80, AQ_MIN = 380;
+function useAqHeight(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const W = el.ownerDocument.defaultView, D = el.ownerDocument.documentElement;
+    const fit = () => {
+      if (W.getComputedStyle(el).getPropertyValue('--aq-h').trim()) { el.style.height = ''; return; }
+      const top = el.getBoundingClientRect().top + (W.scrollY || 0);
+      const h = Math.max(AQ_MIN, Math.round(W.innerHeight - top - AQ_RESERVE));
+      el.style.height = h + 'px';
+      let over = D.scrollHeight - W.innerHeight;
+      for (let p = el.parentElement; p && p !== D && p !== el.ownerDocument.body; p = p.parentElement) {
+        const oy = W.getComputedStyle(p).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { over = Math.max(over, p.scrollHeight - p.clientHeight); break; }
+      }
+      if (over > 1) el.style.height = Math.max(AQ_MIN, h - Math.ceil(over)) + 'px';
+    };
+    fit();
+    const t1 = setTimeout(fit, 300), t2 = setTimeout(fit, 1200);
+    W.addEventListener('resize', fit);
+    return () => { clearTimeout(t1); clearTimeout(t2); W.removeEventListener('resize', fit); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
 function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, registerCheck, onSubmit }) {
+  const rootRef = useRef(null);
+  useAqHeight(rootRef);
   const L = lang === 'ru' ? 'ru' : lang === 'en' ? 'en' : 'uz';
   const T = Q[L] || Q.ru;
   const U = AQ_UI[L];
@@ -261,7 +292,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
     </div>
   ) : null;
   return (
-    <section className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
+    <section ref={rootRef} className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
       <style>{AQ_CSS}</style>
       <div className="aq-main" ref={mainRef}>
         <span className="aq-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v13M3 18.5V5.5a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3 3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 1.5 3 3 0 0 0-3-1.5H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{U.chip}</span>
@@ -727,15 +758,16 @@ const WQ_CSS = `
 // Проверяем: title виден на вкладке, а не на странице; после head идёт body; html обнимает всю страницу;
 // незакрытый title съедает страницу; видимый текст живёт в body.
 // Словарь урока 1 (тексты заказчика 28.10.2026): вкладка — «brauzer varag'i». Апостроф — только ASCII «'».
-// Верные ответы стоят на разных местах. Картинка — код в редакторе и/или честная страница (WqVis).
+// Только теги урока 1 (html, head, body, title): текст в body — просто текст, без p и h1 (их проходят в уроке 2;
+// заказчик, 17.11.2026). Верные ответы стоят на разных местах. Картинка — код в редакторе и/или честная страница (WqVis).
 // =============================================================================
 const SLUG = 'struktura-dokumenta';
 const QS = [
   { id: 'html-01t1', target: 'html-01', ptype: 'HTML', tag: 'title', correct: 1,
     vis: (L) => { const T = aqL(L); return <WqVis
-      code={`<html>\n  <head>\n    <title>${T('Kodi sahifasi', 'Страница Коди', 'Kodi page')}</title>\n  </head>\n  <body>\n    <p>${T('Salom!', 'Привет!', 'Hello!')}</p>\n  </body>\n</html>`}
+      code={`<html>\n  <head>\n    <title>${T('Kodi sahifasi', 'Страница Коди', 'Kodi page')}</title>\n  </head>\n  <body>\n    ${T('Salom!', 'Привет!', 'Hello!')}\n  </body>\n</html>`}
       mark={[3]}
-      html={`<html><head><title>${T('Kodi sahifasi', 'Страница Коди', 'Kodi page')}</title></head><body><p>${T('Salom!', 'Привет!', 'Hello!')}</p></body></html>`} />; },
+      html={`<html><head><title>${T('Kodi sahifasi', 'Страница Коди', 'Kodi page')}</title></head><body>${T('Salom!', 'Привет!', 'Hello!')}</body></html>`} />; },
     uz: { ctx: "Kod va uning natijasiga qarang.", q: "title tegidagi matn qayerda ko'rinadi?", opts: ["Sahifaning o'rtasida, katta harflar bilan", "Brauzer varag'ida", 'Sahifaning eng pastida', "Hech qayerda ko'rinmaydi"],
       ok: "To'ppa-to'g'ri! title sahifaning nomini beradi, u esa brauzer varag'ida chiqadi.", hint: "Oynaning eng tepasiga qarang: «Kodi sahifasi» yozuvi qayerda turibdi?", alt: "Kod va brauzer oynasi" },
     ru: { ctx: 'Посмотри на код и на результат.', q: 'Где виден текст из тега title?', opts: ['В середине страницы, крупными буквами', 'На вкладке браузера', 'В самом низу страницы', 'Нигде не виден'],
@@ -743,7 +775,7 @@ const QS = [
     en: { ctx: 'Look at the code and its result.', q: 'Where does the text from the title tag show up?', opts: ['In the middle of the page, in big letters', 'On the browser tab', 'At the very bottom of the page', 'Nowhere'],
       ok: 'Right! title is the page name, and it shows up on the browser tab.', hint: 'Look at the very top of the window: where does “Kodi page” appear?', alt: 'Code and a browser window' } },
   { id: 'html-01t2', target: 'html-01', ptype: 'HTML', tag: 'body', correct: 2, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<html>\n  <head>\n    <title>${T('Kodi', 'Коди', 'Kodi')}</title>\n  </head>\n  ___\n    <p>${T('Salom!', 'Привет!', 'Hello!')}</p>\n  </body>\n</html>`} mark={[5]} />; },
+    vis: (L) => { const T = aqL(L); return <WqVis code={`<html>\n  <head>\n    <title>${T('Kodi', 'Коди', 'Kodi')}</title>\n  </head>\n  ___\n    ${T('Salom!', 'Привет!', 'Hello!')}\n  </body>\n</html>`} mark={[5]} />; },
     uz: { ctx: "Bitta qator tushib qolibdi.", q: "Bo'sh joyga qaysi teg yoziladi?", opts: ['</head>', '<title>', '<body>', '<html>'],
       ok: "Xuddi shunday! head yopildi, endi body ochiladi: sahifada ko'rinadigan hamma narsa shu yerda yashaydi.", hint: "Pastda </body> turibdi. U yopuvchi teg, demak tepada uning ochuvchi tegi bo'lishi kerak.", alt: "Bitta qatori bo'sh kod" },
     ru: { ctx: 'Одна строка потерялась.', q: 'Какой тег пишется на пустое место?', opts: ['</head>', '<title>', '<body>', '<html>'],
@@ -751,7 +783,7 @@ const QS = [
     en: { ctx: 'One line has gone missing.', q: 'Which tag goes in the empty spot?', opts: ['</head>', '<title>', '<body>', '<html>'],
       ok: 'Exactly! head is closed, now body opens: everything you see on the page lives here.', hint: 'Below there is </body>. It is a closing tag, so its opening tag must be above.', alt: 'Code with an empty line' } },
   { id: 'html-01t3', target: 'html-01', ptype: 'HTML', tag: 'html', correct: 0, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<html>\n  <head>\n    <title>${T('Kodi', 'Коди', 'Kodi')}</title>\n  </head>\n  <body>\n    <h1>${T('Salom!', 'Привет!', 'Hello!')}</h1>\n  </body>\n</html>`} mark={[1, 8]} />; },
+    vis: (L) => { const T = aqL(L); return <WqVis code={`<html>\n  <head>\n    <title>${T('Kodi', 'Коди', 'Kodi')}</title>\n  </head>\n  <body>\n    ${T('Salom!', 'Привет!', 'Hello!')}\n  </body>\n</html>`} mark={[1, 8]} />; },
     uz: { ctx: "Birinchi va oxirgi qatorga qarang.", q: "Qaysi teg butun sahifani quchoqlab turadi?", opts: ['html', 'head', 'body', 'title'],
       ok: "Qoyil! html tegi eng boshida ochiladi va eng oxirida yopiladi: head ham, body ham uning ichida.", hint: "Qaysi teg birinchi qatorda ochilib, oxirgi qatorda yopilyapti?", alt: "Birinchi va oxirgi qatori ajratilgan kod" },
     ru: { ctx: 'Посмотри на первую и последнюю строку.', q: 'Какой тег обнимает всю страницу?', opts: ['html', 'head', 'body', 'title'],
@@ -760,21 +792,21 @@ const QS = [
       ok: 'Nice work! html opens at the very start and closes at the very end: both head and body are inside it.', hint: 'Which tag opens on the first line and closes on the last one?', alt: 'Code with the first and last lines highlighted' } },
   { id: 'html-01t4', target: 'html-01', ptype: 'HTML', tag: 'title', correct: 3, mono: true,
     vis: (L) => { const T = aqL(L); const t = T('Kodi sahifasi', 'Страница Коди', 'Kodi page'); const h = T('Salom!', 'Привет!', 'Hello!'); return <WqVis
-      code={`<html>\n  <head>\n    <title>${t}\n  </head>\n  <body>\n    <h1>${h}</h1>\n  </body>\n</html>`} mark={[3]}
-      html={`<html><head><title>${t}\n  </head>\n  <body>\n    <h1>${h}</h1>\n  </body>\n</html>`} />; },
-    uz: { ctx: "Voy, sahifa bo'm-bo'sh qolibdi, varaqda esa butun kod turibdi!", q: "Kodda nima tushib qolibdi?", opts: ['</body>', '<h1>', '<head>', '</title>'],
+      code={`<html>\n  <head>\n    <title>${t}\n  </head>\n  <body>\n    ${h}\n  </body>\n</html>`} mark={[3]}
+      html={`<html><head><title>${t}\n  </head>\n  <body>\n    ${h}\n  </body>\n</html>`} />; },
+    uz: { ctx: "Voy, sahifa bo'm-bo'sh qolibdi, varaqda esa butun kod turibdi!", q: "Kodda nima tushib qolibdi?", opts: ['</body>', '<html>', '<head>', '</title>'],
       ok: "Ana, tuzoq shu yerda ekan! title yopilmagan, shuning uchun brauzer qolgan hamma kodni sahifaning nomi deb o'yladi.", hint: "Brauzer varag'iga qarang: nom qayerda tugashi kerak edi? Qaysi teg ochilgan-u, lekin yopilmagan?", alt: "Bo'sh sahifa va varaqda uzun yozuv" },
-    ru: { ctx: 'Ой, страница пустая, а на вкладке — весь код!', q: 'Что потерялось в коде?', opts: ['</body>', '<h1>', '<head>', '</title>'],
+    ru: { ctx: 'Ой, страница пустая, а на вкладке — весь код!', q: 'Что потерялось в коде?', opts: ['</body>', '<html>', '<head>', '</title>'],
       ok: 'Вот где ловушка! title не закрыт, поэтому браузер решил, что весь остальной код — это название страницы.', hint: 'Посмотри на вкладку: где должно было кончиться название? Какой тег открыт, но не закрыт?', alt: 'Пустая страница и длинная надпись на вкладке' },
-    en: { ctx: 'Oops, the page is empty, and the tab shows all the code!', q: 'What is missing in the code?', opts: ['</body>', '<h1>', '<head>', '</title>'],
+    en: { ctx: 'Oops, the page is empty, and the tab shows all the code!', q: 'What is missing in the code?', opts: ['</body>', '<html>', '<head>', '</title>'],
       ok: 'That’s the trap! title isn’t closed, so the browser thought all the remaining code was the page name.', hint: 'Look at the tab: where should the name have ended? Which tag is opened but never closed?', alt: 'An empty page and a long label on the tab' } },
   { id: 'html-01t5', target: 'html-01', ptype: 'HTML', tag: 'body', correct: 1,
     vis: (L) => { const T = aqL(L); return <WqVis code={`<html>\n  <head>\n    <title>${T('Kodi', 'Коди', 'Kodi')}</title>\n\n  </head>\n  <body>\n\n  </body>\n</html>\n`} mark={[4, 7]} />; },
-    uz: { ctx: "Kodi <h1>Mening sahifam</h1> qatorini qo'shmoqchi. U sahifada ko'rinishi kerak.", q: "Uni qaysi qatorga yozamiz?", opts: ['4-qatorga', '7-qatorga', '1-qatorga', '9-qatordan keyin'],
+    uz: { ctx: "Kodi «Mening sahifam» degan matnni qo'shmoqchi. U sahifada ko'rinishi kerak.", q: "Uni qaysi qatorga yozamiz?", opts: ['4-qatorga', '7-qatorga', '1-qatorga', '9-qatordan keyin'],
       ok: "To'ppa-to'g'ri! Sahifada ko'rinadigan hamma narsa body ichida yashaydi, 7-qator esa aynan body ichida.", hint: "Sahifada ko'rinadigan matn qaysi tegning ichida turadi: head yoki body? O'sha teg qaysi qatorlarda?", alt: "Ikkita bo'sh qatori bor kod" },
-    ru: { ctx: 'Коди хочет добавить строку <h1>Моя страница</h1>. Её должно быть видно на странице.', q: 'В какую строку её написать?', opts: ['В строку 4', 'В строку 7', 'В строку 1', 'После строки 9'],
+    ru: { ctx: 'Коди хочет добавить текст «Моя страница». Его должно быть видно на странице.', q: 'В какую строку его написать?', opts: ['В строку 4', 'В строку 7', 'В строку 1', 'После строки 9'],
       ok: 'Верно! Всё, что видно на странице, живёт внутри body, а строка 7 как раз внутри body.', hint: 'Внутри какого тега живёт видимый текст: head или body? В каких он строках?', alt: 'Код с двумя пустыми строками' },
-    en: { ctx: 'Kodi wants to add the line <h1>My page</h1>. It must be visible on the page.', q: 'Which line should it go on?', opts: ['Line 4', 'Line 7', 'Line 1', 'After line 9'],
+    en: { ctx: 'Kodi wants to add the text “My page”. It must be visible on the page.', q: 'Which line should it go on?', opts: ['Line 4', 'Line 7', 'Line 1', 'After line 9'],
       ok: 'Right! Everything you see on the page lives inside body, and line 7 is right inside body.', hint: 'Inside which tag does visible text live: head or body? Which lines is it on?', alt: 'Code with two empty lines' } }
 ];
 

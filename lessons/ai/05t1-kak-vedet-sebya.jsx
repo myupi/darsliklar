@@ -208,7 +208,38 @@ function AqMsg({ who, text }) {
 }
 
 // ── ВОПРОС ──
+// Высота теста — по месту, которое платформа оставила (заказчик, 17.11.2026: «платформа сама ставит верхнюю и нижнюю часть,
+// у меня в тестах появляется скролл»). В CRM над тестом — шапка платформы, под ним — её «Tekshirish»; «весь экран минус 80 px»
+// оказывался выше свободного места. Тест меряет, где он начинается, оставляет снизу место кнопке и, если страница или
+// прокручиваемый родитель всё равно выходят за экран, ужимается ровно на этот хвост. В просмотрщике высоту задаёт QuizShell
+// (--aq-h) — там не трогаем.
+const AQ_RESERVE = 80, AQ_MIN = 380;
+function useAqHeight(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const W = el.ownerDocument.defaultView, D = el.ownerDocument.documentElement;
+    const fit = () => {
+      if (W.getComputedStyle(el).getPropertyValue('--aq-h').trim()) { el.style.height = ''; return; }
+      const top = el.getBoundingClientRect().top + (W.scrollY || 0);
+      const h = Math.max(AQ_MIN, Math.round(W.innerHeight - top - AQ_RESERVE));
+      el.style.height = h + 'px';
+      let over = D.scrollHeight - W.innerHeight;
+      for (let p = el.parentElement; p && p !== D && p !== el.ownerDocument.body; p = p.parentElement) {
+        const oy = W.getComputedStyle(p).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { over = Math.max(over, p.scrollHeight - p.clientHeight); break; }
+      }
+      if (over > 1) el.style.height = Math.max(AQ_MIN, h - Math.ceil(over)) + 'px';
+    };
+    fit();
+    const t1 = setTimeout(fit, 300), t2 = setTimeout(fit, 1200);
+    W.addEventListener('resize', fit);
+    return () => { clearTimeout(t1); clearTimeout(t2); W.removeEventListener('resize', fit); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
 function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, registerCheck, onSubmit }) {
+  const rootRef = useRef(null);
+  useAqHeight(rootRef);
   const L = lang === 'ru' ? 'ru' : lang === 'en' ? 'en' : 'uz';
   const T = Q[L] || Q.ru;
   const U = AQ_UI[L];
@@ -260,7 +291,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
     </div>
   ) : null;
   return (
-    <section className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
+    <section ref={rootRef} className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
       <style>{AQ_CSS}</style>
       <div className="aq-main" ref={mainRef}>
         <span className="aq-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v13M3 18.5V5.5a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3 3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 1.5 3 3 0 0 0-3-1.5H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{U.chip}</span>
