@@ -9,6 +9,8 @@ import LogPanel from './LogPanel.jsx';
 import { Placeholder, Welcome } from './Placeholder.jsx';
 import CompilerTask from './CompilerPage.jsx';
 import { COMPILER, compilerItems } from '../shared/compiler.js';
+import TrainerPage from './TrainerPage.jsx';
+import { TRAINERS, trainerById } from '../shared/trainers.js';
 
 let logId = 0;
 
@@ -22,7 +24,13 @@ export default function App() {
   const compilerMode = prefs.view === 'compiler';
   const cmpAll = useMemo(() => compilerItems(), []);
   const cmpSel = compilerMode ? (cmpAll.find((x) => x.key === prefs.cmp) || cmpAll[0] || null) : null;
-  const sel = compilerMode ? null : findLesson(catalog, prefs.lesson);
+  // Режим «Тренажёр» (18.11.2026): тренажёры модулей с эмуляцией LMS и их банки вопросов. trn = '<id>' | '<id>:bank' | '<id>:bank:<урок>'.
+  const trainerMode = prefs.view === 'trainer';
+  const trnParts = String(prefs.trn || '').split(':');
+  const trn = trainerMode ? (trainerById(trnParts[0]) || TRAINERS[0]) : null;
+  const trnBank = trnParts[1] === 'bank';
+  const trnSub = trnBank && trnParts[2] ? trnParts[2] : null;
+  const sel = compilerMode || trainerMode ? null : findLesson(catalog, prefs.lesson);
   const file = sel ? sel.lesson.file : null;
   const [run, setRun] = useState(0);
 
@@ -62,11 +70,15 @@ export default function App() {
   return (
     <div className={'app' + (navOpen ? ' nav-open' : '')}>
       <Sidebar catalog={catalog} selectedKey={sel ? sel.lesson.key : null} onPick={pick}
-        mode={compilerMode ? 'compiler' : 'lessons'} onMode={(m) => { set({ view: m }); setNavOpen(false); }}
-        cmpItems={cmpAll} cmpKey={cmpSel ? cmpSel.key : null} onCmp={(k) => { set({ cmp: k }); setNavOpen(false); }} />
+        mode={compilerMode ? 'compiler' : trainerMode ? 'trainer' : 'lessons'} onMode={(m) => { set({ view: m }); setNavOpen(false); }}
+        cmpItems={cmpAll} cmpKey={cmpSel ? cmpSel.key : null} onCmp={(k) => { set({ cmp: k }); setNavOpen(false); }}
+        trnKey={trn ? [trn.id].concat(trnBank ? ['bank'] : [], trnSub ? [trnSub] : []).join(':') : null} onTrn={(k) => { set({ trn: k, trnQ: '' }); setNavOpen(false); }} />
       {navOpen ? <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" /> : null}
       <main className="main">
-        {compilerMode ? (
+        {trainerMode ? (
+          <TrainerPage key={trn.id + (trnBank ? ':bank' : '')} tr={trn} course={catalog.find((c) => c.id === trn.module) || null} sub={trnSub} isBank={trnBank}
+            prefs={prefs} set={set} onMenu={toggleNav} frameRef={frameRef} log={log} clearLog={() => setLog([])} />
+        ) : compilerMode ? (
           <CompilerTask item={cmpSel} items={cmpAll} course={cmpSel ? catalog.find((c) => c.id === cmpSel.module) : null}
             onPick={(k) => set({ cmp: k })} onMenu={toggleNav} />
         ) : sel ? (

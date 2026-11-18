@@ -33,6 +33,11 @@ const PAGE_W = 340;   // ширина страницы-примера до ум�
 // Заголовок слайда на языке слайда (16.11.2026: «Как видит ученик» — на трёх языках).
 const SLIDE_TITLE = { uz: 'Amaliy vazifa', ru: 'Практика', en: 'Practice task' };   // ru — «Практика» (заказчик, 16.11.2026)
 const SLIDE_LANGS = [['uz', "O'zbekcha"], ['ru', 'Русский'], ['en', 'English']];
+const KICKER = {
+  uz: (n, m) => `Kompilyator uchun topshiriq ${n} / ${m}`,
+  ru: (n, m) => `Задание для компилятора ${n} из ${m}`,
+  en: (n, m) => `Compiler task ${n} of ${m}`,
+};
 function StudentView({ it, lang }) {
   const [fit, setFit] = useState(null);   // { s: масштаб, ch: высота страницы }
   const frame = useRef(null);
@@ -162,10 +167,25 @@ export default function CompilerTask({ item, items, course, onPick, onMenu }) {
       <header className="cmp-head">
         <MenuButton onClick={onMenu} />
         {course ? <span className="course-chip" style={{ '--chip': course.color }}>{course.short}</span> : null}
-        <div className="cmp-head-text">
-          <p className="cmp-kicker">{item.n != null ? `Задание для компилятора ${item.n} из ${tasks.length}` : 'Задания для компилятора'}</p>
-          <h1>{item.title}</h1>
-        </div>
+        {item.n != null && item.titles ? (
+          // Шапка на трёх языках (заказчик, 18.11.2026): строка «Задание для компилятора N из M» и название — uz, ru, en, у названия — «Скопировать».
+          <div className="cmp-head-langs">
+            {SLIDE_LANGS.map(([l]) => (item.titles[l] ? (
+              <div key={l} className="cmp-head-lang">
+                <span className="cmp-lang">{l.toUpperCase()}</span>
+                <div className="cmp-head-text">
+                  <p className="cmp-kicker">{KICKER[l](item.n, tasks.length)}</p>
+                  <h1>{item.titles[l]} <CopyButton text={item.titles[l]} label="Скопировать название" /></h1>
+                </div>
+              </div>
+            ) : null))}
+          </div>
+        ) : (
+          <div className="cmp-head-text">
+            <p className="cmp-kicker">{item.n != null ? `Задание для компилятора ${item.n} из ${tasks.length}` : 'Задания для компилятора'}</p>
+            <h1>{item.title}</h1>
+          </div>
+        )}
         <div className="cmp-head-act">
           <button type="button" className="icon-btn" disabled={!prev} onClick={() => prev && onPick(prev.key)} title="Предыдущее задание" aria-label="Предыдущее задание"><ChevronLeft size={17} /></button>
           <button type="button" className="icon-btn" disabled={!next} onClick={() => next && onPick(next.key)} title="Следующее задание" aria-label="Следующее задание"><ChevronRight size={17} /></button>

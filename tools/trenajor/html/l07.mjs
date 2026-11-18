@@ -1,0 +1,672 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА HTML · урок 7 «Формы, часть 2: выбор и отправка» — 11 вопросов с выбором + 3 «впиши ответ» (q12–q14). Игровые: q15–q16 «собери», q17 «найди ошибку», q18 «нажми на странице».
+// select и option (зачем список, сколько пунктов, первый пункт в закрытом списке, option вне select),
+// textarea (для длинного ответа, текст между тегами против placeholder), button (в form отправляет,
+// p вместо button, кнопка вне form), какой тег без закрывающего, подпись списка — label, а не option.
+// Ситуации тестов курса (tools/webtest/html/l07.jsx) не повторяются. Формат — FORMAT.md.
+// =============================================================================
+export default [
+  {
+    id: 'html_l07_q01',
+    difficulty: 'easy',
+    tags: ['select'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Anketada sevimli fan so'raladi, lekin hamma uni har xil yozib yuboryapti.",
+      q: "Fan ro'yxatdan tanlanishi uchun qaysi teg kerak?",
+      opts: ['select', 'textarea', 'input', 'ul'],
+      why: "select ochiladigan ro'yxat yasaydi: mehmon yozmaydi, tayyor variantlardan tanlaydi. Shunda hamma javob bir xil yoziladi.",
+    },
+    ru: {
+      ctx: 'В анкете спрашивают любимый предмет, а все пишут его по-разному.',
+      q: 'Какой тег нужен, чтобы предмет выбирали из списка?',
+      opts: ['select', 'textarea', 'input', 'ul'],
+      why: 'select делает выпадающий список: гость не пишет, а выбирает из готовых пунктов. Так все ответы записаны одинаково.',
+    },
+    en: {
+      ctx: 'The form asks for a favorite subject, but everyone types it differently.',
+      q: 'Which tag lets people pick the subject from a list?',
+      opts: ['select', 'textarea', 'input', 'ul'],
+      why: "select makes a dropdown list: the guest doesn't type but picks a ready choice. So all the answers are written the same way.",
+    },
+  },
+  {
+    id: 'html_l07_q02',
+    difficulty: 'easy',
+    tags: ['textarea'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Lager anketasida to'rtta savol bor.",
+      q: "Qaysi savolga textarea tegi kerak?",
+      opts: [
+        "Nega lagerga bormoqchisiz? Batafsil yozing",
+        "Ismingiz va familiyangizni to'liq yozing",
+        "Yoshingizni raqam bilan yozing, masalan 12",
+        "Ota-onangizning telefon raqamini yozing",
+      ],
+      why: "textarea — katta matn maydoni: unga bir necha qator yozsa bo'ladi. Ism, yosh va telefon esa bitta qatorga sig'adi, ularga input yetadi.",
+    },
+    ru: {
+      ctx: 'В анкете лагеря четыре вопроса.',
+      q: 'Для какого вопроса нужен тег textarea?',
+      opts: [
+        'Почему хочешь поехать в лагерь? Напиши подробно',
+        'Напиши своё имя и фамилию полностью',
+        'Напиши свой возраст числом, например 12',
+        'Напиши номер телефона кого-то из родителей',
+      ],
+      why: 'textarea — большое поле для текста: в нём можно написать несколько строк. Имя, возраст и телефон помещаются в одну строку, им хватит input.',
+    },
+    en: {
+      ctx: 'The camp form has four questions.',
+      q: 'Which question needs the textarea tag?',
+      opts: [
+        'Why do you want to go to camp? Write in detail',
+        'Write your first and last name in full',
+        'Write your age as a number, for example 12',
+        'Write the phone number of one of your parents',
+      ],
+      why: 'textarea is a big text field: you can write several lines in it. A name, an age and a phone number fit on one line, so input is enough for them.',
+    },
+  },
+  {
+    id: 'html_l07_q03',
+    difficulty: 'easy',
+    tags: ['option'],
+    mono: false,
+    sort: true,
+    vis: {
+      code: {
+        uz: `<label>\n  Shaharni tanlang:\n  <select>\n    <option>Toshkent</option>\n    <option>Samarqand</option>\n    <option>Buxoro</option>\n  </select>\n</label>`,
+        ru: `<label>\n  Выбери город:\n  <select>\n    <option>Ташкент</option>\n    <option>Самарканд</option>\n    <option>Бухара</option>\n  </select>\n</label>`,
+        en: `<label>\n  Choose a city:\n  <select>\n    <option>Tashkent</option>\n    <option>Samarkand</option>\n    <option>Bukhara</option>\n  </select>\n</label>`,
+      },
+    },
+    uz: {
+      ctx: "Mehmon shaharni ro'yxatdan tanlaydi.",
+      q: "Ro'yxat ochilganda nechta variant chiqadi?",
+      opts: ['3', '4', '2', '1'],
+      why: "Ro'yxatga faqat option teglari tushadi, ular uchta. «Shaharni tanlang» esa label ichidagi yozuv, u variant emas.",
+    },
+    ru: {
+      ctx: 'Гость выбирает город из списка.',
+      q: 'Сколько пунктов будет в раскрытом списке?',
+      opts: ['3', '4', '2', '1'],
+      why: 'В список попадают только теги option, их три. А «Выбери город» — подпись внутри label, это не пункт списка.',
+    },
+    en: {
+      ctx: 'A guest picks a city from the list.',
+      q: 'How many choices appear when the list opens?',
+      opts: ['3', '4', '2', '1'],
+      why: 'Only option tags get into the list, and there are three. “Choose a city” is the text inside label, not a choice.',
+    },
+  },
+  {
+    id: 'html_l07_q04',
+    difficulty: 'easy',
+    tags: ['button', 'form'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Oshxona saytida taom ro'yxatdan tanlanadi, pastda «Buyurtma» tugmasi bor.",
+      q: "form ichidagi tugma bosilsa nima bo'ladi?",
+      opts: [
+        "Anketadagi javoblar yuboriladi",
+        "Ro'yxatga yangi taom qo'shiladi",
+        "Ro'yxat ochilib, taomlar ko'rinadi",
+        "Tanlangan taom tugmada yoziladi",
+      ],
+      why: "form ichidagi button anketani yuboradi. Server bo'lmasa, sahifa qaytadan ochiladi va maydonlar bo'shab qoladi.",
+    },
+    ru: {
+      ctx: 'На сайте кафе блюдо выбирают из списка, внизу кнопка «Заказать».',
+      q: 'Что будет, если нажать кнопку внутри form?',
+      opts: [
+        'Ответы из анкеты будут отправлены',
+        'В список добавится новое блюдо',
+        'Список раскроется и покажет блюда',
+        'Выбранное блюдо появится на кнопке',
+      ],
+      why: 'button внутри form отправляет анкету. Если сервера нет, страница откроется заново и поля станут пустыми.',
+    },
+    en: {
+      ctx: 'On a café site you pick a dish from a list, and there is an “Order” button below.',
+      q: 'What happens when the button inside form is pressed?',
+      opts: [
+        'All the answers in the form get sent',
+        'A new dish is added to the list',
+        'The list opens and shows the dishes',
+        'The chosen dish appears on the button',
+      ],
+      why: 'A button inside form sends the form. With no server, the page just opens again and the fields are empty.',
+    },
+  },
+  {
+    id: 'html_l07_q05',
+    difficulty: 'medium',
+    tags: ['textarea', 'placeholder'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<label>\n  Fikringiz:\n  <textarea>Shu yerga yozing</textarea>\n</label>`,
+        ru: `<label>\n  Твой отзыв:\n  <textarea>Пиши здесь</textarea>\n</label>`,
+        en: `<label>\n  Your feedback:\n  <textarea>Write here</textarea>\n</label>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Maydondagi «Shu yerga yozing» kulrang emas: mehmon uni o'zi o'chirishi kerak.",
+      q: "Uni kulrang ishora qilish uchun nima qilish kerak?",
+      opts: [
+        "Yozuvni placeholder atributiga ko'chirish",
+        "Yopuvchi </textarea> tegini o'chirish",
+        "Yozuvni option tegi ichiga olish",
+        "textarea o'rniga select tegini yozish",
+      ],
+      why: "Teglar o'rtasidagi matn — maydondagi haqiqiy matn. Kulrang ishora placeholder atributida yoziladi va mehmon yoza boshlaganda o'zi yo'qoladi.",
+    },
+    ru: {
+      ctx: 'Надпись «Пиши здесь» в поле не серая: гостю приходится стирать её самому.',
+      q: 'Что сделать, чтобы она стала серой подсказкой?',
+      opts: [
+        'Перенести надпись в атрибут placeholder',
+        'Удалить закрывающий тег </textarea>',
+        'Обернуть надпись в тег option',
+        'Написать select вместо textarea',
+      ],
+      why: 'Текст между тегами — настоящий текст в поле. Серая подсказка пишется в атрибуте placeholder и исчезает, когда гость начинает писать.',
+    },
+    en: {
+      ctx: "The text “Write here” in the field isn't gray: the guest has to delete it.",
+      q: 'What turns it into a gray hint?',
+      opts: [
+        'Move the text into the placeholder attribute',
+        'Delete the closing </textarea> tag',
+        'Wrap the text in an option tag',
+        'Write select instead of textarea',
+      ],
+      why: 'Text between the tags is real text in the field. A gray hint goes in the placeholder attribute and disappears when the guest starts typing.',
+    },
+  },
+  {
+    id: 'html_l07_q06',
+    difficulty: 'medium',
+    tags: ['option'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<select>\n  <option>Shaxmat</option>\n  <option>Basketbol</option>\n  <option>Futbol</option>\n</select>`,
+        ru: `<select>\n  <option>Шахматы</option>\n  <option>Баскетбол</option>\n  <option>Футбол</option>\n</select>`,
+        en: `<select>\n  <option>Chess</option>\n  <option>Basketball</option>\n  <option>Football</option>\n</select>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Yopiq ro'yxatda «Futbol» ko'rinib tursin. Hozir esa «Shaxmat» ko'rinyapti.",
+      q: "Buning uchun nima qilish kerak?",
+      opts: [
+        "Futbol qatorini eng tepaga ko'chirish",
+        "Futbol qatorini eng pastga ko'chirish",
+        "Futbolni select tegidan oldin yozish",
+        "Shaxmat qatoridan option tegini olib tashlash",
+      ],
+      why: "Yopiq ro'yxatda birinchi variant ko'rinadi. Variantlar kod qatorlari tartibida turadi, shuning uchun Futbol birinchi qatorda bo'lishi kerak.",
+    },
+    ru: {
+      ctx: 'Пусть в закрытом списке видно «Футбол». А сейчас видно «Шахматы».',
+      q: 'Что для этого нужно сделать?',
+      opts: [
+        'Перенести строку с Футболом в самый верх',
+        'Перенести строку с Футболом в самый низ',
+        'Написать Футбол перед тегом select',
+        'Убрать тег option у строки с Шахматами',
+      ],
+      why: 'В закрытом списке виден первый пункт. Пункты идут в порядке строк кода, поэтому Футбол должен стоять первым.',
+    },
+    en: {
+      ctx: 'The closed list should show “Football”. Right now it shows “Chess”.',
+      q: 'What needs to be done?',
+      opts: [
+        'Move the Football line to the very top',
+        'Move the Football line to the very bottom',
+        'Write Football before the select tag',
+        'Remove the option tag from the Chess line',
+      ],
+      why: 'A closed list shows the first choice. Choices go in the order of the code lines, so Football has to come first.',
+    },
+  },
+  {
+    id: 'html_l07_q07',
+    difficulty: 'medium',
+    tags: ['input', 'button'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Anketada label, input, select, textarea va button teglari bor.",
+      q: "Ulardan qaysi birining yopuvchi tegi bo'lmaydi?",
+      opts: ['input', 'textarea', 'button', 'select'],
+      why: "input yolg'iz teg: uning yopuvchi tegi bo'lmaydi. select, textarea va button esa yopuvchi teg bilan yoziladi.",
+    },
+    ru: {
+      ctx: 'В анкете есть теги label, input, select, textarea и button.',
+      q: 'У какого из них нет закрывающего тега?',
+      opts: ['input', 'textarea', 'button', 'select'],
+      why: 'input — одиночный тег: закрывающего тега у него нет. А select, textarea и button пишутся с закрывающим тегом.',
+    },
+    en: {
+      ctx: 'The form has the tags label, input, select, textarea and button.',
+      q: 'Which of them has no closing tag?',
+      opts: ['input', 'textarea', 'button', 'select'],
+      why: 'input is a single tag: it has no closing tag. select, textarea and button are written with a closing tag.',
+    },
+  },
+  {
+    id: 'html_l07_q08',
+    difficulty: 'medium',
+    tags: ['button'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<form>\n  <label>Ism: <input></label>\n  <p>Yuborish</p>\n</form>`,
+        ru: `<form>\n  <label>Имя: <input></label>\n  <p>Отправить</p>\n</form>`,
+        en: `<form>\n  <label>Name: <input></label>\n  <p>Send</p>\n</form>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Anketa tayyor, lekin «Yuborish» tugma emas, oddiy matn bo'lib chiqdi.",
+      q: "Tugma chiqishi uchun nimani o'zgartirish kerak?",
+      opts: [
+        "p tegini button tegiga almashtirish",
+        "«Yuborish» so'zini b tegiga o'rash",
+        "p tegini option tegiga almashtirish",
+        "«Yuborish»ni placeholder qilib yozish",
+      ],
+      why: "Tugmani button tegi yasaydi, uning yozuvi teglar o'rtasida turadi. p esa oddiy abzas, b faqat matnni qalin qiladi.",
+    },
+    ru: {
+      ctx: 'Анкета готова, но «Отправить» получилось не кнопкой, а простым текстом.',
+      q: 'Что изменить, чтобы появилась кнопка?',
+      opts: [
+        'Заменить тег p на тег button',
+        'Обернуть «Отправить» в тег b',
+        'Заменить тег p на тег option',
+        'Написать «Отправить» в placeholder',
+      ],
+      why: 'Кнопку делает тег button, надпись стоит между тегами. А p — обычный абзац, b только делает текст жирным.',
+    },
+    en: {
+      ctx: 'The form is ready, but “Send” came out as plain text, not a button.',
+      q: 'What should change so a button appears?',
+      opts: [
+        'Replace the p tag with a button tag',
+        'Wrap the word “Send” in a b tag',
+        'Replace the p tag with an option tag',
+        'Write “Send” as a placeholder',
+      ],
+      why: 'The button tag makes a button, and its text goes between the tags. p is just a paragraph, and b only makes text bold.',
+    },
+  },
+  {
+    id: 'html_l07_q09',
+    difficulty: 'medium',
+    tags: ['option', 'select'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<option>Qizil</option>\n<select>\n  <option>Yashil</option>\n  <option>Ko'k</option>\n</select>`,
+        ru: `<option>Красный</option>\n<select>\n  <option>Зелёный</option>\n  <option>Синий</option>\n</select>`,
+        en: `<option>Red</option>\n<select>\n  <option>Green</option>\n  <option>Blue</option>\n</select>`,
+      },
+    },
+    uz: {
+      ctx: "Ro'yxatda faqat Yashil va Ko'k bor, Qizil esa yo'q.",
+      q: "Nega Qizil ro'yxatga tushmadi?",
+      opts: [
+        "Uning qatori select tegidan tashqarida",
+        "Qizil qatorida yopuvchi teg ham bor",
+        "select ichida ko'pi bilan ikkita variant bo'ladi",
+        "Qizil qatorida label tegi yozilmagan",
+      ],
+      why: "option faqat select ichida variant bo'ladi. Qizil qatori select ochilishidan oldin turibdi, shuning uchun ro'yxatga kirmadi.",
+    },
+    ru: {
+      ctx: 'В списке только Зелёный и Синий, а Красного нет.',
+      q: 'Почему Красный не попал в список?',
+      opts: [
+        'Его строка стоит снаружи тега select',
+        'В строке Красного есть закрывающий тег',
+        'Внутри select бывает не больше двух пунктов',
+        'В строке Красного не написан тег label',
+      ],
+      why: 'option становится пунктом списка только внутри select. Строка Красного стоит до открытия select, поэтому в список не попала.',
+    },
+    en: {
+      ctx: 'The list has only Green and Blue, and Red is missing.',
+      q: "Why didn't Red get into the list?",
+      opts: [
+        'Its line is outside the select tag',
+        'The Red line also has a closing tag',
+        'select can hold at most two choices',
+        'The Red line has no label tag',
+      ],
+      why: 'option becomes a choice only inside select. The Red line comes before select opens, so it never got into the list.',
+    },
+  },
+  {
+    id: 'html_l07_q10',
+    difficulty: 'hard',
+    tags: ['button', 'form'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<form>\n  <label>Ism: <input></label>\n  <textarea></textarea>\n</form>\n<button>Yuborish</button>`,
+        ru: `<form>\n  <label>Имя: <input></label>\n  <textarea></textarea>\n</form>\n<button>Отправить</button>`,
+        en: `<form>\n  <label>Name: <input></label>\n  <textarea></textarea>\n</form>\n<button>Send</button>`,
+      },
+    },
+    uz: {
+      ctx: "Tugma bor, lekin uni bossa ham anketa hech qayerga yuborilmayapti.",
+      q: "Nega shunday bo'lyapti?",
+      opts: [
+        "Tugma form tegidan tashqarida turibdi",
+        "button tegining yopuvchi tegi bor ekan",
+        "Katta maydonga hali hech narsa yozilmagan",
+        "Tugmaga type atributi yozilmagan",
+      ],
+      why: "Kodga qarang: </form> tugmadan oldin yopilgan. Tugma faqat o'z form tegi ichida turganda anketani yuboradi.",
+    },
+    ru: {
+      ctx: 'Кнопка есть, но после нажатия анкета никуда не отправляется.',
+      q: 'Почему так происходит?',
+      opts: [
+        'Кнопка стоит снаружи тега form',
+        'У тега button есть закрывающий тег',
+        'В большом поле ещё ничего не написано',
+        'У кнопки не написан атрибут type',
+      ],
+      why: 'Посмотри на код: </form> закрыт раньше кнопки. Кнопка отправляет анкету, только когда стоит внутри своего тега form.',
+    },
+    en: {
+      ctx: "There's a button, but pressing it doesn't send the form anywhere.",
+      q: 'Why does this happen?',
+      opts: [
+        'The button is outside the form tag',
+        'The button tag has a closing tag',
+        'Nothing is written in the big field yet',
+        'The button has no type attribute',
+      ],
+      why: 'Look at the code: </form> closes before the button. A button sends the form only when it sits inside its form tag.',
+    },
+  },
+  {
+    id: 'html_l07_q11',
+    difficulty: 'hard',
+    tags: ['label', 'option'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<select>\n  <option>Shahar</option>\n  <option>Toshkent</option>\n  <option>Xiva</option>\n</select>`,
+        ru: `<select>\n  <option>Город</option>\n  <option>Ташкент</option>\n  <option>Хива</option>\n</select>`,
+        en: `<select>\n  <option>City</option>\n  <option>Tashkent</option>\n  <option>Khiva</option>\n</select>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "«Shahar» ro'yxatda variant bo'lib qolgan: uni ham tanlasa bo'ladi.",
+      q: "«Shahar» ro'yxat oldidagi yozuv bo'lishi uchun nima kerak?",
+      opts: [
+        "Uni label ichiga, select tegidan oldin yozish",
+        "Shahar qatoridan faqat </option> ni o'chirish",
+        "Uni select ichida option tegisiz qoldirish",
+        "Uni select tegiga placeholder qilib yozish",
+      ],
+      why: "Maydon yozuvi label ichida turadi, ro'yxatga esa option tushadi. option tegisiz so'z ro'yxatdan yo'qoladi, lekin yozuv bo'lib ham chiqmaydi.",
+    },
+    ru: {
+      ctx: '«Город» стал пунктом списка: его тоже можно выбрать.',
+      q: 'Что нужно, чтобы «Город» стал подписью перед списком?',
+      opts: [
+        'Написать его в label перед тегом select',
+        'Удалить в строке Города только </option>',
+        'Оставить его внутри select без тега option',
+        'Написать его в select как placeholder',
+      ],
+      why: 'Подпись поля стоит в label, а в список попадают option. Слово без option пропадёт из списка, но подписью тоже не станет.',
+    },
+    en: {
+      ctx: '“City” became a choice in the list: it can be picked too.',
+      q: 'What makes “City” a label in front of the list?',
+      opts: [
+        'Write it in label before the select tag',
+        'Delete only </option> on the City line',
+        'Leave it inside select without option',
+        'Write it on select as a placeholder',
+      ],
+      why: 'A field label goes in label, and choices are option tags. A word without option vanishes from the list but does not become a label either.',
+    },
+  },
+  // ---- «Впиши ответ» (type: 'input') ----
+  {
+    id: 'html_l07_q12',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['select'],
+    mono: true,
+    answer: ['</select>'],
+    vis: {
+      code: {
+        uz: `<label>\n  Sevimli mashg'ulot:\n  <select>\n    <option>Kitob</option>\n    <option>Kino</option>\n  ___\n</label>`,
+        ru: `<label>\n  Любимое занятие:\n  <select>\n    <option>Книги</option>\n    <option>Кино</option>\n  ___\n</label>`,
+        en: `<label>\n  Favorite hobby:\n  <select>\n    <option>Books</option>\n    <option>Movies</option>\n  ___\n</label>`,
+      },
+    },
+    uz: {
+      ctx: "Ro'yxatning oxirida bitta yopuvchi teg tushib qolgan.",
+      q: "Bo'sh joyga qaysi yopuvchi teg kerak? Uni to'liq yozing.",
+      why: "select ro'yxatni ochadi va </select> bilan yopiladi. Ikkala option allaqachon yopilgan, ochiq qolgani — select.",
+    },
+    ru: {
+      ctx: 'В конце списка потерялся один закрывающий тег.',
+      q: 'Какой закрывающий тег нужен на пустом месте? Впиши его целиком.',
+      why: 'select открывает список и закрывается тегом </select>. Оба option уже закрыты, открытым остался select.',
+    },
+    en: {
+      ctx: 'One closing tag is missing at the end of the list.',
+      q: 'Which closing tag goes in the empty spot? Type it in full.',
+      why: 'select opens the list and closes with </select>. Both option tags are already closed, so select is the one left open.',
+    },
+  },
+  {
+    id: 'html_l07_q13',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['button'],
+    mono: true,
+    answer: ['button', '<button>'],
+    vis: {
+      code: {
+        uz: `<form>\n  <label>Ism: <input></label>\n  <___>Ro'yxatdan o'tish</___>\n</form>`,
+        ru: `<form>\n  <label>Имя: <input></label>\n  <___>Записаться</___>\n</form>`,
+        en: `<form>\n  <label>Name: <input></label>\n  <___>Sign up</___>\n</form>`,
+      },
+    },
+    uz: {
+      ctx: "Anketa ostida «Ro'yxatdan o'tish» tugmasi chiqishi kerak.",
+      q: "Bo'sh joylarga qaysi teg nomi yoziladi? Faqat nomini yozing.",
+      why: "Tugmani button tegi yasaydi, yozuvi ochuvchi va yopuvchi teglar o'rtasida turadi. form ichida u anketani yuboradi.",
+    },
+    ru: {
+      ctx: 'Под анкетой должна появиться кнопка «Записаться».',
+      q: 'Какое имя тега вписать на пустые места? Только имя.',
+      why: 'Кнопку делает тег button, надпись стоит между открывающим и закрывающим тегами. Внутри form она отправляет анкету.',
+    },
+    en: {
+      ctx: 'A “Sign up” button should appear under the form.',
+      q: 'Which tag name goes in the empty spots? Just the name.',
+      why: 'The button tag makes a button, and its text goes between the opening and closing tags. Inside form it sends the form.',
+    },
+  },
+  {
+    id: 'html_l07_q14',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['option'],
+    mono: true,
+    answer: ['<option>13</option>'],
+    vis: {
+      code: {
+        uz: `<label>\n  Yoshingiz:\n  <select>\n    <option>11</option>\n    <option>12</option>\n    ___\n  </select>\n</label>`,
+        ru: `<label>\n  Твой возраст:\n  <select>\n    <option>11</option>\n    <option>12</option>\n    ___\n  </select>\n</label>`,
+        en: `<label>\n  Your age:\n  <select>\n    <option>11</option>\n    <option>12</option>\n    ___\n  </select>\n</label>`,
+      },
+    },
+    uz: {
+      ctx: "Ro'yxatda 11 va 12 bor. Oxiriga 13 ham qo'shilsin.",
+      q: "Bo'sh joyga butun qatorni teglari bilan birga yozing.",
+      why: "Har bir variant o'zining option tegida turadi: ochuvchi teg, son, yopuvchi teg. Teglarsiz 13 ro'yxatga tushmaydi.",
+    },
+    ru: {
+      ctx: 'В списке есть 11 и 12. Пусть в конце появится ещё 13.',
+      q: 'Впиши на пустое место всю строку вместе с тегами.',
+      why: 'Каждый пункт стоит в своём теге option: открывающий тег, число, закрывающий тег. Без тегов 13 в список не попадёт.',
+    },
+    en: {
+      ctx: 'The list has 11 and 12. Let 13 appear at the end too.',
+      q: 'Type the whole line in the empty spot, tags included.',
+      why: 'Each choice sits in its own option tag: opening tag, number, closing tag. Without the tags, 13 will not get into the list.',
+    },
+  },
+  // ---- Игровые: «собери» (q15, q16), «найди ошибку» (q17), «нажми на странице» (q18) ----
+  {
+    id: 'html_l07_q15',
+    type: 'build',
+    difficulty: 'medium',
+    tags: ['button', 'form'],
+    pieces: ['<button>', { uz: 'Chipta olish', ru: 'Купить билет', en: 'Buy ticket' }, '</button>'],
+    extra: ['</form>', '<p>', '</p>'],
+    vis: {
+      code: {
+        uz: `<form>\n  <label>Chipta: <select>…</select></label>\n  ___\n</form>`,
+        ru: `<form>\n  <label>Билеты: <select>…</select></label>\n  ___\n</form>`,
+        en: `<form>\n  <label>Tickets: <select>…</select></label>\n  ___\n</form>`,
+      },
+    },
+    uz: {
+      ctx: "Hayvonot bog'i saytida chipta soni ro'yxatdan tanlanadi. Endi anketani yuboradigan tugma kerak.",
+      q: "Bo'laklarni tartib bilan bosib, «Chipta olish» tugmasini yig'ing",
+      why: "Tugmani button tegi yasaydi, yozuvi ochuvchi va yopuvchi teg o'rtasida turadi. Tugma yopuvchi form tegidan oldin, form ichida tursagina anketani yuboradi.",
+    },
+    ru: {
+      ctx: 'На сайте зоопарка число билетов выбирают из списка. Теперь нужна кнопка, которая отправит анкету.',
+      q: 'Нажимай кусочки по порядку и собери кнопку «Купить билет»',
+      why: 'Кнопку делает тег button, надпись стоит между открывающим и закрывающим тегами. Анкету кнопка отправит, только если стоит до </form>, внутри формы.',
+    },
+    en: {
+      ctx: 'On the zoo site the number of tickets is picked from a list. Now the form needs a button that sends it.',
+      q: 'Tap the pieces in order to build the “Buy ticket” button',
+      why: 'The button tag makes a button, and its text goes between the opening and closing tags. It sends the form only if it sits before </form>, inside the form.',
+    },
+  },
+  {
+    id: 'html_l07_q16',
+    type: 'build',
+    difficulty: 'easy',
+    tags: ['option'],
+    pieces: ['<option>', { uz: 'Hujumchi', ru: 'Нападающий', en: 'Forward' }, '</option>'],
+    extra: ['<li>', '</li>', '<input>'],
+    vis: {
+      code: {
+        uz: `<label>\n  Pozitsiya:\n  <select>\n    <option>Darvozabon</option>\n    <option>Himoyachi</option>\n    ___\n  </select>\n</label>`,
+        ru: `<label>\n  Позиция:\n  <select>\n    <option>Вратарь</option>\n    <option>Защитник</option>\n    ___\n  </select>\n</label>`,
+        en: `<label>\n  Position:\n  <select>\n    <option>Goalkeeper</option>\n    <option>Defender</option>\n    ___\n  </select>\n</label>`,
+      },
+    },
+    uz: {
+      ctx: "Futbol jamoasi anketasida pozitsiya ro'yxatdan tanlanadi, lekin hujumchi unda yo'q.",
+      q: "Bo'laklarni tartib bilan bosib, ro'yxatga «Hujumchi» variantini qo'shing",
+      why: "select ichidagi har bir variant o'zining option tegida turadi. li esa ul va ol ro'yxatlari uchun, select ichida u variant bo'lmaydi.",
+    },
+    ru: {
+      ctx: 'В анкете футбольной команды позицию выбирают из списка, но нападающего там нет.',
+      q: 'Нажимай кусочки по порядку и добавь в список пункт «Нападающий»',
+      why: 'Каждый пункт внутри select стоит в своём теге option. А li — для списков ul и ol, внутри select пунктом он не станет.',
+    },
+    en: {
+      ctx: 'In the football team form the position is picked from a list, but there is no forward in it.',
+      q: 'Tap the pieces in order to add the “Forward” choice to the list',
+      why: 'Each choice inside select sits in its own option tag. li is for ul and ol lists, and inside select it does not become a choice.',
+    },
+  },
+  {
+    id: 'html_l07_q17',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['textarea'],
+    line: 3,
+    vis: {
+      code: {
+        uz: `<form>\n  <p>Kitob haqida fikringiz:</p>\n  <textarea></texarea>\n  <button>Yuborish</button>\n</form>`,
+        ru: `<form>\n  <p>Твой отзыв о книге:</p>\n  <textarea></texarea>\n  <button>Отправить</button>\n</form>`,
+        en: `<form>\n  <p>Your review of the book:</p>\n  <textarea></texarea>\n  <button>Send</button>\n</form>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Kutubxona saytida katta maydon ichida kod chiqib qoldi, tugma esa yo'qoldi.",
+      q: "Qaysi qatorda xato bor? Shu qatorni bosing",
+      why: "3-qatorda yopuvchi teg texarea bo'lib qolgan: bitta harf tushib qolgan. Brauzer yopuvchi textarea tegini topolmadi va qolgan kodni maydon ichiga matn qilib yozdi.",
+    },
+    ru: {
+      ctx: 'На сайте библиотеки в большом поле появился код, а кнопка пропала.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В 3-й строке закрывающий тег написан как texarea: пропущена одна буква. Браузер не нашёл закрывающий тег textarea и записал остальной код в поле как текст.',
+    },
+    en: {
+      ctx: 'On the library site some code showed up inside the big field, and the button is gone.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'On line 3 the closing tag says texarea: one letter is missing. The browser found no closing textarea tag and put the rest of the code into the field as text.',
+    },
+  },
+  {
+    id: 'html_l07_q18',
+    type: 'tap',
+    difficulty: 'easy',
+    tags: ['select'],
+    answer: 'select',
+    vis: {
+      page: {
+        uz: `<form>\n<p>Ismingiz:</p>\n<input data-t="input">\n<p>Sinfingiz:</p>\n<select data-t="select"><option>5-sinf</option><option>6-sinf</option></select>\n<p>Nega to'garakka kelmoqchisiz?</p>\n<textarea data-t="textarea"></textarea>\n<p><button data-t="button">Yuborish</button></p>\n</form>`,
+        ru: `<form>\n<p>Твоё имя:</p>\n<input data-t="input">\n<p>Твой класс:</p>\n<select data-t="select"><option>5 класс</option><option>6 класс</option></select>\n<p>Почему хочешь в кружок?</p>\n<textarea data-t="textarea"></textarea>\n<p><button data-t="button">Отправить</button></p>\n</form>`,
+        en: `<form>\n<p>Your name:</p>\n<input data-t="input">\n<p>Your grade:</p>\n<select data-t="select"><option>Grade 5</option><option>Grade 6</option></select>\n<p>Why do you want to join the club?</p>\n<textarea data-t="textarea"></textarea>\n<p><button data-t="button">Send</button></p>\n</form>`,
+      },
+    },
+    uz: {
+      ctx: "Maktabdagi robototexnika to'garagiga yozilish anketasi tayyor.",
+      q: "Sahifada select tegi yasagan maydonni bosing",
+      why: "select ochiladigan ro'yxat yasaydi: unda tanlangan variant va o'ng tomonda kichkina strelka ko'rinadi. Bo'sh qator — input, katta maydon — textarea.",
+    },
+    ru: {
+      ctx: 'Анкета для записи в школьный кружок робототехники готова.',
+      q: 'Нажми на поле, которое сделал тег select',
+      why: 'select делает выпадающий список: в нём виден выбранный пункт и маленькая стрелка справа. Пустая строка — это input, большое поле — textarea.',
+    },
+    en: {
+      ctx: 'The sign-up form for the school robotics club is ready.',
+      q: 'Tap the field that the select tag made',
+      why: 'select makes a dropdown list: it shows the chosen choice and a small arrow on the right. The empty line is input, and the big field is textarea.',
+    },
+  },
+];

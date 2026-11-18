@@ -10,6 +10,8 @@
 ======================================================================
 
 1. НАЗВАНИЕ УРОКА: Amaliy ish. HTML hujjatining tuzilishi
+НАЗВАНИЕ (RU): Практика. Структура HTML-документа
+НАЗВАНИЕ (EN): Practice. HTML document structure
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 O'yin profilingiz sahifasini yarating.
 - <!DOCTYPE html>, <html>, <head>, <body> teglarini yozing
@@ -28,6 +30,8 @@ Text content does not matter.
 ======================================================================
 
 2. НАЗВАНИЕ УРОКА: Amaliy ish. Sarlavhalar va matn
+НАЗВАНИЕ (RU): Практика. Заголовки и текст
+НАЗВАНИЕ (EN): Practice. Headings and text
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Bugungi film afishasini yarating.
 - <h1> va <h2> sarlavha teglarini ishlating
@@ -45,6 +49,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 3. НАЗВАНИЕ УРОКА: Amaliy ish. Ro'yxatlar
+НАЗВАНИЕ (RU): Практика. Списки
+НАЗВАНИЕ (EN): Practice. Lists
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Do'stingizga sendvich retseptini yozing.
 - <h1> dan <h6> gacha birortasini ishlating
@@ -62,6 +68,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 4. НАЗВАНИЕ УРОКА: Amaliy ish. Havolalar va atributlar
+НАЗВАНИЕ (RU): Практика. Ссылки и атрибуты
+НАЗВАНИЕ (EN): Practice. Links and attributes
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 «Sirli qasr» o'yinini yarating.
 - Sarlavha (<h1> - <h6>) teglaridan ishlating
@@ -80,6 +88,8 @@ The addresses, texts and the number of tags do not matter; the pages do not have
 ======================================================================
 
 5. НАЗВАНИЕ УРОКА: Amaliy ish. Rasmlar
+НАЗВАНИЕ (RU): Практика. Изображения
+НАЗВАНИЕ (EN): Practice. Images
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 «Kosmos zali» sahifasini yarating.
 - <img> tegini ikki marta ishlating
@@ -100,6 +110,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 6. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 1-qism: ma'lumot kiritish
+НАЗВАНИЕ (RU): Практика. Формы, часть 1: ввод данных
+НАЗВАНИЕ (EN): Practice. Forms, part 1: entering data
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Marsga uchadigan ekipaj anketasini yarating.
 - <form> ichida <label> va <input> teglarini ishlating
@@ -119,6 +131,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 7. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar, 2-qism: tanlash va yuborish
+НАЗВАНИЕ (RU): Практика. Формы, часть 2: выбор и отправка
+НАЗВАНИЕ (EN): Practice. Forms, part 2: choosing and sending
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Pitsa buyurtmasi formasini yarating.
 - <select> ichida kamida 3 ta <option>
@@ -138,6 +152,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 8. НАЗВАНИЕ УРОКА: Amaliy ish. Haqiqiy sayt tuzilishi
+НАЗВАНИЕ (RU): Практика. Структура настоящего сайта
+НАЗВАНИЕ (EN): Practice. The structure of a real website
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Kibersport jamoasi saytini yarating.
 - <header> ichida <h1>
@@ -157,6 +173,8 @@ Text content and the number of tags do not matter.
 ======================================================================
 
 9. НАЗВАНИЕ УРОКА: Yakuniy HTML loyiha
+НАЗВАНИЕ (RU): Финальный HTML-проект
+НАЗВАНИЕ (EN): Final HTML project
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Sevimli mashg'ulotingiz haqida sayt yarating. Kursda o'rgangan teglarni ishlating:
 - <title>, <header>, <nav>, <main>, <footer>

@@ -1,6 +1,7 @@
 // Задания для компилятора платформы (14.11.2026): ученик сам пишет код, ИИ платформы проверяет по промпту.
 // Источник — docs/kompilyator-amaliy-<курс>.txt в формате файла заказчика HTML_practice_prompts.txt:
-//   N. НАЗВАНИЕ УРОКА: …
+//   N. НАЗВАНИЕ УРОКА: …            (узбекский)
+//   НАЗВАНИЕ (RU): … / НАЗВАНИЕ (EN): …  (18.11.2026: шапка задания на трёх языках)
 //   ЗАДАНИЕ ДЛЯ УЧЕНИКА:  (строки на узбекском; перевод — «(RU: …)», затем «(EN: …)»)
 //   ПРОМПТ ДЛЯ ПРОВЕРКИ: (строки на английском)
 // Задания разделяет строка из «=». Просмотрщик показывает их в своём режиме «Компилятор» (не в списке курсов).
@@ -17,6 +18,8 @@ function parse(text) {
     const taskAt = b.indexOf('ЗАДАНИЕ ДЛЯ УЧЕНИКА:');
     const checkAt = b.indexOf('ПРОМПТ ДЛЯ ПРОВЕРКИ:');
     if (checkAt < 0) continue;
+    const tRu = /^НАЗВАНИЕ \(RU\):\s*(.+)$/m.exec(b);
+    const tEn = /^НАЗВАНИЕ \(EN\):\s*(.+)$/m.exec(b);
     let task = taskAt >= 0 ? b.slice(taskAt + 'ЗАДАНИЕ ДЛЯ УЧЕНИКА:'.length, checkAt).trim() : '';
     // Перевод: «(RU: …)», за ним «(EN: …)» (16.11.2026: слайд ученика на трёх языках).
     let ru = '', en = '';
@@ -28,6 +31,7 @@ function parse(text) {
     items.push({
       n: +m[1],
       title: m[2].trim(),
+      titles: { uz: m[2].trim(), ru: tRu ? tRu[1].trim() : '', en: tEn ? tEn[1].trim() : '' },
       intro: lines.filter((s) => !s.startsWith('- ')),
       steps: lines.filter((s) => s.startsWith('- ')).map((s) => s.slice(2)),
       ru,

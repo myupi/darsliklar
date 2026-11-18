@@ -12,12 +12,20 @@ export const DEFAULTS = {
   voice: 'browser',
   start: '',
   logOpen: true,
-  view: 'lessons',   // 'lessons' | 'compiler' — режим просмотрщика: уроки или задания для компилятора
+  view: 'lessons',   // 'lessons' | 'compiler' | 'trainer' — режим просмотрщика: уроки, задания для компилятора, тренажёры
+  trn: 'html',       // тренажёр: '<id>' — попытка, '<id>:bank' — все вопросы, '<id>:bank:<урок>' — вопросы урока
+  trnQ: '',          // выбранный вопрос банка (question_id)
+  trnMode: 'reward', // эмуляция LMS: reward | practice
+  trnUpto: '',       // пройдено уроков: '' — весь модуль, '4' — уроки 1–4 (образец математики: блок b01…)
+  trnN: '15',        // вопросов в попытке
+  trnSave: 'ok',     // сохранение ответа: ok | slow | fail
+  trnExit: true,     // LMS передаёт onExit
+  trnRestart: true,  // LMS передаёт onRestart
   cmp: '',           // выбранное задание компилятора: '<модуль>:<номер>'
   quizBar: true, // тесты: полоса платформы с «Tekshirish» (эмуляция платформы в плеере)
 };
 
-const URL_KEYS = ['lesson', 'lang', 'device', 'voice', 'start', 'name', 'view', 'cmp'];
+const URL_KEYS = ['lesson', 'lang', 'device', 'voice', 'start', 'name', 'view', 'cmp', 'trn', 'trnQ'];
 
 export function readPrefs() {
   let saved = {};
@@ -41,6 +49,7 @@ export function writePrefs(p) {
   if (p.start !== '') q.set('start', p.start);
   if (p.view === 'compiler') q.set('view', 'compiler');
   if (p.view === 'compiler' && p.cmp) q.set('cmp', p.cmp);
+  if (p.view === 'trainer') { q.set('view', 'trainer'); if (p.trn) q.set('trn', p.trn); if (p.trnQ && /:bank/.test(p.trn || '')) q.set('trnQ', p.trnQ); }
   const next = '?' + q.toString();
   if (next !== window.location.search) window.history.replaceState(null, '', next);
 }

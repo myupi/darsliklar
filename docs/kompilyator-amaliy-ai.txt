@@ -13,6 +13,8 @@
 ======================================================================
 
 1. НАЗВАНИЕ УРОКА: Amaliy ish. Nima yaratamiz va nega?
+НАЗВАНИЕ (RU): Практика. Что создаём и зачем?
+НАЗВАНИЕ (EN): Practice. What are we making and why?
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Futbol to'garagiga sayt kerak. Saytni sun'iy intellekt yasaydi, siz esa unga nima kerakligini yozasiz.
 - ChatGPT ni (yoki boshqa sun'iy intellektni) oching
@@ -35,6 +37,8 @@ Text language, colors, layout and exact words do not matter.
 ======================================================================
 
 2. НАЗВАНИЕ УРОКА: Amaliy ish. Kim uchun yaratamiz?
+НАЗВАНИЕ (RU): Практика. Для кого создаём?
+НАЗВАНИЕ (EN): Practice. Who are we making it for?
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Suzish kursiga 7–10 yoshli bolalar keladi, ularni ota-onalari yozdiradi. Sun'iy intellektga sayt kimlar uchun ekanini ayting.
 - `Nima?` va `Nega?` — o'zingiz yozing, 1-vazifadagidek
@@ -58,6 +62,8 @@ Text language, colors and exact words do not matter.
 ======================================================================
 
 3. НАЗВАНИЕ УРОКА: Amaliy ish. Saytda nima bo'lishi kerak?
+НАЗВАНИЕ (RU): Практика. Что должно быть на сайте?
+НАЗВАНИЕ (EN): Practice. What should be on the website?
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 «Lazzat» kafesiga sayt kerak. Kafe ma'lumotlarini promptga to'liq yozing.
 - `Nima?`, `Nega?`, `Kim uchun?` — o'zingiz o'ylab yozing
@@ -82,6 +88,8 @@ Text language, colors and design do not matter.
 ======================================================================
 
 4. НАЗВАНИЕ УРОКА: Amaliy ish. Sayt qanday ko'rinishi kerak?
+НАЗВАНИЕ (RU): Практика. Как должен выглядеть сайт?
+НАЗВАНИЕ (EN): Practice. How should the website look?
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 «Bahor» gul do'koniga chiroyli sayt kerak. Sayt qanday ko'rinishini o'zingiz ayting.
 - `Nima?`, `Nega?`, `Kim uchun?` — o'zingiz o'ylab yozing
@@ -105,6 +113,8 @@ Text language and exact words do not matter.
 ======================================================================
 
 5. НАЗВАНИЕ УРОКА: Amaliy ish. Sayt o'zini qanday tutishi kerak?
+НАЗВАНИЕ (RU): Практика. Как сайт должен вести себя?
+НАЗВАНИЕ (EN): Practice. How should the website behave?
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Robot to'garagi sayti jonli bo'lsin: sichqonchaga va telefonga javob bersin.
 - Birinchi 5 qatorni o'zingiz yozing: `Nima?` dan `Ko'rinishi?` gacha
@@ -130,6 +140,8 @@ Text language, colors and exact values do not matter.
 ======================================================================
 
 6. НАЗВАНИЕ УРОКА: Amaliy ish. Sun'iy intellektga aniq talablar
+НАЗВАНИЕ (RU): Практика. Точные требования для ИИ
+НАЗВАНИЕ (EN): Practice. Precise requirements for AI
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Musiqa maktabi sayt buyurtma qildi. Mijozning qoidalarini promptga yozing.
 - Birinchi 6 qatorni o'zingiz yozing: `Nima?` dan `Qanday ishlaydi?` gacha
@@ -155,6 +167,8 @@ Text language, colors and design do not matter.
 ======================================================================
 
 7. НАЗВАНИЕ УРОКА: Amaliy ish. Sun'iy intellekt natijasini yaxshilash
+НАЗВАНИЕ (RU): Практика. Как улучшить результат ИИ
+НАЗВАНИЕ (EN): Practice. Improving the AI result
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Tennis klubi sayti buyurtmaga to'liq mos bo'lishi kerak. Siz ikkita prompt yozasiz.
 - Buyurtma: sarlavha «Tennis klubi», rang #2E7D32, narx oyiga 300 000 so'm, katta «Yozilish» tugmasi
@@ -179,6 +193,8 @@ Text language of the page does not matter.
 ======================================================================
 
 8. НАЗВАНИЕ УРОКА: Amaliy ish. Yakuniy loyiha
+НАЗВАНИЕ (RU): Практика. Финальный проект
+НАЗВАНИЕ (EN): Practice. Final project
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Robotlar festivaliga sayt kerak. Butun formulani ishlating!
 - 7 qator yozing: `Nima?` `Nega?` `Kim uchun?` `Ichida nima?` `Ko'rinishi?` `Qanday ishlaydi?` `Qoidalar?`

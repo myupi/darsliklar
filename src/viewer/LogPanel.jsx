@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle, CircleCheck, Flag, Hourglass, Info, Music, Trash2, Volume2, XCircle, Zap,
+  AlertTriangle, CircleCheck, Dumbbell, Flag, Hourglass, Info, LogOut, Music, RefreshCw, Trash2, Volume2, XCircle, Zap,
 } from 'lucide-react';
 import CopyButton from './CopyButton.jsx';
 
 const GROUPS = {
   all: { label: 'Всё', test: () => true },
   voice: { label: 'Голос', test: (e) => e.type === 'tts' || e.type === 'wait' },
-  events: { label: 'События', test: (e) => e.type === 'event' || e.type === 'sfx' || e.type === 'finished' },
+  events: { label: 'События', test: (e) => e.type === 'event' || e.type === 'sfx' || e.type === 'finished' || e.type === 'trainer' },
   errors: { label: 'Ошибки', test: (e) => e.type === 'error' || e.type === 'warn' },
 };
 
@@ -35,6 +35,14 @@ function Row({ e }) {
       return <Item icon={<Music size={14} />} tone="muted" t={e.t} head={<>звук <code>{String(e.data)}</code></>} />;
     case 'finished':
       return <Item icon={<Flag size={14} />} tone={d.count > 1 ? 'error' : 'ok'} t={e.t} head={<>onFinished #{d.count}</>} />;
+    case 'trainer':   // эмуляция LMS для тренажёра (src/trainer/main.jsx)
+      if (d.kind === 'attempt') return <Item icon={<Dumbbell size={14} />} tone="event" t={e.t} head={<>попытка · {d.mode === 'practice' ? 'без награды' : 'с наградой'} · {d.size} из {d.pool} ({d.from})</>} body={(d.ids || []).join(', ')} />;
+      if (d.kind === 'answer') return <Item icon={d.correct ? <CircleCheck size={14} /> : <XCircle size={14} />} tone={d.correct ? 'ok' : 'warn'} t={e.t} head={<>onAnswer {d.n}/{d.of} <code>{d.id}</code> → <code>{d.typed ? '«' + d.option + '»' : d.option}</code>{d.correct ? ' · верно' : ' · неверно, верный ' + d.right}</>} />;
+      if (d.kind === 'answer-fail') return <Item icon={<AlertTriangle size={14} />} tone="warn" t={e.t} head={<>onAnswer {d.n}: LMS не сохранила (эмуляция ошибки) — тренажёр просит нажать ещё раз</>} />;
+      if (d.kind === 'finish-fail') return <Item icon={<AlertTriangle size={14} />} tone="warn" t={e.t} head={<>onFinished: LMS не сохранила (эмуляция ошибки)</>} />;
+      if (d.kind === 'restart') return <Item icon={<RefreshCw size={14} />} tone="event" t={e.t} head={<>onRestart — новая попытка</>} />;
+      if (d.kind === 'exit') return <Item icon={<LogOut size={14} />} tone="event" t={e.t} head={<>onExit — ученик вышел из тренажёра</>} />;
+      return <Item icon={<Info size={14} />} tone="muted" t={e.t} body={JSON.stringify(d)} />;
     case 'loaded':
       return <Item icon={<CircleCheck size={14} />} tone="ok" t={e.t} head={<>урок загружен за {d.ms} мс · <code>{d.component}</code></>} body={'пропсы: ' + (d.props || []).join(', ')} />;
     case 'warn':

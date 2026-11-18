@@ -1,0 +1,555 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА HTML · урок 6 «Формы, часть 1: ввод данных» — 11 вопросов с выбором (4 easy, 5 medium, 2 hard) + 3 «впиши ответ» (q12–q14).
+// Проверяем: поле делает input; type number — только число и стрелки; незнакомый type — обычное поле;
+// password прячет буквы, placeholder — нет; placeholder исчезает, когда пишешь, и не заменяет label;
+// placeholder — атрибут в открывающем input; label связывает подпись с полем (p — нет); form обнимает анкету и не видна;
+// поле есть только там, где есть input.
+// Словарь урока 6: maydon, kulrang ishora, anketa, maydon yozuvi. Апостроф в узбекском — только ASCII «'».
+// =============================================================================
+export default [
+  {
+    id: 'html_l06_q01',
+    difficulty: 'easy',
+    tags: ['input'],
+    mono: true,
+    sort: false,
+    vis: {
+      page: {
+        uz: '<label>Ismingiz <input type="text"></label>',
+        ru: '<label>Твоё имя <input type="text"></label>',
+        en: '<label>Your name <input type="text"></label>',
+      },
+    },
+    uz: {
+      ctx: "Sahifada ism yozish uchun maydon chiqdi.",
+      q: 'Bu maydonni qaysi teg yasaydi?',
+      opts: ['input', 'label', 'form', 'p'],
+      why: "Yozish uchun maydonni input tegi yasaydi, input — ya'ni kiritish degani. label esa maydonning yozuvi.",
+    },
+    ru: {
+      ctx: 'На странице появилось поле, чтобы написать имя.',
+      q: 'Какой тег делает это поле?',
+      opts: ['input', 'label', 'form', 'p'],
+      why: 'Поле для ввода делает тег input — от слова «ввод». А label — это подпись поля.',
+    },
+    en: {
+      ctx: 'A field for typing a name appeared on the page.',
+      q: 'Which tag makes this field?',
+      opts: ['input', 'label', 'form', 'p'],
+      why: 'A field for typing is made with the input tag. label is the caption of the field.',
+    },
+  },
+  {
+    id: 'html_l06_q02',
+    difficulty: 'easy',
+    tags: ['type'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "To'garak anketasi: yosh maydoniga faqat son yozilsin, yonida strelkalar chiqsin.",
+      q: 'type atributiga nima yoziladi?',
+      opts: ['number', 'text', 'password', 'son'],
+      why: "number — son degani: maydonga faqat raqam yoziladi, yonida esa strelkalar chiqadi. text har qanday harfni oladi.",
+    },
+    ru: {
+      ctx: 'Анкета кружка: в поле возраста — только число, а рядом стрелки.',
+      q: 'Что написать в атрибут type?',
+      opts: ['number', 'text', 'password', 'число'],
+      why: 'number — это «число»: в поле пишутся только цифры, а справа появляются стрелки. text принимает любые буквы.',
+    },
+    en: {
+      ctx: 'A club form: the age field takes only a number and has arrows next to it.',
+      q: 'What goes in the type attribute?',
+      opts: ['number', 'text', 'password', 'digits'],
+      why: 'number means only digits go in the field, and arrows appear next to it. text accepts any letters.',
+    },
+  },
+  {
+    id: 'html_l06_q03',
+    difficulty: 'easy',
+    tags: ['placeholder'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Maydon ichida kulrang «Masalan, Aziz» ishorasi turibdi.",
+      q: 'Yozishni boshlasangiz, ishora nima bo\'ladi?',
+      opts: ["Yo'qoladi, o'rniga yozganingiz chiqadi", 'Yozganingiz bilan birga qolaveradi', "Qorayib, javob bo'lib qoladi", "Maydonning tepasiga ko'chib o'tadi"],
+      why: "placeholder — faqat ishora: maydon bo'sh turganda ko'rinadi. Birinchi harfni yozishingiz bilan yo'qoladi, maydonni tozalasangiz qaytadi.",
+    },
+    ru: {
+      ctx: 'Внутри поля стоит серая подсказка «Например, Азиз».',
+      q: 'Что будет с подсказкой, когда начнёшь писать?',
+      opts: ['Исчезнет, вместо неё будет твой текст', 'Останется рядом с твоим текстом', 'Станет чёрной и превратится в ответ', 'Переедет над полем'],
+      why: 'placeholder — только подсказка: она видна, пока поле пустое. С первой буквой она исчезает, а если стереть текст — возвращается.',
+    },
+    en: {
+      ctx: 'There’s a grey hint “For example, Aziz” inside the field.',
+      q: 'What happens to the hint when you start typing?',
+      opts: ['It disappears and your text shows instead', 'It stays next to your text', 'It turns black and becomes the answer', 'It moves up above the field'],
+      why: 'placeholder is only a hint: it shows while the field is empty. It disappears with the first letter and comes back if you erase the text.',
+    },
+  },
+  {
+    id: 'html_l06_q04',
+    difficulty: 'easy',
+    tags: ['form'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<___>\n  <label>Ism <input></label>\n  <label>Parol\n    <input type="password">\n  </label>\n</___>',
+        ru: '<___>\n  <label>Имя <input></label>\n  <label>Пароль\n    <input type="password">\n  </label>\n</___>',
+        en: '<___>\n  <label>Name <input></label>\n  <label>Password\n    <input type="password">\n  </label>\n</___>',
+      },
+      mark: [1, 6],
+    },
+    uz: {
+      ctx: "Ikkala maydon bitta anketaga yig'ilishi kerak.",
+      q: 'Butun anketani qaysi teg o\'rab turadi?',
+      opts: ['form', 'label', 'input', 'p'],
+      why: "form — anketa degani: ichidagi hamma maydonlarni bitta qilib o'rab turadi. label esa faqat bitta maydonni yozuvi bilan o'raydi.",
+    },
+    ru: {
+      ctx: 'Оба поля нужно собрать в одну анкету.',
+      q: 'Какой тег обнимает всю анкету?',
+      opts: ['form', 'label', 'input', 'p'],
+      why: 'form — это анкета: она обнимает все поля внутри. А label обнимает только одно поле вместе с его подписью.',
+    },
+    en: {
+      ctx: 'Both fields must be gathered into one form.',
+      q: 'Which tag wraps the whole form?',
+      opts: ['form', 'label', 'input', 'p'],
+      why: 'form is the whole form: it wraps all the fields inside it. label wraps only one field together with its caption.',
+    },
+  },
+  {
+    id: 'html_l06_q05',
+    difficulty: 'medium',
+    tags: ['type'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<label>Parol\n  <input type="parol">\n</label>',
+        ru: '<label>Пароль\n  <input type="пароль">\n</label>',
+        en: '<label>Password\n  <input type="secret">\n</label>',
+      },
+      mark: [2],
+    },
+    uz: {
+      ctx: "Parol maydonining type qiymati o'zbekcha yozib qo'yilibdi.",
+      q: "Parol yozilganda maydonda nima ko'rinadi?",
+      opts: ["Harflar ochiq ko'rinadi, oddiy maydondek", "Harflar nuqtalar bo'lib yashirinadi", "Maydon sahifada umuman chiqmaydi", "Maydonga faqat son yozish mumkin"],
+      why: "Brauzer faqat o'zi biladigan type qiymatlarini taniydi. «parol» unga notanish, shuning uchun oddiy maydon chizadi: harflar ko'rinib turadi.",
+    },
+    ru: {
+      ctx: 'Значение type у поля пароля написали по-русски.',
+      q: 'Что будет видно в поле, когда пишешь пароль?',
+      opts: ['Буквы видны, как в обычном поле', 'Буквы спрячутся за точками', 'Поле вообще не появится', 'В поле можно писать только числа'],
+      why: 'Браузер знает только свои значения type. «пароль» ему незнакомо, поэтому он рисует обычное поле: буквы видны.',
+    },
+    en: {
+      ctx: 'The password field’s type value is a made-up word.',
+      q: 'What shows in the field when you type a password?',
+      opts: ['The letters are visible, like a normal field', 'The letters hide behind dots', 'The field doesn’t appear at all', 'Only numbers can be typed'],
+      why: 'The browser knows only its own type values. “secret” is unknown to it, so it draws a normal field and the letters are visible.',
+    },
+  },
+  {
+    id: 'html_l06_q06',
+    difficulty: 'medium',
+    tags: ['label'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<p>Sevimli o'yiningiz</p>\n<input type="text">`,
+        ru: '<p>Любимая игра</p>\n<input type="text">',
+        en: '<p>Favourite game</p>\n<input type="text">',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "«Sevimli o'yiningiz» yozuvini bosganda maydon tanlanmayapti.",
+      q: 'Yozuv maydonni tanlashi uchun nima qilamiz?',
+      opts: ["Yozuv bilan maydonni label ichiga olamiz", "p tegi o'rniga h2 tegini yozamiz", "Maydonga placeholder atributini qo'shamiz", "Ikkalasini form tegi ichiga olamiz"],
+      why: "Yozuv bilan maydonni faqat label bog'lay oladi: yozuvni bossangiz, kursor maydonga o'tadi. p esa oddiy abzas, u maydonni tanimaydi.",
+    },
+    ru: {
+      ctx: 'При нажатии на подпись «Любимая игра» поле не выбирается.',
+      q: 'Что сделать, чтобы подпись выбирала поле?',
+      opts: ['Взять подпись и поле в label', 'Написать h2 вместо тега p', 'Добавить полю атрибут placeholder', 'Взять оба в тег form'],
+      why: 'Связать подпись с полем может только label: нажимаешь на подпись — курсор в поле. А p — обычный абзац, он поля не знает.',
+    },
+    en: {
+      ctx: 'Clicking the caption “Favourite game” doesn’t select the field.',
+      q: 'What do we do so the caption selects the field?',
+      opts: ['Put the caption and the field inside label', 'Write h2 instead of the p tag', 'Add a placeholder attribute to the field', 'Put both inside a form tag'],
+      why: 'Only label can connect a caption to a field: click the caption and the cursor goes to the field. p is just a paragraph and doesn’t know the field.',
+    },
+  },
+  {
+    id: 'html_l06_q07',
+    difficulty: 'medium',
+    tags: ['placeholder'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Yosh maydoni bo'sh turganda unda kulrang «12» ishorasi tursin.",
+      q: 'Qaysi qator kerak?',
+      opts: ['<input type="number" placeholder="12">', '<input type="number">12</input>', '<input type="number" label="12">', '<input type="number" alt="12">'],
+      why: "Kulrang ishora placeholder atributiga yoziladi va ochuvchi input tegida turadi. input yopilmaydi, alt esa rasmlar uchun.",
+    },
+    ru: {
+      ctx: 'Пока поле возраста пустое, в нём должна стоять серая подсказка «12».',
+      q: 'Какая строка нужна?',
+      opts: ['<input type="number" placeholder="12">', '<input type="number">12</input>', '<input type="number" label="12">', '<input type="number" alt="12">'],
+      why: 'Серая подсказка пишется в атрибут placeholder в открывающем теге input. input не закрывается, а alt — для картинок.',
+    },
+    en: {
+      ctx: 'While the age field is empty, a grey hint “12” should be in it.',
+      q: 'Which line do we need?',
+      opts: ['<input type="number" placeholder="12">', '<input type="number">12</input>', '<input type="number" label="12">', '<input type="number" alt="12">'],
+      why: 'A grey hint goes in the placeholder attribute of the opening input tag. input isn’t closed, and alt is for pictures.',
+    },
+  },
+  {
+    id: 'html_l06_q08',
+    difficulty: 'medium',
+    tags: ['form'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<form>\n  <label>Ism <input></label>\n</form>',
+        ru: '<form>\n  <label>Имя <input></label>\n</form>',
+        en: '<form>\n  <label>Name <input></label>\n</form>',
+      },
+      mark: [1, 3],
+      page: true,
+    },
+    uz: {
+      ctx: "Anketa form tegi bilan o'ralgan.",
+      q: "form tegining o'zi sahifada qanday ko'rinadi?",
+      opts: ["Hech qanday: u faqat o'rab turadi", "Kulrang ramka bo'lib chiqadi", "«form» degan yozuv bo'lib chiqadi", "Katta bo'sh maydon bo'lib chiqadi"],
+      why: "form maydonlarni bitta anketaga yig'adi, lekin sahifada o'zi ko'rinmaydi. Ko'rinadigani — label yozuvi va input maydoni.",
+    },
+    ru: {
+      ctx: 'Анкета обёрнута в тег form.',
+      q: 'Как сам тег form выглядит на странице?',
+      opts: ['Никак: он только обнимает поля', 'Появляется серой рамкой', 'Появляется надписью «form»', 'Появляется большим пустым полем'],
+      why: 'form собирает поля в одну анкету, но сам на странице не виден. Видны только подпись label и поле input.',
+    },
+    en: {
+      ctx: 'The form is wrapped in a form tag.',
+      q: 'How does the form tag itself look on the page?',
+      opts: ['It doesn’t: it only wraps the fields', 'It shows as a grey frame', 'It shows as the word “form”', 'It shows as a big empty field'],
+      why: 'form gathers the fields into one form, but it isn’t visible on the page itself. Only the label caption and the input field show.',
+    },
+  },
+  {
+    id: 'html_l06_q09',
+    difficulty: 'medium',
+    tags: ['password'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<form>\n  <label>Login\n    <input type="text">\n  </label>\n  <label>Parol\n    <input type="text">\n  </label>\n</form>',
+        ru: '<form>\n  <label>Логин\n    <input type="text">\n  </label>\n  <label>Пароль\n    <input type="text">\n  </label>\n</form>',
+        en: '<form>\n  <label>Login\n    <input type="text">\n  </label>\n  <label>Password\n    <input type="text">\n  </label>\n</form>',
+      },
+    },
+    uz: {
+      ctx: "Kirish anketasi: parol yozilganda harflar ochiq ko'rinib turibdi.",
+      q: 'Nimani tuzatamiz?',
+      opts: ["6-qatorda type qiymatini password qilamiz", "3-qatorda type qiymatini password qilamiz", `6-qatorga placeholder="****" qo'shamiz`, "5-qatorda label o'rniga p tegini yozamiz"],
+      why: "Harflarni faqat type=\"password\" yashira oladi, parol maydoni esa 6-qatorda turibdi. placeholder faqat kulrang ishora, u hech narsani yashirmaydi.",
+    },
+    ru: {
+      ctx: 'Анкета входа: когда пишешь пароль, буквы видны.',
+      q: 'Что исправить?',
+      opts: ['В строке 6 сделать значение type password', 'В строке 3 сделать значение type password', 'Добавить в строку 6 placeholder="****"', 'В строке 5 написать p вместо label'],
+      why: 'Спрятать буквы может только type="password", а поле пароля — в строке 6. placeholder — всего лишь серая подсказка, он ничего не прячет.',
+    },
+    en: {
+      ctx: 'A sign-in form: the letters are visible when you type the password.',
+      q: 'What do we fix?',
+      opts: ['On line 6, change the type value to password', 'On line 3, change the type value to password', 'Add placeholder="****" to line 6', 'On line 5, write p instead of label'],
+      why: 'Only type="password" can hide the letters, and the password field is on line 6. placeholder is just a grey hint; it hides nothing.',
+    },
+  },
+  {
+    id: 'html_l06_q10',
+    difficulty: 'hard',
+    tags: ['placeholder', 'label'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Maydonning savolini label emas, faqat placeholder bilan yozdik.",
+      q: 'Bunda qanday muammo chiqadi?',
+      opts: ["Yozishni boshlasa, savol yo'qolib qoladi", "Maydon sahifada umuman ko'rinmaydi", "Kulrang savol javob bo'lib yuboriladi", "Maydonga faqat son yozish mumkin bo'ladi"],
+      why: "placeholder birinchi harfdan keyin yo'qoladi, keyin nima so'ralgani ko'rinmay qoladi. Savol doim ko'rinib turishi uchun u label ichida turadi.",
+    },
+    ru: {
+      ctx: 'Вопрос к полю написали не в label, а только в placeholder.',
+      q: 'Какая из-за этого будет проблема?',
+      opts: ['Когда начнёшь писать, вопрос исчезнет', 'Поле вообще не будет видно на странице', 'Серый вопрос отправится как ответ', 'В поле можно будет писать только числа'],
+      why: 'placeholder исчезает после первой буквы, и уже не видно, о чём спрашивали. Чтобы вопрос был виден всегда, он стоит в label.',
+    },
+    en: {
+      ctx: 'The field’s question was written only in placeholder, not in label.',
+      q: 'What problem will this cause?',
+      opts: ['Once you start typing, the question disappears', 'The field won’t show on the page at all', 'The grey question gets sent as the answer', 'Only numbers can be typed in the field'],
+      why: 'placeholder disappears after the first letter, and then you can’t see what was asked. To keep the question always visible, it goes in label.',
+    },
+  },
+  {
+    id: 'html_l06_q11',
+    difficulty: 'hard',
+    tags: ['input'],
+    mono: false,
+    sort: true,
+    vis: {
+      code: {
+        uz: '<form>\n  <label>Ism <input></label>\n  <p>Yosh</p>\n  <input type="number">\n  <label>Parol</label>\n</form>',
+        ru: '<form>\n  <label>Имя <input></label>\n  <p>Возраст</p>\n  <input type="number">\n  <label>Пароль</label>\n</form>',
+        en: '<form>\n  <label>Name <input></label>\n  <p>Age</p>\n  <input type="number">\n  <label>Password</label>\n</form>',
+      },
+    },
+    uz: {
+      ctx: "Anketada uchta yozuv bor: ism, yosh va parol.",
+      q: 'Sahifada nechta maydon chiqadi?',
+      opts: ['2 ta', '3 ta', '1 ta', '4 ta'],
+      why: "Maydonni faqat input yasay oladi, kodda esa ikkita input bor. «Parol» yozuvi label ichida, lekin uning yonida input yo'q.",
+    },
+    ru: {
+      ctx: 'В анкете три подписи: имя, возраст и пароль.',
+      q: 'Сколько полей появится на странице?',
+      opts: ['2', '3', '1', '4'],
+      why: 'Поле делает только input, а в коде их два. Подпись «Пароль» стоит в label, но поля input рядом с ней нет.',
+    },
+    en: {
+      ctx: 'The form has three captions: name, age and password.',
+      q: 'How many fields will appear on the page?',
+      opts: ['2', '3', '1', '4'],
+      why: 'Only input makes a field, and there are two in the code. The “Password” caption is in a label, but there’s no input next to it.',
+    },
+  },
+  {
+    id: 'html_l06_q12',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['type'],
+    mono: true,
+    answer: ['type'],
+    vis: {
+      code: {
+        uz: '<label>Yosh <input ___="number"></label>',
+        ru: '<label>Возраст <input ___="number"></label>',
+        en: '<label>Age <input ___="number"></label>',
+      },
+    },
+    uz: {
+      ctx: "Yosh maydoni son uchun bo'lishi kerak, yonida strelkalar bilan.",
+      q: "Bo'sh joyga atribut nomini yozing.",
+      why: "Maydonning turini type atributi aytadi: type=\"number\" — son uchun maydon, yonida strelkalar chiqadi.",
+    },
+    ru: {
+      ctx: 'Поле возраста должно быть для числа, со стрелками рядом.',
+      q: 'Впиши на пустое место имя атрибута.',
+      why: 'Вид поля задаёт атрибут type: type="number" — поле для числа, рядом появляются стрелки.',
+    },
+    en: {
+      ctx: 'The age field must be for a number, with arrows next to it.',
+      q: 'Type the attribute name in the empty spot.',
+      why: 'The type attribute sets the kind of field: type="number" is a field for a number, with arrows next to it.',
+    },
+  },
+  {
+    id: 'html_l06_q13',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['label'],
+    mono: true,
+    answer: ['</label>'],
+    vis: {
+      code: {
+        uz: '<label>\n  Taxallusingiz\n  <input type="text">\n___',
+        ru: '<label>\n  Твой ник\n  <input type="text">\n___',
+        en: '<label>\n  Your nickname\n  <input type="text">\n___',
+      },
+      mark: [4],
+    },
+    uz: {
+      ctx: "Yozuv va maydon label ichida turibdi, lekin label yopilmagan.",
+      q: "Bo'sh joyga yopuvchi tegni to'liq yozing.",
+      why: "label yozuv va maydonni o'rab turadi, shuning uchun ulardan keyin </label> bilan yopiladi. input esa yopilmaydi.",
+    },
+    ru: {
+      ctx: 'Подпись и поле стоят внутри label, но label не закрыт.',
+      q: 'Впиши на пустое место закрывающий тег целиком.',
+      why: 'label обнимает подпись и поле, поэтому после них он закрывается тегом </label>. А input не закрывается.',
+    },
+    en: {
+      ctx: 'The caption and the field are inside label, but label isn’t closed.',
+      q: 'Type the whole closing tag in the empty spot.',
+      why: 'label wraps the caption and the field, so after them it is closed with </label>. input itself isn’t closed.',
+    },
+  },
+  {
+    id: 'html_l06_q14',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['input', 'password'],
+    mono: true,
+    answer: ['<input type="password">', "<input type='password'>", '<input type="password"/>', "<input type='password'/>"],
+    vis: {
+      code: {
+        uz: '<form>\n  <label>Parol\n    ___\n  </label>\n</form>',
+        ru: '<form>\n  <label>Пароль\n    ___\n  </label>\n</form>',
+        en: '<form>\n  <label>Password\n    ___\n  </label>\n</form>',
+      },
+      mark: [3],
+    },
+    uz: {
+      ctx: "Kirish anketasida parol maydoni yo'q: harflari yashirinadigan maydon kerak.",
+      q: "Maydon tegini to'liq yozing, faqat type atributi bilan.",
+      why: "Maydonni input tegi yasaydi, harflarni type=\"password\" yashiradi: <input type=\"password\">. input yopilmaydi.",
+    },
+    ru: {
+      ctx: 'В анкете входа нет поля пароля: нужно поле, где буквы прячутся.',
+      q: 'Напиши тег поля целиком, только с атрибутом type.',
+      why: 'Поле делает тег input, а буквы прячет type="password": <input type="password">. input не закрывается.',
+    },
+    en: {
+      ctx: 'The sign-in form has no password field: we need a field that hides the letters.',
+      q: 'Type the whole field tag, with only the type attribute.',
+      why: 'The input tag makes a field, and type="password" hides the letters: <input type="password">. input isn’t closed.',
+    },
+  },
+  {
+    id: 'html_l06_q15',
+    type: 'build',
+    difficulty: 'easy',
+    tags: ['input', 'type'],
+    pieces: ['<input', ' type="number"', '>'],
+    extra: [' type="text"', '</input>'],
+    vis: {
+      code: {
+        uz: "<label>Nechta kitob o'qidingiz?\n  ___\n</label>",
+        ru: '<label>Сколько книг прочитано?\n  ___\n</label>',
+        en: '<label>How many books have you read?\n  ___\n</label>',
+      },
+    },
+    uz: {
+      ctx: "Kitob klubi anketasi: bu maydonga faqat son yozilsin, yonida strelkalar bo'lsin.",
+      q: "Bo'laklarni tartib bilan bosib, maydon tegini yig'ing",
+      why: "Maydonni <input yasaydi, type=\"number\" faqat son oladi va strelkalar chiqaradi. type=\"text\" har qanday harfni oladi, input esa yopilmaydi.",
+    },
+    ru: {
+      ctx: 'Анкета книжного клуба: в это поле — только число, а рядом стрелки.',
+      q: 'Нажимай кусочки по порядку и собери тег поля',
+      why: 'Поле делает <input, а type="number" принимает только число и показывает стрелки. type="text" берёт любые буквы, а input не закрывается.',
+    },
+    en: {
+      ctx: 'A book club form: this field takes only a number and has arrows next to it.',
+      q: 'Tap the pieces in order to build the field tag',
+      why: '<input makes a field, and type="number" takes only a number and shows arrows. type="text" accepts any letters, and input isn’t closed.',
+    },
+  },
+  {
+    id: 'html_l06_q16',
+    type: 'build',
+    difficulty: 'medium',
+    tags: ['placeholder'],
+    pieces: ['placeholder', '=', { uz: '"Masalan, Buxoro"', ru: '"Например, Бухара"', en: '"e.g. Bukhara"' }],
+    extra: ['alt', 'label'],
+    vis: {
+      code: {
+        uz: '<label>Shahringiz\n  <input type="text" ___>\n</label>',
+        ru: '<label>Твой город\n  <input type="text" ___>\n</label>',
+        en: '<label>Your city\n  <input type="text" ___>\n</label>',
+      },
+    },
+    uz: {
+      ctx: "Maydon bo'sh turganda unda kulrang «Masalan, Buxoro» ishorasi tursin.",
+      q: "Bo'laklarni tartib bilan bosib, atributni yig'ing",
+      why: "Kulrang ishorani placeholder atributi beradi: nomi, «=» va qo'shtirnoq ichidagi matn. alt rasmlar uchun, label esa teg, atribut emas.",
+    },
+    ru: {
+      ctx: 'Пока поле пустое, в нём должна стоять серая подсказка «Например, Бухара».',
+      q: 'Нажимай кусочки по порядку и собери атрибут',
+      why: 'Серую подсказку даёт атрибут placeholder: имя, «=» и текст в кавычках. alt — для картинок, а label — тег, а не атрибут.',
+    },
+    en: {
+      ctx: 'While the field is empty, a grey hint “e.g. Bukhara” should be in it.',
+      q: 'Tap the pieces in order to build the attribute',
+      why: 'The grey hint comes from the placeholder attribute: the name, “=” and the text in quotes. alt is for pictures, and label is a tag, not an attribute.',
+    },
+  },
+  {
+    id: 'html_l06_q17',
+    type: 'bug',
+    difficulty: 'hard',
+    tags: ['placeholder', 'input'],
+    line: 5,
+    vis: {
+      code: {
+        uz: '<label>Ism\n  <input type="text" placeholder="Aziz">\n</label>\n<label>Shahar\n  <input type="text">Toshkent</input>\n</label>',
+        ru: '<label>Имя\n  <input type="text" placeholder="Азиз">\n</label>\n<label>Город\n  <input type="text">Ташкент</input>\n</label>',
+        en: '<label>Name\n  <input type="text" placeholder="Aziz">\n</label>\n<label>City\n  <input type="text">Tashkent</input>\n</label>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "«Toshkent» maydon ichida kulrang ishora bo'lishi kerak edi, lekin u maydondan tashqarida chiqdi.",
+      q: 'Qaysi qatorda xato bor? Shu qatorni bosing',
+      why: "5-qatorda ishora input teglari orasiga yozilgan, input esa yopilmaydi. Kulrang ishora placeholder atributiga yoziladi: placeholder=\"Toshkent\".",
+    },
+    ru: {
+      ctx: '«Ташкент» должен был стоять в поле серой подсказкой, а оказался снаружи поля.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В строке 5 подсказку написали между тегами input, а input не закрывается. Серую подсказку пишут в атрибут placeholder: placeholder="Ташкент".',
+    },
+    en: {
+      ctx: '“Tashkent” should be a grey hint inside the field, but it showed up outside it.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'On line 5 the hint is written between input tags, but input isn’t closed. A grey hint goes in the placeholder attribute: placeholder="Tashkent".',
+    },
+  },
+  {
+    id: 'html_l06_q18',
+    type: 'tap',
+    difficulty: 'medium',
+    tags: ['password', 'type'],
+    answer: 'c',
+    vis: {
+      code: {
+        uz: '<label>Login <input data-t="a" type="text"></label>\n<label>Parol\n  <input data-t="b" type="parol">\n</label>\n<label>Maxfiy kod\n  <input data-t="c" type="password">\n</label>',
+        ru: '<label>Логин <input data-t="a" type="text"></label>\n<label>Пароль\n  <input data-t="b" type="пароль">\n</label>\n<label>Секретный код\n  <input data-t="c" type="password">\n</label>',
+        en: '<label>Login <input data-t="a" type="text"></label>\n<label>Password\n  <input data-t="b" type="secret">\n</label>\n<label>Secret code\n  <input data-t="c" type="password">\n</label>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Kirish anketasi: uchala maydon hali bo'm-bo'sh.",
+      q: "Qaysi maydonda harflar nuqta bo'lib yashirinadi? Shu maydonni bosing",
+      why: "Harflarni faqat type=\"password\" yashiradi, u «Maxfiy kod» maydonida turibdi. «parol» brauzerga notanish qiymat, u oddiy maydon chizadi.",
+    },
+    ru: {
+      ctx: 'Анкета входа: все три поля пока пустые.',
+      q: 'В каком поле буквы спрячутся за точками? Нажми на это поле',
+      why: 'Буквы прячет только type="password", а он стоит у поля «Секретный код». «пароль» браузеру незнаком, он рисует обычное поле.',
+    },
+    en: {
+      ctx: 'A sign-in form: all three fields are still empty.',
+      q: 'In which field will the letters hide behind dots? Tap that field',
+      why: 'Only type="password" hides the letters, and it’s on the “Secret code” field. “secret” is unknown to the browser, so it draws a normal field.',
+    },
+  },
+];

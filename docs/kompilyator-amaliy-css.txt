@@ -13,6 +13,8 @@
 ======================================================================
 
 1. НАЗВАНИЕ УРОКА: Amaliy ish. CSS nima va u saytni qanday o'zgartiradi
+НАЗВАНИЕ (RU): Практика. Что такое CSS и как он меняет сайт
+НАЗВАНИЕ (EN): Practice. What CSS is and how it changes a website
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 «Pitsa 30 daqiqada» sayti matnlarini rangli qiling.
 - CSS qoidalarini <style> tegi ichiga yozing
@@ -32,6 +34,8 @@ Text content and the exact colors do not matter.
 ======================================================================
 
 2. НАЗВАНИЕ УРОКА: Amaliy ish. Bezash uchun elementni qanday tanlash
+НАЗВАНИЕ (RU): Практика. Как выбрать элемент для стилизации
+НАЗВАНИЕ (EN): Practice. How to choose an element to style
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Kibersport jamoasi sayti uchun menyu yasang.
 - Menyu havolalari <a> ga `a` selektori bilan rang bering
@@ -51,6 +55,8 @@ Class names, id names, colors and text content do not matter.
 ======================================================================
 
 3. НАЗВАНИЕ УРОКА: Amaliy ish. Ranglar
+НАЗВАНИЕ (RU): Практика. Цвета
+НАЗВАНИЕ (EN): Practice. Colors
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Ob-havo sayti uchun haroratlarni rang bilan ko'rsating.
 - Har bir kun — o'z class i bilan
@@ -68,6 +74,8 @@ The exact colors, class names and text content do not matter.
 ======================================================================
 
 4. НАЗВАНИЕ УРОКА: Amaliy ish. Fon
+НАЗВАНИЕ (RU): Практика. Фон
+НАЗВАНИЕ (EN): Practice. Background
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Sayohat sayti uchun bosh bannerni yasang.
 - body ga `background-color`
@@ -89,6 +97,8 @@ The image address does not matter; the image does not have to load.
 ======================================================================
 
 5. НАЗВАНИЕ УРОКА: Amaliy ish. Matn va shriftlar
+НАЗВАНИЕ (RU): Практика. Текст и шрифты
+НАЗВАНИЕ (EN): Practice. Text and fonts
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 O'yin yangiliklari blogi uchun maqola sahifasini bezang.
 - Maqola sarlavhasi <h1> ga `font-size` va `text-align: center`
@@ -110,6 +120,8 @@ Fonts, colors and text content do not matter.
 ======================================================================
 
 6. НАЗВАНИЕ УРОКА: Amaliy ish. Elementlar o'lchami
+НАЗВАНИЕ (RU): Практика. Размеры элементов
+НАЗВАНИЕ (EN): Practice. Element sizes
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Onlayn kurslar sayti uchun «Mening kurslarim» sahifasini yasang.
 - Kurs rasmi <img> ga `width` va `height`: px da
@@ -129,6 +141,8 @@ Exact values, colors, the image address and text content do not matter; the imag
 ======================================================================
 
 7. НАЗВАНИЕ УРОКА: Amaliy ish. Box Model
+НАЗВАНИЕ (RU): Практика. Box Model
+НАЗВАНИЕ (EN): Practice. Box Model
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Sayt uchun «Kirish» oynasini yasang.
 - Oyna <form> ga `width` va ikki qiymatli `padding`: 20px 24px
@@ -150,6 +164,8 @@ Exact values, colors and text content do not matter.
 ======================================================================
 
 8. НАЗВАНИЕ УРОКА: Amaliy ish. Chiroyli kartochkalar
+НАЗВАНИЕ (RU): Практика. Красивые карточки
+НАЗВАНИЕ (EN): Practice. Beautiful cards
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Krossovka do'koni uchun mahsulot kartasini yasang.
 - <div class="karta"> ichida rasm, <h2>, <p> va narx
@@ -169,6 +185,8 @@ Exact values, colors and text content do not matter.
 ======================================================================
 
 9. НАЗВАНИЕ УРОКА: Amaliy ish. Elementlar sahifada qanday turadi
+НАЗВАНИЕ (RU): Практика. Как элементы ведут себя на странице
+НАЗВАНИЕ (EN): Practice. How elements behave on a page
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Do'kon uchun futbolka sahifasini yasang.
 - Ranglar <span>: `display: inline-block`, `width`, `height`
@@ -190,6 +208,8 @@ Class names, values and text content do not matter.
 ======================================================================
 
 10. НАЗВАНИЕ УРОКА: Amaliy ish. Flexbox: elementlarni joylashtirish
+НАЗВАНИЕ (RU): Практика. Flexbox: расположение элементов
+НАЗВАНИЕ (EN): Practice. Flexbox: arranging elements
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Ijtimoiy tarmoq uchun profil sahifasini yasang.
 - Profil: rasm chapda, ma'lumot o'ngda — `display: flex` va `flex-direction: row`
@@ -209,6 +229,8 @@ Class names, values and text content do not matter.
 ======================================================================
 
 11. НАЗВАНИЕ УРОКА: Amaliy ish. Flexbox: tekislash
+НАЗВАНИЕ (RU): Практика. Flexbox: выравнивание
+НАЗВАНИЕ (EN): Practice. Flexbox: alignment
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Internet do'kon katalogi sahifasini yasang.
 - Yuqori qator: «12 ta mahsulot» chapda, «Saralash» o'ngda — `justify-content: space-between`
@@ -228,6 +250,8 @@ Class names, values and text content do not matter.
 ======================================================================
 
 12. НАЗВАНИЕ УРОКА: Amaliy ish. Pozitsiyalash
+НАЗВАНИЕ (RU): Практика. Позиционирование
+НАЗВАНИЕ (EN): Practice. Positioning
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Internet do'kon uchun mahsulot kartasi va savatni yasang.
 - Mahsulot rasmi blokiga `position: relative`
@@ -248,6 +272,8 @@ Exact values, colors and text content do not matter.
 ======================================================================
 
 13. НАЗВАНИЕ УРОКА: Amaliy ish. Hover va transform
+НАЗВАНИЕ (RU): Практика. Hover и transform
+НАЗВАНИЕ (EN): Practice. Hover and transform
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Musiqa sayti albomlarini sichqoncha bilan jonlantiring.
 - Kartalar va tugmalarga `cursor: pointer`
@@ -269,6 +295,8 @@ Values, class names and text content do not matter.
 ======================================================================
 
 14. НАЗВАНИЕ УРОКА: Amaliy ish. Silliq effektlar
+НАЗВАНИЕ (RU): Практика. Плавные эффекты
+НАЗВАНИЕ (EN): Practice. Smooth effects
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Onlayn kinoteatr sayti uchun tariflar blokini yasang.
 - Tarif kartalari yonma-yon: `display: flex` va `gap`
@@ -290,6 +318,8 @@ Values, class names and text content do not matter.
 ======================================================================
 
 15. НАЗВАНИЕ УРОКА: Amaliy ish. CSS animatsiyalar
+НАЗВАНИЕ (RU): Практика. CSS-анимации
+НАЗВАНИЕ (EN): Practice. CSS animations
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 Sayt bosh sahifasidagi «Pastga» strelkasini sakratib qo'ying.
 - Nomli `@keyframes` yozing, masalan `sakrash`
@@ -309,6 +339,8 @@ Names, values and text content do not matter.
 ======================================================================
 
 16. НАЗВАНИЕ УРОКА: Amaliy ish. Moslashuvchan sayt
+НАЗВАНИЕ (RU): Практика. Адаптивный сайт
+НАЗВАНИЕ (EN): Practice. Responsive website
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 To'garaklar sayti: kompyuterda kartalar yonma-yon, telefonda — ustma-ust.
 - Kartalar qutisiga `display: flex`, kartalarga `width: 30%`
@@ -329,6 +361,8 @@ Values, class names and text content do not matter.
 ======================================================================
 
 17. НАЗВАНИЕ УРОКА: Yakuniy loyiha
+НАЗВАНИЕ (RU): Финальный проект
+НАЗВАНИЕ (EN): Final project
 ЗАДАНИЕ ДЛЯ УЧЕНИКА:
 O'z o'yin do'koningiz saytini yarating.
 - <header> va <nav>: `display: flex`, `justify-content: space-between`

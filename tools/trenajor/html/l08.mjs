@@ -1,0 +1,622 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА HTML · урок 8 «Структура настоящего сайта» — 11 вопросов с выбором + 3 «впиши ответ» (q12–q14). Игровые: q15–q16 «собери», q17 «найди ошибку», q18 «нажми на странице».
+// footer (что в нём), header (что значит), сколько section в main, части сайта — внутри body,
+// nav вокруг меню, а не заголовка; опечатка foter; программа чтения с экрана идёт к main;
+// header и head в одной строке с h1; вид даёт CSS; main один (два main → section);
+// section снаружи main. Ситуации тестов курса (tools/webtest/html/l08.jsx) не повторяются.
+// Формат — FORMAT.md. Сайт вопросов — «Kodi Zoo» (название одно на трёх языках).
+// =============================================================================
+export default [
+  {
+    id: 'html_l08_q01',
+    difficulty: 'easy',
+    tags: ['footer'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Hayvonot bog'i saytining eng pastida «© 2026» va telefon raqami turibdi.",
+      q: "Bu qismni qaysi teg o'rab turadi?",
+      opts: ['footer', 'header', 'main', 'nav'],
+      why: "footer ya'ni sayt oxiri degani. Unda odatda mualliflik huquqi, aloqa va qo'shimcha havolalar turadi.",
+    },
+    ru: {
+      ctx: 'В самом низу сайта зоопарка — «© 2026» и номер телефона.',
+      q: 'Какой тег обнимает эту часть?',
+      opts: ['footer', 'header', 'main', 'nav'],
+      why: 'footer — это низ сайта, его подвал. Там обычно стоят авторские права, контакты и дополнительные ссылки.',
+    },
+    en: {
+      ctx: 'At the very bottom of the zoo site there is “© 2026” and a phone number.',
+      q: 'Which tag wraps this part?',
+      opts: ['footer', 'header', 'main', 'nav'],
+      why: 'footer means the bottom of the site. It usually holds the copyright, contacts and extra links.',
+    },
+  },
+  {
+    id: 'html_l08_q02',
+    difficulty: 'easy',
+    tags: ['header'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "header — inglizcha so'z.",
+      q: "U saytning qaysi qismini bildiradi?",
+      opts: [
+        "Saytning ko'rinadigan boshi",
+        "Sahifa haqidagi ko'rinmas ma'lumot",
+        "Saytning eng pastki qismi",
+        "Sahifaning asosiy mazmuni",
+      ],
+      why: "header ya'ni sayt boshi degani: unda odatda sayt nomi va menyu turadi. Ko'rinmas ma'lumot esa head ichida bo'ladi.",
+    },
+    ru: {
+      ctx: 'header — английское слово.',
+      q: 'Какую часть сайта он обозначает?',
+      opts: [
+        'Видимый верх сайта, его шапка',
+        'Невидимые сведения о странице',
+        'Самый низ сайта',
+        'Главное содержание страницы',
+      ],
+      why: 'header — это шапка, верх сайта: там обычно название сайта и меню. А невидимые сведения лежат в head.',
+    },
+    en: {
+      ctx: 'header is an English word.',
+      q: 'Which part of the site does it mean?',
+      opts: [
+        'The visible top of the site',
+        'Invisible info about the page',
+        'The very bottom of the site',
+        'The main content of the page',
+      ],
+      why: 'header means the top of the site: it usually holds the site name and the menu. Invisible info goes in head.',
+    },
+  },
+  {
+    id: 'html_l08_q03',
+    difficulty: 'easy',
+    tags: ['section', 'main'],
+    mono: false,
+    sort: true,
+    vis: {
+      code: {
+        uz: `<main>\n  <section><h2>Sherlar</h2></section>\n  <section><h2>Pingvinlar</h2></section>\n  <section><h2>Mushuklar</h2></section>\n</main>`,
+        ru: `<main>\n  <section><h2>Львы</h2></section>\n  <section><h2>Пингвины</h2></section>\n  <section><h2>Кошки</h2></section>\n</main>`,
+        en: `<main>\n  <section><h2>Lions</h2></section>\n  <section><h2>Penguins</h2></section>\n  <section><h2>Cats</h2></section>\n</main>`,
+      },
+    },
+    uz: {
+      ctx: "Bu — hayvonot bog'i sahifasining asosiy qismi.",
+      q: "Unda nechta bo'lim bor?",
+      opts: ['3', '4', '1', '2'],
+      why: "Har bir section — bitta bo'lim, ular uchta. main esa bo'lim emas: u hammasini o'rab turgan asosiy qism.",
+    },
+    ru: {
+      ctx: 'Это главная часть страницы зоопарка.',
+      q: 'Сколько в ней разделов?',
+      opts: ['3', '4', '1', '2'],
+      why: 'Каждый section — один раздел, их три. А main — не раздел: это главная часть, которая обнимает их все.',
+    },
+    en: {
+      ctx: 'This is the main part of the zoo page.',
+      q: 'How many sections does it have?',
+      opts: ['3', '4', '1', '2'],
+      why: "Each section is one section, and there are three. main isn't a section: it's the main part that wraps them all.",
+    },
+  },
+  {
+    id: 'html_l08_q04',
+    difficulty: 'easy',
+    tags: ['body'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: `<html>\n  <head>\n    <title>Kodi Zoo</title>\n  </head>\n  <___>\n    <header>…</header>\n    <main>…</main>\n    <footer>…</footer>\n  </___>\n</html>`,
+    },
+    uz: {
+      ctx: "header, main va footer — sahifaning ko'rinadigan qismlari.",
+      q: "Bo'sh joylarga qaysi teg yoziladi?",
+      opts: ['body', 'head', 'main', 'nav'],
+      why: "Sahifada ko'rinadigan hamma narsa body ichida turadi, sayt qismlari ham. head esa faqat ko'rinmas ma'lumot uchun.",
+    },
+    ru: {
+      ctx: 'header, main и footer — видимые части страницы.',
+      q: 'Какой тег пишется на пустые места?',
+      opts: ['body', 'head', 'main', 'nav'],
+      why: 'Всё, что видно на странице, стоит внутри body, части сайта тоже. А head — только для невидимых сведений.',
+    },
+    en: {
+      ctx: 'header, main and footer are the visible parts of the page.',
+      q: 'Which tag goes in the empty spots?',
+      opts: ['body', 'head', 'main', 'nav'],
+      why: 'Everything you see on a page sits inside body, and so do the site parts. head is only for invisible info.',
+    },
+  },
+  {
+    id: 'html_l08_q05',
+    difficulty: 'medium',
+    tags: ['nav'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<header>\n  <nav>\n    <h1>Kodi Zoo</h1>\n  </nav>\n  <a href="sherlar.html">Sherlar</a>\n  <a href="xarita.html">Xarita</a>\n</header>`,
+        ru: `<header>\n  <nav>\n    <h1>Kodi Zoo</h1>\n  </nav>\n  <a href="lvy.html">Львы</a>\n  <a href="karta.html">Карта</a>\n</header>`,
+        en: `<header>\n  <nav>\n    <h1>Kodi Zoo</h1>\n  </nav>\n  <a href="lions.html">Lions</a>\n  <a href="map.html">Map</a>\n</header>`,
+      },
+    },
+    uz: {
+      ctx: "Sayt boshida sayt nomi va ikkita havola bor.",
+      q: "Kodda nima o'z joyida turmagan?",
+      opts: [
+        "nav menyuni emas, sarlavhani o'rab turibdi",
+        "h1 sarlavhasi header ichida turibdi",
+        "Ikkala havola header ichida turibdi",
+        "header ichida nav bo'lishi mumkin emas",
+      ],
+      why: "nav — menyu, ya'ni sayt bo'ylab yuradigan havolalar uchun. Bu yerda u sarlavhani o'rab turibdi, havolalar esa tashqarida qolgan.",
+    },
+    ru: {
+      ctx: 'В шапке сайта — название и две ссылки.',
+      q: 'Что в коде стоит не на своём месте?',
+      opts: [
+        'nav обнимает заголовок, а не меню',
+        'Заголовок h1 стоит внутри header',
+        'Обе ссылки стоят внутри header',
+        'Внутри header не может быть nav',
+      ],
+      why: 'nav — это меню, то есть ссылки для прогулки по сайту. Здесь он обнимает заголовок, а ссылки остались снаружи.',
+    },
+    en: {
+      ctx: 'The site header has the site name and two links.',
+      q: 'What in the code is in the wrong place?',
+      opts: [
+        'nav wraps the heading, not the menu',
+        'The h1 heading is inside header',
+        'Both links are inside header',
+        'header cannot have nav inside it',
+      ],
+      why: 'nav is the menu, the links for moving around the site. Here it wraps the heading, and the links are left outside.',
+    },
+  },
+  {
+    id: 'html_l08_q06',
+    difficulty: 'medium',
+    tags: ['footer'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: `<header>…</header>\n<main>…</main>\n<foter>\n  <p>© 2026 Kodi Zoo</p>\n</foter>`,
+    },
+    uz: {
+      ctx: "Inspektor sayt oxirini ko'rmayapti, lekin pastdagi matn joyida turibdi.",
+      q: "Nega shunday bo'ldi?",
+      opts: [
+        "Teg nomida bitta harf tushib qolgan",
+        "Sayt oxiri main qismidan keyin turibdi",
+        "Sayt oxirida p tegi bo'lmasligi kerak",
+        "footer faqat header ichida bo'ladi",
+      ],
+      why: "Brauzer foter degan tegni tanimaydi: matnni ko'rsatadi, lekin uni sayt oxiri deb bilmaydi. To'g'ri nomi — footer.",
+    },
+    ru: {
+      ctx: 'Инспектор не видит низ сайта, хотя текст внизу на месте.',
+      q: 'Почему так вышло?',
+      opts: [
+        'В имени тега пропущена одна буква',
+        'Низ сайта стоит после части main',
+        'В низу сайта не бывает тега p',
+        'footer бывает только внутри header',
+      ],
+      why: 'Браузер не знает тега foter: текст показывает, но низом сайта его не считает. Правильное имя — footer.',
+    },
+    en: {
+      ctx: "The Inspector doesn't see the site bottom, though the text at the bottom is there.",
+      q: 'Why did this happen?',
+      opts: [
+        'One letter is missing in the tag name',
+        'The site bottom comes after main',
+        'The site bottom cannot have a p tag',
+        'footer can only be inside header',
+      ],
+      why: "The browser doesn't know a foter tag: it shows the text but doesn't treat it as the site bottom. The right name is footer.",
+    },
+  },
+  {
+    id: 'html_l08_q07',
+    difficulty: 'medium',
+    tags: ['main'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Ko'zi ojiz bola saytni ekrandan o'qib beruvchi dastur bilan ochdi.",
+      q: "Asosiy matnga darrov o'tish uchun dastur qaysi tegni qidiradi?",
+      opts: ['main', 'header', 'nav', 'footer'],
+      why: "main — sahifaning asosiy qismi va u bitta bo'ladi. Shuning uchun dastur menyu va sayt boshini o'tkazib, darrov main tegiga o'ta oladi.",
+    },
+    ru: {
+      ctx: 'Незрячий ребёнок открыл сайт программой чтения с экрана.',
+      q: 'Какой тег ищет программа, чтобы сразу перейти к главному?',
+      opts: ['main', 'header', 'nav', 'footer'],
+      why: 'main — главная часть страницы, и она одна. Поэтому программа пропускает меню и шапку и сразу переходит к main.',
+    },
+    en: {
+      ctx: 'A blind kid opened the site with a screen reader.',
+      q: 'Which tag does the program look for to jump to the main text?',
+      opts: ['main', 'header', 'nav', 'footer'],
+      why: 'main is the main part of the page, and there is only one. So the program skips the menu and the header and jumps straight to main.',
+    },
+  },
+  {
+    id: 'html_l08_q08',
+    difficulty: 'medium',
+    tags: ['header', 'head'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Sayt boshida «Kodi Zoo» asosiy sarlavhasi tursin.",
+      q: "Qaysi qator to'g'ri?",
+      opts: [
+        '<header><h1>Kodi Zoo</h1></header>',
+        '<head><h1>Kodi Zoo</h1></head>',
+        '<header><h1>Kodi Zoo</header></h1>',
+        '<header>Kodi Zoo<h1></header>',
+      ],
+      why: "header — ko'rinadigan sayt boshi, head esa ko'rinmas ma'lumot. Ichkaridagi h1 avval yopiladi, keyin header.",
+    },
+    ru: {
+      ctx: 'В шапке сайта должен стоять главный заголовок «Kodi Zoo».',
+      q: 'Какая строка правильная?',
+      opts: [
+        '<header><h1>Kodi Zoo</h1></header>',
+        '<head><h1>Kodi Zoo</h1></head>',
+        '<header><h1>Kodi Zoo</header></h1>',
+        '<header>Kodi Zoo<h1></header>',
+      ],
+      why: 'header — видимый верх сайта, а head — невидимые сведения. Внутренний h1 закрывается первым, потом header.',
+    },
+    en: {
+      ctx: 'The main heading “Kodi Zoo” should sit at the top of the site.',
+      q: 'Which line is correct?',
+      opts: [
+        '<header><h1>Kodi Zoo</h1></header>',
+        '<head><h1>Kodi Zoo</h1></head>',
+        '<header><h1>Kodi Zoo</header></h1>',
+        '<header>Kodi Zoo<h1></header>',
+      ],
+      why: 'header is the visible top of the site, and head is invisible info. The inner h1 closes first, then header.',
+    },
+  },
+  {
+    id: 'html_l08_q09',
+    difficulty: 'medium',
+    tags: ['header'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<header>\n  <h1>Kodi Zoo</h1>\n</header>\n<main>\n  <p>Bizda 30 xil hayvon bor.</p>\n</main>`,
+        ru: `<header>\n  <h1>Kodi Zoo</h1>\n</header>\n<main>\n  <p>У нас 30 видов животных.</p>\n</main>`,
+        en: `<header>\n  <h1>Kodi Zoo</h1>\n</header>\n<main>\n  <p>We have 30 kinds of animals.</p>\n</main>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Sayt boshi header tegiga o'raldi, lekin tepasi rangli bo'lib qolmadi.",
+      q: "Saytga rang nima bilan beriladi?",
+      opts: [
+        "CSS bilan — bu ko'rinish uchun alohida til",
+        "header ichiga nav qo'shilsa, rang chiqadi",
+        "header o'rniga head yozilsa, rang chiqadi",
+        "header ikki marta yozilsa, rang chiqadi",
+      ],
+      why: "header, main va footer sahifa ko'rinishini o'zgartirmaydi, faqat qaysi qism ekanini aytadi. Rang, shrift va ramkalarni CSS beradi.",
+    },
+    ru: {
+      ctx: 'Верх сайта обернули в header, но цветным он не стал.',
+      q: 'Чем сайту задают цвет?',
+      opts: [
+        'CSS — отдельным языком для внешнего вида',
+        'Цвет появится, если добавить в header nav',
+        'Цвет появится, если написать head вместо header',
+        'Цвет появится, если написать header дважды',
+      ],
+      why: 'header, main и footer не меняют вид страницы, а только говорят, какая это часть. Цвет, шрифт и рамки задаёт CSS.',
+    },
+    en: {
+      ctx: "The top of the site was wrapped in header, but it didn't turn colorful.",
+      q: 'What gives a site its colors?',
+      opts: [
+        'CSS, a separate language for the look',
+        'Adding nav inside header gives color',
+        'Writing head instead of header gives color',
+        'Writing header twice gives color',
+      ],
+      why: "header, main and footer don't change how the page looks, they only say which part is which. Colors, fonts and borders come from CSS.",
+    },
+  },
+  {
+    id: 'html_l08_q10',
+    difficulty: 'hard',
+    tags: ['main', 'section'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<body>\n  <header>…</header>\n  <main>\n    <h2>Sherlar</h2>\n  </main>\n  <main>\n    <h2>Pingvinlar</h2>\n  </main>\n  <footer>…</footer>\n</body>`,
+        ru: `<body>\n  <header>…</header>\n  <main>\n    <h2>Львы</h2>\n  </main>\n  <main>\n    <h2>Пингвины</h2>\n  </main>\n  <footer>…</footer>\n</body>`,
+        en: `<body>\n  <header>…</header>\n  <main>\n    <h2>Lions</h2>\n  </main>\n  <main>\n    <h2>Penguins</h2>\n  </main>\n  <footer>…</footer>\n</body>`,
+      },
+    },
+    uz: {
+      ctx: "Asosiy qismda ikki mavzu bor va kodda ikkita main bo'lib qoldi.",
+      q: "Kodni qanday tuzatish kerak?",
+      opts: [
+        "Bitta main, uning ichida ikkita section",
+        "Ikkinchi main o'rniga footer yozish",
+        "Ikkala main o'rniga header yozish",
+        "Ikkala mavzuni nav ichiga ko'chirish",
+      ],
+      why: "Sahifada main faqat bitta bo'ladi. Mavzular uning ichida section bo'limlariga ajratiladi, section esa xohlagancha bo'lishi mumkin.",
+    },
+    ru: {
+      ctx: 'В главной части две темы, и в коде получилось два main.',
+      q: 'Как исправить код?',
+      opts: [
+        'Один main, а внутри него два section',
+        'Написать footer вместо второго main',
+        'Написать header вместо обоих main',
+        'Перенести обе темы внутрь nav',
+      ],
+      why: 'main на странице только один. Темы внутри него делятся на разделы section, а section может быть сколько угодно.',
+    },
+    en: {
+      ctx: 'The main part has two topics, and the code ended up with two main tags.',
+      q: 'How should the code be fixed?',
+      opts: [
+        'One main with two sections inside it',
+        'Write footer instead of the second main',
+        'Write header instead of both main tags',
+        'Move both topics inside nav',
+      ],
+      why: 'A page has only one main. Topics inside it are split into section parts, and there can be as many sections as you like.',
+    },
+  },
+  {
+    id: 'html_l08_q11',
+    difficulty: 'hard',
+    tags: ['section', 'main'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<header>…</header>\n<main>\n  <section><h2>Sherlar</h2></section>\n</main>\n<section><h2>Pingvinlar</h2></section>\n<footer>…</footer>`,
+        ru: `<header>…</header>\n<main>\n  <section><h2>Львы</h2></section>\n</main>\n<section><h2>Пингвины</h2></section>\n<footer>…</footer>`,
+        en: `<header>…</header>\n<main>\n  <section><h2>Lions</h2></section>\n</main>\n<section><h2>Penguins</h2></section>\n<footer>…</footer>`,
+      },
+    },
+    uz: {
+      ctx: "Inspektorda Pingvinlar bo'limi asosiy qism ramkasidan tashqarida chiqdi.",
+      q: "Uni asosiy qismga qaytarish uchun nima qilish kerak?",
+      opts: [
+        "Pingvinlar bo'limini </main> tegidan oldinga ko'chirish",
+        "Pingvinlar bo'limini header ichiga ko'chirish",
+        "Pingvinlar qatorida section o'rniga main yozish",
+        "</main> tegini butunlay o'chirib tashlash",
+      ],
+      why: "main ichidagi hamma narsa </main> tegidan oldin turadi. Pingvinlar bo'limi undan keyin yozilgan, shuning uchun asosiy qismdan tashqarida qoldi.",
+    },
+    ru: {
+      ctx: 'В Инспекторе раздел «Пингвины» оказался за рамкой главной части.',
+      q: 'Что сделать, чтобы вернуть его в главную часть?',
+      opts: [
+        'Перенести раздел «Пингвины» выше </main>',
+        'Перенести раздел «Пингвины» внутрь header',
+        'В строке «Пингвины» написать main вместо section',
+        'Совсем удалить закрывающий тег </main>',
+      ],
+      why: 'Всё, что внутри main, стоит до </main>. Раздел «Пингвины» написан после него, поэтому оказался вне главной части.',
+    },
+    en: {
+      ctx: 'In the Inspector, the Penguins section ended up outside the main part frame.',
+      q: 'What brings it back into the main part?',
+      opts: [
+        'Move the Penguins section above </main>',
+        'Move the Penguins section inside header',
+        'Write main instead of section for Penguins',
+        'Delete the closing </main> tag completely',
+      ],
+      why: 'Everything inside main comes before </main>. The Penguins section is written after it, so it ended up outside the main part.',
+    },
+  },
+  // ---- «Впиши ответ» (type: 'input') ----
+  {
+    id: 'html_l08_q12',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['header'],
+    mono: true,
+    answer: ['</header>'],
+    vis: {
+      code: `<header>\n  <h1>Kodi Zoo</h1>\n  <nav>…</nav>\n___\n<main>…</main>\n<footer>…</footer>`,
+    },
+    uz: {
+      ctx: "Sayt boshi ochilgan, lekin yopilmay qolgan.",
+      q: "Bo'sh joyga uni yopadigan tegni to'liq yozing.",
+      why: "header ochuvchi teg bilan boshlanib, </header> bilan tugaydi. Undan keyin main boshlanadi, shuning uchun sayt boshi shu yerda yopiladi.",
+    },
+    ru: {
+      ctx: 'Шапка сайта открыта, но не закрыта.',
+      q: 'Впиши на пустое место закрывающий её тег целиком.',
+      why: 'header начинается открывающим тегом и заканчивается </header>. Дальше начинается main, поэтому шапка закрывается здесь.',
+    },
+    en: {
+      ctx: 'The site header is opened but never closed.',
+      q: 'Type the full tag that closes it in the empty spot.',
+      why: 'header starts with an opening tag and ends with </header>. main begins right after it, so the header closes here.',
+    },
+  },
+  {
+    id: 'html_l08_q13',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['main'],
+    mono: true,
+    answer: ['main', '<main>'],
+    vis: {
+      code: `<header>…</header>\n<___>\n  <section>…</section>\n  <section>…</section>\n</___>\n<footer>…</footer>`,
+    },
+    uz: {
+      ctx: "Ikki bo'limni sahifaning asosiy qismi o'rab turishi kerak.",
+      q: "Bo'sh joylarga qaysi teg nomi yoziladi? Faqat nomini yozing.",
+      why: "main ya'ni asosiy qism degani: section bo'limlari uning ichida turadi. Sahifada main bitta bo'ladi.",
+    },
+    ru: {
+      ctx: 'Два раздела должна обнимать главная часть страницы.',
+      q: 'Какое имя тега вписать на пустые места? Только имя.',
+      why: 'main — главная часть страницы: разделы section стоят внутри неё. main на странице один.',
+    },
+    en: {
+      ctx: 'The main part of the page should wrap the two sections.',
+      q: 'Which tag name goes in the empty spots? Just the name.',
+      why: 'main is the main part of the page: the section parts sit inside it. A page has only one main.',
+    },
+  },
+  {
+    id: 'html_l08_q14',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['footer'],
+    mono: true,
+    answer: ['<footer>2026</footer>', '<footer><p>2026</p></footer>'],
+    vis: {
+      code: `<body>\n  <header>…</header>\n  <main>…</main>\n  ___\n</body>`,
+    },
+    uz: {
+      ctx: "Sahifada sayt oxiri yo'q. Unda 2026 soni tursin.",
+      q: "Bo'sh joyga ichida 2026 turgan sayt oxirini bitta qatorda yozing.",
+      why: "Sayt oxiri — footer tegi. U main tegidan keyin, body ichida turadi, 2026 esa teglar o'rtasida: <footer>2026</footer>.",
+    },
+    ru: {
+      ctx: 'На странице нет низа сайта. Пусть в нём стоит число 2026.',
+      q: 'Впиши на пустое место низ сайта с 2026 внутри, одной строкой.',
+      why: 'Низ сайта — тег footer. Он стоит после main внутри body, а 2026 — между тегами: <footer>2026</footer>.',
+    },
+    en: {
+      ctx: 'The page has no site bottom. Let it hold the number 2026.',
+      q: 'Type the site bottom with 2026 inside, on one line, in the empty spot.',
+      why: 'The site bottom is the footer tag. It comes after main inside body, and 2026 goes between the tags: <footer>2026</footer>.',
+    },
+  },
+  // ---- Игровые: «собери» (q15, q16), «найди ошибку» (q17), «нажми на странице» (q18) ----
+  {
+    id: 'html_l08_q15',
+    type: 'build',
+    difficulty: 'easy',
+    tags: ['header', 'h1'],
+    pieces: ['<header>', '<h1>', { uz: 'Kodi maktabi', ru: 'Школа Коди', en: 'Kodi School' }, '</h1>', '</header>'],
+    extra: ['<head>', '</head>'],
+    vis: { code: `<body>\n  ___\n  <main>…</main>\n  <footer>…</footer>\n</body>` },
+    uz: {
+      ctx: "Maktab saytida sayt boshi yo'q. Tepada maktab nomi tursin.",
+      q: "Bo'laklarni tartib bilan bosib, sayt boshini yig'ing",
+      why: "Sayt boshini header tegi o'rab turadi, maktab nomi esa uning ichida h1 sarlavhasi bo'ladi. head — sahifa haqidagi ko'rinmas ma'lumot, u body ichida turmaydi.",
+    },
+    ru: {
+      ctx: 'У сайта школы нет шапки. Пусть наверху стоит название школы.',
+      q: 'Нажимай кусочки по порядку и собери шапку сайта',
+      why: 'Шапку сайта обнимает тег header, а название школы внутри неё — заголовок h1. head — невидимые сведения о странице, внутри body его не бывает.',
+    },
+    en: {
+      ctx: 'The school site has no header. The school name should be at the top.',
+      q: 'Tap the pieces in order to build the site header',
+      why: 'The header tag wraps the top of the site, and the school name inside it is an h1 heading. head is invisible info about the page, and it never goes inside body.',
+    },
+  },
+  {
+    id: 'html_l08_q16',
+    type: 'build',
+    difficulty: 'medium',
+    tags: ['section', 'main'],
+    pieces: ['<section>', '<h2>', { uz: 'Narxlar', ru: 'Цены', en: 'Prices' }, '</h2>', '</section>'],
+    extra: ['<main>', '<footer>'],
+    vis: {
+      code: {
+        uz: `<main>\n  <section>\n    <h2>Menyu</h2>\n  </section>\n  ___\n</main>`,
+        ru: `<main>\n  <section>\n    <h2>Меню</h2>\n  </section>\n  ___\n</main>`,
+        en: `<main>\n  <section>\n    <h2>Menu</h2>\n  </section>\n  ___\n</main>`,
+      },
+    },
+    uz: {
+      ctx: "Kafe saytining asosiy qismida «Menyu» bo'limi bor. Endi «Narxlar» bo'limi kerak.",
+      q: "Bo'laklarni tartib bilan bosib, «Narxlar» bo'limini yig'ing",
+      why: "Asosiy qismdagi har bir mavzu o'zining section tegida turadi va o'z sarlavhasi bilan boshlanadi. main sahifada bitta bo'ladi, ikkinchisi kerak emas.",
+    },
+    ru: {
+      ctx: 'В главной части сайта кафе есть раздел «Меню». Теперь нужен раздел «Цены».',
+      q: 'Нажимай кусочки по порядку и собери раздел «Цены»',
+      why: 'Каждая тема главной части стоит в своём теге section и начинается со своего заголовка. main на странице один, второй не нужен.',
+    },
+    en: {
+      ctx: 'The main part of the café site has a “Menu” section. Now it needs a “Prices” section.',
+      q: 'Tap the pieces in order to build the “Prices” section',
+      why: 'Each topic of the main part sits in its own section tag and starts with its own heading. A page has only one main, so a second one is not needed.',
+    },
+  },
+  {
+    id: 'html_l08_q17',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['footer'],
+    line: 5,
+    vis: { code: `<header>\n  <h1>Kodi FC</h1>\n</header>\n<main>…</main>\n<footer>© 2026 Kodi FC</header>` },
+    uz: {
+      ctx: "Futbol klubi saytining kodida bitta qator xato yozilgan.",
+      q: "Qaysi qatorda xato bor? Shu qatorni bosing",
+      why: "5-qatorda footer tegi yopuvchi header tegi bilan yopilgan. Har bir qism o'z nomi bilan yopiladi: sayt oxiri </footer> bilan tugaydi.",
+    },
+    ru: {
+      ctx: 'В коде сайта футбольного клуба одна строка написана с ошибкой.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В 5-й строке тег footer закрыт закрывающим тегом header. Каждая часть закрывается своим именем: низ сайта заканчивается на </footer>.',
+    },
+    en: {
+      ctx: 'One line in the code of the football club site has a mistake.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'On line 5 the footer tag is closed with a closing header tag. Each part closes with its own name: the site bottom ends with </footer>.',
+    },
+  },
+  {
+    id: 'html_l08_q18',
+    type: 'tap',
+    difficulty: 'easy',
+    tags: ['footer'],
+    answer: 'footer',
+    vis: {
+      page: {
+        uz: `<header data-t="header"><h1>Kodi lageri</h1></header>\n<nav data-t="nav"><a href="smena.html">Smenalar</a> · <a href="narx.html">Narxlar</a> · <a href="aloqa.html">Aloqa</a></nav>\n<main data-t="main"><h2>Yozgi smena</h2><p>Iyunda tog'da suzish, futbol va gulxan kechalari bo'ladi.</p></main>\n<footer data-t="footer"><p>© 2026 Kodi lageri · Tel: 90 123 45 67</p></footer>`,
+        ru: `<header data-t="header"><h1>Лагерь Коди</h1></header>\n<nav data-t="nav"><a href="smena.html">Смены</a> · <a href="ceny.html">Цены</a> · <a href="kontakty.html">Контакты</a></nav>\n<main data-t="main"><h2>Летняя смена</h2><p>В июне в горах — плавание, футбол и вечера у костра.</p></main>\n<footer data-t="footer"><p>© 2026 Лагерь Коди · Тел: 90 123 45 67</p></footer>`,
+        en: `<header data-t="header"><h1>Kodi Camp</h1></header>\n<nav data-t="nav"><a href="sessions.html">Sessions</a> · <a href="prices.html">Prices</a> · <a href="contacts.html">Contacts</a></nav>\n<main data-t="main"><h2>Summer session</h2><p>In June in the mountains: swimming, football and campfire nights.</p></main>\n<footer data-t="footer"><p>© 2026 Kodi Camp · Tel: 90 123 45 67</p></footer>`,
+      },
+    },
+    uz: {
+      ctx: "Lager saytida to'rtta qism bor: sayt boshi, menyu, asosiy qism va sayt oxiri.",
+      q: "Sahifada footer tegi yasagan qismni bosing",
+      why: "footer — sayt oxiri: u eng pastda turadi, unda mualliflik huquqi va telefon bor. Tepadagi nom — header, havolalar — nav, o'rtadagi asosiy matn — main.",
+    },
+    ru: {
+      ctx: 'Сайт лагеря состоит из четырёх частей: шапка, меню, главная часть и низ сайта.',
+      q: 'Нажми на часть страницы, которую сделал тег footer',
+      why: 'footer — низ сайта: он стоит в самом низу, в нём авторские права и телефон. Название наверху — header, ссылки — nav, главный текст посередине — main.',
+    },
+    en: {
+      ctx: 'The camp site has four parts: the header, the menu, the main part and the site bottom.',
+      q: 'Tap the part of the page that the footer tag made',
+      why: 'footer is the site bottom: it sits at the very bottom and holds the copyright and the phone. The name at the top is header, the links are nav, the main text in the middle is main.',
+    },
+  },
+];

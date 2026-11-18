@@ -54,10 +54,10 @@ function FakeKeyboard({ height, scale }) {
   );
 }
 
-export default function DeviceStage({ src, device, rotated, title, frameRef }) {
+export default function DeviceStage({ src, device, rotated, title, frameRef, noArm }) {   // noArm — без «Начать урок»: окну звук не нужен (тренажёр)
   const wrapRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
-  const [armed, setArmed] = useState(hasClicked);
+  const [armed, setArmed] = useState(() => !!noArm || hasClicked());
   const startBtn = (
     <button type="button" className="start-lesson" onClick={() => setArmed(true)}>
       <span className="start-lesson-ic" aria-hidden="true">▶</span>Начать урок

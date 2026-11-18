@@ -1,0 +1,558 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА HTML · урок 4 «Ссылки и атрибуты» — 11 вопросов с выбором (4 easy, 5 medium, 2 hard) + 3 «впиши ответ» (q12–q14).
+// Проверяем: a делает ссылку; браузер открывает файл из href, а на странице виден текст между тегами;
+// атрибут — имя, «=», значение в кавычках, только в открывающем теге; опечатка в имени файла; нет «=»;
+// пустой a; адрес сайта в интернете — с https://, без него браузер ищет файл на своём сайте.
+// Словарь урока 4: havola, atribut, qiymat, manzil, qo'shtirnoq. Апостроф в узбекском — только ASCII «'».
+// =============================================================================
+export default [
+  {
+    id: 'html_l04_q01',
+    difficulty: 'easy',
+    tags: ['a'],
+    mono: true,
+    sort: false,
+    vis: {
+      page: {
+        uz: '<p>Maktab yangiliklari</p>\n<p><a href="jadval.html">Dars jadvali</a></p>',
+        ru: '<p>Новости школы</p>\n<p><a href="jadval.html">Расписание уроков</a></p>',
+        en: '<p>School news</p>\n<p><a href="jadval.html">Class schedule</a></p>',
+      },
+    },
+    uz: {
+      ctx: "«Dars jadvali» ko'k va tagiga chizilgan: uni bosish mumkin.",
+      q: 'Bunday havolani qaysi teg yasaydi?',
+      opts: ['a', 'p', 'li', 'b'],
+      why: "Havolani faqat a tegi yasay oladi: href atributi bilan u bosiladigan bo'ladi va boshqa sahifani ochadi.",
+    },
+    ru: {
+      ctx: '«Расписание уроков» синее и подчёркнутое: на него можно нажать.',
+      q: 'Какой тег делает такую ссылку?',
+      opts: ['a', 'p', 'li', 'b'],
+      why: 'Ссылку делает тег a: с атрибутом href на него можно нажать, и откроется другая страница.',
+    },
+    en: {
+      ctx: '“Class schedule” is blue and underlined: you can click it.',
+      q: 'Which tag makes a link like this?',
+      opts: ['a', 'p', 'li', 'b'],
+      why: 'A link is made with the a tag: with an href attribute you can click it and another page opens.',
+    },
+  },
+  {
+    id: 'html_l04_q02',
+    difficulty: 'easy',
+    tags: ['href'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<a href="menyu.html">Taomlar</a>',
+        ru: '<a href="menyu.html">Блюда</a>',
+        en: '<a href="menyu.html">Dishes</a>',
+      },
+    },
+    uz: {
+      ctx: "Kafe sayti. Mehmon «Taomlar» havolasini bosdi.",
+      q: 'Brauzer qaysi faylni ochadi?',
+      opts: ['menyu.html', 'taomlar.html', 'href.html', 'kafe.html'],
+      why: "Brauzer havola matniga emas, href qiymatiga qaraydi: qo'shtirnoq ichida menyu.html turibdi.",
+    },
+    ru: {
+      ctx: 'Сайт кафе. Гость нажал на ссылку «Блюда».',
+      q: 'Какой файл откроет браузер?',
+      opts: ['menyu.html', 'blyuda.html', 'href.html', 'kafe.html'],
+      why: 'Браузер смотрит не на текст ссылки, а на значение href: в кавычках стоит menyu.html.',
+    },
+    en: {
+      ctx: 'A café website. A visitor clicked the “Dishes” link.',
+      q: 'Which file will the browser open?',
+      opts: ['menyu.html', 'dishes.html', 'href.html', 'cafe.html'],
+      why: 'The browser looks at the href value, not at the link text: menyu.html is in the quotes.',
+    },
+  },
+  {
+    id: 'html_l04_q03',
+    difficulty: 'easy',
+    tags: ['atribut'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Havolaga atribut yozyapmiz: oldin nomi, keyin «=», keyin qiymati.",
+      q: 'Qiymat qanday yoziladi?',
+      opts: ["Qo'shtirnoq ichida", 'Burchakli qavs ichida', 'Yopuvchi tegdan keyin', "Teglar o'rtasida, matn bilan"],
+      why: "Atribut qiymati doim qo'shtirnoq ichida turadi: href=\"sport.html\". Shunda brauzer qiymat qayerda boshlanib, qayerda tugashini biladi.",
+    },
+    ru: {
+      ctx: 'Пишем атрибут ссылки: сначала имя, потом «=», потом значение.',
+      q: 'Как пишется значение?',
+      opts: ['В кавычках', 'В угловых скобках', 'После закрывающего тега', 'Между тегами, вместе с текстом'],
+      why: 'Значение атрибута всегда стоит в кавычках: href="sport.html". Так браузер видит, где значение начинается и где заканчивается.',
+    },
+    en: {
+      ctx: 'We’re writing a link attribute: first the name, then “=”, then the value.',
+      q: 'How is the value written?',
+      opts: ['In quotes', 'In angle brackets', 'After the closing tag', 'Between the tags, with the text'],
+      why: 'An attribute value always goes in quotes: href="sport.html". That way the browser sees where the value starts and ends.',
+    },
+  },
+  {
+    id: 'html_l04_q04',
+    difficulty: 'easy',
+    tags: ['atribut'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "«O'yinlar» so'zini havola qilyapmiz, unga href atributi kerak.",
+      q: 'Atribut qaysi tegga yoziladi?',
+      opts: ['Ochuvchi a tegiga', 'Yopuvchi a tegiga', 'Ikkala tegga ham', "Teglar o'rtasidagi matnga"],
+      why: "Atribut faqat ochuvchi tegda turadi: <a href=\"oyinlar.html\">. Yopuvchi </a> tegida atribut bo'lmaydi.",
+    },
+    ru: {
+      ctx: 'Делаем ссылкой слово «Игры», ему нужен атрибут href.',
+      q: 'В какой тег пишется атрибут?',
+      opts: ['В открывающий тег a', 'В закрывающий тег a', 'В оба тега сразу', 'В текст между тегами'],
+      why: 'Атрибут стоит только в открывающем теге: <a href="oyinlar.html">. В закрывающем </a> атрибутов не бывает.',
+    },
+    en: {
+      ctx: 'We’re turning the word “Games” into a link; it needs an href attribute.',
+      q: 'Which tag does the attribute go in?',
+      opts: ['The opening a tag', 'The closing a tag', 'Both tags at once', 'The text between the tags'],
+      why: 'An attribute goes only in the opening tag: <a href="oyinlar.html">. The closing </a> tag never has attributes.',
+    },
+  },
+  {
+    id: 'html_l04_q05',
+    difficulty: 'medium',
+    tags: ['href'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<a ___="kutubxona.html">Kutubxona</a>',
+        ru: '<a ___="kutubxona.html">Библиотека</a>',
+        en: '<a ___="kutubxona.html">Library</a>',
+      },
+    },
+    uz: {
+      ctx: "«Kutubxona» bosilganda kutubxona sahifasi ochilishi kerak.",
+      q: "Bo'sh joyga qaysi atribut yoziladi?",
+      opts: ['href', 'link', 'title', 'a'],
+      why: "href atributi havola qayerga olib borishini aytadi. a — tegning nomi, title ham teg, link degan atribut esa a tegida yo'q.",
+    },
+    ru: {
+      ctx: 'По нажатию на «Библиотека» должна открыться страница библиотеки.',
+      q: 'Какой атрибут пишется на пустое место?',
+      opts: ['href', 'link', 'title', 'a'],
+      why: 'Атрибут href говорит, куда ведёт ссылка. a — имя тега, title — тоже тег, а атрибута link у тега a нет.',
+    },
+    en: {
+      ctx: 'Clicking “Library” must open the library page.',
+      q: 'Which attribute goes in the empty spot?',
+      opts: ['href', 'link', 'title', 'a'],
+      why: 'The href attribute says where the link leads. a is the tag name, title is a tag too, and the a tag has no link attribute.',
+    },
+  },
+  {
+    id: 'html_l04_q06',
+    difficulty: 'medium',
+    tags: ['href'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<a href="jadvl.html">Dars jadvali</a>',
+        ru: '<a href="jadvl.html">Расписание</a>',
+        en: '<a href="jadvl.html">Schedule</a>',
+      },
+    },
+    uz: {
+      ctx: "Saytda jadval.html fayli bor, lekin havola «Fayl topilmadi» deb ochildi.",
+      q: 'Nega fayl topilmadi?',
+      opts: ['Fayl nomida harf tushib qolgan', 'Havola matni fayl nomidan boshqa', "Manzil boshida https:// yo'q", 'a tegi p ichida turmagan'],
+      why: "Kodda jadvl.html, fayl esa jadval.html deb nomlangan: «a» harfi tushib qolgan. Brauzer faylni harfma-harf qidiradi.",
+    },
+    ru: {
+      ctx: 'На сайте есть файл jadval.html, но ссылка открывает «Файл не найден».',
+      q: 'Почему файл не найден?',
+      opts: ['В имени файла пропала буква', 'Текст ссылки не совпадает с именем файла', 'В начале адреса нет https://', 'Тег a стоит не внутри p'],
+      why: 'В коде jadvl.html, а файл называется jadval.html: пропала буква «a». Браузер ищет файл буква в букву.',
+    },
+    en: {
+      ctx: 'The site has a file jadval.html, but the link opens “File not found”.',
+      q: 'Why wasn’t the file found?',
+      opts: ['A letter is missing in the file name', 'The link text differs from the file name', 'There’s no https:// at the start', 'The a tag isn’t inside a p'],
+      why: 'The code says jadvl.html, but the file is called jadval.html: the letter “a” is missing. The browser looks for the file letter by letter.',
+    },
+  },
+  {
+    id: 'html_l04_q07',
+    difficulty: 'medium',
+    tags: ['https'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Futbol jamoasi sayti: «Vikipediya» havolasi internetdagi saytni ochishi kerak.",
+      q: 'href qiymati qanday bo\'ladi?',
+      opts: ['https://uz.wikipedia.org', 'uz.wikipedia.org', 'https://wikipedia.html', 'www.uz.wikipedia.org'],
+      why: "Internetdagi saytning manzili https:// bilan boshlanadi, keyin saytning nomi keladi. Busiz brauzer bu nomni o'z saytimizdagi fayl deb qidiradi.",
+    },
+    ru: {
+      ctx: 'Сайт футбольной команды: ссылка «Википедия» должна открыть сайт в интернете.',
+      q: 'Каким будет значение href?',
+      opts: ['https://ru.wikipedia.org', 'ru.wikipedia.org', 'https://wikipedia.html', 'www.ru.wikipedia.org'],
+      why: 'Адрес сайта в интернете начинается с https://, потом идёт имя сайта. Без этого браузер ищет такое имя как файл на нашем сайте.',
+    },
+    en: {
+      ctx: 'A football team website: the “Wikipedia” link must open a site on the internet.',
+      q: 'What should the href value be?',
+      opts: ['https://en.wikipedia.org', 'en.wikipedia.org', 'https://wikipedia.html', 'www.en.wikipedia.org'],
+      why: 'A website address starts with https://, then comes the site name. Without it the browser looks for that name as a file on our own site.',
+    },
+  },
+  {
+    id: 'html_l04_q08',
+    difficulty: 'medium',
+    tags: ['a'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<p>Bizning lager</p>\n<a href="kun.html">Kun tartibi</a>',
+        ru: '<p>Наш лагерь</p>\n<a href="kun.html">Распорядок дня</a>',
+        en: '<p>Our camp</p>\n<a href="kun.html">Daily plan</a>',
+      },
+      mark: [2],
+    },
+    uz: {
+      ctx: "Lager sayti: ikkinchi qatorda havola turibdi.",
+      q: "Brauzer ikkinchi qatorni qanday ko'rsatadi?",
+      opts: ["Ko'k «Kun tartibi» havolasi", "Ko'k «kun.html» havolasi", "Oddiy qora «Kun tartibi» matni", "Ko'k «href» degan havola"],
+      why: "Sahifada a teglarining o'rtasidagi matn ko'rinadi: «Kun tartibi». Fayl nomi href ichida turadi va faqat bosilganda ishlaydi.",
+    },
+    ru: {
+      ctx: 'Сайт лагеря: во второй строке стоит ссылка.',
+      q: 'Как браузер покажет вторую строку?',
+      opts: ['Синяя ссылка «Распорядок дня»', 'Синяя ссылка «kun.html»', 'Обычный чёрный текст «Распорядок дня»', 'Синяя ссылка со словом «href»'],
+      why: 'На странице виден текст между тегами a: «Распорядок дня». Имя файла стоит в href и работает только при нажатии.',
+    },
+    en: {
+      ctx: 'A camp website: there’s a link on the second line.',
+      q: 'How will the browser show the second line?',
+      opts: ['A blue “Daily plan” link', 'A blue “kun.html” link', 'Plain black “Daily plan” text', 'A blue link saying “href”'],
+      why: 'The page shows the text between the a tags: “Daily plan”. The file name sits in href and only works when you click.',
+    },
+  },
+  {
+    id: 'html_l04_q09',
+    difficulty: 'medium',
+    tags: ['atribut'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<p><a href"video.html">Videolar</a></p>',
+        ru: '<p><a href"video.html">Видео</a></p>',
+        en: '<p><a href"video.html">Videos</a></p>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "«Videolar» havola bo'lmay, oddiy matn bo'lib chiqdi.",
+      q: "Atributda nima tushib qolgan?",
+      opts: ['«=» belgisi', "Qo'shtirnoq", 'Atributning nomi', 'Yopuvchi a tegi'],
+      why: "Atribut uch qismdan iborat: nom, «=» va qiymat. «=» bo'lmasa, brauzer href atributini tanimaydi va a oddiy matn bo'lib qoladi.",
+    },
+    ru: {
+      ctx: '«Видео» получилось не ссылкой, а обычным текстом.',
+      q: 'Что пропало в атрибуте?',
+      opts: ['Знак «=»', 'Кавычки', 'Имя атрибута', 'Закрывающий тег a'],
+      why: 'У атрибута три части: имя, «=» и значение. Без «=» браузер не узнаёт атрибут href, и a остаётся простым текстом.',
+    },
+    en: {
+      ctx: '“Videos” came out as plain text, not a link.',
+      q: 'What is missing in the attribute?',
+      opts: ['The “=” sign', 'The quotes', 'The attribute name', 'The closing a tag'],
+      why: 'An attribute has three parts: a name, “=” and a value. Without “=” the browser doesn’t recognize href, so the a stays plain text.',
+    },
+  },
+  {
+    id: 'html_l04_q10',
+    difficulty: 'hard',
+    tags: ['a'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<p>\n  <a href="galereya.html"></a>\n  Galereya\n</p>',
+        ru: '<p>\n  <a href="galereya.html"></a>\n  Галерея\n</p>',
+        en: '<p>\n  <a href="galereya.html"></a>\n  Gallery\n</p>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "«Galereya» so'zini bosib bo'lmayapti: u oddiy matn bo'lib turibdi.",
+      q: 'Uni havola qilish uchun nima qilamiz?',
+      opts: ["«Galereya» so'zini a teglarining o'rtasiga olamiz", "href qiymatini «Galereya» deb yozamiz", 'galereya.html nomini katta harf bilan yozamiz', 'p tegini h1 tegi bilan almashtiramiz'],
+      why: "Havola matni ochuvchi <a> va yopuvchi </a> o'rtasida turishi kerak. Bu kodda a tegi bo'm-bo'sh, shuning uchun bosiladigan narsa yo'q.",
+    },
+    ru: {
+      ctx: 'На слово «Галерея» нельзя нажать: оно осталось простым текстом.',
+      q: 'Что сделать, чтобы оно стало ссылкой?',
+      opts: ['Поставить «Галерея» между тегами a', 'Написать в href значение «Галерея»', 'Написать galereya.html с большой буквы', 'Заменить тег p на тег h1'],
+      why: 'Текст ссылки должен стоять между открывающим <a> и закрывающим </a>. Здесь тег a пустой, поэтому нажимать не на что.',
+    },
+    en: {
+      ctx: 'You can’t click the word “Gallery”: it stays plain text.',
+      q: 'What do we do to make it a link?',
+      opts: ['Put “Gallery” between the a tags', 'Write “Gallery” as the href value', 'Write galereya.html with a capital letter', 'Replace the p tag with an h1 tag'],
+      why: 'The link text must be between the opening <a> and the closing </a>. Here the a tag is empty, so there’s nothing to click.',
+    },
+  },
+  {
+    id: 'html_l04_q11',
+    difficulty: 'hard',
+    tags: ['https', 'href'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Bir havolada href=\"oyin.html\", boshqasida href=\"https://kodi.uz\".",
+      q: 'Brauzer bu manzillarni qayerdan qidiradi?',
+      opts: [
+        "oyin.html — o'z saytimizdan, https://kodi.uz — internetdan",
+        'Ikkalasini ham internetdagi saytlardan qidiradi',
+        "Ikkalasini ham o'z saytimizdagi fayllardan qidiradi",
+        "oyin.html — internetdan, https://kodi.uz — o'z saytimizdan",
+      ],
+      why: "https:// bilan boshlangan manzilni brauzer internetdan ochadi. Boshida https:// bo'lmasa, u shu nomli faylni o'z saytimizdan qidiradi.",
+    },
+    ru: {
+      ctx: 'У одной ссылки href="oyin.html", у другой — href="https://kodi.uz".',
+      q: 'Где браузер будет искать эти адреса?',
+      opts: [
+        'oyin.html — на нашем сайте, https://kodi.uz — в интернете',
+        'Оба адреса — на сайтах в интернете',
+        'Оба адреса — среди файлов нашего сайта',
+        'oyin.html — в интернете, https://kodi.uz — на нашем сайте',
+      ],
+      why: 'Адрес, который начинается с https://, браузер открывает в интернете. Если https:// в начале нет, он ищет файл с таким именем на нашем сайте.',
+    },
+    en: {
+      ctx: 'One link has href="oyin.html", the other has href="https://kodi.uz".',
+      q: 'Where will the browser look for these addresses?',
+      opts: [
+        'oyin.html on our site, https://kodi.uz on the internet',
+        'Both of them on websites on the internet',
+        'Both of them among our own site’s files',
+        'oyin.html on the internet, https://kodi.uz on our site',
+      ],
+      why: 'An address that starts with https:// is opened on the internet. Without https:// at the start, the browser looks for a file with that name on our site.',
+    },
+  },
+  {
+    id: 'html_l04_q12',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['a'],
+    mono: true,
+    answer: ['</a>'],
+    vis: {
+      code: {
+        uz: '<p><a href="kino.html">Kino___</p>',
+        ru: '<p><a href="kino.html">Кино___</p>',
+        en: '<p><a href="kino.html">Movies___</p>',
+      },
+    },
+    uz: {
+      ctx: "Havola «Kino» so'zidan keyin tugashi kerak.",
+      q: "Bo'sh joyga yopuvchi tegni to'liq yozing.",
+      why: "a tegi </a> bilan yopiladi: havola shu yerda tugaydi. Busiz brauzer keyingi matnni ham havola qilib yuborishi mumkin.",
+    },
+    ru: {
+      ctx: 'Ссылка должна закончиться сразу после слова «Кино».',
+      q: 'Впиши на пустое место закрывающий тег целиком.',
+      why: 'Тег a закрывается тегом </a>: здесь ссылка и заканчивается. Без него браузер может сделать ссылкой и текст дальше.',
+    },
+    en: {
+      ctx: 'The link must end right after the word “Movies”.',
+      q: 'Type the whole closing tag in the empty spot.',
+      why: 'The a tag is closed with </a>: that’s where the link ends. Without it the browser may turn the following text into a link too.',
+    },
+  },
+  {
+    id: 'html_l04_q13',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['href'],
+    mono: true,
+    answer: ['aloqa.html', '"aloqa.html"'],
+    vis: {
+      code: {
+        uz: '<a href="___">Aloqa</a>',
+        ru: '<a href="___">Контакты</a>',
+        en: '<a href="___">Contact</a>',
+      },
+    },
+    uz: {
+      ctx: "Fayllar: index.html, aloqa.html, galereya.html. «Aloqa» aloqa sahifasini ochsin.",
+      q: "Qo'shtirnoq ichiga fayl nomini yozing.",
+      why: "O'z saytimizdagi sahifani ochish uchun href qiymatiga fayl nomi harfma-harf yoziladi: aloqa.html.",
+    },
+    ru: {
+      ctx: 'Файлы: index.html, aloqa.html, galereya.html. «Контакты» должны открыть страницу контактов.',
+      q: 'Впиши в кавычки имя файла.',
+      why: 'Чтобы открыть страницу своего сайта, в значение href имя файла пишут буква в букву: aloqa.html.',
+    },
+    en: {
+      ctx: 'Files: index.html, aloqa.html, galereya.html. “Contact” must open the contact page.',
+      q: 'Type the file name inside the quotes.',
+      why: 'To open a page of our own site, the file name goes into the href value letter by letter: aloqa.html.',
+    },
+  },
+  {
+    id: 'html_l04_q14',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['atribut', 'href'],
+    mono: true,
+    answer: ['href="rasmlar.html"', "href='rasmlar.html'"],
+    vis: {
+      code: {
+        uz: '<a ___>Rasmlar</a>',
+        ru: '<a ___>Фото</a>',
+        en: '<a ___>Photos</a>',
+      },
+    },
+    uz: {
+      ctx: "Havolaning atributi butunlay o'chib ketibdi. U rasmlar.html sahifasini ochishi kerak.",
+      q: "Bo'sh joyga atributni to'liq yozing: nomi, «=» va qiymati.",
+      why: "Atribut uch qismdan iborat: href nomi, «=» va qo'shtirnoq ichidagi qiymat — rasmlar.html. Shunda a tegi bosiladigan havolaga aylanadi.",
+    },
+    ru: {
+      ctx: 'Атрибут ссылки пропал целиком. Она должна открывать страницу rasmlar.html.',
+      q: 'Впиши атрибут целиком: имя, «=» и значение.',
+      why: 'У атрибута три части: имя href, «=» и значение в кавычках — rasmlar.html. Тогда тег a становится ссылкой, на которую можно нажать.',
+    },
+    en: {
+      ctx: 'The link’s attribute is gone completely. It must open the page rasmlar.html.',
+      q: 'Type the whole attribute: name, “=” and value.',
+      why: 'An attribute has three parts: the name href, “=” and the value in quotes, rasmlar.html. Then the a tag becomes a link you can click.',
+    },
+  },
+  {
+    id: 'html_l04_q15',
+    type: 'build',
+    difficulty: 'easy',
+    tags: ['a', 'href'],
+    pieces: ['<a', ' href="jamoa.html"', '>', { uz: 'Jamoa', ru: 'Команда', en: 'Team' }, '</a>'],
+    extra: [' link="jamoa.html"', '<a>'],
+    vis: { code: '<h1>Lochin FC</h1>\n<p>___</p>' },
+    uz: {
+      ctx: "Futbol klubi sayti: «Jamoa» so'zi bosilganda jamoa.html ochilsin.",
+      q: "Bo'laklarni tartib bilan bosib, havolani yig'ing",
+      why: "Havola <a bilan boshlanadi, href ochuvchi tegda turadi, ko'rinadigan so'z teglar o'rtasida, oxirida </a>. link degan atribut yo'q, <a> esa havolani yopmaydi.",
+    },
+    ru: {
+      ctx: 'Сайт футбольного клуба: по нажатию на «Команда» должна открыться jamoa.html.',
+      q: 'Нажимай кусочки по порядку и собери ссылку',
+      why: 'Ссылка начинается с <a, href стоит в открывающем теге, видимое слово — между тегами, в конце </a>. Атрибута link нет, а <a> ссылку не закрывает.',
+    },
+    en: {
+      ctx: 'A football club site: clicking “Team” must open jamoa.html.',
+      q: 'Tap the pieces in order to build the link',
+      why: 'A link starts with <a, href goes in the opening tag, the visible word goes between the tags, and </a> ends it. There’s no link attribute, and <a> doesn’t close a link.',
+    },
+  },
+  {
+    id: 'html_l04_q16',
+    type: 'build',
+    difficulty: 'hard',
+    tags: ['a', 'li'],
+    pieces: ['<li>', '<a', ' href="turnir.html"', '>', { uz: 'Turnir', ru: 'Турнир', en: 'Tournament' }, '</a>', '</li>'],
+    extra: ['<p>'],
+    vis: {
+      code: {
+        uz: '<ul>\n  <li><a href="yangi.html">Yangiliklar</a></li>\n  ___\n</ul>',
+        ru: '<ul>\n  <li><a href="yangi.html">Новости</a></li>\n  ___\n</ul>',
+        en: '<ul>\n  <li><a href="yangi.html">News</a></li>\n  ___\n</ul>',
+      },
+    },
+    uz: {
+      ctx: "O'yin sayti menyusi: ikkinchi band turnir.html sahifasini ochsin.",
+      q: "Bo'laklarni tartib bilan bosib, menyuning ikkinchi bandini yig'ing",
+      why: "Ro'yxatda band li bilan yoziladi, p bilan emas. Avval <li> ochiladi, ichida havola. Yopish teskari tartibda: oldin </a>, keyin </li>, xuddi birinchi banddagidek.",
+    },
+    ru: {
+      ctx: 'Меню игрового сайта: второй пункт должен открывать turnir.html.',
+      q: 'Нажимай кусочки по порядку и собери второй пункт меню',
+      why: 'Пункт списка пишется тегом li, а не p. Сначала открывается <li>, внутри — ссылка. Закрывают в обратном порядке: сначала </a>, потом </li>, как в первом пункте.',
+    },
+    en: {
+      ctx: 'A game site menu: the second item must open turnir.html.',
+      q: 'Tap the pieces in order to build the second menu item',
+      why: 'A list item is written with li, not p. First <li> opens, with the link inside. They close in reverse order: first </a>, then </li>, just like the first item.',
+    },
+  },
+  {
+    id: 'html_l04_q17',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['atribut', 'href'],
+    line: 3,
+    vis: {
+      code: {
+        uz: '<h2>Kafe menyusi</h2>\n<p><a href="osh.html">Osh</a></p>\n<p><a>Sharbatlar</a href="sharbat.html"></p>\n<p><a href="tort.html">Tortlar</a></p>',
+        ru: '<h2>Меню кафе</h2>\n<p><a href="osh.html">Плов</a></p>\n<p><a>Соки</a href="sharbat.html"></p>\n<p><a href="tort.html">Торты</a></p>',
+        en: '<h2>Café menu</h2>\n<p><a href="osh.html">Plov</a></p>\n<p><a>Juices</a href="sharbat.html"></p>\n<p><a href="tort.html">Cakes</a></p>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Kafe menyusida «Sharbatlar» bosilmayapti: u oddiy matn bo'lib qoldi.",
+      q: 'Qaysi qatorda xato bor? Shu qatorni bosing',
+      why: "3-qatorda href yopuvchi </a> tegiga yozilgan. Atribut faqat ochuvchi tegda ishlaydi: <a href=\"sharbat.html\">.",
+    },
+    ru: {
+      ctx: 'В меню кафе на «Соки» нельзя нажать: получился обычный текст.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В строке 3 href записан в закрывающем теге </a>. Атрибут работает только в открывающем теге: <a href="sharbat.html">.',
+    },
+    en: {
+      ctx: 'In the café menu, “Juices” can’t be clicked: it came out as plain text.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'On line 3, href is written in the closing </a> tag. An attribute only works in the opening tag: <a href="sharbat.html">.',
+    },
+  },
+  {
+    id: 'html_l04_q18',
+    type: 'tap',
+    difficulty: 'easy',
+    tags: ['a'],
+    answer: 'a',
+    vis: {
+      page: {
+        uz: '<h2 data-t="h2">Lager kun tartibi</h2>\n<p data-t="p">Ertalab: zaryadka va nonushta</p>\n<p data-t="b"><b>Kunduzi: futbol musobaqasi</b></p>\n<p><a data-t="a" href="gulxan.html">Kechki gulxan</a></p>',
+        ru: '<h2 data-t="h2">Распорядок лагеря</h2>\n<p data-t="p">Утром: зарядка и завтрак</p>\n<p data-t="b"><b>Днём: футбольный матч</b></p>\n<p><a data-t="a" href="gulxan.html">Вечерний костёр</a></p>',
+        en: '<h2 data-t="h2">Camp daily plan</h2>\n<p data-t="p">Morning: exercises and breakfast</p>\n<p data-t="b"><b>Afternoon: football match</b></p>\n<p><a data-t="a" href="gulxan.html">Evening campfire</a></p>',
+      },
+    },
+    uz: {
+      ctx: "Lager sahifasi: shu qismlardan faqat bittasi boshqa sahifani ochadi.",
+      q: 'Qaysi biri havola? Ustiga bosing',
+      why: "Havolani a tegi yasaydi: brauzer uni ko'k qilib, tagiga chizib ko'rsatadi. Sarlavha, abzas va qalin matnni bossangiz, hech narsa ochilmaydi.",
+    },
+    ru: {
+      ctx: 'Страница лагеря: только одна из этих частей открывает другую страницу.',
+      q: 'Что из этого ссылка? Нажми на неё',
+      why: 'Ссылку делает тег a: браузер показывает её синей и подчёркнутой. Заголовок, абзац и жирный текст при нажатии ничего не открывают.',
+    },
+    en: {
+      ctx: 'A camp page: only one of these parts opens another page.',
+      q: 'Which one is a link? Tap it',
+      why: 'A link is made by the a tag: the browser shows it blue and underlined. A heading, a paragraph and bold text open nothing when clicked.',
+    },
+  },
+];
