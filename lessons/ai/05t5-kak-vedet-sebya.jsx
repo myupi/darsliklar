@@ -213,33 +213,69 @@ function AqMsg({ who, text }) {
 // оказывался выше свободного места. Тест меряет, где он начинается, оставляет снизу место кнопке и, если страница или
 // прокручиваемый родитель всё равно выходят за экран, ужимается ровно на этот хвост. В просмотрщике высоту задаёт QuizShell
 // (--aq-h) — там не трогаем.
-const AQ_RESERVE = 80, AQ_MIN = 380;
-function useAqHeight(ref) {
+const AQ_RESERVE = 80, AQ_MIN = 240;
+// Сколько низа окна закрывает платформа: её панель «Tekshirish», а после ответа — «Noto'g'ri javob» / монеты + «Keyingisi»
+// (на ноутбуке 130–250 px). Снизу вверх ищем первую точку, где под пальцем уже сам тест или его фон (LMS, 17.11.2026).
+function aqCover(el) {
+  const D = el.ownerDocument, W = D.defaultView;
+  if (!D.elementFromPoint) return 0;
+  const r = el.getBoundingClientRect();
+  let cover = 0;
+  for (const x of [r.left + r.width * 0.5, r.left + 30, r.right - 30]) {
+    if (x < 1 || x > W.innerWidth - 1) continue;
+    for (let y = W.innerHeight - 2; y > W.innerHeight * 0.3; y -= 4) {
+      const hit = D.elementFromPoint(x, y);
+      if (!hit) break;
+      if (el.contains(hit) || hit.contains(el)) { cover = Math.max(cover, W.innerHeight - 2 - y); break; }
+    }
+  }
+  return cover;
+}
+// Высота теста — от его верха до низа окна минус панель платформы; пересчёт при смене окна и после ответа (панель растёт).
+// low — ноутбук с низким окном: раскладка плотнее (.aq.is-low). ver растёт, когда высота поменялась.
+function useAqHeight(ref, dep) {
+  const [st, setSt] = useState({ low: false, ver: 0 });
+  const fitRef = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const W = el.ownerDocument.defaultView, D = el.ownerDocument.documentElement;
+    let lastH = -1;
     const fit = () => {
-      if (W.getComputedStyle(el).getPropertyValue('--aq-h').trim()) { el.style.height = ''; return; }
-      const top = el.getBoundingClientRect().top + (W.scrollY || 0);
-      const h = Math.max(AQ_MIN, Math.round(W.innerHeight - top - AQ_RESERVE));
-      el.style.height = h + 'px';
-      let over = D.scrollHeight - W.innerHeight;
-      for (let p = el.parentElement; p && p !== D && p !== el.ownerDocument.body; p = p.parentElement) {
-        const oy = W.getComputedStyle(p).overflowY;
-        if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { over = Math.max(over, p.scrollHeight - p.clientHeight); break; }
+      if (W.getComputedStyle(el).getPropertyValue('--aq-h').trim()) el.style.height = '';
+      else {
+        const res = Math.max(AQ_RESERVE, aqCover(el));
+        const h = Math.max(AQ_MIN, Math.round(W.innerHeight - el.getBoundingClientRect().top - res));
+        el.style.height = h + 'px';
+        let over = D.scrollHeight - W.innerHeight;
+        for (let p = el.parentElement; p && p !== D && p !== el.ownerDocument.body; p = p.parentElement) {
+          const oy = W.getComputedStyle(p).overflowY;
+          if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { over = Math.max(over, p.scrollHeight - p.clientHeight); break; }
+        }
+        if (over > 1) el.style.height = Math.max(AQ_MIN, h - Math.ceil(over)) + 'px';
       }
-      if (over > 1) el.style.height = Math.max(AQ_MIN, h - Math.ceil(over)) + 'px';
+      const hh = el.clientHeight;
+      if (Math.abs(hh - lastH) > 1) {
+        lastH = hh;
+        const low = el.clientWidth >= 720 && hh < 600;
+        setSt((p) => ({ low, ver: p.ver + 1 }));
+      }
     };
+    fitRef.current = fit;
     fit();
     const t1 = setTimeout(fit, 300), t2 = setTimeout(fit, 1200);
     W.addEventListener('resize', fit);
-    return () => { clearTimeout(t1); clearTimeout(t2); W.removeEventListener('resize', fit); };
+    return () => { clearTimeout(t1); clearTimeout(t2); W.removeEventListener('resize', fit); fitRef.current = null; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {   // после ответа панель платформы вырастает не сразу — меряем ещё несколько раз
+    if (!dep) return undefined;
+    const t = [60, 400, 1000, 2000].map((ms) => setTimeout(() => { if (fitRef.current) fitRef.current(); }, ms));
+    return () => t.forEach(clearTimeout);
+  }, [dep]);
+  return st;
 }
 function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, registerCheck, onSubmit }) {
   const rootRef = useRef(null);
-  useAqHeight(rootRef);
   const L = lang === 'ru' ? 'ru' : lang === 'en' ? 'en' : 'uz';
   const T = Q[L] || Q.ru;
   const U = AQ_UI[L];
@@ -255,6 +291,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
   const sent = useRef(false);
   const fbRef = useRef(null);
   const ok = checked && sel === Q.correct;
+  const hgt = useAqHeight(rootRef, checked);
   const check = () => {
     if (!answering || sel === null || sent.current) return;
     sent.current = true; setChecked(true);
@@ -266,21 +303,55 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
   // а вопрос, варианты и плашка остаются целиком. Окно сайта подгоняет себя само (AqSite).
   const mainRef = useRef(null);
   const [tight, setTight] = useState(false);
+  // Ноутбук в LMS (is-low): после ответа сначала прячутся невыбранные варианты (slim), картинка остаётся; прячется она, только если и тогда тесно.
+  const [slim, setSlim] = useState(false);
+  const shrink = () => { if (hgt.low && checked && !slim) setSlim(true); else setTight(true); };
+  // Огрызок: после ответа картинку сжало до полоски (меньше двух строк кода), хотя до ответа она была заметно больше.
+  // Короткий код в 1–2 строки сам по себе низкий — его не трогаем.
+  const visMax = useRef(0);
+  const aqStub = (v) => v.clientHeight < 72 && visMax.current - v.clientHeight > 12;
+  // Картинку спрятали после ответа, а под плашкой осталось много пустого места (сжатие было мгновением перестройки) — вернуть.
+  // В плотной раскладке ноутбука (is-low) не возвращаем: там спрятаны и варианты, место считается не так.
+  const roomBack = (m) => {
+    const last = m.lastElementChild; if (!last) return false;
+    const pb = parseFloat(getComputedStyle(m).paddingBottom) || 0;
+    return m.getBoundingClientRect().bottom - pb - last.getBoundingClientRect().bottom > 110;
+  };
   const fitTick = useAqFit(mainRef, []);
+  useEffect(() => { if (tight) setTight(false); if (slim) setSlim(false); }, [hgt.ver]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!checked && slim) setSlim(false); }, [checked]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const m = mainRef.current;
     if (!m) return;
-    if (m.querySelector('.aq-br')) { if (tight) setTight(false); return; }
+    if (m.querySelector('.aq-br')) {   // окно сайта или страницы подгоняет себя само; после ответа от него осталась полоска — прячем
+      const v = m.querySelector('.aq-vis');
+      if (v && !checked) visMax.current = Math.max(visMax.current, v.clientHeight);
+      if (tight && !checked) setTight(false);
+      if (tight && checked && !hgt.low && roomBack(m)) { setTight(false); return undefined; }
+      if (checked && v && !tight && aqStub(v)) {   // прячем, только если полоска держится (не мгновение перестройки после ответа)
+        const t = setTimeout(() => { if (aqStub(v)) shrink(); }, 450);
+        return () => clearTimeout(t);
+      }
+      return undefined;
+    }
     // Карточка промпта или сообщение не влезли (после ответа на маленьком телефоне) — карточка уменьшается целиком,
     // а не срезается снизу; мельче 62% — прячется, как раньше (тесты 02t3, 03t1 на 360×640; 16.11.2026).
     const vis = m.querySelector('.aq-vis'); const card = vis && vis.firstElementChild;
     if (card && card.matches('.aq-prompt, .aq-msg')) {
       card.style.zoom = '';
       const need = card.offsetHeight, have = vis.clientHeight;
-      if (need > have + 1) { const k = have / need; if (k >= 0.62) card.style.zoom = String(Math.floor(k * 1000) / 1000); else if (!tight) setTight(true); }
+      if (need > have + 1) { const k = have / need; if (k >= 0.62) card.style.zoom = String(Math.floor(k * 1000) / 1000); else if (!tight) shrink(); }
     }
-    if (!tight && m.scrollHeight > m.clientHeight + 1) setTight(true);
-  }, [fitTick, checked, tight]);
+    if (!tight && m.scrollHeight > m.clientHeight + 1) shrink();
+    // От картинки осталась полоска (ноутбук в LMS после верного ответа: панель с монетами ≈ 250 px) — прячем её целиком.
+    if (vis && !checked) visMax.current = Math.max(visMax.current, vis.clientHeight);
+    if (tight && checked && !hgt.low && vis && !(card && card.matches('.aq-prompt, .aq-msg')) && roomBack(m)) { setTight(false); return undefined; }
+    if (!tight && vis && checked && aqStub(vis)) {
+      const t = setTimeout(() => { if (aqStub(vis)) shrink(); }, 450);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [fitTick, checked, tight, slim]);
   const fb = checked ? (
     <div ref={fbRef} className={'aq-fb ' + (ok ? 'is-ok' : 'is-bad')} aria-live="polite">
       <div className="aq-fb-in">
@@ -291,7 +362,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
     </div>
   ) : null;
   return (
-    <section ref={rootRef} className={'aq' + (tight ? ' is-tight' : '')} lang={L}>
+    <section ref={rootRef} className={'aq' + (tight ? ' is-tight' : '') + (slim || tight ? ' is-slim' : '') + (hgt.low ? ' is-low' : '') + (checked ? ' is-done' : '')} lang={L}>
       <style>{AQ_CSS}</style>
       <div className="aq-main" ref={mainRef}>
         <span className="aq-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v13M3 18.5V5.5a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3 3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 1.5 3 3 0 0 0-3-1.5H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{U.chip}</span>
@@ -300,7 +371,7 @@ function AqTest({ Q, lang, mode = 'answer', initialAnswer = null, onReady, regis
           {T.ctx ? <p className="aq-ctx">{T.ctx}</p> : null}
         </div>
         {Q.vis ? <div className="aq-vis" role="img" aria-label={T.alt || U.art}>{Q.vis(L, T)}</div> : null}
-        <div className={'aq-opts' + (Q.mono ? ' is-mono' : '') + (T.opts.every((o) => String(o).length <= 14) ? ' is-short' : '')} role="group" aria-label={T.q}>
+        <div className={'aq-opts' + (Q.mono ? ' is-mono' : '') + (T.opts.every((o) => String(o).length <= 14) ? ' is-short' : '') + (T.opts.every((o) => String(o).length <= 18) ? ' is-row' : '')} role="group" aria-label={T.q}>
           {T.opts.map((o, i) => {
             const on = sel === i;
             const st = checked && on ? (i === Q.correct ? ' is-ok' : ' is-bad') : on ? ' is-sel' : '';
@@ -505,6 +576,26 @@ const AQ_CSS = `
   .aq-opt { min-height: 42px; margin: 2px 0; padding: 5px 10px; font-size: 14px; }
   .aq-badge { flex-basis: 26px; width: 26px; height: 26px; margin-right: 9px; font-size: 12.5px; }
 }
+
+/* Ноутбук с низким окном (в LMS при 100%: шапка платформы сверху, её панель снизу; 17.11.2026) — плотнее, код не прячется. */
+.aq.is-low .aq-main { padding: 12px 24px 10px; }
+.aq.is-low .aq-chip { display: none; }
+.aq.is-low .aq-head { margin-top: 0; }
+.aq.is-low .aq-q { font-size: 24px; }
+.aq.is-low .aq-ctx { margin-bottom: 4px; font-size: 15px; }
+.aq.is-low .aq-main > .aq-vis { margin-top: 12px; }
+.aq.is-low .aq-opts { margin-top: 8px; }
+.aq.is-low .aq-opt { min-height: 50px; margin: 4px 6px; padding: 6px 14px; font-size: 17px; }
+.aq.is-low .aq-opts.is-row .aq-opt { width: calc(25% - 12px); }
+.aq.is-low .aq-fb { margin-top: 10px; border-radius: 16px; }
+.aq.is-low .aq-fb-in { padding: 10px 18px; }
+.aq.is-low.is-done .aq-ctx { display: none; }
+.aq.is-low.is-done .aq-main { padding-bottom: 4px; }
+.aq.is-low.is-done .aq-fb-in { padding: 8px 18px; }
+.aq.is-low.is-done .aq-main > .aq-vis { margin-top: 8px; }
+/* Совсем тесно (панель с монетами): картинка уже спрятана — из вариантов остаётся только выбранный. */
+.aq.is-low.is-done.is-slim .aq-opt:not(.is-ok):not(.is-bad) { display: none; }
+.aq.is-low.is-done.is-slim .aq-opt { width: calc(100% - 12px); }
 `;
 
 // =============================================================================
