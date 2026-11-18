@@ -108,7 +108,28 @@ function StudentView({ it, lang }) {
         </button>
       ))}
     </div>
+    <TaskText T={T} />
     </>
+  );
+}
+
+// Текст задания слайда — строками, у каждой своя «Скопировать» (заказчик, 18.11.2026: «отдельно отдельно написать, чтобы я мог скопировать»).
+// Копируется простой текст: без обратных кавычек-пометок свойств CSS.
+const plain = (x) => String(x).replace(/`([^`]+)`/g, '$1');
+function TaskText({ T }) {
+  const rows = [{ k: 'intro', n: null, t: plain(T.intro) }].concat(T.steps.map((x, i) => ({ k: 's' + i, n: i + 1, t: plain(x) })));
+  const all = rows.map((r) => (r.n ? r.n + '. ' : '') + r.t).join('\n');
+  return (
+    <div className="cmp-text">
+      <div className="cmp-text-head">Текст задания <CopyButton text={all} label="Скопировать весь текст" /></div>
+      {rows.map((r) => (
+        <div key={r.k} className={'cmp-text-row' + (r.n ? '' : ' is-intro')}>
+          <span className="cmp-text-n">{r.n ? r.n + '.' : ''}</span>
+          <span className="cmp-text-t">{r.t}</span>
+          <CopyButton text={r.t} label="Скопировать строку" />
+        </div>
+      ))}
+    </div>
   );
 }
 

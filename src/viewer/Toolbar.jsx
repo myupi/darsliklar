@@ -3,6 +3,7 @@ import {
   ExternalLink, Keyboard, Laptop, Maximize2, Menu, PanelRightClose, PanelRightOpen, RotateCcw, RotateCw, Smartphone, Tablet,
 } from 'lucide-react';
 import { pad2 } from '../shared/catalog.js';
+import { titlesOf } from '../shared/lessonTitles.js';
 import CopyButton from './CopyButton.jsx';
 
 const LANGS = [
@@ -76,6 +77,7 @@ export function MenuButton({ onClick }) {
 export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, onMenu }) {
   const { course, lesson } = sel;
   const path = lesson.file ? `lessons/${lesson.file}.jsx` : lesson.expected;
+  const titles = titlesOf(lesson, course);   // название на трёх языках из самого урока (18.11.2026)
 
   return (
     <header className="toolbar">
@@ -83,10 +85,22 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
         <MenuButton onClick={onMenu} />
         <div className="tb-title">
           <span className="course-chip" style={{ '--chip': course.color }}>{course.short}</span>
-          <h1>
-            {lesson.n != null ? <span className="tb-n">{pad2(lesson.n)}</span> : null}
-            {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.kind === 'test' && lesson.lessonTitle ? `${lesson.title} · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
-          </h1>
+          {titles ? (
+            <h1 className="tb-langs">
+              {['uz', 'ru', 'en'].map((l) => (
+                <span key={l} className="tb-lang-row">
+                  <span className="cmp-lang">{l.toUpperCase()}</span>
+                  <span className="tb-lang-t">{titles[l]}</span>
+                  <CopyButton text={titles[l]} label="Скопировать название" />
+                </span>
+              ))}
+            </h1>
+          ) : (
+            <h1>
+              {lesson.n != null ? <span className="tb-n">{pad2(lesson.n)}</span> : null}
+              {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.kind === 'test' && lesson.lessonTitle ? `${lesson.title} · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
+            </h1>
+          )}
           <span className={'pill is-' + lesson.status}>
             {lesson.status === 'ready' ? 'готов' : lesson.status === 'extra' ? 'вне плана' : 'не создан'}
           </span>

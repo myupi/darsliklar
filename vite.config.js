@@ -2,12 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import ttsService from './tools/vite-tts-service.mjs';
+import lessonTitles from './tools/vite-lesson-titles.mjs';
 
 const r = (p) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
   // ttsService — сервис озвучки для уроков, которые говорят по ttsApiBase.
-  plugins: [react(), ttsService()],
+  // lessonTitles — названия уроков на трёх языках из META уроков (шапка просмотрщика).
+  plugins: [react(), ttsService(), lessonTitles()],
   resolve: {
     // Уроки импортируют платформу как '@lesson/runtime'. В просмотрщике её
     // заменяет локальная эмуляция из src/runtime.
