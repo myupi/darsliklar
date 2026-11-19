@@ -600,8 +600,8 @@ export default [
       why: "select ichidagi har bir variant o'zining option tegida turadi. li esa ul va ol ro'yxatlari uchun, select ichida u variant bo'lmaydi.",
     },
     ru: {
-      ctx: 'В анкете футбольной команды позицию выбирают из списка, но нападающего там нет.',
-      q: 'Нажимай кусочки по порядку и добавь в список пункт «Нападающий»',
+      ctx: 'В анкете футбольной команды в списке позиций нет нападающего.',
+      q: 'Нажимай кусочки по порядку и добавь пункт «Нападающий»',
       why: 'Каждый пункт внутри select стоит в своём теге option. А li — для списков ul и ol, внутри select пунктом он не станет.',
     },
     en: {

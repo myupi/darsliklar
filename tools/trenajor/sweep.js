@@ -13,10 +13,10 @@ window.__sweep = async (opt) => {
   const out = []; const st = { t0: 0, t1: 0, t2: 0, t3: 0, tog: 0 };
   // window.__sweepIds — только эти вопросы; opt может быть функцией (id → ответ)
   for (const id of window.__sweepIds || window.__trenajor.ids) {
-    window.__trenajor.show(id, typeof opt === 'function' ? opt(id) : opt); await w(200);
+    window.__trenajor.show(id, typeof opt === 'function' ? opt(id) : opt); await w(window.__sweepW0 || 200);   // __sweepW0 / __sweepW1 — паузы (быстрый прогон)
     // ждать именно этот вопрос (data-qid), иначе в фоновой вкладке можно померить предыдущий
     for (let k = 0; k < 40 && !document.querySelector('.ht-card[data-qid="' + id + '"]'); k++) { const sb = document.querySelector('.ht-start'); if (sb) sb.click(); await w(120); }
-    await w(450);
+    await w(window.__sweepW1 || 450);
     const root = document.querySelector('.ht'); const card = document.querySelector('.ht-card[data-qid="' + id + '"]');
     if (!card) { out.push(id + ': no card'); continue; }
     const foot = document.querySelector('.ht-foot'); const ed = document.querySelector('.ht-ed');
@@ -26,6 +26,13 @@ window.__sweep = async (opt) => {
     st['t' + tl]++; if (document.querySelector('.ht-seg')) st.tog++;
     const pr = [];
     if (document.documentElement.scrollHeight > innerHeight + 1) pr.push('page-scroll');
+    if (document.documentElement.scrollWidth > innerWidth + 1) pr.push('page-hscroll');
+    // открытая клавиатура (is-kbd + --vvh, как в просмотрщике): поле, кнопка и отклик — над ней
+    const de = document.documentElement; const vvh = de.classList.contains('is-kbd') ? parseFloat(de.style.getPropertyValue('--vvh')) : 0;
+    if (vvh) {
+      const inp = document.querySelector('.ht-inp'); if (inp && inp.getBoundingClientRect().bottom > vvh + 1) pr.push('input-under-kbd');
+      if (foot.getBoundingClientRect().bottom > vvh + 1) pr.push('foot-under-kbd');
+    }
     if (card.scrollHeight > card.clientHeight + 1) pr.push('card-overflow ' + (card.scrollHeight - card.clientHeight));
     if (foot.getBoundingClientRect().bottom > r.bottom + 1) pr.push('foot-out');
     const vis = document.querySelector('.ht-vis'); const visOn = vis && vis.offsetHeight > 0;

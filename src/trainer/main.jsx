@@ -95,7 +95,23 @@ function Lms({ tr, Trainer, bank }) {
       ids: picked.map((x) => x.question_id) });
   }, [picked]);
 
-  if (P.qa) window.__trenajor = { ids: bank.map((x) => x.question_id), show: (id, opt) => setQa({ id, opt, t: Date.now() }) };
+  // qa: show(id, opt) — один вопрос; screen('intro' | 'result', n, wrong) — вводный экран или итог попытки из n вопросов
+  // (по одному из разных уроков — самый длинный список «По урокам»; wrong — каждый какой ответ неверный: 3 — каждый третий, 1 — все).
+  if (P.qa) window.__trenajor = { ids: bank.map((x) => x.question_id), show: (id, opt) => setQa({ id, opt, t: Date.now() }),
+    screen: (kind, n = 15, wrong = 3) => setQa({ screen: kind, n, wrong, t: Date.now() }) };
+  if (qa && qa.screen) {
+    const byL = {}; bank.forEach((x) => { (byL[x.lesson] = byL[x.lesson] || []).push(x); });
+    const ls = Object.keys(byL); const qs = [];
+    for (let i = 0; qs.length < qa.n && i < 50; i++) ls.forEach((l) => { if (qs.length < qa.n && byL[l][i]) qs.push(byL[l][i]); });
+    const res = qa.screen === 'result';
+    const ans = res ? qs.map((x, i) => ({ ...answerOf(x, x.correct_answer), correct: (i + 1) % qa.wrong !== 0 })) : [];
+    const c = ans.filter((a) => a.correct).length;
+    const a = { kind: P.kind, status: res ? 'finished' : 'in_progress', question_count: qa.n, started_at: 'qa' + qa.t, finished_at: res ? 'qa' : null,
+      coins_per_correct: COINS, points_per_correct: POINTS, correct_count: c, answers: ans,
+      questions: res ? qs : qs.map((x) => ({ ...x, correct_answer: null })),
+      reward: res && P.kind === 'reward' ? { coins: c * COINS, points: c * POINTS } : null, reward_date: res && P.kind === 'reward' ? now().slice(0, 10) : null };
+    return <Trainer key={qa.t} attempt={a} lang={P.lang} busy={false} onAnswer={() => {}} onFinished={() => {}} onRestart={() => {}} onExit={() => {}} />;
+  }
   if (qa) {
     const x = bank.find((z) => z.question_id === qa.id);
     const opt = qa.opt === undefined ? x.correct_answer : qa.opt;   // null — без ответа

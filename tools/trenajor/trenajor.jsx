@@ -87,7 +87,33 @@ const LABELS = {
     errors: { missing: 'The LMS did not send an attempt.', questions: 'The LMS sent no questions or not enough.', bad: 'Invalid question', answers: 'Wrong number of answers in the attempt.' },
   },
 };
-const labelsOf = (lang) => LABELS[lang] || LABELS.uz;
+// Свои подписи модуля CSS (19.11.2026): миссия «Сайт одевается» — каждый верный ответ оформляет одну часть сайта.
+const MOD_LABELS = {
+  css: {
+    uz: {
+      rule3: "Har bir to'g'ri javob saytingizning bitta qismini bezaydi: rang, shrift, soya. Oxirida — chiroyli sayt!",
+      bubble: 'Saytni bezaymizmi?', siteOf: (a, b) => `${a} / ${b} qism bezaldi`, holeHint: "Bezalmay qolgan qismni bosing — qaysi savol ekanini ko'rasiz",
+      parts: ['Logo rangi', 'Sarlavha shrifti', 'Menyu qatorda', "Rasm o'lchami", 'Banner matni', 'Yumaloq tugma', '1-karta soyasi', '2-karta soyasi', '3-karta soyasi', 'Matn rangi', "Ro'yxat bezagi", 'Maydon chegarasi', 'Tugma rangi', 'Pastki qism', 'Hover effekti'],
+    },
+    ru: {
+      rule3: 'Каждый верный ответ оформляет одну часть твоего сайта: цвет, шрифт, тень. В конце — красивый сайт!',
+      bubble: 'Оформим сайт?', siteOf: (a, b) => `Оформлено частей: ${a} из ${b}`, holeHint: 'Нажми на неоформленную часть — увидишь, какой это был вопрос',
+      parts: ['Цвет логотипа', 'Шрифт заголовка', 'Меню в ряд', 'Размер картинки', 'Текст баннера', 'Круглая кнопка', 'Тень карточки 1', 'Тень карточки 2', 'Тень карточки 3', 'Цвет текста', 'Оформление списка', 'Рамка поля', 'Цвет кнопки', 'Подвал', 'Эффект наведения'],
+    },
+    en: {
+      rule3: 'Every correct answer styles one part of your website: colour, font, shadow. At the end — a beautiful site!',
+      bubble: 'Let’s style the site?', siteOf: (a, b) => `${a} of ${b} parts styled`, holeHint: 'Tap an unstyled part to see which question it was',
+      parts: ['Logo colour', 'Heading font', 'Menu in a row', 'Picture size', 'Banner text', 'Rounded button', 'Card 1 shadow', 'Card 2 shadow', 'Card 3 shadow', 'Text colour', 'List style', 'Field border', 'Button colour', 'Footer', 'Hover effect'],
+    },
+  },
+};
+const labelsOf = (lang, mod) => {
+  const base = LABELS[lang] || LABELS.uz;
+  const o = MOD_LABELS[mod] && (MOD_LABELS[mod][lang] || MOD_LABELS[mod].uz);
+  if (!o) return base;
+  const { rule3, ...rest } = o;
+  return Object.assign({}, base, rest, { rules: base.rules.map((r, i) => (i === 2 && rule3 ? rule3 : r)) });
+};
 
 // ── КОДИ — герой курса (заказчик, 18.11.2026: «поставь наш робот»): тот же рисунок, что в уроках (canon/html/hero-tail.part.jsx,
 // RobotSVG — голова в белом кружке: кремовый шлем, медные рамка и уши, тёмный экран, светящиеся глаза). Без системы поз урока:
@@ -196,7 +222,7 @@ const PARTS = [
   { b: [97, 96.5, 21, 6], d: <g><circle cx="101" cy="99.5" r="2.4" fill="#FA4F28" /><circle cx="107.5" cy="99.5" r="2.4" fill="#7C6CF2" /><circle cx="114" cy="99.5" r="2.4" fill="#14B8A6" /></g> },
 ];
 // Вводный экран: сайт сам собирается по блоку — так видно, что будет в попытке; собрался — пауза и заново.
-function IntroSite({ label }) {
+function IntroSite({ label, kind }) {
   const [k, setK] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setK((x) => (x >= PARTS.length + 4 ? 0 : x + 1)), 420);
@@ -204,7 +230,7 @@ function IntroSite({ label }) {
   }, []);
   const n = Math.min(k, PARTS.length);
   const states = PARTS.map((_, p) => (p < n ? 'ok' : p === n ? 'cur' : 'todo'));
-  return <Site states={states} fresh={n > 0 && k <= PARTS.length ? [n - 1] : []} label={label} className="is-intro" />;
+  return <Site states={states} fresh={n > 0 && k <= PARTS.length ? [n - 1] : []} label={label} className="is-intro" kind={kind} />;
 }
 const partQs = (N) => PARTS.map((_, p) => {
   if (N <= PARTS.length) return [Math.floor(p * N / PARTS.length)];
@@ -220,9 +246,15 @@ function siteStates(N, answers, index, done) {
     return 'todo';
   });
 }
-function Site({ states, fresh = [], onPart, sel, label, className = '' }) {
+// kind 'css' — миссия «Сайт одевается» (19.11.2026): все части сайта уже есть (HTML), но серые и бледные — без CSS;
+// верный ответ раскрашивает свою часть, неверный оставляет её серой с красной пунктирной рамкой.
+let siteUid = 0;
+function Site({ states, fresh = [], onPart, sel, label, className = '', kind }) {
+  const gid = useMemo(() => 'hts' + (++siteUid), []);
+  const css = kind === 'css';
   return (
-    <svg className={'ht-site ' + className} viewBox="0 0 120 104" role={onPart ? 'group' : 'img'} aria-label={label}>
+    <svg className={'ht-site ' + (css ? 'is-css ' : '') + className} viewBox="0 0 120 104" role={onPart ? 'group' : 'img'} aria-label={label}>
+      {css && <defs><filter id={gid}><feColorMatrix type="saturate" values="0" /></filter></defs>}
       <rect x="0.5" y="0.5" width="119" height="103" rx="6" fill="#fff" stroke="#D9D6E2" />
       <path d="M0.5 9V6.5a6 6 0 0 1 6-6h107a6 6 0 0 1 6 6V9z" fill="#ECEEF2" />
       <circle cx="6" cy="4.8" r="1.5" fill="#FF5F57" /><circle cx="10.5" cy="4.8" r="1.5" fill="#FEBC2E" /><circle cx="15" cy="4.8" r="1.5" fill="#28C840" />
@@ -235,7 +267,8 @@ function Site({ states, fresh = [], onPart, sel, label, className = '' }) {
         return (
           <g key={p} className={'ht-sp is-' + st + (fresh.includes(p) ? ' is-new' : '') + (sel === p ? ' is-sel' : '') + (click ? ' is-click' : '')}
             onClick={click ? () => onPart(p) : undefined}>
-            {st === 'ok' ? pt.d : <rect className="ht-sp-ph" x={x} y={y} width={w} height={h} rx="2.5" />}
+            {st === 'ok' ? pt.d : css ? <><g filter={`url(#${gid})`} opacity=".42">{pt.d}</g><rect className="ht-sp-ol" x={x - 1} y={y - 1} width={w + 2} height={h + 2} rx="2.5" /></>
+              : <rect className="ht-sp-ph" x={x} y={y} width={w} height={h} rx="2.5" />}
             {click && <rect x={x - 2} y={y - 2} width={w + 4} height={h + 4} fill="transparent" />}
           </g>
         );
@@ -270,9 +303,54 @@ function codeLine(line, key) {
   text(line.slice(i));
   return out;
 }
+// CSS (тренажёр CSS, 19.11.2026): селектор — жёлтый, свойство — голубой, значение — терракота, число — зелёный, @media — фиолетовый.
+// Состояние идёт через строки: { stack — открытые { (rule | group для @media/@keyframes), mode — sel | prop | val, sel — текст селектора }.
+function cssLine(line, key, st) {
+  const out = []; let n = 0;
+  const push = (c, t) => out.push(<span key={key + '-' + n++} className={c}>{t}</span>);
+  const re = /\/\*.*?\*\/|___|\u0001|[{};:]|\s+|[^{};:\s_\u0001/]+|./g;
+  let m;
+  while ((m = re.exec(line))) {
+    const t = m[0];
+    if (t.startsWith('/*')) push('ht-c-cm', t);
+    else if (t === '___') out.push(<span key={key + '-' + n++} className="ht-c-slot">?</span>);
+    else if (t === '\u0001') out.push(<span key={key + '-' + n++} className="ht-caret" aria-hidden="true" />);
+    else if (/^\s+$/.test(t)) push('ht-c-tx', t);
+    else if (t === '{') {
+      const grp = /^\s*@(media|keyframes|supports)/.test(st.sel);
+      st.stack.push(grp ? 'group' : 'rule'); st.mode = grp ? 'sel' : 'prop'; st.sel = ''; push('ht-c-pn', t);
+    } else if (t === '}') {
+      st.stack.pop(); st.mode = st.stack[st.stack.length - 1] === 'rule' ? 'prop' : 'sel'; st.sel = ''; push('ht-c-pn', t);
+    } else if (t === ';') { if (st.mode === 'val') st.mode = 'prop'; push('ht-c-pn', t); }
+    else if (t === ':') {
+      if (st.mode === 'prop') { st.mode = 'val'; push('ht-c-pn', t); }
+      else if (st.mode === 'sel') { st.sel += t; push(/^\s*@/.test(st.sel) ? 'ht-c-pn' : 'ht-c-sel', t); }
+      else push('ht-c-str', t);
+    } else if (st.mode === 'sel') {
+      st.sel += t;
+      if (/^\s*@/.test(st.sel)) push(t.startsWith('@') ? 'ht-c-kw' : /^[(]?[\d.]/.test(t) ? 'ht-c-num' : 'ht-c-at', t);
+      else push('ht-c-sel', t);
+    } else if (st.mode === 'prop') push('ht-c-at', t);
+    else push(/^-?[\d.]+[a-z%]*[),]?$/i.test(t) ? 'ht-c-num' : 'ht-c-str', t);
+  }
+  return out;
+}
+// Весь код по строкам: css — файл style.css; иначе HTML, а строки между <style> и </style> — CSS.
+function highlight(code, css) {
+  const st = { stack: [], mode: 'sel', sel: '' };
+  let inStyle = !!css;
+  return code.split('\n').map((ln, i) => {
+    if (css) return ln.length ? cssLine(ln, i, st) : null;
+    if (inStyle && /<\/style>/i.test(ln)) inStyle = false;
+    const r = !ln.length ? null : inStyle ? cssLine(ln, i, st) : codeLine(ln, i);
+    if (/<style[\s>]/i.test(ln) && !/<\/style>/i.test(ln)) inStyle = true;
+    return r;
+  });
+}
 // lines — «найди ошибку»: строки нажимаются ({ onLine, picked, correct, answered }), номер строки — ответ.
-function CodeBox({ code, mark, fs, maxH, compact, lines: tap }) {
+function CodeBox({ code, mark, fs, maxH, compact, lines: tap, css }) {
   const lines = code.split('\n');
+  const hl = useMemo(() => highlight(code, css), [code, css]);
   // Код не влез (maxH): видна часть вокруг главной строки — выделенной или с пропуском ___, а не только верх (телефон лёжа с клавиатурой).
   const focus = (mark && mark.length ? mark[0] : lines.findIndex((l) => l.includes('___')) + 1) || 0;
   const ed = useRef(null);
@@ -289,13 +367,13 @@ function CodeBox({ code, mark, fs, maxH, compact, lines: tap }) {
   });
   return (
     <div ref={ed} className={'ht-ed' + (compact ? ' is-compact' : '') + (tap ? ' is-tap' : '')} style={{ fontSize: fs, maxHeight: maxH }}>
-      <div className="ht-ed-tabs"><span className="ht-ed-tab">index.html</span></div>
+      <div className="ht-ed-tabs"><span className={'ht-ed-tab' + (css ? ' is-css' : '')}>{css ? 'style.css' : 'index.html'}</span></div>
       <div className="ht-ed-body">
         {lines.map((ln, i) => {
           const n = String(i + 1);
           let c = 'ht-ln' + ((mark || []).indexOf(i + 1) >= 0 ? ' is-mark' : '');
           if (tap) c += tap.answered ? (n === tap.correct ? ' is-ok' : n === tap.picked ? ' is-bad' : ' is-off') : n === tap.picked ? ' is-pick' : '';
-          const body = <><span className="ht-no">{tap && tap.answered && (n === tap.correct || n === tap.picked) ? (n === tap.correct ? '✓' : '✗') : i + 1}</span><span className="ht-code">{ln.length ? codeLine(ln, i) : ' '}</span></>;
+          const body = <><span className="ht-no">{tap && tap.answered && (n === tap.correct || n === tap.picked) ? (n === tap.correct ? '✓' : '✗') : i + 1}</span><span className="ht-code">{hl[i] || ' '}</span></>;
           return tap && !tap.answered
             ? <button key={i} type="button" className={c} onClick={() => tap.onLine(n)} disabled={tap.disabled}>{body}</button>
             : <div key={i} className={c}>{body}</div>;
@@ -307,19 +385,20 @@ function CodeBox({ code, mark, fs, maxH, compact, lines: tap }) {
 
 // ── СТРАНИЦА: честный браузер (iframe srcdoc без скриптов; картинки из списка — рисунки, другое имя — сломанная картинка) ──
 const pic = (bg, em, w = 160, h = 120) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${bg}"/><text x="50%" y="56%" font-size="${Math.round(h * 0.55)}" text-anchor="middle" dominant-baseline="middle">${em}</text></svg>`);
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><rect width="${w}" height="${h}" fill="${bg}"/><text x="50%" y="56%" font-size="${Math.round(h * 0.55)}" text-anchor="middle" dominant-baseline="middle">${em}</text></svg>`);
 const FILES = {
   'sher.png': pic('#FDE68A', '🦁'), 'mushuk.png': pic('#FBCFE8', '🐱'), 'it.png': pic('#BFDBFE', '🐶'), 'pingvin.png': pic('#E0F2FE', '🐧'),
   'robot.png': pic('#DDD6FE', '🤖'), 'pitsa.png': pic('#FED7AA', '🍕'), 'tort.png': pic('#FCE7F3', '🎂'), 'top.png': pic('#DCFCE7', '⚽'),
   'logo.png': pic('#FFEDD5', '🏕️', 90, 90), 'tog.png': pic('#BAE6FD', '🏔️', 320, 180),
 };
-const withFiles = (s) => s.replace(/(src\s*=\s*")([^"]+)(")/g, (m, a, n, b) => (FILES[n] ? a + FILES[n] + b : m));
+const withFiles = (s) => s.replace(/(src\s*=\s*")([^"]+)(")/g, (m, a, n, b) => (FILES[n] ? a + FILES[n] + b : m))
+  .replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/g, (m, q, n) => (FILES[n] ? 'url("' + FILES[n] + '")' : m));   // фон из CSS: url(tog.png)
 // «Нажми на странице»: места data-t обведены пунктиром, под мышкой — оранжевые, после ответа верное — зелёное, нажатое неверное — красное.
-const TAP_CSS = '[data-t]{outline:2px dashed rgba(250,79,40,.45);outline-offset:3px;border-radius:3px;cursor:pointer;transition:outline-color .15s,background-color .15s}'
+const TAP_CSS = '[data-t]{outline:2px dashed rgba(250,79,40,.45);outline-offset:3px;cursor:pointer;transition:outline-color .15s,background-color .15s}'
   + '[data-hv]{outline:2.5px solid #FA4F28;background-color:rgba(250,79,40,.08)}[data-st=pick]{outline:3px solid #FA4F28;background-color:rgba(250,79,40,.12)}'
   + '[data-st=ok]{outline:3px solid #09B163;background-color:rgba(9,177,99,.12)}[data-st=bad]{outline:3px solid #D93A3A;background-color:rgba(217,58,58,.10)}[data-st=off]{outline-color:rgba(150,150,170,.35)}';
 function pageDoc(html, tap) {
-  const base = '<style>html{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff}body{margin:12px}img{max-width:100%}' + (tap ? TAP_CSS : '') + '</style>';
+  const base = '<style>html{font-family:Arial,Helvetica,sans-serif;color:#111}body{margin:12px}img{max-width:100%}' + (tap ? TAP_CSS : '') + '</style>';
   const h = withFiles(html);
   if (/<html[\s>]/i.test(h)) return /<head[\s>]/i.test(h) ? h.replace(/<head([^>]*)>/i, '<head$1>' + base) : h.replace(/<html([^>]*)>/i, '<html$1>' + base);
   return '<!doctype html><html><head><meta charset="utf-8">' + base + '</head><body>' + h + '</body></html>';
@@ -333,6 +412,14 @@ function decodeVis(raw, lang) {
     try { v = JSON.parse(raw.slice(VIS_PREFIX.length)); } catch { return null; }
   }
   if (!v || typeof v !== 'object') return null;
+  // CSS-вид (тренажёр CSS): в редакторе css (style.css), на странице html + <style> base + css без объявлений с ___ (или goal).
+  // Та же логика — visL в tools/trenajor/build.mjs.
+  if (v.css != null || v.html != null) {
+    const css = v.css != null ? tx(v.css, lang).replace(/^\n+|\s+$/g, '') : null;
+    const html = v.html != null ? tx(v.html, lang) : null;
+    const page = html == null ? null : '<style>' + tx(v.base, lang) + '\n' + (v.goal != null ? tx(v.goal, lang) : (css || '').replace(/[^{};\n]*___[^{};\n]*;?/g, '')) + '</style>\n' + html;
+    return css == null && page == null ? null : { code: css, page, mark: v.mark || [], css: true, vw: Number(v.vw) || 0 };
+  }
   const raw0 = v.code != null ? tx(v.code, lang).replace(/^\n+|\s+$/g, '') : null;
   const page = v.page === true ? raw0 : v.page != null ? tx(v.page, lang) : null;
   const code = raw0 == null ? null : raw0.replace(/\s+data-t="[^"]*"/g, '');   // метки целей «нажми на странице» ученику не видны
@@ -360,7 +447,7 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
   const hasCode = vis.code != null;
   const hasPage = vis.page != null;
   const row = hasCode && hasPage && size.w >= 600;
-  const vw = !hasPage ? 0 : size.w < 520 ? 360 : row ? 420 : 520;
+  const vw = !hasPage ? 0 : vis.vw || (size.w < 520 ? 360 : row ? 420 : 520);   // vis.vw — своя ширина страницы (@media, урок 16 CSS)
   const onLoad = () => {
     const d = frame.current && frame.current.contentDocument;
     if (!d || !d.documentElement) return;
@@ -412,8 +499,13 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
       if (codeH(o.codeFs) > hCode + 1) o.codeMax = Math.max(60, hCode);
     }
     if (hasPage) {
+      // после ответа в «нажми» и «найди ошибку» страница может стать мельче (до 0.34): важнее увидеть её целиком с отметками
+      // низкое широкое окно (масштаб браузера 175–200%): CSS-пиксель там вдвое крупнее на экране — страница может быть мельче
+      const shortWide = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-height: 460px) and (min-aspect-ratio: 3/2)').matches;
+      const answered = (tap && tap.answered) || (lineTap && lineTap.answered);
+      const floor = shortWide && answered ? 0.25 : shortWide || answered ? 0.34 : 0.5;
       o.pageScale = Math.min(1, wPage / vw, Math.max(0.01, hPage - BAR) / dh);
-      if (o.pageScale < 0.5) { o.pageScale = Math.min(0.5, wPage / vw); o.pageCut = Math.max(40, hPage - BAR); }
+      if (o.pageScale < floor) { o.pageScale = Math.min(floor, wPage / vw); o.pageCut = Math.max(40, hPage - BAR); }
     }
     return o;
   };
@@ -435,22 +527,25 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
     }
   }
   const [view, setView] = useState(tap ? 'page' : 'code');
-  const showCode = hasCode && (!toggle || view === 'code');
-  const showPage = hasPage && (!toggle || view === 'page');
+  // «нажми на странице» после ответа: переключатель не нужен — вся высота странице (на ней зелёная рамка верного места)
+  const pageOnly = toggle && !!tap && tap.answered;
+  if (pageOnly) F = fit(size.h, size.h, size.w);
+  const showCode = hasCode && (!toggle || (!pageOnly && view === 'code'));
+  const showPage = hasPage && (!toggle || pageOnly || view === 'page');
   const pageW = Math.round(vw * F.pageScale);
   const pageH = Math.round(dh * F.pageScale);
   const ready = size.h > 0 && (!hasPage || docH > 0);   // пока страница не измерена — не судим, иначе ужатие включится зря
   const cut = ready && ((showCode && F.codeMax != null) || (showPage && F.pageCut != null));
   useEffect(() => { if (onCut) onCut(!!cut); }, [cut]);   // карточка узнаёт, что картинка не влезает (ужатие)
   return (
-    <div className={'ht-vis' + (row ? ' is-row' : '') + (toggle ? ' is-toggle' : '')} ref={box} data-cut={cut ? '1' : undefined}>
-      {toggle && (
+    <div className={'ht-vis' + (row ? ' is-row' : '') + (toggle ? ' is-toggle' : '')} ref={box} data-cut={cut ? '1' : undefined} data-pagecut={ready && showPage && F.pageCut != null ? '1' : undefined}>
+      {toggle && !pageOnly && (
         <div className="ht-seg" role="tablist">
           <button type="button" role="tab" aria-selected={view === 'code'} className={view === 'code' ? 'is-on' : ''} onClick={() => setView('code')}>{T.code}</button>
           <button type="button" role="tab" aria-selected={view === 'page'} className={view === 'page' ? 'is-on' : ''} onClick={() => setView('page')}>{T.page}</button>
         </div>
       )}
-      {showCode && <CodeBox code={vis.code} mark={vis.mark} fs={Math.round(F.codeFs * 10) / 10} maxH={F.codeMax} compact={compact} lines={lineTap} />}
+      {showCode && <CodeBox code={vis.code} mark={vis.mark} fs={Math.round(F.codeFs * 10) / 10} maxH={F.codeMax} compact={compact} lines={lineTap} css={vis.css} />}
       {hasPage && (
         <div className={'ht-br' + (showPage ? '' : ' is-off')} style={{ width: pageW }} aria-hidden={showPage ? undefined : true}>
           <div className="ht-br-bar"><span className="ht-br-tab"><i className="ht-br-fav" /><span className="ht-br-tt">{docTitle || 'index.html'}</span></span></div>
@@ -509,11 +604,12 @@ function parseDate(v) {
   return Date.parse(/(?:Z|[+-]\d\d:\d\d)$/.test(iso) ? iso : iso + '+05:00');
 }
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-const moduleName = (questions) => {
+const modKey = (questions) => {
   const q = (questions || []).find(Boolean);
   const m = q && (q.module || q.block_id);
-  return m ? String(m).toUpperCase() : 'HTML';
+  return m ? String(m).toLowerCase() : 'html';
 };
+const moduleName = (questions) => modKey(questions).toUpperCase();
 
 function attemptProblem(attempt, T) {
   if (!attempt) return T.errors.missing;
@@ -536,7 +632,8 @@ function attemptProblem(attempt, T) {
 
 // ── ВВОДНЫЙ ЭКРАН (только в новой попытке) ──
 function Intro({ attempt, lang, onStart, onExit }) {
-  const T = labelsOf(lang);
+  const kind = modKey(attempt && attempt.questions);
+  const T = labelsOf(lang, kind);
   const root = useRef(null);
   useScreenHeight(root);
   const n = Number(attempt && attempt.question_count) || SESSION_DEFAULT;
@@ -549,8 +646,19 @@ function Intro({ attempt, lang, onStart, onExit }) {
   const rules = practice ? [T.rules[0], T.rules[1], T.practiceRule] : T.rules;
   const head = useRef(null);
   useEffect(() => { if (head.current) head.current.focus(); }, []);
+  // Низкое окно (масштаб браузера 175–200%, телефон лёжа): ступени it 1–3 — без картинки сайта → правила плотнее → без правил.
+  const [it, setIt] = useState(0);
+  const [vp, setVp] = useState(0);
+  useEffect(() => { const on = () => setVp((k) => k + 1); window.addEventListener('resize', on); return () => window.removeEventListener('resize', on); }, []);
+  useLayoutEffect(() => { setIt(0); }, [vp]);
+  useLayoutEffect(() => {
+    const r = root.current; const box = r && r.querySelector('.ht-intro'); const ol = r && r.querySelector('.ht-rules');
+    if (!box || it >= 3) return;
+    const over = (el) => !!el && el.scrollHeight > el.clientHeight + 1;
+    if (over(box) || over(r) || over(ol)) setIt(it + 1);
+  });
   return (
-    <div className="ht ht--intro" ref={root}>
+    <div className="ht ht--intro" ref={root} data-it={it || undefined}>
       <style>{CSS}</style>
       {typeof onExit === 'function' && <button type="button" className="ht-x" onClick={() => onExit()} aria-label={T.exit} title={T.exit}><IcX /></button>}
       <section className="ht-intro">
@@ -565,7 +673,7 @@ function Intro({ attempt, lang, onStart, onExit }) {
               {practice && <span className="ht-chip is-soft">{T.practice}</span>}
             </div>
           </div>
-          <div className="ht-intro-site"><IntroSite label={T.site} /></div>
+          <div className="ht-intro-site"><IntroSite label={T.site} kind={kind} /></div>
           <div className="ht-intro-kodi"><span className="ht-bubble">{T.bubble}</span><Kodi mood="happy" size={92} /></div>
         </div>
         <h2 className="ht-h2">{T.how}</h2>
@@ -593,7 +701,8 @@ function Assemble({ q, lang, answer, busy, T, vis, onSubmit }) {
   const toggle = (id) => { if (done || busy) return; setSeq((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id])); };
   return (
     <div className={'ht-asm' + (done ? (answer.correct ? ' is-ok' : ' is-bad') : '') + (lines > 3 ? ' is-long' : '')}>
-      <CodeBox code={code} />
+      <CodeBox code={code} css={!!(vis && vis.css)} />
+      {done && answer.correct && <p className="ht-inp-right ht-asm-built"><IcOk /><code>{built.trim()}</code></p>}
       {done ? (!answer.correct && right && <p className="ht-inp-right"><IcOk />{T.rightAnswer}: <code>{right.trim()}</code></p>) : <>
         <div className="ht-pcs" role="group" aria-label={T.hintBuild}>
           {(q.options || []).map((o) => {
@@ -616,7 +725,8 @@ function Assemble({ q, lang, answer, busy, T, vis, onSubmit }) {
 
 // ── ТРЕНАЖЁР: вопросы и итог ──
 function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) {
-  const T = labelsOf(lang);
+  const kind = modKey(attempt && attempt.questions);
+  const T = labelsOf(lang, kind);
   const root = useRef(null);
   useScreenHeight(root);
   const N = Number(attempt && attempt.question_count) || SESSION_DEFAULT;
@@ -662,6 +772,16 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
   const [typed, setTyped] = useState('');
   const inpRef = useRef(null);
   const [hole, setHole] = useState(null);   // итог: нажатая дыра сайта — блок p
+  // Итог без прокрутки (19.11.2026, CSS — до 17 уроков в списке): если список уроков, открытая дыра или весь итог не влезают —
+  // ступени ужатия rt 1–6 (плотнее список уроков → плитки → награда в строку → сайт меньше, сбоку от текста;
+  // 5 — низкое широкое окно: сайт колонкой слева; 6 — крайний случай, масштаб 200%: список или пояснение листаются внутри, кнопки на месте).
+  const [rt, setRt] = useState(0);
+  useLayoutEffect(() => { setRt(0); }, [hole, vpKey, done]);
+  useLayoutEffect(() => {
+    if (!done || rt >= 6 || !root.current) return;
+    const over = (sel) => { const el = root.current.querySelector(sel); return !!el && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1); };
+    if (over('.ht-lessons') || over('.ht-hole') || over('.ht-res') || over('.ht--result')) setRt(rt + 1);
+  });
   useEffect(() => {
     setTyped('');
     const el = inpRef.current;
@@ -677,7 +797,10 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
     const sliver = !ix && answer && tight < 2 && vis && vis.offsetHeight > 0 && vis.offsetHeight < 110;   // картинка-полоска после ответа — лучше спрятать
     const asm = c.querySelector('.ht-asm');   // «собери»: кусочки и кнопки не влезают — тоже ужатие
     const asmOver = asm && asm.scrollHeight > asm.clientHeight + 1;
-    const ixCut = ix && answer && visCut;   // «найди ошибку», «нажми»: после ответа страница обрезана — прячем строки-пояснения, картинку оставляем
+    // после ответа страница обрезана: у «найди ошибку» и «нажми» прячем строки-пояснения (картинка остаётся),
+    // у остальных на ступени 2 картинка прячется — ответ уже дан, видно пояснение (19.11.2026, низкое окно)
+    const pageCut = !!c.querySelector('.ht-vis[data-pagecut]');
+    const ixCut = answer && (ix ? visCut : pageCut);
     if (tight < max && (c.scrollHeight > c.clientHeight + 1 || sliver || asmOver || ixCut)) setTight(tight + 1);
   });
   const call = (fn, onFail) => {
@@ -735,7 +858,7 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
           return <li key={i} className={c} />;
         })}
       </ol>
-      {!done && <Site states={states} fresh={fresh} label={T.site} className="is-mini" />}
+      {!done && <Site states={states} fresh={fresh} label={T.site} className="is-mini" kind={kind} />}
       <span className="ht-count">{done ? N : index + 1}<small> / {N}</small></span>
     </div>
   );
@@ -782,9 +905,9 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
       <div className="ht ht--result" ref={root}>
         <style>{CSS}</style>
         {bar}
-        <section className="ht-res" aria-label={T.result}>
+        <section className={'ht-res' + (hole != null ? ' is-hole' : '')} data-rt={rt || undefined} aria-label={T.result}>
           <div className="ht-res-head">
-            <div className="ht-res-site"><Site states={states} onPart={(p) => setHole((h) => (h === p ? null : p))} sel={hole} label={T.site} /></div>
+            <div className="ht-res-site"><Site states={states} onPart={(p) => setHole((h) => (h === p ? null : p))} sel={hole} label={T.site} kind={kind} /></div>
             <div className="ht-res-text">
               <p className="ht-res-kick">{T.site} · {T.siteOf(builtN, PARTS.length)}</p>
               <h1 className="ht-res-title" ref={head} tabIndex={-1}>{praise}</h1>
@@ -801,7 +924,10 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
                 {lessons.map((k) => {
                   const s = byLesson[k];
                   return <li key={k}>
-                    <span className="ht-les-n">{k === '—' ? '—' : T.lesson(k)}</span>
+                    <span className="ht-les-n">{k === '—' ? '—' : (() => {   // слово «Урок» / «dars» — отдельно: на тесном телефоне прячется, остаётся номер
+                      const lab = T.lesson(k); const i = lab.indexOf(String(k));
+                      return i < 0 ? lab : <>{i > 0 && <span className="ht-les-w">{lab.slice(0, i)}</span>}{k}{i + String(k).length < lab.length && <span className="ht-les-w">{lab.slice(i + String(k).length)}</span>}</>;
+                    })()}</span>
                     <span className="ht-les-t">{tx(s.topic, lang)}</span>
                     <span className="ht-les-bar"><i style={{ width: (s.ok / s.all * 100) + '%' }} /></span>
                     <span className="ht-les-s">{s.ok}/{s.all}</span>
@@ -979,6 +1105,19 @@ const CSS = `
 .ht-rule-ic { flex: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #FFF1EC; color: var(--o); }
 .ht-rule-ic svg { width: 22px; height: 22px; }
 .ht-start { align-self: stretch; margin-top: 18px; }
+.ht--intro .ht-intro { overflow: hidden; }
+.ht--intro[data-it] .ht-intro-site, .ht--intro[data-it] .ht-bubble { display: none; }
+.ht--intro[data-it] .ht-intro-kodi .ht-kodi { width: 64px !important; height: 64px !important; }
+.ht--intro[data-it] .ht-intro { padding: 14px 18px 14px; }
+.ht--intro[data-it] .ht-intro-top { padding: 12px 16px; }
+.ht--intro[data-it] .ht-intro-title { font-size: 26px; }
+.ht--intro[data-it] .ht-chips { margin-top: 8px; gap: 6px; }
+.ht--intro[data-it] .ht-start { margin-top: 12px; }
+.ht--intro[data-it="2"] .ht-rules, .ht--intro[data-it="3"] .ht-rules { gap: 6px; }
+.ht--intro[data-it="2"] .ht-rules li { padding: 6px 10px; font-size: 12.5px; line-height: 1.3; }
+.ht--intro[data-it="2"] .ht-rule-ic { display: none; }
+.ht--intro[data-it="2"] .ht-h2 { margin-top: 10px !important; }
+.ht--intro[data-it="3"] .ht-rules, .ht--intro[data-it="3"] .ht-h2 { display: none; }
 
 /* ── полоса сверху ── */
 .ht-top { display: flex; align-items: center; gap: 12px; min-height: 40px; padding-left: 0; }
@@ -1062,6 +1201,13 @@ const CSS = `
 .ht-site.is-mini .ht-sp-ph { stroke: none; fill: #ECEAF2; }
 .ht-site.is-mini .ht-sp.is-cur .ht-sp-ph { fill: rgba(250, 79, 40, .45); }
 .ht-site.is-mini .ht-sp.is-bad .ht-sp-ph { fill: #F5B5B5; }
+.ht-sp-ol { fill: none; stroke: none; }
+.ht-sp.is-cur .ht-sp-ol { stroke: var(--o); stroke-width: 1.2; stroke-dasharray: 2.2 1.6; fill: rgba(250, 79, 40, .08); animation: ht-ph 1.3s ease-in-out infinite; }
+.ht-sp.is-bad .ht-sp-ol { stroke: #E05252; stroke-width: 1.1; stroke-dasharray: 2.2 1.6; }
+.ht-site.is-mini .ht-sp.is-cur .ht-sp-ol { stroke: none; fill: rgba(250, 79, 40, .45); }
+.ht-site.is-mini .ht-sp.is-bad .ht-sp-ol { stroke: none; fill: rgba(224, 82, 82, .45); }
+@media (hover: hover) { .ht-sp.is-click:hover .ht-sp-ol { fill: rgba(224, 82, 82, .12); } }
+.ht-sp.is-sel .ht-sp-ol { fill: rgba(224, 82, 82, .18); stroke-width: 1.8; stroke-dasharray: none; }
 .ht-sp.is-new { transform-box: fill-box; transform-origin: center; animation: ht-build .6s cubic-bezier(.3, 1.6, .5, 1) both; }
 .ht-sp.is-click { cursor: pointer; }
 @media (hover: hover) { .ht-sp.is-click:hover .ht-sp-ph { fill: #FFE6E6; } }
@@ -1076,6 +1222,7 @@ const CSS = `
 .ht-asm.is-ok > .ht-ed { box-shadow: 0 0 0 3px var(--ok), 0 8px 22px rgba(15, 23, 42, .14); }
 .ht-asm.is-bad > .ht-ed { box-shadow: 0 0 0 3px var(--bad), 0 8px 22px rgba(15, 23, 42, .14); animation: ht-shake .35s ease; }
 .ht-asm .ht-inp-right { justify-content: center; margin-top: 0 !important; flex-wrap: wrap; }
+.ht-asm .ht-asm-built { display: none; }
 .ht-caret { display: inline-block; width: 2px; height: 1.15em; margin-left: 1px; vertical-align: -.2em; background: #FDBA74; animation: ht-caret 1s steps(1) infinite; }
 @keyframes ht-caret { 50% { opacity: 0; } }
 .ht-pcs { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
@@ -1146,6 +1293,8 @@ const CSS = `
 .ht-ln.is-mark { background: rgba(250, 79, 40, .18); box-shadow: inset 3px 0 0 var(--o); }
 .ht-no { flex: 0 0 2.6em; padding-right: 1em; text-align: right; color: #6E7681; user-select: none; }
 .ht-code { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ht-c-sel { color: #D7BA7D; } .ht-c-num { color: #B5CEA8; } .ht-c-kw { color: #C586C0; }
+.ht-ed-tab.is-css::before { content: '#'; color: #42A5F5; }
 .ht-c-tg { color: #569CD6; } .ht-c-at { color: #9CDCFE; } .ht-c-str { color: #CE9178; } .ht-c-pn { color: #808080; } .ht-c-tx { color: #D4D4D4; } .ht-c-cm { color: #6A9955; }
 .ht-c-slot { display: inline-block; min-width: 2.2em; margin: 0 2px; padding: 0 6px; border: 1.5px dashed var(--o); border-radius: 5px; color: #FDBA74; text-align: center; line-height: 1.25; }
 
@@ -1228,6 +1377,89 @@ const CSS = `
 @keyframes ht-pop { 0% { transform: scale(.92); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
 @keyframes ht-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
+/* итог: ужатие rt 1–4 (список уроков, открытая дыра) */
+.ht-res.is-hole .ht-res-hint { display: none; }
+.ht-res[data-rt] .ht-lessons { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+.ht-res[data-rt] .ht-lessons li { grid-template-columns: auto 1fr 40px auto; padding: 4px 9px; font-size: 13px; }
+.ht-res[data-rt] .ht-reward-d { display: none; }
+.ht-res[data-rt="2"] .ht-lessons, .ht-res[data-rt="3"] .ht-lessons, .ht-res[data-rt="4"] .ht-lessons { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 5px; }
+.ht-res[data-rt="2"] .ht-lessons li, .ht-res[data-rt="3"] .ht-lessons li, .ht-res[data-rt="4"] .ht-lessons li { display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 12.5px; }
+.ht-res[data-rt="2"] .ht-les-t, .ht-res[data-rt="2"] .ht-les-bar, .ht-res[data-rt="3"] .ht-les-t, .ht-res[data-rt="3"] .ht-les-bar, .ht-res[data-rt="4"] .ht-les-t, .ht-res[data-rt="4"] .ht-les-bar { display: none; }
+.ht-res[data-rt="3"] .ht-res-site, .ht-res[data-rt="4"] .ht-res-site { width: 150px; }
+.ht-res[data-rt="3"] .ht-res-head, .ht-res[data-rt="4"] .ht-res-head { padding: 10px 14px; }
+.ht-res[data-rt="4"] .ht-res-site { width: 120px; }
+.ht-res[data-rt="4"] .ht-res-head > .ht-kodi { display: none; }
+.ht-res[data-rt="4"] .ht-hole-q { font-size: 14px; }
+.ht-res[data-rt="4"] .ht-hole-p { font-size: 12.5px; line-height: 1.35; }
+.ht-res[data-rt="4"] .ht-lessons li { padding: 3px 7px; font-size: 12px; }
+/* итог: rt 6 — крайний случай (окно ниже ~400 px): листается только середина, шапка и кнопки на месте */
+.ht-res[data-rt="6"] .ht-res-body { overflow-y: auto; }
+.ht-res[data-rt="6"] .ht-lessons, .ht-res[data-rt="6"] .ht-hole, .ht-res[data-rt="6"] .ht-res-col { overflow: visible; min-height: auto; }
+/* ── низкое окно (19.11.2026): ноутбук с масштабом браузера 125–200%, планшет и окно браузера лёжа — плотнее на любой ширине ── */
+.ht-card.is-t1 .ht-meta { display: none; }
+.ht-card.is-t1 .ht-meta + .ht-ctx, .ht-card.is-t1 .ht-meta + .ht-q { margin-top: 0 !important; }
+@media (min-width: 641px) and (max-height: 620px) {
+  .ht { padding: 8px 16px 10px; }
+  .ht-top { min-height: 32px; gap: 10px; }
+  .ht-top .ht-x { width: 32px !important; height: 32px; }
+  .ht-steps li { height: 6px; }
+  .ht-site.is-mini { width: 44px; height: 38px; }
+  .ht-card { margin-top: 8px; padding: 10px 16px 12px; border-radius: 18px; }
+  .ht-tag { min-height: 22px; font-size: 12px; }
+  .ht-ctx { margin-top: 6px !important; font-size: 13.5px; line-height: 1.35; }
+  .ht-q { font-size: 18px; line-height: 1.25; }
+  .ht-meta + .ht-q { margin-top: 6px !important; }
+  .ht-vis { margin-top: 8px; gap: 8px; }
+  .ht-opts { gap: 6px; margin-top: 8px; }
+  .ht-opt { min-height: 42px; padding: 4px 12px 4px 8px; font-size: 15px !important; gap: 10px; }
+  .ht-badge { flex-basis: 28px; width: 28px; height: 28px; font-size: 13.5px; }
+  .ht-inp { margin-top: 8px; }
+  .ht-inp-f, .ht-check { height: 46px; min-height: 46px; }
+  .ht-inp-mark { flex-basis: 46px; }
+  .ht-inp-right { margin-top: 5px !important; font-size: 14px; }
+  .ht-asm { gap: 8px; margin-top: 8px; }
+  .ht-asm > .ht-ed { font-size: 15px; }
+  .ht-pcs { gap: 7px; }
+  .ht-pc { min-height: 38px; padding: 4px 12px; font-size: 14.5px !important; }
+  .ht-asm-act .ht-btn { min-height: 42px; }
+  .ht-foot { margin-top: 6px; min-height: 0; }
+  .ht-hint { display: none; }
+  .ht-hint.is-act { display: block; padding: 0; font-size: 12.5px; }
+  .ht-fb { column-gap: 10px; padding: 7px 10px 8px 12px; border-radius: 14px; grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .ht-fb-ic { width: 28px; height: 28px; }
+  .ht-fb-ic svg { width: 16px; height: 16px; }
+  .ht-fb-h { font-size: 15.5px; }
+  .ht-fb-p { font-size: 13.5px; line-height: 1.35; }
+  .ht-next { min-height: 40px; padding: 0 16px; font-size: 15px !important; border-radius: 12px; }
+  .ht-seg button { height: 26px; }
+  .ht-card.is-t1 { padding-top: 8px; padding-bottom: 8px; }
+  .ht-card.is-t1 .ht-ctx { font-size: 12.5px; }
+  .ht-card.is-t1 .ht-q { font-size: 16px; }
+  .ht-card.is-t1 .ht-opt { min-height: 36px; font-size: 14px !important; }
+  .ht-card.is-t1 .ht-badge { flex-basis: 24px; width: 24px; height: 24px; font-size: 12.5px; }
+  .ht-card.is-t1 .ht-pc { min-height: 34px; padding-top: 2px; padding-bottom: 2px; font-size: 13.5px !important; }
+  .ht-card.is-t1 .ht-asm > .ht-ed { font-size: 13px; }
+  .ht-card.is-t1 .ht-inp-f, .ht-card.is-t1 .ht-check { height: 40px; min-height: 40px; }
+  .ht--result .ht-res { margin-top: 8px; padding: 12px 16px; }
+  .ht-res-head { padding: 10px 14px; gap: 14px; }
+  .ht-res-site { width: 170px; }
+  .ht-res-title { font-size: 20px; }
+  .ht-res-head > .ht-kodi { width: 64px !important; height: 64px !important; }
+  .ht-reward { margin-top: 10px; padding: 10px 12px; gap: 5px; }
+  .ht-reward-v b { font-size: 18px; }
+  .ht-res-foot { margin-top: 8px; }
+  .ht-res-foot .ht-btn { min-height: 42px; }
+}
+@media (min-width: 641px) and (max-height: 440px) {
+  .ht-card { padding: 8px 14px 10px; }
+  .ht-q { font-size: 16px; }
+  .ht-ctx { font-size: 12.5px; }
+  .ht-opt { min-height: 36px; font-size: 14px !important; }
+  .ht-badge { flex-basis: 24px; width: 24px; height: 24px; font-size: 12.5px; }
+  .ht-fb-p { font-size: 12.5px; }
+  .ht-fb-h { font-size: 14.5px; }
+  .ht-next { min-height: 36px; }
+}
 /* ── телефон ── */
 @media (max-width: 640px) {
   .ht { padding: 10px 12px 12px; }
@@ -1316,6 +1548,21 @@ const CSS = `
   .ht-reward-t { width: 100%; }
   .ht-lessons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
   .ht-lessons li { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 9px; font-size: 13px; }
+  .ht-res[data-rt] .ht-lessons { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .ht-res[data-rt] .ht-lessons li { gap: 4px; padding: 3px 7px; font-size: 12px; }
+  .ht-res[data-rt] .ht-reward { gap: 4px 12px; padding: 7px 12px; }
+  .ht-res[data-rt] .ht-reward-t { width: auto; }
+  .ht-res[data-rt] .ht-reward-v b { font-size: 18px; }
+  .ht-res[data-rt="2"] .ht-res-head, .ht-res[data-rt="3"] .ht-res-head, .ht-res[data-rt="4"] .ht-res-head { flex-wrap: nowrap; align-items: center; gap: 10px; padding: 10px; }
+  .ht-res[data-rt="2"] .ht-res-site, .ht-res[data-rt="3"] .ht-res-site, .ht-res[data-rt="4"] .ht-res-site { width: 92px; }
+  .ht-res[data-rt="2"] .ht-res-title, .ht-res[data-rt="3"] .ht-res-title, .ht-res[data-rt="4"] .ht-res-title { font-size: 16.5px; }
+  .ht-res[data-rt="2"] .ht-res-kick, .ht-res[data-rt="3"] .ht-res-kick, .ht-res[data-rt="4"] .ht-res-kick { font-size: 12px; }
+  .ht-res[data-rt="2"] .ht-res-sub, .ht-res[data-rt="3"] .ht-res-sub, .ht-res[data-rt="4"] .ht-res-sub { font-size: 13px; margin-top: 3px !important; }
+  .ht-res[data-rt="2"] .ht-res-hint, .ht-res[data-rt="3"] .ht-res-hint, .ht-res[data-rt="4"] .ht-res-hint { font-size: 11.5px; margin-top: 4px !important; }
+  .ht-res[data-rt="3"] .ht-lessons, .ht-res[data-rt="4"] .ht-lessons { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ht-res[data-rt="3"] .ht-les-n .ht-les-w, .ht-res[data-rt="4"] .ht-les-n .ht-les-w { display: none; }
+  .ht-res[data-rt="3"] .ht-res-foot .ht-btn, .ht-res[data-rt="4"] .ht-res-foot .ht-btn { min-height: 42px; }
+  .ht-res[data-rt="4"] .ht-res-site { width: 76px; }
   .ht-les-t, .ht-les-bar { display: none; }
   .ht-res-foot { margin-top: 10px; }
   .ht-res-foot .ht-btn { flex: 1 1 0; padding: 0 12px; min-height: 46px; font-size: 15.5px !important; }
@@ -1335,5 +1582,46 @@ const CSS = `
 .ht[data-low] .ht-inp { margin-top: 6px; }
 .ht[data-low] .ht-inp-f, .ht[data-low] .ht-check { height: 40px; min-height: 40px; }
 .ht[data-low] .ht-foot { margin-top: 4px; min-height: 0; }
+/* окно ниже 460 px и широкое (масштаб 175–200%, лёжа): карточка в две колонки — слева вопрос и картинка, справа ответ */
+@media (max-height: 460px) and (min-aspect-ratio: 3/2) {
+  .ht-card { display: grid !important; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); column-gap: 18px; }
+  .ht-card > .ht-meta, .ht-card > .ht-ctx, .ht-card > .ht-q { grid-column: 1; }
+  .ht-card > .ht-vis, .ht-card > .ht-spacer { grid-column: 1; grid-row: 4; margin-top: 6px; min-height: 0; max-height: none; }
+  .ht-card > .ht-opts, .ht-card > .ht-inp { grid-column: 2; grid-row: 1 / 5; align-self: center; margin-top: 0; }
+  .ht-card > .ht-opts, .ht-card > .ht-opts.is-short { grid-template-columns: 1fr; gap: 6px; }
+  .ht-card.is-assemble > * { grid-column: 1 / 3; }
+  .ht-card.is-ix { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+  .ht-card.is-ix > .ht-vis { grid-column: 2; grid-row: 1 / 5; margin-top: 0; }
+  .ht-card.is-assemble > .ht-asm { grid-row: 4; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 8px; align-items: center; margin-top: 6px; }
+  .ht-card.is-assemble .ht-asm > .ht-ed { grid-column: 1; grid-row: 1 / 3; max-width: none; }
+  .ht-card.is-assemble .ht-asm > .ht-pcs { grid-column: 2; grid-row: 1; align-self: end; }
+  .ht-card.is-assemble .ht-asm > .ht-asm-act { grid-column: 2; grid-row: 2; align-self: start; }
+  .ht-card.is-assemble .ht-asm > .ht-inp-right { grid-column: 2; grid-row: 1 / 3; }
+  .ht-card.is-t2 .ht-opt.is-off { display: none; }
+  .ht-card.is-assemble.is-t1 .ht-asm > .ht-ed { font-size: 11px; }
+  .ht-card.is-assemble.is-t2 .ht-asm > .ht-ed { font-size: 12px; }
+  .ht-card.is-assemble.is-t3 .ht-asm > .ht-ed { font-size: 11px; }
+  .ht-card.is-assemble.is-t3 .ht-asm.is-bad > .ht-ed { display: none; }   /* масштаб 200%, после ошибки: верный ответ строкой, без редактора */
+  .ht-card.is-assemble.is-t3 .ht-asm.is-bad > .ht-inp-right { grid-column: 1 / 3; grid-row: 1 / 3; }
+  .ht-card.is-assemble .ht-asm.is-ok > .ht-ed { grid-column: 1 / 3; }   /* после верного ответа справа пусто — код во всю ширину */
+  .ht-card.is-assemble.is-t3 .ht-asm.is-ok > .ht-ed { display: none; }   /* масштаб 200%: собранная строка — одной строкой с галочкой */
+  .ht-card.is-assemble.is-t3 .ht-asm.is-ok > .ht-asm-built { display: flex; grid-column: 1 / 3; grid-row: 1 / 3; }
+  .ht-card.is-t3 .ht-q { font-size: 15px; }
+  .ht-card .ht-opt { min-height: 36px; }
+}
+@media (min-width: 641px), (max-height: 460px) and (min-aspect-ratio: 3/2) {
+  .ht-res[data-rt="5"], .ht-res[data-rt="6"] { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 16px; }
+  .ht-res[data-rt="5"] .ht-res-head, .ht-res[data-rt="6"] .ht-res-head { display: contents; }
+  .ht-res[data-rt="5"] .ht-res-site, .ht-res[data-rt="6"] .ht-res-site { grid-column: 1; grid-row: 1 / 4; align-self: start; width: 130px; }
+  .ht-res[data-rt="5"] .ht-res-text, .ht-res[data-rt="6"] .ht-res-text { grid-column: 2; grid-row: 1; }
+  .ht-res[data-rt="5"] .ht-res-head > .ht-kodi, .ht-res[data-rt="6"] .ht-res-head > .ht-kodi { display: none; }
+  .ht-res[data-rt="5"] .ht-res-title, .ht-res[data-rt="6"] .ht-res-title { font-size: 18px; }
+  .ht-res[data-rt="5"] .ht-res-body, .ht-res[data-rt="6"] .ht-res-body { grid-column: 2; grid-row: 2; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .ht-res[data-rt="5"] .ht-reward, .ht-res[data-rt="6"] .ht-reward { order: -1; flex: none; align-self: stretch; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin-top: 0; padding: 5px 12px; }
+  .ht-res[data-rt="5"] .ht-reward-v b, .ht-res[data-rt="6"] .ht-reward-v b { font-size: 16px; }
+  .ht-res[data-rt="5"] .ht-h2, .ht-res[data-rt="6"] .ht-h2 { margin-top: 2px !important; font-size: 13.5px; }
+  .ht-res[data-rt="5"] .ht-hole, .ht-res[data-rt="6"] .ht-hole { margin-top: 0; }
+  .ht-res[data-rt="5"] .ht-res-foot, .ht-res[data-rt="6"] .ht-res-foot { grid-column: 2; grid-row: 3; }
+}
 @media (prefers-reduced-motion: reduce) { .ht *, .ht *::before, .ht *::after { animation: none !important; transition: none !important; } }
 `;

@@ -7423,12 +7423,12 @@
   "question_type": "assemble",
   "context": {
    "uz": "Futbol jamoasi anketasida pozitsiya ro'yxatdan tanlanadi, lekin hujumchi unda yo'q.",
-   "ru": "В анкете футбольной команды позицию выбирают из списка, но нападающего там нет.",
+   "ru": "В анкете футбольной команды в списке позиций нет нападающего.",
    "en": "In the football team form the position is picked from a list, but there is no forward in it."
   },
   "question_text": {
    "uz": "Bo'laklarni tartib bilan bosib, ro'yxatga «Hujumchi» variantini qo'shing",
-   "ru": "Нажимай кусочки по порядку и добавь в список пункт «Нападающий»",
+   "ru": "Нажимай кусочки по порядку и добавь пункт «Нападающий»",
    "en": "Tap the pieces in order to add the “Forward” choice to the list"
   },
   "vis": "@htmlvis:{\"code\":{\"uz\":\"<label>\\n  Pozitsiya:\\n  <select>\\n    <option>Darvozabon</option>\\n    <option>Himoyachi</option>\\n    ___\\n  </select>\\n</label>\",\"ru\":\"<label>\\n  Позиция:\\n  <select>\\n    <option>Вратарь</option>\\n    <option>Защитник</option>\\n    ___\\n  </select>\\n</label>\",\"en\":\"<label>\\n  Position:\\n  <select>\\n    <option>Goalkeeper</option>\\n    <option>Defender</option>\\n    ___\\n  </select>\\n</label>\"}}",

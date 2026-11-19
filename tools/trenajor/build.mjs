@@ -32,6 +32,29 @@ const META = {
       9: { uz: 'Yakuniy HTML loyiha', ru: 'Финальный HTML-проект', en: 'The final HTML project' },
     },
   },
+  // CSS (19.11.2026): 16 уроков по 18 вопросов, финальный 17 — 21 (повторение всего курса); миссия «Сайт одевается».
+  css: {
+    lessons: 17, per: { 17: { choice: 12, input: 4, build: 2, bug: 2, tap: 1 } }, perDefault: { choice: 11, input: 3, build: 2, bug: 1, tap: 1 },
+    topics: {
+      1: { uz: "CSS nima va u saytni qanday o'zgartiradi", ru: 'Что такое CSS и как он меняет сайт', en: 'What CSS is and how it changes a site' },
+      2: { uz: 'Bezash uchun elementni qanday tanlash', ru: 'Как выбрать элемент для стилизации', en: 'How to pick an element to style' },
+      3: { uz: 'Ranglar', ru: 'Цвета', en: 'Colors' },
+      4: { uz: 'Fon', ru: 'Фон', en: 'Backgrounds' },
+      5: { uz: 'Matn va shriftlar', ru: 'Текст и шрифты', en: 'Text and fonts' },
+      6: { uz: "Elementlar o'lchami", ru: 'Размеры элементов', en: 'Element sizes' },
+      7: { uz: 'Box Model', ru: 'Box Model', en: 'Box Model' },
+      8: { uz: 'Chiroyli kartochkalar', ru: 'Красивые карточки', en: 'Beautiful cards' },
+      9: { uz: 'Elementlar sahifada qanday turadi', ru: 'Как элементы ведут себя на странице', en: 'How elements behave on a page' },
+      10: { uz: 'Flexbox: elementlarni joylashtirish', ru: 'Flexbox: расположение элементов', en: 'Flexbox: arranging elements' },
+      11: { uz: 'Flexbox: tekislash', ru: 'Flexbox: выравнивание', en: 'Flexbox: alignment' },
+      12: { uz: 'Pozitsiyalash', ru: 'Позиционирование', en: 'Positioning' },
+      13: { uz: 'Hover va transform', ru: 'Hover и transform', en: 'Hover and transform' },
+      14: { uz: 'Silliq effektlar', ru: 'Плавные эффекты', en: 'Smooth effects' },
+      15: { uz: 'CSS animatsiyalar', ru: 'CSS-анимации', en: 'CSS animations' },
+      16: { uz: 'Moslashuvchan sayt', ru: 'Адаптивность', en: 'Responsive design' },
+      17: { uz: 'Yakuniy CSS loyiha', ru: 'Финальный CSS-проект', en: 'The final CSS project' },
+    },
+  },
 }[MOD];
 if (!META) { console.error('Неизвестный модуль: ' + MOD); process.exit(1); }
 
@@ -49,6 +72,22 @@ const L3 = (get) => { const o = {}; LANGS.forEach((l) => { o[l] = get(l); }); re
 // Сравнение вписанного ответа — так же сравнивает LMS (README): регистр, пробелы по краям и вокруг < > / =, «умные» кавычки, «;» в конце.
 export const normAnswer = (s) => String(s == null ? '' : s).normalize('NFKC').replace(/[‘’ʻʼ`´]/g, "'").replace(/[“”«»„]/g, '"')
   .trim().replace(/\s+/g, ' ').replace(/\s*([<>/=])\s*/g, '$1').replace(/;+$/, '').toLowerCase();
+
+// Картинка вопроса на языке l так, как её покажет тренажёр (decodeVis в trenajor.jsx — та же логика):
+// HTML-вид { code, page|page:true, mark } и CSS-вид { css, html, base, goal, vw, mark } — в редакторе css (style.css),
+// на странице html + <style> base + css (объявления с ___ выброшены) или goal, если он есть.
+const pickL = (v, l) => (v == null ? null : typeof v === 'object' ? v[l] : v);
+const dropSlots = (css) => String(css).replace(/[^{};\n]*___[^{};\n]*;?/g, '');
+function visL(vis, l) {
+  if (!vis) return null;
+  if (vis.css != null || vis.html != null) {
+    const css = pickL(vis.css, l); const html = pickL(vis.html, l); const base = pickL(vis.base, l) || ''; const goal = pickL(vis.goal, l);
+    const page = html == null ? null : `<style>${base}\n${goal != null ? goal : dropSlots(css || '')}</style>\n${html}`;
+    return { code: css, page, css: true };
+  }
+  const code = pickL(vis.code, l);
+  return { code, page: vis.page === true ? code : pickL(vis.page, l), css: false };
+}
 
 const all = [];
 for (let n = 1; n <= META.lessons; n++) {
@@ -70,8 +109,8 @@ const PRAISE = /^(barakalla|qoyil|zo'r|to'ppa|ajoyib|juda|xuddi|верно|мо�
 const UZ_BAD_APOS = /[‘’ʻʼ`]/;
 for (const q of all) {
   const id = q.id || `l${q.lesson}?`;
-  if (!/^html_l\d\d_q\d\d$/.test(id)) err(id, 'id не по образцу html_lNN_qKK');
-  if (!id.startsWith(`html_l${String(q.lesson).padStart(2, '0')}_`)) err(id, 'id не совпадает с файлом урока');
+  if (!new RegExp(`^${MOD}_l\\d\\d_q\\d\\d$`).test(id)) err(id, `id не по образцу ${MOD}_lNN_qKK`);
+  if (!id.startsWith(`${MOD}_l${String(q.lesson).padStart(2, '0')}_`)) err(id, 'id не совпадает с файлом урока');
   if (ids.has(id)) err(id, 'повтор id'); ids.add(id);
   if (!['easy', 'medium', 'hard'].includes(q.difficulty)) err(id, 'difficulty');
   for (const l of LANGS) {
@@ -115,28 +154,27 @@ for (const q of all) {
       }
     }
     if (q.vis) {
-      if (q.vis.page != null) err(id, 'build: page не нужен');
-      for (const l of LANGS) { const c = typeof q.vis.code === 'object' ? q.vis.code[l] : q.vis.code; if ((String(c).match(/___/g) || []).length !== 1) err(id, `build: в vis.code ровно один ___ (${l})`); }
+      if (q.vis.page != null || q.vis.html != null) err(id, 'build: страница не нужна (page/html)');
+      for (const l of LANGS) { const c = visL(q.vis, l).code; if ((String(c).match(/___/g) || []).length !== 1) err(id, `build: в коде ровно один ___ (${l})`); }
     }
   } else if (q.type === 'bug') {
-    if (!q.vis || q.vis.code == null) err(id, 'bug: нужен vis.code');
+    if (!q.vis || visL(q.vis, 'uz').code == null) err(id, 'bug: нужен код (vis.code или vis.css)');
     else {
       if (q.vis.mark) err(id, 'bug: mark выдаёт ответ');
       for (const l of LANGS) {
-        const c = typeof q.vis.code === 'object' ? q.vis.code[l] : q.vis.code;
+        const V = visL(q.vis, l); const c = V.code;
         const n = String(c).replace(/^\n+|\s+$/g, '').split('\n').length;
         if (!Number.isInteger(q.line) || q.line < 1 || q.line > n) err(id, `bug: line ${q.line} вне кода (${n} строк, ${l})`);
-        if (n > (q.vis.page ? 6 : 7)) err(id, `bug: ${n} строк (можно ${q.vis.page ? 6 : 7})`);
+        if (n > (V.page ? 6 : 7)) err(id, `bug: ${n} строк (можно ${V.page ? 6 : 7})`);
         if (String(c).includes('___')) err(id, 'bug: ___ не нужен');
       }
     }
   } else if (q.type === 'tap') {
-    if (!q.vis || q.vis.page == null) err(id, 'tap: нужна страница vis.page');
+    if (!q.vis || visL(q.vis, 'uz').page == null) err(id, 'tap: нужна страница (vis.page или vis.html)');
     else {
       let first = null;
       for (const l of LANGS) {
-        const code = q.vis.code == null ? null : typeof q.vis.code === 'object' ? q.vis.code[l] : q.vis.code;
-        const page = q.vis.page === true ? code : typeof q.vis.page === 'object' ? q.vis.page[l] : q.vis.page;
+        const page = visL(q.vis, l).page;
         const ts = [...String(page).matchAll(/data-t="([^"]+)"/g)].map((m) => m[1]);
         if (ts.length < 3 || ts.length > 5) err(id, `tap: целей data-t ${ts.length} (нужно 3–5, ${l})`);
         if (new Set(ts).size !== ts.length) err(id, `tap: data-t повторяются (${l})`);
@@ -147,11 +185,16 @@ for (const q of all) {
     }
   } else if (q.type != null) err(id, 'type: input, build, bug, tap или без type');
   if (q.vis) {
+    const cssMode = q.vis.css != null || q.vis.html != null;
+    if (cssMode && (q.vis.code != null || q.vis.page != null)) err(id, 'vis: css/html и code/page вместе нельзя');
+    if (!cssMode && (q.vis.base != null || q.vis.goal != null)) err(id, 'vis: base/goal — только с css/html');
+    if (q.vis.vw != null && !(Number.isInteger(q.vis.vw) && q.vis.vw >= 320 && q.vis.vw <= 900)) err(id, 'vis.vw: ширина страницы 320–900');
     for (const l of LANGS) {
-      const code = q.vis.code == null ? null : typeof q.vis.code === 'object' ? q.vis.code[l] : q.vis.code;
-      const page = q.vis.page === true ? code : q.vis.page == null ? null : typeof q.vis.page === 'object' ? q.vis.page[l] : q.vis.page;
-      if (q.vis.code != null && typeof code !== 'string') err(id, `vis.code: нет ${l}`);
-      if (q.vis.page != null && typeof page !== 'string') err(id, `vis.page: нет ${l}`);
+      const V = visL(q.vis, l); const code = V.code; const page = V.page;
+      if ((q.vis.code != null || q.vis.css != null) && typeof code !== 'string') err(id, `vis: нет кода на ${l}`);
+      if ((q.vis.page != null || q.vis.html != null) && typeof page !== 'string') err(id, `vis: нет страницы на ${l}`);
+      if (cssMode && pickL(q.vis.html, l) && pickL(q.vis.html, l).includes('___')) err(id, 'vis.html: ___ только в css');
+      if (cssMode && code && (/<\/?[a-z]+[\s>]/i.test(code))) err(id, 'vis.css: в CSS попал HTML-тег');
       if (code) {
         const lines = code.replace(/^\n+|\s+$/g, '').split('\n');
         const max = page ? 8 : 10;
@@ -159,7 +202,7 @@ for (const q of all) {
         if (lines.some((s) => s.length > 52)) warn(id, `vis.code (${l}): строка длиннее 52`);
         if (l === 'uz' && UZ_BAD_APOS.test(code)) err(id, 'vis.code uz: апостроф не ASCII');
       }
-      if (q.vis.page === true && code && code.includes('___')) err(id, 'vis: page:true с ___');
+      if (!cssMode && q.vis.page === true && code && code.includes('___')) err(id, 'vis: page:true с ___');
       if (page && /<script/i.test(page)) err(id, 'vis: script на странице');
     }
   }
@@ -176,8 +219,7 @@ const bank = all.map((q) => {
   let vis = null;
   if (q.vis) {
     const v = {};
-    if (q.vis.code != null) v.code = q.vis.code;
-    if (q.vis.page != null) v.page = q.vis.page;
+    for (const k of ['code', 'page', 'css', 'html', 'base', 'goal', 'vw']) if (q.vis[k] != null) v[k] = q.vis[k];
     if (q.vis.mark && q.vis.mark.length) v.mark = q.vis.mark;
     vis = '@htmlvis:' + JSON.stringify(v);
   }

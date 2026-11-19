@@ -1,15 +1,15 @@
 // Прогон замера тренажёра сразу в нескольких окнах (19.11.2026). Вставить на любой странице dev-сервера:
 //   const s = await (await fetch('/tools/trenajor/sweep-all.js')).text(); eval(s);
 //   window.__all = null; __sweepAll({ lang: 'uz', opt: null }).then((r) => (window.__all = r));
-// sizes — окна [ширина, высота, видимая высота при клавиатуре?]; ids — только эти вопросы; opt — как в sweep.js.
+// t — тренажёр (html, css); sizes — окна [ширина, высота, видимая высота при клавиатуре?]; ids — только эти вопросы; opt — как в sweep.js.
 // Клавиатура: класс is-kbd и --vvh на <html> окна (как DeviceStage), плюс проверка, что поле и кнопка над ней.
-window.__sweepAll = async ({ lang = 'uz', opt = null, sizes = [[360, 640], [375, 740], [1280, 720], [1440, 900]], ids = null } = {}) => {
+window.__sweepAll = async ({ t = 'html', lang = 'uz', opt = null, sizes = [[360, 640], [375, 740], [1280, 720], [1440, 900]], ids = null } = {}) => {
   const src = await (await fetch('/tools/trenajor/sweep.js')).text();
   document.querySelectorAll('iframe.sw-f').forEach((f) => f.remove());
   const res = await Promise.all(sizes.map(([w, h, vvh]) => new Promise((done) => {
     const f = document.createElement('iframe'); f.className = 'sw-f';
     f.style.cssText = `position:fixed;left:0;top:0;width:${w}px;height:${h}px;border:0;opacity:.15;z-index:99999;background:#fff`;
-    f.src = `/trainer.html?t=html&lang=${lang}&qa=1`;
+    f.src = `/trainer.html?t=${t}&lang=${lang}&qa=1`;
     f.onload = async () => {
       const win = f.contentWindow;
       for (let k = 0; k < 100 && !win.__trenajor; k++) await new Promise((r) => setTimeout(r, 100));

@@ -187,7 +187,9 @@ function Card({ x, lang, on, onPick }) {
   if (typeof x.vis === 'string' && x.vis.startsWith('@')) {
     try { vis = JSON.parse(x.vis.slice(x.vis.indexOf(':') + 1)); } catch (e) { vis = null; }
   }
-  const code = vis && vis.code != null ? tx(vis.code, lang) : null;
+  // CSS-вид (тренажёр CSS): код — css, страница — html (+ base/goal)
+  const code = vis && vis.code != null ? tx(vis.code, lang) : vis && vis.css != null ? tx(vis.css, lang) : null;
+  const hasPage = !!vis && (vis.page != null || vis.html != null);
   return (
     <li>
       <button type="button" className={'trn-card' + (on ? ' is-on' : '')} onClick={onPick}>
@@ -195,7 +197,7 @@ function Card({ x, lang, on, onPick }) {
           <code>{x.question_id}</code>
           {x.difficulty ? <span className={'trn-diff is-' + x.difficulty}>{DIFF[x.difficulty] || x.difficulty}</span> : null}
           {QTYPE[x.question_type] ? <span className="trn-diff is-input" title={QTYPE[x.question_type][1]}>{QTYPE[x.question_type][0]}</span> : null}
-          {x.vis ? <span className="trn-vis" title="У вопроса есть картинка"><ImageIcon size={12} aria-hidden="true" /> {code != null && vis.page != null ? 'код и страница' : code != null ? 'код' : vis && vis.page != null ? 'страница' : 'картинка'}</span> : null}
+          {x.vis ? <span className="trn-vis" title="У вопроса есть картинка"><ImageIcon size={12} aria-hidden="true" /> {code != null && hasPage ? 'код и страница' : code != null ? 'код' : hasPage ? 'страница' : 'картинка'}</span> : null}
         </span>
         {tx(x.context, lang) ? <span className="trn-ctx">{tx(x.context, lang)}</span> : null}
         <span className="trn-q">{tx(x.question_text, lang)}</span>
