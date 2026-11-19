@@ -275,8 +275,22 @@ function codeLine(line, key) {
 // lines — «найди ошибку»: строки нажимаются ({ onLine, picked, correct, answered }), номер строки — ответ.
 function CodeBox({ code, mark, fs, maxH, compact, lines: tap }) {
   const lines = code.split('\n');
+  // Код не влез (maxH): видна часть вокруг главной строки — выделенной или с пропуском ___, а не только верх (телефон лёжа с клавиатурой).
+  const focus = (mark && mark.length ? mark[0] : lines.findIndex((l) => l.includes('___')) + 1) || 0;
+  const ed = useRef(null);
+  useLayoutEffect(() => {
+    const box = ed.current; const body = box && box.querySelector('.ht-ed-body');
+    if (!body) return;
+    let y = 0;
+    const ln = focus && maxH ? body.children[focus - 1] : null;
+    if (ln) {
+      const avail = box.clientHeight - body.offsetTop;
+      y = Math.max(0, Math.min(body.offsetHeight - avail, ln.offsetTop - body.offsetTop - (avail - ln.offsetHeight) / 2));
+    }
+    body.style.transform = y > 0 ? 'translateY(' + -Math.round(y) + 'px)' : '';
+  });
   return (
-    <div className={'ht-ed' + (compact ? ' is-compact' : '') + (tap ? ' is-tap' : '')} style={{ fontSize: fs, maxHeight: maxH }}>
+    <div ref={ed} className={'ht-ed' + (compact ? ' is-compact' : '') + (tap ? ' is-tap' : '')} style={{ fontSize: fs, maxHeight: maxH }}>
       <div className="ht-ed-tabs"><span className="ht-ed-tab">index.html</span></div>
       <div className="ht-ed-body">
         {lines.map((ln, i) => {
@@ -471,7 +485,13 @@ function useScreenHeight(ref) {
       const rootEl = document.documentElement;
       const vvh = rootEl.classList.contains('is-kbd') ? parseFloat(rootEl.style.getPropertyValue('--vvh')) : NaN;
       if (vvh > 0) vv = Math.min(vv, vvh);
-      el.style.setProperty('--ht-h', Math.max(300, Math.floor(Math.min(window.innerHeight, vv) - top - bottom)) + 'px');
+      // Клавиатура открыта (телефон лёжа: видно ~190 px) — высота без нижней границы 300, иначе поле уходит под клавиатуру;
+      // ниже 300 px — режим data-low: только вопрос, код у пропуска и поле (полоса прогресса и строки-пояснения прячутся).
+      const kbd = vvh > 0 || (window.visualViewport && window.visualViewport.height < window.innerHeight - 80);
+      const h = Math.floor(Math.min(window.innerHeight, vv) - top - bottom);
+      const hh = kbd ? Math.max(140, h) : Math.max(300, h);
+      el.style.setProperty('--ht-h', hh + 'px');
+      if (hh < 300) el.setAttribute('data-low', ''); else el.removeAttribute('data-low');
     };
     measure();
     const f = window.requestAnimationFrame(measure);
@@ -659,7 +679,8 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
     const sliver = !ix && answer && tight < 2 && vis && vis.offsetHeight > 0 && vis.offsetHeight < 110;   // картинка-полоска после ответа — лучше спрятать
     const asm = c.querySelector('.ht-asm');   // «собери»: кусочки и кнопки не влезают — тоже ужатие
     const asmOver = asm && asm.scrollHeight > asm.clientHeight + 1;
-    if (tight < max && (c.scrollHeight > c.clientHeight + 1 || sliver || asmOver)) setTight(tight + 1);
+    const ixCut = ix && answer && visCut;   // «найди ошибку», «нажми»: после ответа страница обрезана — прячем строки-пояснения, картинку оставляем
+    if (tight < max && (c.scrollHeight > c.clientHeight + 1 || sliver || asmOver || ixCut)) setTight(tight + 1);
   });
   const call = (fn, onFail) => {
     try {
@@ -846,7 +867,7 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
         {isBuild ? <Assemble q={q} lang={lang} answer={answer} busy={busy} T={T} vis={vis} onSubmit={choose} />
           : vis ? <Visual vis={vis} T={T} onCut={setVisCut} lines={lineTap} tap={pageTap} /> : <div className="ht-spacer" />}
         {isBuild || isBug || isTap ? null : isInput ? (
-          <form className={'ht-inp' + (answer ? (answer.correct ? ' is-ok' : ' is-bad') : '')} onSubmit={(e) => { e.preventDefault(); if (typed.trim()) choose(typed.trim()); }}>
+          <form className={'ht-inp' + (answer ? (answer.correct ? ' is-ok' : ' is-bad') : '')} onSubmit={(e) => { e.preventDefault(); if (!typed.trim()) return; if (inpRef.current) inpRef.current.blur(); choose(typed.trim()); }}>
             <div className="ht-inp-row">
               <input ref={inpRef} className={'ht-inp-f' + (mono ? ' is-mono' : '')} value={answer ? String(answer.answer_text ?? answer.option_id ?? '') : typed}
                 onChange={(e) => setTyped(e.target.value)} disabled={busy || !!answer} placeholder={T.typeHere} aria-label={T.typeHere}
@@ -1307,5 +1328,14 @@ const CSS = `
   .ht-rules li { padding: 6px 10px; font-size: 13px; }
   .ht-intro-title { font-size: 22px; }
 }
+/* клавиатура открыта, а места мало (телефон лёжа): вопрос, код у пропуска и поле — остальное прячется */
+.ht[data-low] { padding: 4px 8px; }
+.ht[data-low] .ht-top, .ht[data-low] .ht-meta, .ht[data-low] .ht-ctx, .ht[data-low] .ht-hint { display: none !important; }
+.ht[data-low] .ht-card { margin-top: 0; padding: 8px 10px; border-radius: 14px; }
+.ht[data-low] .ht-q { font-size: 15px; line-height: 1.3; margin-top: 0 !important; }
+.ht[data-low] .ht-vis { margin-top: 6px; }
+.ht[data-low] .ht-inp { margin-top: 6px; }
+.ht[data-low] .ht-inp-f, .ht[data-low] .ht-check { height: 40px; min-height: 40px; }
+.ht[data-low] .ht-foot { margin-top: 4px; min-height: 0; }
 @media (prefers-reduced-motion: reduce) { .ht *, .ht *::before, .ht *::after { animation: none !important; transition: none !important; } }
 `;
