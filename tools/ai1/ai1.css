@@ -357,3 +357,6 @@
 .r28 .a1-which > .a1-which-list > .a1-pr.a1-pickc { flex: 1 1 auto; align-items: center; }
 /* «Какой строки не хватает»: кнопки «Nima? / Nega?» — в левом столбце под промптом (optsIn у RoundsScreen). */
 .r28 .a1-rounds .a1-which-list > .kz-pick.a1-opts { width: 100%; align-self: stretch; margin-top: 2px; }
+/* 19.11.2026 — место под полосу прокрутки окна сайта всегда занято (на Windows полоса отнимает ширину): ширина окна не
+   скачет, когда полоса появляется и пропадает, и VwFrame не уходит в петлю (React #185 при смене масштаба). */
+.r28 .kz-br.c17-br .kz-br-page:has(> .c17-vwrap) { scrollbar-gutter: stable; }

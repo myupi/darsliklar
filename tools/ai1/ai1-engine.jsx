@@ -232,13 +232,24 @@ function VwFrame({ w, boxW, setBoxW, children }) {
   const ref = useRef(null);
   const [h, setH] = useState(0);
   const [sw, setSw] = useState(0);
+  // Защита от петли (19.11.2026, LMS: React #185 при смене масштаба на Windows): ширина окна зависит от полосы прокрутки,
+  // полоса — от высоты страницы, высота — от ширины. Полоса то появлялась, то пропадала, и замер после каждой перерисовки
+  // гонял её без конца. Теперь: за один кадр — не больше трёх замеров сразу после перерисовки (дальше — через кадр,
+  // от ResizeObserver), а если ширина скачет туда-обратно между двумя значениями, берётся меньшая — страница влезает и с полосой.
+  const burst = useRef(0);
+  const hist = useRef([]);
   useLayoutEffect(() => {
     if (w == null) return undefined;
     const el = ref.current;
     const page = el && el.closest('.kz-br-page');
     if (!el || !page) return undefined;
     const read = () => {
-      const bw = page.clientWidth;
+      const raw = page.clientWidth;
+      const hs = hist.current;   // [последний замер, предпоследний, найденный «потолок» или 0]
+      if (hs[2] && Math.abs(raw - hs[2]) > 40) hs[2] = 0;   // окно правда сменило размер — потолок снимаем
+      if (!hs[2] && hs[1] === raw && hs[0] != null && hs[0] !== raw && Math.abs(hs[0] - raw) <= 40) hs[2] = Math.min(raw, hs[0]);
+      hs[1] = hs[0]; hs[0] = raw;
+      const bw = hs[2] ? Math.min(raw, hs[2]) : raw;
       setBoxW((o) => (o === bw ? o : bw));
       const inner = el.firstElementChild;
       const ih = inner ? inner.offsetHeight : 0;
@@ -248,7 +259,9 @@ function VwFrame({ w, boxW, setBoxW, children }) {
       const sw = d && d.scrollWidth > d.clientWidth + 1 ? d.scrollWidth : 0;
       setSw((o) => (o === sw ? o : sw));
     };
-    read();
+    if (burst.current === 0) requestAnimationFrame(() => { burst.current = 0; });
+    burst.current += 1;
+    if (burst.current <= 3) read();
     if (typeof ResizeObserver === 'undefined') return undefined;
     let raf = 0;
     const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(read); });
