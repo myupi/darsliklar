@@ -1,0 +1,61 @@
+/* =============================================================================
+   УРОК 5 МОДУЛЯ BOOTSTRAP «Карточки» — свои стили поверх bs1…bs4. Префикс b5-.
+   ============================================================================= */
+/* Полоса «Fayllar» — какие фото лежат рядом со страницей. */
+.b5-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.b5-files-h { font: 700 11.5px var(--r-font); letter-spacing: .04em; text-transform: uppercase; color: var(--r-ink-2, #5B6476); }
+.b5-file { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 2px; border-radius: 8px; background: #fff; box-shadow: 0 0 0 1px var(--r-line); font: 600 12px var(--r-mono); color: var(--r-ink); }
+.b5-file img { width: 32px; height: 18px; border-radius: 5px; object-fit: cover; }
+.b5-file.is-lit { box-shadow: 0 0 0 2px var(--r-pri); }
+/* Опыт x1: четыре переключателя — в два ряда на телефоне. */
+.b5-sws { flex-wrap: wrap; justify-content: center; }
+/* Сборка по порядку: кусочки кода — моноширинно. */
+.r28 .b2-chip.b5-piece { font-family: var(--r-mono); font-size: 12px; }
+.r28 .b2-chip.b5-piece span { white-space: nowrap; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b5-x1 > .kz-col > .kz-br, .r28 .b1-sheet .b5-t4 > .kz-col > .kz-br, .r28 .b1-sheet .b5-w1 > .kz-col > .kz-br { --brh: 20dvh; }
+  .r28 .b1-sheet .b5-x1 .kz-code .kz-line, .r28 .b1-sheet .b5-t4 .kz-code .kz-line, .r28 .b1-sheet .b5-w1 .kz-code .kz-line { padding-top: 0; padding-bottom: 0; }
+  .b5-files { margin-top: 4px; gap: 4px; }
+  .r28 .b2-chip.b5-piece { font-size: 10.5px; }
+  .r28 .b5-sws .b1-sw { min-height: 38px; padding: 4px 10px 4px 6px; }
+  .r28 .b5-sws .b1-sw span { font-size: 11.5px; }
+}
+/* Опыт x1 на телефоне: переключатели сеткой 2×2. */
+@media (max-width: 759px) {
+  .r28 .b5-sws { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+  .r28 .b5-sws .b1-sw { min-height: 34px; padding: 3px 8px 3px 5px; gap: 6px; }
+  .r28 .b5-sws .b1-sw i { width: 32px; height: 20px; }
+  .r28 .b5-sws .b1-sw i::after { width: 14px; height: 14px; }
+  .r28 .b5-sws .b1-sw.is-on i::after { transform: translateX(12px); }
+  .r28 .b5-sws .b1-sw span { font-size: 10.5px; }
+}
+/* Телефон: в коде карточки второстепенные строки — в одну строку с многоточием; строка с полем и только что изменённая
+   строка видны целиком (иначе 8 строк кода карточки с переносами не помещаются над страницей). */
+@media (max-width: 759px) {
+  .r28 .kz-code.b2-small .kz-line.b1-line:not(.is-hl):not(.is-new) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r28 .kz-code.b2-small .kz-line.b1-line:not(.is-hl):not(.is-new) .b1-st { word-break: normal; overflow-wrap: normal; }
+  .r28 .kz-code.b2-small .kz-line { padding-top: 0; padding-bottom: 0; }
+}
+@media (max-width: 759px) {
+  .b5-files { flex-wrap: nowrap; overflow: hidden; }
+  .b5-file { font-size: 10.5px; padding-right: 5px; }
+  .b5-file img { width: 22px; height: 13px; }
+  .b5-files-h { font-size: 10px; }
+}
+@media (max-width: 400px) {
+  .b5-file img { display: none; }   /* узкий телефон: имена трёх файлов целиком, без значков (иначе robot3.jpg обрезался) */
+  .b5-file { padding-left: 6px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet.kz-typed .kz-scene.b1-pair > .kz-col > .kz-br { --brh: 17dvh; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 14dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) { .b5-files { margin-top: 2px; } }
+@media (max-width: 759px) and (max-height: 760px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 16dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 13dvh; }
+}
+/* Задание «цвет карточки»: образец ниже (одна строка). */
+@media (max-width: 759px) { .b1-sheet .b2-goal { padding-top: 2px; padding-bottom: 2px; } }

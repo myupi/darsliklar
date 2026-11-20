@@ -1,0 +1,12 @@
+/* =============================================================================
+   УРОК 6 МОДУЛЯ BOOTSTRAP «Контейнер и сетка» — свои стили поверх bs1…bs5. Префикс b6-.
+   ============================================================================= */
+.b6-widths { display: flex; gap: 6px; margin-top: 8px; }
+.r28 .b2-chip.b6-num { min-width: 52px; justify-content: center; font-size: 16px; }
+.b6-bp td { white-space: nowrap; }
+.b6-bp thead td { color: #171a1d; border-bottom: 2px solid #d4d8db; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b6-x1 > .kz-col > .kz-br, .r28 .b1-sheet .b6-t4 > .kz-col > .kz-br, .r28 .b1-sheet .b6-w1 > .kz-col > .kz-br { --brh: 18dvh; }
+  .b6-widths { margin-top: 4px; }
+  .r28 .b6-widths .b2-chip { min-height: 32px; font-size: 11.5px; }
+}

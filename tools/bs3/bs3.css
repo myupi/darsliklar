@@ -1,0 +1,40 @@
+/* =============================================================================
+   УРОК 3 МОДУЛЯ BOOTSTRAP — свои стили поверх ../bs1/bs1.css и ../bs2/bs2.css. Префикс b3-.
+   ============================================================================= */
+/* ── Экран заданной ширины (телефон 360 px): страница по центру окна, вокруг — серое поле; что шире экрана — за краем. ── */
+.b1-frame.b3-vw { background: #EEF1F5; }
+.b1-frame.b3-vw iframe { box-shadow: 0 0 0 1px #D5DAE1; transition: margin-left .35s ease; }
+.b1-frame.b3-vw .b3-edge { position: absolute; top: 0; bottom: 0; left: calc(var(--vwx, 0px) + var(--vww, 100%) - 2px); width: 3px; background: transparent; pointer-events: none; }
+.b1-frame.b3-vw.is-wide .b3-edge { background: repeating-linear-gradient(#E11D48 0 8px, transparent 8px 14px); }
+/* Плашка «не помещается / помещается» и «Загружается…» — в углу окна страницы. */
+.b3-badge, .b3-load { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; background: #fff; font: 700 12px var(--r-font); box-shadow: 0 0 0 1px var(--r-line), 0 2px 6px rgba(15, 23, 42, .1); }
+.b3-badge.is-wide { color: #BE123C; box-shadow: 0 0 0 2px #E11D48, 0 2px 8px rgba(225, 29, 72, .25); }
+.b3-badge.is-fit { color: #15803d; box-shadow: 0 0 0 2px #16a34a, 0 2px 8px rgba(22, 163, 74, .2); }
+.b3-load { color: var(--r-ink-2, #5B6476); }
+/* Опыт x1: подпись ширины в кнопке экрана. */
+.r28 .b2-chip .b3-px { margin-left: auto; font-size: 11px; color: var(--r-ink-2, #5B6476); }
+.r28 .b2-chip.is-shape span:first-child { font-family: var(--r-font); }
+/* Показ загрузки: строки спиннера после загрузки — бледные (их уже нет на странице, разбираем role и скрытый текст). */
+.r28 .kz-line.b3-ghost { opacity: .55; }
+/* Картинка → код: окно образца. */
+.b3-goalwin .kz-br-bar { background: #FFF1EC; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b3-x1 > .kz-col > .kz-br { --brh: 22dvh; }
+  .r28 .b1-sheet .b3-x1 .kz-code .kz-line { padding-top: 0; padding-bottom: 0; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b3-q1 > .kz-col > .kz-br { --brh: 14dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet .b3-x1 > .kz-col > .kz-br { --brh: 18dvh; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b3-q1 > .kz-col > .kz-br { --brh: 12dvh; }
+}
+@media (prefers-reduced-motion: reduce) { .b1-frame.b3-vw iframe { transition: none; } }
+/* Телефон: задания с полем и справкой — сайт-справка чуть ниже (в уроке 3 строки кода длиннее: img, role="status"). */
+@media (max-width: 759px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 18dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 15dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 10dvh; }
+}

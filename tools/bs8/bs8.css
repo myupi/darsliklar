@@ -1,0 +1,39 @@
+/* =============================================================================
+   УРОК 8 МОДУЛЯ BOOTSTRAP «Карусель» — свои стили поверх bs1…bs6. Префикс b8-.
+   ============================================================================= */
+.b8-aim { position: absolute; pointer-events: none; display: block; width: 0; height: 0; }
+.b8-sw { flex-wrap: wrap; gap: 6px; }
+.b8-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Окно, где карусель листают руками: подсказка «тяни» у края страницы. */
+.b8-swipe .kz-br-page::after { content: '⟵ ⟶'; position: absolute; right: 8px; bottom: 6px; padding: 1px 8px; border-radius: 99px; background: rgba(250, 79, 40, .9); color: #fff; font: 700 12px var(--r-font, sans-serif); pointer-events: none; animation: b8nudge 1.6s ease-in-out infinite; }
+@keyframes b8nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+@media (prefers-reduced-motion: reduce) { .b8-swipe .kz-br-page::after { animation: none; } }
+/* Окно страницы забирает свободное место под кодом (как в уроке 7); не влезла при 0.55 — окно листается. */
+.r28 .b1-sheet .kz-scene.b8-pair .kz-br-page { overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b8-pair { display: flex; flex-direction: column; justify-content: flex-start; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b8-pair > .kz-col:last-of-type { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .r28 .b1-sheet .kz-scene.b8-pair > .kz-col:last-of-type > .kz-br { flex: 1 1 auto; max-height: none; aspect-ratio: auto; height: auto; min-height: 112px; }
+  .r28 .b1-sheet .kz-scene.b8-t6 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b8-w1 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b8-fill-r > .kz-col:last-of-type > .kz-br { min-height: 84px; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.b8-pair.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 19dvh; }
+  .r28 .b1-sheet .b8-pair .kz-code.b2-small .kz-line.b1-line:not(:has(.kz-gap)) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r28 .b1-sheet .b8-pair .kz-code.b2-small .kz-line.b1-line .b1-st { word-break: normal; overflow-wrap: normal; }
+  .b8-kinds { margin-top: 4px; }
+  .r28 .b8-kinds .b2-chip, .r28 .b8-sw .b2-chip { min-height: 32px; font-size: 11.5px; }
+}
+@media (max-width: 759px) {
+  /* Код длиннее места — листается в своём окне (к нужной строке подъезжает само, hlScroll). */
+  .r28 .b1-sheet .b8-pair .kz-code { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b8-end .kz-code { max-height: 22dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b8-s8 .b4-css, .r28 .b1-sheet .b8-s11 .b4-css { display: none; }
+  .r28 .b1-sheet .b8-fill-r .b2-goal-in { max-width: 120px; }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b8-pair .kz-code > *, .r28 .b1-sheet .b8-end .kz-code > * { flex-shrink: 0; }
+  .r28 .b1-sheet .b8-t6 .kz-code { max-height: 24dvh; }
+  /* Картинка → код: два окна рядом (фото широкое — в узком окне ниже), варианты 2 × 2. */
+  .r28 .b1-sheet .kz-scene.b8-q1 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b8-q1 > .kz-col > .kz-br { --brh: 22dvh; }
+  .r28 .b1-sheet .b8-q1 ~ .kz-pick.b2-codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .b8-q1 ~ .kz-pick.b2-codes .kz-btn { min-height: 40px; font-size: 12px; padding: 4px 6px; }
+}

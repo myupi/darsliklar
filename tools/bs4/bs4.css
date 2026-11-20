@@ -1,0 +1,51 @@
+/* =============================================================================
+   УРОК 4 МОДУЛЯ BOOTSTRAP «Flex» — свои стили поверх bs1.css, bs2.css, bs3.css. Префикс b4-.
+   ============================================================================= */
+/* Карточка «внутри Bootstrap»: правило CSS класса (тот же flex из уроков CSS). */
+.b4-css { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding: 6px 10px 8px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px var(--r-line), 0 2px 6px rgba(15, 23, 42, .06); transition: box-shadow .25s; }
+.b4-css.is-on { box-shadow: 0 0 0 2px #7952B3, 0 2px 8px rgba(121, 82, 179, .18); }
+.b4-css-h { font: 700 11.5px var(--r-font); letter-spacing: .04em; text-transform: uppercase; color: #7952B3; }
+.b4-css-r { font: 500 12.5px/1.45 var(--r-mono); color: #444b51; overflow-wrap: anywhere; }
+.b4-css-r b { color: #be273a; font-weight: 600; }
+.b4-css-r i { font-style: normal; color: #0b7a6e; }
+/* Пульт главной оси: значок — три палочки в ряд, расставленные как в классе. */
+.b2-colors.b4-jc { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.b4-jc-i { flex: none; display: inline-flex; width: 30px !important; height: 14px !important; border-radius: 4px !important; background: #F1F2F3 !important; box-shadow: inset 0 0 0 1px #d4d8db !important; padding: 2px; gap: 2px; }
+.b4-jc-i b { width: 5px; height: 10px; border-radius: 2px; background: var(--r-pri); }
+.b4-jc-i.is-start { justify-content: flex-start; } .b4-jc-i.is-end { justify-content: flex-end; } .b4-jc-i.is-center { justify-content: center; }
+.b4-jc-i.is-between { justify-content: space-between; } .b4-jc-i.is-around { justify-content: space-around; } .b4-jc-i.is-evenly { justify-content: space-evenly; }
+/* Сборка class из кусочков (t4). */
+.b4-pieces { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; align-self: center; width: min(100%, 760px); }
+.r28 .b2-chip.b4-piece { min-height: 38px; font-size: 13px; }
+.r28 .b2-chip.b4-piece.is-on { background: #FFF1EC; }
+/* Таблица размеров gap на сайте (Notation). */
+.bd-tbl { border-collapse: collapse; margin: 4px 0 12px; font-size: 12px; }
+.bd-tbl td { padding: 2px 12px 2px 0; border-bottom: 1px solid #e9ebed; color: #444b51; }
+.bd-tbl code { font: 500 11.5px ui-monospace, Menlo, monospace; color: #be273a; }
+.bd-tbl tr.is-mk td { background: rgba(250, 79, 40, .16); }
+/* Ось на показе align-items. */
+.b4-axis { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font: 700 18px var(--r-font); color: #7952B3; opacity: .55; pointer-events: none; }
+@media (max-width: 759px) {
+  .b4-css { padding: 4px 8px 6px; }
+  .b4-css-r { font-size: 11.5px; }
+  .r28 .b1-sheet .b4-x1 > .kz-col > .kz-br, .r28 .b1-sheet .b4-t4 > .kz-col > .kz-br { --brh: 16dvh; }
+  .r28 .b2-chip.b4-piece { min-height: 34px; font-size: 11.5px; padding: 3px 7px; }
+}
+/* Телефон: сборка class (t4) — образец, код и страница ниже, кусочки мельче. */
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b4-t4 .kz-code .kz-line { padding-top: 0; padding-bottom: 0; }
+  .b4-pieces { gap: 4px; }
+  .r28 .b2-chip.b4-piece { min-height: 32px; font-size: 11px; padding: 2px 6px; }
+}
+@media (max-width: 759px) and (max-height: 760px) {
+  .r28 .b1-sheet .b4-t4 > .kz-col > .kz-br { --brh: 13dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .b1-sheet .b2-goal { padding: 1px 8px; margin-bottom: 2px; }
+  .r28 .b1-sheet .b4-t4 > .kz-col > .kz-br { --brh: 11dvh; }
+  .r28 .b2-chip.b4-piece { min-height: 30px; }
+}
+/* Телефон, сборка class: строки логотипа, заголовка и кнопки прячутся — видна строка с class (её и собираем). */
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b4-t4 .kz-code .kz-line.b2-cut { display: none; }
+}

@@ -1,0 +1,302 @@
+/* =============================================================================
+   УРОК 1 МОДУЛЯ BOOTSTRAP — свой CSS поверх облика «Редактор» (.r28) и рамки B (.b-stage). Префиксы: b1- (урок),
+   bd- (похожий сайт Bootstrap, светлая тема). Цвета — var(--r-…), акцент — оранжевый CoddyCamp; фиолетовый
+   #7952B3 — только знак Bootstrap на его сайте. Бумаги нет.
+   ============================================================================= */
+.b1-br .kz-br-page { overflow: hidden; }
+.b1-frame { position: relative; width: 100%; overflow: hidden; }
+.b1-frame iframe { display: block; border: 0; transform-origin: 0 0; background: #fff; }
+.r28 .b1-br .kz-br-body { background: #fff; }
+
+/* Строки кода — подсветка как в VS Code. */
+/* Строка — текстовый поток (не флекс): длинная строка переносится по словам, как в редакторе; номер строки — свой. */
+.r28 .kz-line.b1-line { display: block; text-align: left; line-height: 1.45; }
+.r28 button.kz-line.b1-line { width: 100%; }
+.r28 .kz-line .b1-sp { white-space: pre; }
+.r28 .kz-line .b1-tg { color: var(--r-ed-tag); font-family: var(--r-mono); }
+.r28 .kz-line .b1-pn { color: var(--r-ed-br); font-family: var(--r-mono); }
+.r28 .kz-line .b1-at { color: #9CDCFE; font-family: var(--r-mono); }
+.r28 .kz-line .b1-st { color: #CE9178; font-family: var(--r-mono); overflow-wrap: anywhere; }
+.r28 .kz-line .b1-tx { color: var(--r-ed-tx); font-family: var(--r-mono); font-weight: 500; }
+.r28 .kz-line .b1-sel { color: #D7BA7D; font-family: var(--r-mono); }
+.r28 .kz-line.b1-css .b1-at { color: #9CDCFE; }
+.r28 .kz-line.b1-long { line-height: 1.35; }
+.r28 .kz-line.b1-long .b1-st { word-break: break-all; }
+.r28 .b1-fold { padding: 0 4px; border-radius: 4px; background: rgba(255, 255, 255, .08); color: #CE9178; }
+.r28 .b1-fold.is-mk, .r28 .b1-mk { background: rgba(250, 79, 40, .32); color: #fff; border-radius: 3px; box-shadow: 0 0 0 2px rgba(250, 79, 40, .5); }
+/* Пустое место для вставки. */
+.r28 .kz-line.b1-slot { cursor: pointer; border: 1.5px dashed rgba(250, 79, 40, .75); border-radius: 6px; background: rgba(250, 79, 40, .08); }
+.r28 .b1-paste { color: #FDBA74; font-family: var(--r-font); font-weight: 600; font-style: italic; }
+.r28 .kz-line.b1-slot:disabled { cursor: default; opacity: .7; }
+.r28 .kz-gap.b1-slotin { display: inline-block; min-width: 9em; max-width: 100%; vertical-align: middle; }
+.r28 .kz-gap.b1-slotin input { min-width: 0; width: 100%; }
+.r28 .kz-line.b1-hline.is-off { opacity: .45; }
+
+/* Вкладка редактора: CSS Коди — style.css; файл Bootstrap в карточке — без своей вкладки. */
+.r28 .kz-code.b1-csscode::before { content: 'style.css'; }
+.r28 .kz-code.b1-nofile::before { display: none; }
+/* Подписи и карточки урока. */
+.b1-cap { align-self: flex-start; margin: 0 0 4px; font: 700 12px var(--r-font); letter-spacing: .04em; text-transform: uppercase; color: var(--r-ink-2, #5B6476); }
+.b1-file { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; padding: 6px 8px 8px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px var(--r-line), 0 2px 6px rgba(15, 23, 42, .06); }
+.b1-file.is-hl { box-shadow: 0 0 0 2px var(--r-pri), 0 2px 10px rgba(250, 79, 40, .2); }
+.b1-file-h { display: inline-flex; align-items: center; gap: 6px; font: 700 12.5px var(--r-mono); color: #7952B3; }
+.b1-file-h::before { content: 'B'; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: #7952B3; color: #fff; font: 800 11px var(--r-font); }
+.b1-one { width: min(100%, 640px); align-self: center; }
+.r28 .kz-pick.b1-pick { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 640px); align-self: center; }
+.r28 .kz-pick.b1-pick .kz-btn { font-family: var(--r-mono); font-size: 15px; text-transform: none; }
+.r28 .kz-pick.b1-who-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 640px); align-self: center; }
+.r28 .b1-who { display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: none; font-size: 15px; }
+.b1-who-i { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 7px; font: 800 12px var(--r-mono); color: #fff; }
+.b1-who-i.is-you { background: var(--r-pri); }
+.b1-who-i.is-bs { background: #7952B3; font-family: var(--r-font); }
+.b1-card { position: relative; padding: 10px 16px 8px; align-self: center; width: min(100%, 560px); background: #fff; border-radius: 10px; box-shadow: inset 4px 0 0 var(--r-pri), 0 0 0 1px var(--r-line), 0 1px 2px rgba(15, 23, 42, .06); }
+.b1-card-h { display: block; margin-bottom: 2px; font: 700 11.5px var(--r-font); letter-spacing: .05em; text-transform: uppercase; color: var(--r-pri-d); }
+.r28 .b1-tf-t { margin: 4px 0 2px; font: 600 clamp(17px, 2.6dvh, 22px)/1.35 var(--r-font); color: var(--r-ink); }
+.r28 .kz-pick.b1-tf-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 560px); align-self: center; }
+.r28 .kz-pick.b1-tf-pick .kz-btn { font-size: 18px; }
+.b1-parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.b1-part { padding: 3px 10px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px var(--r-line); font: 600 13px var(--r-font); color: var(--r-ink); transition: background .2s, color .2s; }
+.b1-part.is-on { background: var(--r-pri); color: #fff; box-shadow: none; }
+
+/* ── Похожий сайт Bootstrap (как getbootstrap.com v6.0, светлая тема; цвета сайта: текст #171a1d / #444b51, фиолетовый
+   #7740ff, фон поиска #f6f7f8, выбранный пункт #f1f2f3, рамки #d4d8db; код: тег #be273a, атрибут #169d96, строка
+   #13924c, знаки #50575d). ─────────────────────────────────────────────────────────────────────────────────────── */
+.b1-docs.kz-br .kz-br-page { inset: 0; }
+.bx { position: absolute; inset: 0; display: flex; flex-direction: column; background: #fff; color: #171a1d; font: 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-align: left; overflow: hidden; }
+.bx-logo { flex: none; color: #7740ff; }
+.bx-top { flex: none; position: relative; z-index: 3; display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-bottom: 1px solid #e9ebed; background: rgba(255, 255, 255, .92); }
+.bx-nav { display: flex; gap: 12px; color: #444b51; font-size: 12.5px; }
+.bx-nav b { font-weight: 500; color: #444b51; }
+.bx-nav.is-docs b { font-weight: 700; color: #171a1d; }
+.bx-search { margin: 0 auto; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px 0 9px; border: 1px solid rgba(23, 26, 29, .12); border-radius: 8px; background: #f6f7f8; color: #77828c; font-size: 11.5px; min-width: 120px; }
+.bx-search kbd { margin-left: auto; padding: 0 4px; border-radius: 4px; background: #fff; font: 600 9.5px system-ui, sans-serif; color: #77828c; box-shadow: 0 0 0 1px #e1e4e6; }
+.bx-top-r { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; color: #444b51; font-size: 12px; }
+.bx-search + .bx-top-r { margin-left: 0; }
+.bx-ver i, .bx-crumb i { font-style: normal; font-size: 9px; color: #77828c; }
+.bx-theme { font-size: 13px; }
+.bx-top.is-narrow { gap: 8px; height: 38px; padding: 0 10px; }
+.bx-crumb { color: #171a1d; font-weight: 500; font-size: 13px; }
+.bx-crumb::first-letter { color: #b5bbc0; }
+.bx-search-ic { font-size: 15px; }
+.bx-burger { position: relative; display: inline-grid; place-items: center; width: 28px; height: 26px; border: 0; border-radius: 6px; background: none; font-size: 17px; color: #171a1d; cursor: pointer; }
+.bx-burger.is-hl { box-shadow: 0 0 0 2px var(--r-pri); }
+/* Главная */
+.bx-hero { flex: 1 1 auto; overflow: hidden; padding: 18px 16px 14px; text-align: center;
+  background: linear-gradient(rgba(255, 255, 255, .01), #fff 85%), radial-gradient(at 0% 0%, rgba(0, 135, 254, .5), transparent 50%), radial-gradient(at 100% 0%, rgba(255, 196, 0, .45), transparent 50%), radial-gradient(at 50% 70%, rgba(119, 64, 255, .18), transparent 60%); }
+.bx-pill { display: inline-block; padding: 3px 12px; border-radius: 999px; background: #fff6d3; color: #a87700; font-size: 11.5px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .5); }
+.bx-h { margin: 10px auto 6px; max-width: 30em; font: 600 24px/1.18 system-ui, -apple-system, sans-serif; letter-spacing: -.01em; color: #171a1d; }
+.bx-lead { margin: 0 auto 10px; max-width: 34em; color: #444b51; font-size: 12.5px; }
+.bx-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.bx-npm { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .8); box-shadow: 0 0 0 1px #e1e4e6; font: 500 11.5px ui-monospace, Menlo, monospace; color: #171a1d; }
+.bx-agents { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 10px; background: #1d2024; color: #fff; font-size: 12.5px; font-weight: 500; }
+.bx-read { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 6px 13px; border: 0; border-radius: 10px; background: #7740ff; color: #fff; font: 500 12.5px system-ui, sans-serif; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25); }
+.bx-read.is-hl { box-shadow: 0 0 0 3px rgba(250, 79, 40, .55); }
+.bx-cur { margin: 10px 0 0; color: #444b51; font-size: 11.5px; }
+.bx-home.is-narrow .bx-h { font-size: 20px; }
+.bx-home.is-narrow .bx-cta { flex-direction: column; align-items: stretch; }
+.bx-home.is-narrow .bx-read, .bx-home.is-narrow .bx-agents, .bx-home.is-narrow .bx-npm { justify-content: center; }
+/* Документация */
+.bd-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.bd-side { flex: 0 0 168px; overflow: auto; padding: 10px 8px 12px; background: #fff; }
+.bd-side.is-hl { box-shadow: inset 0 0 0 2px var(--r-pri); border-radius: 6px; }
+.bd-grp { margin-bottom: 4px; }
+.bd-grp-h { position: relative; display: flex; align-items: center; gap: 7px; width: 100%; padding: 4px 6px; border: 0; border-radius: 6px; background: none; font: 600 12.5px system-ui, sans-serif; color: #171a1d; text-align: left; cursor: pointer; }
+.bx-ic { flex: none; }
+.bd-item { position: relative; display: block; width: 100%; margin: 1px 0; padding: 3px 10px; border: 0; border-radius: 7px; background: none; font: 12.5px system-ui, sans-serif; color: #444b51; text-align: left; cursor: pointer; }
+.bd-item.is-cur { background: #f1f2f3; color: #171a1d; }
+.bd-grp-h:not(:disabled):hover, .bd-item:not(:disabled):hover { background: #f6f7f8; }
+.bd-grp-h:disabled, .bd-item:disabled { cursor: default; }
+.bd-main { flex: 1 1 auto; min-width: 0; overflow: auto; padding: 14px 18px 18px; }
+.bd.is-only .bd-main { padding: 8px 12px 10px; }
+.bd-h1 { margin: 0 0 4px; font: 500 26px/1.15 system-ui, -apple-system, sans-serif; color: #171a1d; letter-spacing: -.01em; }
+.bd-lead { margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: #444b51; }
+.bd-meta { display: flex; flex-direction: column; gap: 4px; margin: 0 0 12px; padding: 7px 10px; border-radius: 8px; background: #f6f7f8; color: #444b51; font-size: 12px; }
+.bd-meta code { font: 500 11px ui-monospace, Menlo, monospace; color: #171a1d; }
+.bd-badge { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 6px; border-radius: 3px; font: 800 7px system-ui, sans-serif; font-style: normal; color: #fff; vertical-align: -3px; }
+.bd-badge.is-js { background: #c9a96e; } .bd-badge.is-css { background: #663399; }
+.bd-h2 { margin: 14px 0 6px; font: 500 18px/1.25 system-ui, sans-serif; color: #171a1d; border-radius: 4px; }
+.bd.is-only .bd-h2 { margin-top: 0; font-size: 16px; }
+.bd-h2.is-hl { box-shadow: 0 0 0 2px var(--r-pri); }
+.bd-p { margin: 0 0 8px; color: #171a1d; font-size: 12.5px; }
+.bd-ex { margin: 0; padding: 12px; border: 1px solid #d4d8db; border-bottom: 0; border-radius: 8px 8px 0 0; background: #fff; }
+.bd-ex.is-hl, .bd-code.is-hl { box-shadow: 0 0 0 2px var(--r-pri); }
+.bd-ex .b1-frame iframe { background: transparent; }
+.bd-code { margin: 0 0 12px; border: 1px solid #d4d8db; border-radius: 8px; background: #fff; overflow: hidden; }
+.bd-code.is-attach { border-radius: 0 0 8px 8px; }
+.bd-code-bar { display: flex; align-items: center; justify-content: space-between; padding: 3px 6px 3px 12px; border-bottom: 1px solid #e9ebed; background: #f6f7f8; font: 500 11px system-ui, sans-serif; color: #444b51; }
+.bd-code pre { margin: 0; padding: 9px 12px 10px; font: 500 11.5px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; color: #444b51; }   /* как на getbootstrap.com: строка не переносится, блок листается вбок */
+.bd-code pre > div.is-mk { background: rgba(250, 79, 40, .16); box-shadow: inset 3px 0 0 var(--r-pri); }
+.bd-code .b1-tg { color: #be273a; } .bd-code .b1-pn { color: #50575d; } .bd-code .b1-at { color: #169d96; } .bd-code .b1-st { color: #13924c; } .bd-code .b1-tx { color: #171a1d; }
+.bd-code .b1-fold { background: none; color: #13924c; padding: 0; }
+.bd-copy { position: relative; display: inline-grid; place-items: center; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: #171a1d; cursor: pointer; }
+.bd-copy:not(:disabled):hover { background: #e9ebed; }
+.bd-copy:disabled { cursor: default; }
+.bd-copy.is-on { color: #13924c; }
+.bd-copy.is-hl { box-shadow: 0 0 0 2px var(--r-pri); }
+.bd-tip { position: absolute; right: 0; bottom: calc(100% + 4px); padding: 3px 8px; border-radius: 6px; background: #171a1d; color: #fff; font: 600 10.5px system-ui, sans-serif; white-space: nowrap; }
+.bd-ph { display: grid; gap: 8px; margin-top: 10px; }
+.bd-ph i { display: block; height: 12px; border-radius: 4px; background: #f1f2f3; }
+.bd-ph i:nth-child(2) { width: 80%; } .bd-ph i:nth-child(3) { width: 60%; }
+/* Телефон: меню выезжает поверх страницы (как «Toggle docs navigation» на сайте). */
+.bd-drawer { position: absolute; inset: 0 22% 0 0; z-index: 4; display: flex; flex-direction: column; background: #fff; box-shadow: 8px 0 24px rgba(23, 26, 29, .18); animation: bdIn .22s ease-out; }
+.bd-drawer .bd-side { flex: 1 1 auto; }
+.bd-drawer-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e9ebed; font-size: 12.5px; }
+.bd-x { margin-left: auto; width: 24px; height: 24px; border: 0; background: none; font-size: 18px; color: #444b51; cursor: pointer; }
+@keyframes bdIn { from { transform: translateX(-30px); opacity: .4; } to { transform: none; opacity: 1; } }
+/* ── Поиск Google (упрощённо). ── */
+.gg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; background: #fff; color: #202124; font: 13px/1.4 Arial, sans-serif; overflow: hidden; }
+.gg-top { align-self: stretch; display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 8px 12px; font-size: 12px; color: #202124; }
+.gg-ava { width: 22px; height: 22px; border-radius: 50%; background: #FA4F28; }
+.gg-logo { margin: 14% 0 14px; font: 500 40px/1 "Product Sans", Arial, sans-serif; letter-spacing: -1px; }
+.gg-logo b { font-weight: 500; }
+.gg-box { position: relative; display: flex; align-items: center; gap: 8px; width: min(86%, 420px); height: 36px; padding: 0 14px; border: 1px solid #dfe1e5; border-radius: 999px; background: #fff; font-size: 14px; }
+.gg-box.is-focus { box-shadow: 0 1px 6px rgba(32, 33, 36, .28); border-color: transparent; }
+.gg-mag { color: #9aa0a6; font-size: 16px; }
+.gg-q { white-space: nowrap; overflow: hidden; }
+.gg-caret { display: inline-block; width: 1.5px; height: 16px; margin-left: 1px; background: #202124; vertical-align: -3px; animation: ggBlink 1s steps(1) infinite; }
+@keyframes ggBlink { 50% { opacity: 0; } }
+.gg-btns { display: flex; gap: 10px; margin-top: 16px; }
+.gg-btns span { padding: 7px 12px; border-radius: 4px; background: #f8f9fa; color: #3c4043; font-size: 12px; }
+.gg-res { align-items: stretch; }
+.gg-bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px 6px; }
+.gg-logo.is-sm { margin: 0; font-size: 20px; letter-spacing: -.5px; }
+.gg-box.is-sm { height: 30px; width: auto; flex: 1 1 auto; font-size: 13px; }
+.gg-tabs { display: flex; gap: 16px; padding: 4px 12px 0 16px; border-bottom: 1px solid #ebebeb; font-size: 12px; color: #5f6368; }
+.gg-tabs b, .gg-tabs span { padding-bottom: 6px; } .gg-tabs b { color: #1a73e8; border-bottom: 3px solid #1a73e8; font-weight: 500; }
+.gg-r { position: relative; display: flex; flex-direction: column; gap: 3px; margin: 10px 12px 0 16px; padding: 4px 6px; border: 0; border-radius: 8px; background: none; text-align: left; font: inherit; cursor: pointer; }
+.gg-r.is-dim { cursor: default; opacity: .9; }
+.gg-r.is-hl { box-shadow: 0 0 0 2px var(--r-pri); }
+.gg-site { display: flex; align-items: center; gap: 8px; }
+.gg-site b { display: block; font-weight: 400; font-size: 12.5px; color: #202124; }
+.gg-site i { display: block; font-style: normal; font-size: 11px; color: #4d5156; }
+.gg-fav { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: #f1f3f4; color: #7740ff; }
+.gg-fav.is-w { font: 700 11px Georgia, serif; color: #202124; }
+.gg-t { color: #1a0dab; font-size: 15px; line-height: 1.3; }
+.gg-s { color: #4d5156; font-size: 12px; }
+
+/* ── Раскладка экранов. ─────────────────────────────────────────────────── */
+.r28 .kz-col > .kz-br.b1-docs { aspect-ratio: auto; height: var(--brh, 46dvh); max-height: none; }
+.r28 .kz-sheet .kz-scene-col > .kz-col > .kz-br.b1-docs.is-short { --brh: 52dvh; }
+.r28 .kz-sheet .b1-tri > .kz-col > .kz-br.b1-docs.is-short { --brh: 30dvh; }
+@media (min-width: 760px) {
+  .b1-sheet .kz-scene.b1-pair { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(14px, 2vw, 24px); align-items: center; }
+  .b1-sheet .kz-scene.b1-pair.b1-wide-code { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .b1-sheet .kz-scene.b1-pair > .kz-col > .kz-br { --brh: 46dvh; aspect-ratio: 16 / 11; }
+  .b1-sheet .kz-scene.b1-tri { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: 12px clamp(14px, 2vw, 22px); align-items: start; }
+  .b1-sheet .kz-scene.b1-tri > .b1-tri-docs { grid-row: 1 / span 2; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri > .kz-col > .kz-br.b1-docs.is-short { --brh: 50dvh; }
+  .b1-sheet .kz-scene.b1-tri .kz-code .kz-line { padding-top: 0; padding-bottom: 0; }
+  .b1-sheet .kz-scene.b1-tri > .b1-tri-page > .kz-br { --brh: 22dvh; aspect-ratio: 16 / 6; }
+  .b1-sheet .kz-scene.b1-tri.is-done { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto; align-items: center; }
+  .b1-sheet .kz-scene.b1-tri.is-done > .b1-tri-page > .kz-br { --brh: 42dvh; aspect-ratio: 16 / 11; }
+  .r28 .kz-sheet.b1-sheet .kz-scene-col > .kz-col > .kz-br.b1-docs.is-short { --brh: 60dvh; }
+  .b1-sheet .kz-scene-col > .kz-col > .kz-br:not(.b1-docs) { --brh: 34dvh; }
+  .b1-sheet .kz-code { font-size: clamp(14px, 2dvh, 17px); }
+  .b1-sheet .kz-code.kz-code-sm { font-size: clamp(13px, 1.9dvh, 16px); }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-code.kz-code-sm { font-size: 12.5px; }
+  .r28 .b1-sheet .kz-scene.b1-pair > .kz-col > .kz-br { --brh: 26dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri > .b1-tri-page > .kz-br { --brh: 18dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri.is-done > .b1-tri-page > .kz-br { --brh: 30dvh; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri > .kz-col > .kz-br.b1-docs.is-short { --brh: 25dvh; }
+  .r28 .kz-sheet.b1-sheet .kz-scene-col > .kz-col > .kz-br.b1-docs.is-short { --brh: 50dvh; }
+  .r28 .b1-sheet .kz-scene-col > .kz-col > .kz-br:not(.b1-docs) { --brh: 24dvh; }
+  .r28 .kz-pick.b1-pick { grid-template-columns: 1fr; }
+  .bd-side { flex-basis: 150px; }
+  /* Сайт, код и страница по шагам: пока не скопировано — сайт и код; после «Copy» — код и страница (s9, s10, s12, s13). */
+  .r28 .b1-sheet .kz-scene.b1-tri.has-clip > .b1-tri-docs { display: none; }
+  .r28 .b1-sheet .kz-scene.b1-tri:not(.has-clip):not(.is-done):not(.is-ref):has(> .b1-tri-docs) > .b1-tri-page { display: none; }
+  /* Сайт — справка (s15, w1): видны сразу сайт (строки Variants), код и страница. */
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 27dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 12dvh; }
+  .r28 .b1-tri.is-ref .bd-code pre { font-size: 10px; line-height: 1.45; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.has-clip) > .kz-col > .kz-br.b1-docs.is-short { --brh: 22dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri .kz-code .kz-line { padding-top: 0; padding-bottom: 0; }
+  .r28 .b1-sheet .kz-scene.b1-tri.has-clip > .b1-tri-page > .kz-br { --brh: 26dvh; }
+  .bd-code pre { font-size: 10.5px; }
+  .bd-h1 { font-size: 19px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet .kz-scene-col > .kz-col > .kz-br:not(.b1-docs) { --brh: 19dvh; }
+  .r28 .b1-sheet .kz-scene.b1-pair > .kz-col > .kz-br { --brh: 21dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri > .b1-tri-page > .kz-br, .r28 .b1-sheet .kz-scene.b1-tri.has-clip > .b1-tri-page > .kz-br { --brh: 20dvh; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.has-clip) > .kz-col > .kz-br.b1-docs.is-short { --brh: 19dvh; }
+  .r28 .b1-sheet .kz-scene.b1-tri:not(.has-clip) .kz-code.kz-code-sm { font-size: 11.5px; }
+  .r28 .kz-pick.b1-pick .kz-btn { min-height: 40px; padding-top: 6px; padding-bottom: 6px; font-size: 14px; }
+  .r28 .b1-sheet .kz-code.kz-code-sm { font-size: 12px; }
+}
+/* Открытая клавиатура (is-kbd, видно ~330 px): строка задания, строка кода с полем, страница полосой и кнопки — без наложений.
+   Окно сайта прячется (справка вернётся, когда клавиатура закроется), строки кода без поля — тоже (как в уроках CSS). */
+.is-kbd .r28 .b1-sheet .kz-col > .kz-br.b1-docs, .is-kbd .r28 .b1-sheet .b1-tri-docs { display: none; }
+.is-kbd .r28 .b1-sheet .kz-code .kz-line:not(:has(textarea)) { display: none; }
+.is-kbd .r28 .b1-sheet .kz-code::before { display: none; }
+.is-kbd .r28 .b1-sheet .kz-col > .kz-br.b1-br:not(.b1-docs) { aspect-ratio: auto; height: auto; max-height: none; padding-bottom: 4px; }
+.is-kbd .r28 .b1-sheet .b1-br .kz-br-tool { display: none; }
+.is-kbd .r28 .b1-sheet .b1-br .kz-br-bar { height: 22px; }
+.is-kbd .r28 .b1-sheet .b1-br:not(.b1-docs) .kz-br-body { flex: 0 0 auto; height: 52px; }
+.is-kbd .r28 .b1-sheet .kz-scene.b1-tri, .is-kbd .r28 .b1-sheet .kz-scene.b1-tri.is-ref { display: flex; flex-direction: column; gap: 6px; }
+.is-kbd .r28 .b1-sheet .kz-scene.b1-tri > .b1-tri-page { display: block !important; order: 2; }
+.is-kbd .r28 .b1-sheet .kz-scene.b1-tri > .b1-tri-code { order: 1; }
+@media (prefers-reduced-motion: reduce) { .b1-part { transition: none; } }
+/* Показы «как на видео» (s9, s10): пустое место загорается, когда на сайте нажали Copy. */
+.r28 .kz-line.b1-slot.is-on { background: rgba(250, 79, 40, .22); box-shadow: 0 0 0 2px rgba(250, 79, 40, .55); }
+/* Выделение текста в строке (показ «скопируй и настрой»), как в VS Code. */
+.r28 .kz-line.is-sel .b1-tx { background: #264F78; color: #fff; }
+/* Окно браузера в показе «как найти сайт» — повыше. */
+.r28 .kz-sheet .kz-scene-col > .kz-col > .kz-br.b1-docs.b1-web.is-short { --brh: 54dvh; }
+/* Редактор без переноса строк, как VS Code по умолчанию (показ копирования CDN: 10 строк должны уместиться). */
+.r28 .kz-code.b1-nowrap .kz-line.b1-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r28 .kz-code.b1-nowrap .kz-line.b1-line .b1-st { word-break: normal; overflow-wrap: normal; }
+/* Курсор показов не выходит за сцену (не даёт прокрутки, если вещь у края). */
+.r28 .kz-scene.b1-sheet-ms, .r28 .b1-sheet .kz-scene.ms-root { overflow: hidden; }
+/* ── Опыт «что включает Bootstrap» (x1): переключатели link и class, правила в файле. ── */
+.b1-sws { gap: 10px; }
+.r28 .b1-sw { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px 8px 10px; border: 2px solid var(--r-line); border-bottom-width: 4px; border-radius: 14px; background: #fff; color: var(--r-ink); font: 700 15px var(--r-font); cursor: pointer; }
+.r28 .b1-sw span { font-family: var(--r-mono); font-size: 14px; }
+.r28 .b1-sw i { position: relative; flex: none; width: 40px; height: 24px; border-radius: 999px; background: #CBD5E1; transition: background .2s; }
+.r28 .b1-sw i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s; }
+.r28 .b1-sw.is-on { border-color: var(--r-pri); }
+.r28 .b1-sw.is-on i { background: var(--r-pri); }
+.r28 .b1-sw.is-on i::after { transform: translateX(16px); }
+.r28 .b1-sw:disabled { cursor: default; }
+.b1-file.is-off { opacity: .45; filter: grayscale(1); }
+.b1-rule { padding: 3px 8px; border-radius: 6px; font: 500 12.5px/1.45 var(--r-mono); color: #444b51; transition: background .2s, box-shadow .2s; }
+.b1-rule b { color: #be273a; font-weight: 600; }
+.b1-rule.is-hit { background: rgba(250, 79, 40, .12); box-shadow: inset 3px 0 0 var(--r-pri); }
+.r28 .kz-line.b1-off .b1-cm { color: #6A9955; font-style: italic; font-family: var(--r-mono); }
+/* ── «Почему не работает» (t4): кнопки причин. ── */
+.r28 .kz-pick.b1-why { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 760px); align-self: center; }
+.r28 .kz-pick.b1-why .kz-btn { text-transform: none; font-size: 15px; line-height: 1.25; }
+@media (max-width: 759px) { .r28 .kz-pick.b1-why { grid-template-columns: 1fr; } .r28 .kz-pick.b1-why .kz-btn { min-height: 42px; padding-top: 6px; padding-bottom: 6px; } }
+/* ── Подключи сам (t1): выбранная строка script. ── */
+.r28 .kz-line.b1-line.is-picked { background: rgba(250, 79, 40, .22); box-shadow: inset 3px 0 0 var(--r-pri); }
+/* ── Телефон: пока ищем по сайту (is-nav) — только окно сайта, крупно; код и страница — после копирования. ── */
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b1-tri.is-nav:not(.has-clip) > .b1-tri-code, .r28 .b1-sheet .kz-scene.b1-tri.is-nav:not(.has-clip) > .b1-tri-page { display: none; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.is-nav:not(.has-clip) > .kz-col > .kz-br.b1-docs.is-short { --brh: 52dvh; }
+}
+@media (min-width: 760px) {
+  .b1-sheet .kz-scene.b1-pair.b1-x1 { align-items: start; }
+}
+.r28 .kz-line .b1-pkg { font-weight: 800; color: #F0B37E; }
+@media (max-width: 759px) {
+  /* Опыт: на телефоне код не показываем — переключатели «link» и «class» говорят, что в нём; видно файл и страницу. */
+  .r28 .b1-sheet .b1-x1 .kz-code.b1-x1-code { display: none; }
+  .r28 .b1-sw { min-height: 44px; padding: 6px 12px 6px 8px; font-size: 14px; }
+  .r28 .b1-sw span { font-size: 13px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet .kz-code.b1-csscode { font-size: 11px; }
+  .r28 .b1-sheet .kz-code.b1-csscode .kz-line { padding-top: 0; padding-bottom: 0; }
+  .r28 .b1-sheet .kz-scene.b1-pair > .kz-col > .kz-br { --brh: 19dvh; }
+  .r28 .b1-file { padding: 4px 6px 6px; margin-bottom: 4px; }
+  .b1-rule { font-size: 11.5px; padding: 1px 6px; }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b1-pair > .kz-col.b1-t4-page > .kz-br { --brh: 15dvh; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-pick.b1-why .kz-btn { min-height: 38px; padding-top: 4px; padding-bottom: 4px; font-size: 14px; }
+  .r28 .b1-sheet .kz-scene.b1-pair > .kz-col.b1-t4-page > .kz-br { --brh: 13dvh; }
+}

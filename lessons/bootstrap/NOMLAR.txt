@@ -1,0 +1,9 @@
+Модуль Bootstrap — названия уроков, практик и тестов на трёх языках и имена файлов
+Darslar, amaliyotlar va testlar nomlari — uch tilda va fayl nomi
+Lesson, practice and test titles in three languages with file names
+Пересобрать список: node tools/nomlar.mjs
+
+Файл / Fayl / File:  01-vvedenie.jsx
+  RU: Урок 1. Введение в Bootstrap
+  UZ: 1-dars. Bootstrapga kirish
+  EN: Lesson 1. Getting started with Bootstrap

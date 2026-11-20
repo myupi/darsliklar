@@ -1,0 +1,55 @@
+/* =============================================================================
+   УРОК 9 МОДУЛЯ BOOTSTRAP «Menu и Dialog» — свои стили поверх bs1…bs6. Префикс b9-.
+   ============================================================================= */
+.b9-aim { position: absolute; pointer-events: none; display: block; width: 0; height: 0; }
+.b9-sw { flex-wrap: wrap; gap: 6px; }
+.b9-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Окно, где карусель листают руками: подсказка «тяни» у края страницы. */
+@keyframes b8nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+/* Окно страницы забирает свободное место под кодом (как в уроке 7); не влезла при 0.55 — окно листается. */
+.r28 .b1-sheet .kz-scene.b9-pair .kz-br-page { overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b9-pair { display: flex; flex-direction: column; justify-content: flex-start; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b9-pair > .kz-col:last-of-type { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .r28 .b1-sheet .kz-scene.b9-pair > .kz-col:last-of-type > .kz-br { flex: 1 1 auto; max-height: none; aspect-ratio: auto; height: auto; min-height: 112px; }
+  .r28 .b1-sheet .kz-scene.b9-t6 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b9-w1 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b9-fill-r > .kz-col:last-of-type > .kz-br { min-height: 84px; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.b9-pair.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 19dvh; }
+  .r28 .b1-sheet .b9-pair .kz-code.b2-small .kz-line.b1-line:not(:has(.kz-gap)) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r28 .b1-sheet .b9-pair .kz-code.b2-small .kz-line.b1-line .b1-st { word-break: normal; overflow-wrap: normal; }
+  .b9-kinds { margin-top: 4px; }
+  .r28 .b9-kinds .b2-chip, .r28 .b9-sw .b2-chip { min-height: 32px; font-size: 11.5px; }
+}
+@media (max-width: 759px) {
+  /* Код длиннее места — листается в своём окне (к нужной строке подъезжает само, hlScroll). */
+  .r28 .b1-sheet .b9-pair .kz-code { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b9-end .kz-code { max-height: 22dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b9-s8 .b4-css, .r28 .b1-sheet .b9-s11 .b4-css { display: none; }
+  .r28 .b1-sheet .b9-fill-r .b2-goal-in { max-width: 120px; }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b9-pair .kz-code > *, .r28 .b1-sheet .b9-end .kz-code > * { flex-shrink: 0; }
+  .r28 .b1-sheet .b9-t6 .kz-code { max-height: 24dvh; }
+  /* Картинка → код: два окна рядом (фото широкое — в узком окне ниже), варианты 2 × 2. */
+  .r28 .b1-sheet .kz-scene.b9-q1 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b9-q1 > .kz-col > .kz-br { --brh: 22dvh; }
+  .r28 .b1-sheet .b9-q1 ~ .kz-pick.b2-codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .b9-q1 ~ .kz-pick.b2-codes .kz-btn { min-height: 40px; font-size: 12px; padding: 4px 6px; }
+}
+/* Вывод: код меню и окна длинный — листается в своём окне на любом экране (подъезжает к строке, о которой говорит Коди). */
+.r28 .b1-sheet .b9-end .kz-code { max-height: 34dvh; overflow-y: auto; overscroll-behavior: contain; }
+.r28 .b1-sheet .b9-end .kz-code > * { flex-shrink: 0; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b9-fill-r .b2-goal-in { max-width: 84px; }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b9-end .kz-code { max-height: 20dvh; }   /* правило 34dvh выше перебивало телефонное — вывод выходил за край */
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b9-t2 .b2-goal { display: none; }   /* открытое меню-образец на телефоне выше места — задание и код однозначны и без него */
+}
+/* Планшет (760–1023 px): код мельче (13 px) и строки в одну линию — в узкой колонке код переносился и наезжал на задание и кнопку. */
+@media (min-width: 760px) and (max-width: 1023px) {
+  .r28 .b1-sheet .b9-pair .kz-code.kz-code-sm { font-size: 13px; }
+  .r28 .b1-sheet .b9-pair .kz-code.b2-small .kz-line.b1-line:not(:has(.kz-gap)) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r28 .b1-sheet .b9-pair .kz-code.b2-small .kz-line.b1-line:not(:has(.kz-gap)) .b1-st { word-break: normal; overflow-wrap: normal; }
+}

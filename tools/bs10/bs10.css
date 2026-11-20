@@ -1,0 +1,72 @@
+/* =============================================================================
+   УРОК 10 МОДУЛЯ BOOTSTRAP «Финальный проект» — свои стили поверх bs1…bs6. Префикс b10-.
+   ============================================================================= */
+.b10-aim { position: absolute; pointer-events: none; display: block; width: 0; height: 0; }
+.b10-sw { flex-wrap: wrap; gap: 6px; }
+.b10-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Окно, где карусель листают руками: подсказка «тяни» у края страницы. */
+@keyframes b8nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+/* Окно страницы забирает свободное место под кодом (как в уроке 7); не влезла при 0.55 — окно листается. */
+.r28 .b1-sheet .kz-scene.b10-pair .kz-br-page { overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b10-pair { display: flex; flex-direction: column; justify-content: flex-start; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b10-pair > .kz-col:last-of-type { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .r28 .b1-sheet .kz-scene.b10-pair > .kz-col:last-of-type > .kz-br { flex: 1 1 auto; max-height: none; aspect-ratio: auto; height: auto; min-height: 112px; }
+  .r28 .b1-sheet .kz-scene.b10-t6 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b10-w1 > .kz-col:last-of-type > .kz-br, .r28 .b1-sheet .kz-scene.b10-fill-r > .kz-col:last-of-type > .kz-br { min-height: 84px; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.b10-pair.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 19dvh; }
+  .r28 .b1-sheet .b10-pair .kz-code.b2-small .kz-line.b1-line:not(:has(.kz-gap)) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r28 .b1-sheet .b10-pair .kz-code.b2-small .kz-line.b1-line .b1-st { word-break: normal; overflow-wrap: normal; }
+  .b10-kinds { margin-top: 4px; }
+  .r28 .b10-kinds .b2-chip, .r28 .b10-sw .b2-chip { min-height: 32px; font-size: 11.5px; }
+}
+@media (max-width: 759px) {
+  /* Код длиннее места — листается в своём окне (к нужной строке подъезжает само, hlScroll). */
+  .r28 .b1-sheet .b10-pair .kz-code { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b10-end .kz-code { max-height: 22dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .r28 .b1-sheet .b10-s8 .b4-css, .r28 .b1-sheet .b10-s11 .b4-css { display: none; }
+  .r28 .b1-sheet .b10-fill-r .b2-goal-in { max-width: 120px; }
+}
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b10-pair .kz-code > *, .r28 .b1-sheet .b10-end .kz-code > * { flex-shrink: 0; }
+  .r28 .b1-sheet .b10-t6 .kz-code { max-height: 24dvh; }
+  /* Картинка → код: два окна рядом (фото широкое — в узком окне ниже), варианты 2 × 2. */
+  .r28 .b1-sheet .kz-scene.b10-q1 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b10-q1 > .kz-col > .kz-br { --brh: 22dvh; }
+  .r28 .b1-sheet .b10-q1 ~ .kz-pick.b2-codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .b10-q1 ~ .kz-pick.b2-codes .kz-btn { min-height: 40px; font-size: 12px; padding: 4px 6px; }
+}
+/* Вывод: код меню и окна длинный — листается в своём окне на любом экране (подъезжает к строке, о которой говорит Коди). */
+.r28 .b1-sheet .b10-end .kz-code { max-height: 34dvh; overflow-y: auto; overscroll-behavior: contain; }
+.r28 .b1-sheet .b10-end .kz-code > * { flex-shrink: 0; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b10-fill-r .b2-goal-in { max-width: 84px; }
+}
+/* Карта пути: 9 станций змейкой. */
+.b10-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(100%, 620px); margin: 6px auto 0; }
+.b10-stop { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1.5px #E2E5EA, 0 3px 10px rgba(15, 23, 42, .06); animation: b10in .45s ease both; animation-delay: calc(var(--i) * 90ms); }
+.b10-stop b { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #FA4F28; color: #fff; font: 800 15px var(--r-font, sans-serif); }
+.b10-stop span { font: 600 13.5px var(--r-font, sans-serif); color: #171a1d; }
+.b10-stop.is-done b { background: #0FA38E; }
+@keyframes b10in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .b10-stop { animation: none; } }
+/* «Верно или нет»: карточка утверждения. */
+.b10-claim { display: flex; gap: 12px; align-items: flex-start; width: min(100%, 640px); margin: 10px auto; padding: 16px 18px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1.5px rgba(250, 79, 40, .5), 0 4px 14px rgba(15, 23, 42, .07); }
+.b10-claim-q { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #FFF1EC; color: #FA4F28; font: 800 18px var(--r-font, sans-serif); }
+.b10-claim p { margin: 0; font: 600 17px/1.4 var(--r-font, sans-serif); color: #171a1d; }
+.b10-g1 > .b1-tri-docs > .kz-br.b1-docs { --brh: 52dvh; }
+@media (max-width: 759px) {
+  .b10-map { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .b10-stop { padding: 7px 9px; gap: 7px; }
+  .b10-stop b { width: 26px; height: 26px; font-size: 13px; }
+  .b10-stop span { font-size: 12.5px; }
+  .b10-claim p { font-size: 15px; }
+  .r28 .b1-sheet .b10-opts.kz-pick.b2-codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .r28 .b1-sheet .b10-opts .kz-btn { min-height: 40px; font-size: 11.5px; padding: 4px 6px; }
+}
+/* Показ «как найти забытое»: одно окно сайта, широкое (на ноутбуке — с меню слева, как на настоящем сайте). */
+.r28 .b1-sheet .kz-scene.b1-tri.b10-g1 { display: flex; justify-content: center; }
+.r28 .b1-sheet .kz-scene.b1-tri.b10-g1 > .b1-tri-docs { flex: 0 1 820px; width: 100%; max-width: 820px; min-width: 0; }
+.r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.b10-g1 > .kz-col > .kz-br.b1-docs.is-short { --brh: 52dvh; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b10-end .kz-code { max-height: 20dvh; }
+}
