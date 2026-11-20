@@ -10,6 +10,8 @@
 //   <WqVis code="…" html="…" css="…" />                       — код и результат: на ноутбуке рядом, на телефоне друг под другом
 //   параметры страницы: vw — ширина страницы в px (по умолчанию 360 на телефоне, 420 рядом с кодом, 560 одна на ноутбуке), focus — селектор,
 //   с которого показывать страницу, если целиком она стала бы мельче читаемого; title — своё название вкладки.
+//   bs={BS_CSS} — страница с настоящим CSS Bootstrap 6 (тесты модуля Bootstrap, 20.11.2026: строку BS_CSS кладёт сборщик;
+//   тема всегда светлая — data-bs-theme="light"; без bs страница голая, как без строки link).
 // Картинки и фоны: src="sher.png" / url(fon.png) с именем из WQ_FILES подменяются рисунком; другое имя — сломанная картинка
 // (как в браузере: значок и alt).
 // =============================================================================
@@ -21,7 +23,10 @@ const WQ_FILES = {
   'sher.png': wqSvg('#FDE68A', '🦁'), 'mushuk.png': wqSvg('#FBCFE8', '🐱'), 'it.png': wqSvg('#BFDBFE', '🐶'),
   'pingvin.png': wqSvg('#E0F2FE', '🐧'), 'robot.png': wqSvg('#DDD6FE', '🤖'), 'pitsa.png': wqSvg('#FED7AA', '🍕'),
   'tort.png': wqSvg('#FCE7F3', '🎂'), 'top.png': wqSvg('#DCFCE7', '⚽'), 'logo.png': wqSvg('#FFEDD5', '🏕️', 90, 90),
-  'fon.png': wqSvg('#A7F3D0', '🌿', 120, 120), 'yulduz.png': wqSvg('#1E1B4B', '⭐', 80, 80), 'tog.png': wqSvg('#BAE6FD', '🏔️', 320, 180)
+  'fon.png': wqSvg('#A7F3D0', '🌿', 120, 120), 'yulduz.png': wqSvg('#1E1B4B', '⭐', 80, 80), 'tog.png': wqSvg('#BAE6FD', '🏔️', 320, 180),
+  'robot1.jpg': wqSvg('#BFE3FF', '🤖', 320, 200), 'robot2.jpg': wqSvg('#FDE7DC', '🦾', 320, 200), 'robot3.jpg': wqSvg('#DCFCE7', '🛠️', 320, 200),
+  'slayd1.jpg': wqSvg('#FFEDD5', '🏆', 480, 200), 'slayd2.jpg': wqSvg('#E0E7FF', '🚀', 480, 200),
+  'jamoa.jpg': wqSvg('#FEF3C7', '🤖🤖🤖', 800, 300), 'murabbiy.jpg': wqSvg('#FDE7DC', '🧑‍🏫', 160, 160)
 };
 const wqFiles = (s) => s
   .replace(/(src\s*=\s*")([^"]+)(")/g, (m, a, n, b) => (WQ_FILES[n] ? a + WQ_FILES[n] + b : m))
@@ -97,7 +102,10 @@ function WqCode({ code, file, mark, fs, cut, innerRef }) {
 }
 
 // ── СТРАНИЦА: честный браузер ──
-function wqDoc(html, css) {
+function wqDoc(html, css, bs) {
+  if (bs) {   // Bootstrap: свой CSS сайта не мешает, отступ страницы — после сброса Bootstrap
+    return '<!doctype html><html data-bs-theme="light"><head><meta charset="utf-8"><style>' + bs + '</style><style>body{padding:12px}' + (css ? wqFiles(css) : '') + '</style></head><body>' + wqFiles(html) + '</body></html>';
+  }
   const body = /<html[\s>]/i.test(html) ? null : html;
   const base = '<style>html{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff}body{margin:12px}img{max-width:100%}</style>';
   const own = css ? '<style>' + wqFiles(css) + '</style>' : '';
@@ -107,18 +115,18 @@ function wqDoc(html, css) {
   }
   return '<!doctype html><html><head><meta charset="utf-8">' + base + own + '</head><body>' + wqFiles(body) + '</body></html>';
 }
-function WqVis({ code, file, mark, html, css, vw: vwOwn, focus, title }) {
+function WqVis({ code, file, mark, html, css, bs, vw: vwOwn, focus, title }) {
   const box = useRef(null);
   const edRef = useRef(null);
   const frame = useRef(null);
   const ifr = useRef(null);
-  const tick = useAqFit(box, [code, html, css]);
+  const tick = useAqFit(box, [code, html, css, bs]);
   const [docH, setDocH] = useState(0);
   const [docTitle, setDocTitle] = useState('');
   const [fit, setFit] = useState(null);
   const hasPage = html != null;
   const hasCode = code != null;
-  const srcDoc = hasPage ? wqDoc(html, css) : null;
+  const srcDoc = hasPage ? wqDoc(html, css, bs) : null;
   const tabTitle = title || docTitle || 'index.html';   // название вкладки — то, что прочитал сам браузер (document.title)
   const measure = () => {
     const f = ifr.current; const d = f && f.contentDocument;
@@ -193,7 +201,7 @@ function WqVis({ code, file, mark, html, css, vw: vwOwn, focus, title }) {
         const el = ifr.current.contentDocument.querySelector(focus);
         if (el) off = Math.min(fullH - viewH, Math.max(0, Math.round((el.getBoundingClientRect().top - 8) * k)));
       }
-      pg = { vw, k, viewH, off, hide: dropPage || viewH < 70 };   // места на окно нет (телефон после ответа) — окно прячется, как в тестах «ИИ»
+      pg = { vw, k, viewH, off, hide: dropPage || viewH < Math.min(70, fullH - 1) };   // короткая страница видна целиком — не прячем (тесты Bootstrap, 20.11.2026)   // места на окно нет (телефон после ответа) — окно прячется, как в тестах «ИИ»
     }
     const next = { row, wideDoc: row && wideDoc, fs, cut, pg };
     setFit((p) => (JSON.stringify(p) === JSON.stringify(next) ? p : next));

@@ -5,7 +5,9 @@
 // Решения заказчика 19.11.2026: только Bootstrap 6 (источник — getbootstrap.com/docs/6.0; где имя поменялось, старое из
 // версии 5 можно назвать одной фразой); подключение — ссылкой CDN с сайта, целиком (с integrity и crossorigin); главное умение —
 // найти нужное на сайте Bootstrap, скопировать и настроить под себя. Состав — как в HTML и CSS (облик «Редактор»), но
-// практики, тесты, задания компилятора и тренажёр — позже, по слову заказчика (practice / tests не ставить).
+// практики, задания компилятора и тренажёр — позже, по слову заказчика (practice не ставить).
+// Тесты (заказчик, 20.11.2026: «делай тесты для уроков бутстрапа») — как у HTML и CSS: после урока «Тест 1/5…5/5»,
+// файлы lessons/bootstrap/NNtK-<slug>.jsx, сборка node tools/webtest/build.mjs bootstrap; финальному уроку 10 — нет.
 
 export default {
   title: 'Bootstrap',
@@ -13,6 +15,7 @@ export default {
   short: 'BS',
   color: '#7952B3',
   order: 4,
+  tests: true,
   lessons: [
     { n: 1, slug: 'vvedenie', title: 'Введение в Bootstrap', topics: ['что такое Bootstrap', 'сайт документации', 'подключение CDN', 'готовые классы'] },
     { n: 2, slug: 'cveta-i-knopki', title: 'Цвета и кнопки', topics: ['theme-*', 'text-* и bg-*', 'btn-solid', 'btn-outline'] },

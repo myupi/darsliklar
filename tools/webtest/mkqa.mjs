@@ -1,4 +1,4 @@
-// Автопроверки тестов курсов HTML и CSS (16.11.2026): node tools/webtest/mkqa.mjs <html|css|all> [NN|all]
+// Автопроверки тестов курсов HTML и CSS (16.11.2026): node tools/webtest/mkqa.mjs <html|css|bootstrap|all> [NN|all]
 // На каждый файл lessons/<курс>/NNtK-<slug>.jsx — сценарий tools/qa/lesson-team/scenarios/<курс>-NNtK-<slug>.qa.mjs
 // (адаптер basic), как у тестов «ИИ» (tools/aitest/mkqa.mjs). Нечётный K — верный ответ, чётный — неверный.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
@@ -6,10 +6,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
-const NAME = { html: 'HTML', css: 'CSS' };
+const NAME = { html: 'HTML', css: 'CSS', bootstrap: 'Bootstrap' };
 const wantCourse = process.argv[2] || 'all';
 const want = process.argv[3] || 'all';
-for (const course of ['html', 'css'].filter((c) => wantCourse === 'all' || wantCourse === c)) {
+for (const course of ['html', 'css', 'bootstrap'].filter((c) => wantCourse === 'all' || wantCourse === c)) {
   const dir = join(here, course);
   if (!existsSync(dir)) continue;
   const files = readdirSync(dir).filter((f) => /^l\d\d\.jsx$/.test(f)).filter((f) => want === 'all' || f === 'l' + want.padStart(2, '0') + '.jsx');

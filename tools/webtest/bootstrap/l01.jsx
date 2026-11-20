@@ -1,0 +1,53 @@
+// =============================================================================
+// ТЕСТЫ К УРОКУ 1 МОДУЛЯ BOOTSTRAP «Введение в Bootstrap» (20.11.2026) — 5 вопросов, по файлу на вопрос.
+// Проверяем: без строки link страница голая; строка script — в конце body; буква в адресе — тоже голая страница;
+// пример Alert ищут в разделе Components; alert-warning — имя версии 5, в шестой цвет даёт theme-warning.
+// Страница — честная: настоящий CSS Bootstrap 6 (bs={BS_CSS}) или голая, если строки link нет. Апостроф — ASCII «'».
+// =============================================================================
+const SLUG = 'vvedenie';
+const b1Doc = (head, body) => `<head>\n${head.map((l) => '  ' + l).join('\n')}\n</head>\n<body>\n${body.map((l) => '  ' + l).join('\n')}\n</body>`;
+const B1_LINK = '<link href="…/bootstrap.min.css" rel="stylesheet">';
+const b1Alert = (T, cls) => `<div class="${cls}" role="alert">${T("Robot to'garagiga yozilish ochiq!", 'Запись в кружок роботов открыта!', 'Robot club sign-up is open!')}</div>`;
+const b1H1 = (T) => `<h1>${T("Robot to'garagi", 'Кружок роботов', 'Robot club')}</h1>`;
+const QS = [
+  { id: 'bootstrap-01t1', target: 'bootstrap-01', ptype: 'Bootstrap', tag: 'link', correct: 2,
+    vis: (L) => { const T = aqL(L); const body = [b1H1(T), b1Alert(T, 'alert theme-info')]; return <WqVis code={b1Doc([`<title>${T("To'garak", 'Кружок', 'Club')}</title>`], body)} html={body.join('\n')} mark={[1, 2, 3]} />; },
+    uz: { ctx: "Kodda Bootstrap class-lari bor, lekin sahifa oddiy ko'rinyapti.", q: 'Nima yetishmayapti?', opts: ['body oxirida script qatori', "div ichida yana bitta class so'zi", 'head ichida link qatori', "title ichida Bootstrap so'zi"],
+      ok: "To'ppa-to'g'ri! Bootstrapning CSS-i link qatori orqali ulanadi. Usiz brauzer bu class so'zlarini bilmaydi.", hint: "Bootstrapning chiroyli ko'rinishi qayerdan keladi? Darsda saytdan qaysi qatorni nusxalab, head ichiga qo'ygan edik?", alt: "link qatorisiz kod va oddiy sahifa" },
+    ru: { ctx: 'В коде есть классы Bootstrap, но страница выглядит обычной.', q: 'Чего не хватает?', opts: ['строки script в конце body', 'ещё одного слова в class у div', 'строки link внутри head', 'слова Bootstrap внутри title'],
+      ok: 'Верно! CSS Bootstrap подключает строка link. Без неё браузер не знает этих слов в class.', hint: 'Откуда берётся красивый вид Bootstrap? Какую строку в уроке копировали с сайта и вставляли в head?', alt: 'Код без строки link и обычная страница' },
+    en: { ctx: 'The code has Bootstrap classes, but the page looks plain.', q: 'What is missing?', opts: ['a script line at the end of body', 'one more word in the div class', 'a link line inside head', 'the word Bootstrap inside title'],
+      ok: 'Right! Bootstrap’s CSS comes in through the link line. Without it the browser doesn’t know these class words.', hint: 'Where does Bootstrap’s nice look come from? Which line did we copy from the site and paste into head?', alt: 'Code without a link line and a plain page' } },
+  { id: 'bootstrap-01t2', target: 'bootstrap-01', ptype: 'Bootstrap', tag: 'script', correct: 0, mono: true,
+    vis: (L) => { const T = aqL(L); return <WqVis code={b1Doc([B1_LINK], [b1Alert(T, 'alert theme-info'), '___'])} mark={[6]} />; },
+    uz: { ctx: "Saytdan ikkita qator olinadi. Birinchisi allaqachon head ichida turibdi.", q: "body oxiridagi bo'sh joyga qaysi qator qo'yiladi?", opts: ['<script type="module" src="…/bootstrap.bundle.min.js">', '<link href="…/bootstrap.min.css" rel="stylesheet">', '<style> .alert { color: blue; } </style>', '<meta name="viewport" content="width=device-width">'],
+      ok: "Qoyil! Ikkinchi qator — script: u tugma va e'lonlarni jonlantiradi, body oxirida turadi.", hint: "head ichida CSS qatori bor. Saytdagi CDN blokida yana qaysi fayl bor edi: css yoki js?", alt: "body oxirida bo'sh joy qolgan kod" },
+    ru: { ctx: 'С сайта берут две строки. Первая уже стоит в head.', q: 'Какая строка ставится на пустое место в конце body?', opts: ['<script type="module" src="…/bootstrap.bundle.min.js">', '<link href="…/bootstrap.min.css" rel="stylesheet">', '<style> .alert { color: blue; } </style>', '<meta name="viewport" content="width=device-width">'],
+      ok: 'Здорово! Вторая строка — script: она оживляет кнопки и объявления Bootstrap. Её ставят в конце body.', hint: 'В head уже есть строка CSS. Какой ещё файл был в блоке CDN на сайте: css или js?', alt: 'Код с пустым местом в конце body' },
+    en: { ctx: 'Two lines are taken from the site. The first one is already in head.', q: 'Which line goes in the empty spot at the end of body?', opts: ['<script type="module" src="…/bootstrap.bundle.min.js">', '<link href="…/bootstrap.min.css" rel="stylesheet">', '<style> .alert { color: blue; } </style>', '<meta name="viewport" content="width=device-width">'],
+      ok: 'Nice work! The second line is the script: it brings Bootstrap’s buttons and alerts to life. It goes at the end of body.', hint: 'head already has the CSS line. Which other file was in the CDN block on the site: css or js?', alt: 'Code with an empty spot at the end of body' } },
+  { id: 'bootstrap-01t3', target: 'bootstrap-01', ptype: 'Bootstrap', tag: 'cdn', correct: 3,
+    vis: (L) => { const T = aqL(L); const body = [b1Alert(T, 'alert theme-success')]; return <WqVis code={b1Doc(['<link href="…/npm/boostrap@6.0.0-alpha.1/…" rel="stylesheet">'], body)} html={body.join('\n')} mark={[2]} />; },
+    uz: { ctx: "link qatori head ichida turibdi, lekin sahifa baribir oddiy.", q: 'Nega Bootstrap ishlamadi?', opts: ["link head-da emas, body-da turishi kerak", "rel=\"stylesheet\" ortiqcha", "class so'zlari katta harfda emas", "Manzilda bitta harf tushib qolgan"],
+      ok: "Xuddi shunday! boostrap — t harfi yo'q. Brauzer bunday faylni topolmaydi. Shuning uchun qatorni saytdan nusxalash kerak, qo'lda yozmaslik kerak.", hint: "Belgilangan qatordagi manzilni harfma-harf o'qing. Paket nomi to'g'ri yozilganmi?", alt: "Manzilida xato bor link qatori va oddiy sahifa" },
+    ru: { ctx: 'Строка link стоит в head, но страница всё равно обычная.', q: 'Почему Bootstrap не сработал?', opts: ['link должна стоять в body', 'rel="stylesheet" тут лишний', 'class написан не с большой буквы', 'В адресе пропала одна буква'],
+      ok: 'Именно! В boostrap нет буквы t — браузер не находит такой файл. Поэтому строку копируют с сайта, а не набирают руками.', hint: 'Прочитайте адрес в выделенной строке по буквам. Имя пакета написано верно?', alt: 'Строка link с ошибкой в адресе и обычная страница' },
+    en: { ctx: 'The link line is in head, but the page is still plain.', q: 'Why didn’t Bootstrap work?', opts: ['link must be in body, not in head', 'rel="stylesheet" is extra and must be deleted', 'the alert class words aren’t capitalized', 'A letter is missing in the address'],
+      ok: 'Exactly! boostrap is missing a t, so the browser can’t find the file. That’s why we copy the line from the site instead of typing it.', hint: 'Read the address in the marked line letter by letter. Is the package name spelled right?', alt: 'A link line with a typo in the address and a plain page' } },
+  { id: 'bootstrap-01t4', target: 'bootstrap-01', ptype: 'Bootstrap', tag: 'docs', correct: 1, mono: true,
+    vis: (L) => { const T = aqL(L); return <WqVis html={[b1H1(T), b1Alert(T, 'alert theme-warning')].join('\n')} bs={BS_CSS} />; },
+    uz: { ctx: "Saytingizga shunday e'lon kerak. Uning namunasi getbootstrap.com saytida bor.", q: "Saytning qaysi bo'limida Alert namunasini topasiz?", opts: ['Utilities', 'Components', 'Getting started', 'Customize'],
+      ok: "Juda zo'r! Alert, Button, Card kabi tayyor qismlar Components bo'limida turadi. U yerdan namunani nusxalab, o'zingizga moslaysiz.", hint: "Alert — saytning tayyor qismi, ya'ni komponent. Menyuda shunga o'xshash nom bormi?", alt: "Sariq e'lonli sahifa" },
+    ru: { ctx: 'На ваш сайт нужно такое объявление. Его пример есть на getbootstrap.com.', q: 'В каком разделе сайта вы найдёте пример Alert?', opts: ['Utilities', 'Components', 'Getting started', 'Customize'],
+      ok: 'Отлично! Готовые части — Alert, Button, Card — лежат в разделе Components. Оттуда пример копируют и настраивают под себя.', hint: 'Alert — готовая часть сайта, то есть компонент. Есть ли в меню похожее название?', alt: 'Страница с жёлтым объявлением' },
+    en: { ctx: 'Your site needs an alert like this. Its example is on getbootstrap.com.', q: 'In which section of the site will you find the Alert example?', opts: ['Utilities', 'Components', 'Getting started', 'Customize'],
+      ok: 'Great! Ready-made parts like Alert, Button and Card live in Components. You copy the example from there and adjust it.', hint: 'Alert is a ready-made part of a site, a component. Is there a similar name in the menu?', alt: 'A page with a yellow alert' } },
+  { id: 'bootstrap-01t5', target: 'bootstrap-01', ptype: 'Bootstrap', tag: 'theme', correct: 2, mono: true,
+    vis: (L) => { const T = aqL(L); const body = [b1H1(T), b1Alert(T, 'alert alert-warning')]; return <WqVis code={b1Doc([B1_LINK], body)} html={body.join('\n')} bs={BS_CSS} mark={[6]} />; },
+    uz: { ctx: "Eski darslikdan olingan e'lon sariq bo'lishi kerak edi, lekin oddiy rangda chiqdi.", q: "class ichida alert-warning o'rniga nima yoziladi?", opts: ['alert-yellow', 'warning-alert', 'theme-warning', 'color-warning'],
+      ok: "To'ppa-to'g'ri! alert-warning — Bootstrap beshinchi versiyasining nomi. Oltinchisida rangni theme-warning beradi.", hint: "Ramka bor, demak Bootstrap ulangan. Rang so'zi esa eski. Saytdagi Variants bo'limida rang so'zlari qanday boshlanardi?", alt: "Rangi chiqmagan e'lon va uning kodi" },
+    ru: { ctx: 'Объявление из старого учебника должно было стать жёлтым, но осталось обычного цвета.', q: 'Что пишется в class вместо alert-warning?', opts: ['alert-yellow', 'warning-alert', 'theme-warning', 'color-warning'],
+      ok: 'Верно! alert-warning — имя из пятой версии Bootstrap. В шестой цвет даёт theme-warning.', hint: 'Рамка есть — значит, Bootstrap подключён. А слово цвета старое. С чего начинались слова цвета в разделе Variants на сайте?', alt: 'Объявление без цвета и его код' },
+    en: { ctx: 'An alert from an old tutorial should be yellow, but it came out in the default color.', q: 'What goes in class instead of alert-warning?', opts: ['alert-yellow', 'warning-alert', 'theme-warning', 'color-warning'],
+      ok: 'Right! alert-warning is a Bootstrap 5 name. In version 6 the color comes from theme-warning.', hint: 'There’s a frame, so Bootstrap is connected. The color word is old, though. How did the color words start in Variants on the site?', alt: 'An alert with no color and its code' } }
+];
