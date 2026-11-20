@@ -13,8 +13,8 @@ const metaTitle = (src) => {
   const j = src.indexOf('lessonTitle:', i);
   return { uz: field(src, 'uz', j), ru: field(src, 'ru', j), en: field(src, 'en', j) };
 };
-const HEAD = { html: 'Курс HTML', css: 'Курс CSS', ai: 'Модуль «ИИ»' };
-for (const c of ['html', 'css', 'ai']) {
+const HEAD = { html: 'Курс HTML', css: 'Курс CSS', ai: 'Модуль «ИИ»', bootstrap: 'Модуль Bootstrap' };
+for (const c of ['html', 'css', 'ai', 'bootstrap']) {
   const files = readdirSync(join(R, c)).filter((f) => /^\d\d(p|t\d)?-.*\.jsx$/.test(f)).sort();
   const course = (await import(join(R, c, '_course.js'))).default;
   const lines = [c === 'ai' ? `${HEAD[c]} — названия уроков и тестов на трёх языках и имена файлов` : `${HEAD[c]} — названия уроков, практик и тестов на трёх языках и имена файлов`,

@@ -197,6 +197,9 @@ writeFileSync(root + 'canon/css/canon-v1.jsx', text);
 // Модуль «ИИ» — на каноне CSS (11.11.2026); своя папка нужна, чтобы sync-canon / check-canon работали и для него.
 mkdirSync(root + 'canon/ai', { recursive: true });
 writeFileSync(root + 'canon/ai/canon-v1.jsx', text);
+// Модуль Bootstrap — на том же каноне (19.11.2026); своя папка — чтобы sync-canon / check-canon работали и для него.
+mkdirSync(root + 'canon/bootstrap', { recursive: true });
+writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
