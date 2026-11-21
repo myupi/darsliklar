@@ -527,17 +527,17 @@ export default [
     },
     uz: {
       ctx: "Sahifada to'rtta javon bor. Shu qoida ulardan bittasiga yozilgan.",
-      q: 'Qoida qaysi javonni shunday qo\'ydi? Uni bosing',
+      q: 'Bu qoida qaysi javonga yozilgan? Ustiga bosing',
       why: "column — ustun, birinchisi tepada: 1, 2, 3 tepadan pastga. column-reverse ham ustun, lekin unda birinchisi pastda turadi.",
     },
     ru: {
       ctx: 'На странице четыре полки. Это правило написано одной из них.',
-      q: 'Какую полку так поставило это правило? Нажми на неё',
+      q: 'Какой полке написано это правило? Нажми на неё',
       why: 'column — столбик, первая карточка наверху: 1, 2, 3 сверху вниз. column-reverse тоже столбик, но первая там внизу.',
     },
     en: {
       ctx: 'The page has four shelves. This rule is written for one of them.',
-      q: 'Which shelf did this rule arrange? Tap it',
+      q: 'Which shelf has this rule? Tap it',
       why: 'column is a column with the first card on top: 1, 2, 3 from top to bottom. column-reverse is a column too, but there the first one is at the bottom.',
     },
   },

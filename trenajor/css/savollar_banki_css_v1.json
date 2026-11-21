@@ -853,7 +853,8 @@
   "options": [],
   "correct_answer": "background-color",
   "accepted_answers": [
-   "background-color"
+   "background-color",
+   "background"
   ],
   "solution_explanation": {
    "uz": "Fon rangini background-color beradi. color esa faqat matnni bo'yaydi: u bilan sahifa foni oq bo'lib qolardi.",
@@ -2137,7 +2138,7 @@
   ],
   "solution_explanation": {
    "uz": "p qoidasi hamma abzasga tegadi, lekin class va id undan kuchli: ular tekkan abzaslar ko'k va to'q sariq. Venerada class ham, id ham yo'q — u yashil.",
-   "ru": "Правило p действует на все абзацы, но class и id сильнее: их абзацы синие и оранжевый. У Венеры нет ни class, ни id — она зелёная.",
+   "ru": "Правило p действует на все абзацы, но class и id сильнее: абзацы с class синие, абзац с id оранжевый. У Венеры нет ни class, ни id — она зелёная.",
    "en": "The p rule applies to every paragraph, but class and id are stronger: their paragraphs are blue and orange. Venus has neither a class nor an id, so it's green."
   },
   "tags": [
@@ -3014,8 +3015,8 @@
   "question_type": "assemble",
   "context": {
    "uz": "Musiqa sayti: abzaslar ko'k bo'lsin — faqat ko'k nur to'liq yonadi.",
-   "ru": "Музыкальный сайт: абзацы синие — на полную горит только синий луч.",
-   "en": "Music site: the paragraphs are blue, with only the blue light fully on."
+   "ru": "Музыкальный сайт: абзацы должны быть синими — на полную горит только синий луч.",
+   "en": "Music site: the paragraphs should be blue, with only the blue light fully on."
   },
   "question_text": {
    "uz": "Bo'laklarni tartib bilan bosib, qoida ichini yig'ing",
@@ -3288,7 +3289,7 @@
    "ru": "Какое правило это сделало?",
    "en": "Which rule did this?"
   },
-  "vis": "@htmlvis:{\"html\":{\"uz\":\"<h1>Lochin FC</h1>\\n<p>Har shanba maydonda o'yin.</p>\\n<p>Bizga qo'shiling!</p>\",\"ru\":\"<h1>Лочин FC</h1>\\n<p>Игра на поле каждую субботу.</p>\\n<p>Приходи к нам!</p>\",\"en\":\"<h1>Lochin FC</h1>\\n<p>A match on the field every Saturday.</p>\\n<p>Join us!</p>\"},\"base\":\"html { background: none; }\",\"goal\":\"body { background-color: lightgreen; }\"}",
+  "vis": "@htmlvis:{\"html\":{\"uz\":\"<h1>Lochin FC</h1>\\n<p>Har shanba maydonda o'yin.</p>\\n<p>Bizga qo'shiling!</p>\",\"ru\":\"<h1>ФК «Лочин»</h1>\\n<p>Игра на поле каждую субботу.</p>\\n<p>Приходи к нам!</p>\",\"en\":\"<h1>Lochin FC</h1>\\n<p>A match on the field every Saturday.</p>\\n<p>Join us!</p>\"},\"base\":\"html { background: none; }\",\"goal\":\"body { background-color: lightgreen; }\"}",
   "options": [
    {
     "id": "a",
@@ -3704,7 +3705,7 @@
   "solution_explanation": {
    "uz": "background-color — zaxira rang: rasm bor joyda rasm ko'rinadi, rasm bo'lmasa — shu rang. color esa harflarni qora qilardi.",
    "ru": "background-color — запасной цвет: где есть картинка, видна картинка, а без неё — этот цвет. А color сделал бы чёрными буквы.",
-   "en": "background-color is the backup colour: where there is a picture you see it, and without one you see this colour. color would make the letters black."
+   "en": "background-color is the backup color: where there is a picture you see it, and without one you see this color. color would make the letters black."
   },
   "tags": [
    "dars04",
@@ -3799,7 +3800,7 @@
     "text": {
      "uz": "Harflar ham, fon ham bir xil rangda",
      "ru": "Буквы и фон одного цвета",
-     "en": "Letters and background share one colour"
+     "en": "Letters and background share one color"
     }
    },
    {
@@ -3831,7 +3832,7 @@
   "solution_explanation": {
    "uz": "color harflarni, background-color esa ularning orqasini bo'yaydi. Ikkalasi ham navy bo'lsa, harflar fonga qo'shilib ketadi: biriga boshqa rang kerak.",
    "ru": "color красит буквы, а background-color — фон за ними. Если оба navy, буквы сливаются с фоном: одному из них нужен другой цвет.",
-   "en": "color paints the letters and background-color paints behind them. If both are navy, the letters melt into the background: one of them needs another colour."
+   "en": "color paints the letters and background-color paints behind them. If both are navy, the letters melt into the background: one of them needs another color."
   },
   "tags": [
    "dars04",
@@ -3981,12 +3982,13 @@
   "options": [],
   "correct_answer": "background-image",
   "accepted_answers": [
-   "background-image"
+   "background-image",
+   "background"
   ],
   "solution_explanation": {
    "uz": "Fonga rasmni background-image qo'yadi, fayl esa url( ) ichida yoziladi. background-color faqat rang beradi, rasm emas.",
    "ru": "Картинку на фон ставит background-image, а файл пишется внутри url( ). background-color даёт только цвет, а не картинку.",
-   "en": "background-image puts a picture on the background, with the file inside url( ). background-color gives only a colour, not a picture."
+   "en": "background-image puts a picture on the background, with the file inside url( ). background-color gives only a color, not a picture."
   },
   "tags": [
    "dars04",
@@ -4735,7 +4737,7 @@
    "ru": "Почему абзац не встал по центру?",
    "en": "Why didn’t the paragraph move to the center?"
   },
-  "vis": "@htmlvis:{\"css\":\"h1 {\\n  text-align: center;\\n}\",\"html\":{\"uz\":\"<h1>Lochin FC</h1>\\n<p>Har yakshanba o'yin bor.</p>\",\"ru\":\"<h1>Лочин FC</h1>\\n<p>Игра каждое воскресенье.</p>\",\"en\":\"<h1>Lochin FC</h1>\\n<p>A match every Sunday.</p>\"}}",
+  "vis": "@htmlvis:{\"css\":\"h1 {\\n  text-align: center;\\n}\",\"html\":{\"uz\":\"<h1>Lochin FC</h1>\\n<p>Har yakshanba o'yin bor.</p>\",\"ru\":\"<h1>ФК «Лочин»</h1>\\n<p>Игра каждое воскресенье.</p>\",\"en\":\"<h1>Lochin FC</h1>\\n<p>A match every Sunday.</p>\"}}",
   "options": [
    {
     "id": "a",
@@ -5229,7 +5231,7 @@
    "ru": "Какой абзац получил line-through? Нажми на него",
    "en": "Which paragraph got line-through? Tap it"
   },
-  "vis": "@htmlvis:{\"css\":\".nom { font-weight: bold; }\\n.chegirma { text-decoration: line-through; }\\n.izoh { font-size: 12px; }\",\"html\":{\"uz\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Kosmik poyga</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90 000 so'm</p>\\n<p data-t=\\\"narx\\\">60 000 so'm</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">Bu narx juma kunigacha</p>\",\"ru\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Космические гонки</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90 000 сумов</p>\\n<p data-t=\\\"narx\\\">60 000 сумов</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">Цена действует до пятницы</p>\",\"en\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Space Race</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90,000 sums</p>\\n<p data-t=\\\"narx\\\">60,000 sums</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">This price lasts until Friday</p>\"}}",
+  "vis": "@htmlvis:{\"css\":\".nom { font-weight: bold; }\\n.chegirma { text-decoration: line-through; }\\n.izoh { font-size: 12px; }\",\"html\":{\"uz\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Kosmik poyga</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90 000 so'm</p>\\n<p data-t=\\\"narx\\\">60 000 so'm</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">Bu narx juma kunigacha</p>\",\"ru\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Космические гонки</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90 000 сумов</p>\\n<p data-t=\\\"narx\\\">60 000 сумов</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">Цена действует до пятницы</p>\",\"en\":\"<p class=\\\"nom\\\" data-t=\\\"nom\\\">Space Race</p>\\n<p class=\\\"chegirma\\\" data-t=\\\"chegirma\\\">90,000 soums</p>\\n<p data-t=\\\"narx\\\">60,000 soums</p>\\n<p class=\\\"izoh\\\" data-t=\\\"izoh\\\">This price lasts until Friday</p>\"}}",
   "options": [],
   "correct_answer": "chegirma",
   "accepted_answers": [
@@ -5260,7 +5262,7 @@
   "difficulty": "easy",
   "question_type": "single_choice",
   "context": {
-   "uz": "Kinoteatr sayti: afisha bloki 120 piksel baland bo'lishi kerak.",
+   "uz": "Kinoteatr sayti: afisha blokining balandligi 120 piksel bo'lishi kerak.",
    "ru": "Сайт кинотеатра: блок афиши должен быть высотой 120 пикселей.",
    "en": "A cinema site: the poster block must be 120 pixels tall."
   },
@@ -5651,23 +5653,23 @@
   "difficulty": "hard",
   "question_type": "single_choice",
   "context": {
-   "uz": ".chap va .ong bloklari 400 piksellik .oyna ichida turibdi.",
-   "ru": "Блоки .chap и .ong стоят внутри .oyna шириной 400 пикселей.",
-   "en": "The .chap and .ong blocks sit inside .oyna, which is 400 pixels wide."
+   "uz": "Ikkala blok sahifada turibdi. Sayt telefonda ochildi: oyna 360 piksel keng.",
+   "ru": "Оба блока стоят на странице. Сайт открыли на телефоне: окно шириной 360 пикселей.",
+   "en": "Both blocks sit on the page. The site is opened on a phone: the window is 360 pixels wide."
   },
   "question_text": {
-   "uz": "Qaysi blok kengroq bo'ladi?",
-   "ru": "Какой блок будет шире?",
-   "en": "Which block will be wider?"
+   "uz": "Telefonda qaysi blok kengroq bo'ladi?",
+   "ru": "Какой блок будет шире на телефоне?",
+   "en": "Which block will be wider on the phone?"
   },
-  "vis": "@htmlvis:{\"css\":\".oyna {\\n  width: 400px;\\n}\\n.chap {\\n  width: 50%;\\n}\\n.ong {\\n  width: 200px;\\n}\"}",
+  "vis": "@htmlvis:{\"css\":\".chap {\\n  width: 50%;\\n}\\n.ong {\\n  width: 300px;\\n}\"}",
   "options": [
    {
     "id": "a",
     "text": {
-     "uz": "Ikkalasi bir xil: 200px dan",
-     "ru": "Одинаковые: по 200px",
-     "en": "The same: 200px each"
+     "uz": ".ong: 50% oynaning yarmidan oshmaydi",
+     "ru": ".ong: 50% — не больше половины окна",
+     "en": ".ong: 50% is at most half the window"
     }
    },
    {
@@ -5681,25 +5683,25 @@
    {
     "id": "c",
     "text": {
-     "uz": ".ong kengroq: 200 soni 50 dan katta",
-     "ru": ".ong: 200 больше, чем 50",
-     "en": ".ong: 200 is more than 50"
+     "uz": "Bir xil: oyna ikkalasini tenglashtiradi",
+     "ru": "Одинаковые: окно их выровняет",
+     "en": "The same: the window evens them out"
     }
    },
    {
     "id": "d",
     "text": {
-     "uz": ".chap kengroq: foiz doim kattaroq",
-     "ru": ".chap: проценты всегда больше",
-     "en": ".chap: percent is always more"
+     "uz": ".chap: foiz doim pikseldan kattaroq",
+     "ru": ".chap: проценты всегда больше пикселей",
+     "en": ".chap: percent is always more than pixels"
     }
    }
   ],
   "correct_answer": "a",
   "solution_explanation": {
-   "uz": "Foiz o'rab turgan blokdan olinadi: 400 ning 50 foizi — 200 piksel. .ong ham 200 piksel, demak ikkalasi teng.",
-   "ru": "Проценты берутся от блока, в котором стоит элемент: 50% от 400 — это 200 пикселей. У .ong тоже 200 пикселей, значит, они равны.",
-   "en": "Percent is taken from the block the element sits in: 50% of 400 is 200 pixels. .ong is 200 pixels too, so they are equal."
+   "uz": "50% — oynaning yarmi: 360 piksellik telefonda 180 dan ham kam. 300px esa har qanday ekranda 300 piksel, shuning uchun telefonda .ong kengroq.",
+   "ru": "50% — половина окна: на телефоне шириной 360 это даже меньше 180 пикселей. А 300px — 300 пикселей на любом экране, поэтому на телефоне шире .ong.",
+   "en": "50% is half the window: on a 360-pixel phone that’s even less than 180 pixels. 300px is 300 pixels on any screen, so .ong is wider on the phone."
   },
   "tags": [
    "dars06",
@@ -5777,31 +5779,31 @@
   "difficulty": "medium",
   "question_type": "single_choice",
   "context": {
-   "uz": "Ikkala to'q sariq blokka ham width: 50% yozilgan, lekin ular har xil uzunlikda.",
-   "ru": "Обоим оранжевым блокам написан width: 50%, но они разной длины.",
-   "en": "Both orange blocks have width: 50%, but they are different lengths."
+   "uz": "Noutbukda to'q sariq reklama sarlavhadan keng edi. Telefonda (oyna 360 piksel) u torroq bo'lib qoldi.",
+   "ru": "На ноутбуке оранжевая реклама была шире заголовка. На телефоне (окно 360 пикселей) она стала уже.",
+   "en": "On a laptop the orange advert was wider than the heading. On a phone (a 360-pixel window) it got narrower."
   },
   "question_text": {
    "uz": "Nega shunday?",
    "ru": "Почему так?",
    "en": "Why is that?"
   },
-  "vis": "@htmlvis:{\"css\":\".katta { width: 300px; }\\n.kichik { width: 160px; }\\n.ichi { width: 50%; }\",\"html\":\"<div class=\\\"katta\\\">\\n  <div class=\\\"ichi\\\">50%</div>\\n</div>\\n<div class=\\\"kichik\\\">\\n  <div class=\\\"ichi\\\">50%</div>\\n</div>\",\"base\":\".katta, .kichik { background-color: #E2E8F0; margin-bottom: 10px; }\\n.ichi { background-color: #FA4F28; color: #fff; font-weight: bold; text-align: center; line-height: 32px; }\"}",
+  "vis": "@htmlvis:{\"css\":\"h1 {\\n  width: 220px;\\n}\\n.reklama {\\n  width: 50%;\\n}\",\"html\":{\"uz\":\"<h1>Lochin FC</h1>\\n<p class=\\\"reklama\\\">Chiptalar sotuvda!</p>\",\"ru\":\"<h1>Лочин FC</h1>\\n<p class=\\\"reklama\\\">Билеты в продаже!</p>\",\"en\":\"<h1>Lochin FC</h1>\\n<p class=\\\"reklama\\\">Tickets on sale!</p>\"},\"base\":\"h1 { background-color: #CBD5E1; font-size: 26px; }\\n.reklama { background-color: #FA4F28; color: #fff; font-weight: bold; line-height: 32px; }\",\"vw\":360}",
   "options": [
    {
     "id": "a",
     "text": {
-     "uz": "Kichik blokda width ishlamaydi",
-     "ru": "У маленького блока width не работает",
-     "en": "width doesn’t work in the small block"
+     "uz": "Telefonda 220px kattalashib ketadi",
+     "ru": "На телефоне 220px становятся больше",
+     "en": "On a phone 220px gets bigger"
     }
    },
    {
     "id": "b",
     "text": {
-     "uz": "50% faqat birinchi blokda ishlaydi",
-     "ru": "50% работает только в первом блоке",
-     "en": "50% only works in the first block"
+     "uz": "Telefonda foiz umuman ishlamaydi",
+     "ru": "На телефоне проценты не работают",
+     "en": "Percent doesn’t work on phones at all"
     }
    },
    {
@@ -5815,17 +5817,17 @@
    {
     "id": "d",
     "text": {
-     "uz": "Har biri o'z kulrang blokining yarmini oladi",
-     "ru": "Каждый берёт половину своего серого блока",
-     "en": "Each takes half of its own gray block"
+     "uz": "50% oyna bilan torayadi, 220px esa o'zgarmaydi",
+     "ru": "50% сужается с окном, а 220px — нет",
+     "en": "50% shrinks with the window, 220px doesn’t"
     }
    }
   ],
   "correct_answer": "d",
   "solution_explanation": {
-   "uz": "Foiz o'rab turgan blokdan olinadi: 300 ning yarmi — 150, 160 ning yarmi — 80 piksel. Tashqi blok kengroq bo'lsa, 50% ham kengroq.",
-   "ru": "Проценты берутся от блока, в котором стоит элемент: половина от 300 — 150, половина от 160 — 80 пикселей. Шире внешний блок — шире и 50%.",
-   "en": "Percent is taken from the block the element sits in: half of 300 is 150, half of 160 is 80 pixels. A wider outer block means a wider 50%."
+   "uz": "50% — oynaning yarmi: oyna tor bo'lsa, yarmi ham tor. 220px esa har qanday ekranda 220 piksel, shuning uchun telefonda sarlavha kengroq.",
+   "ru": "50% — это половина окна: окно уже — и половина уже. А 220px — 220 пикселей на любом экране, поэтому на телефоне заголовок шире.",
+   "en": "50% is half the window: a narrower window means a narrower half. 220px is 220 pixels on any screen, so on the phone the heading is wider."
   },
   "tags": [
    "dars06",
@@ -6014,25 +6016,25 @@
   "difficulty": "medium",
   "question_type": "text_input",
   "context": {
-   "uz": "Surat kartochka ichida. U kartochkaning butun kengligini egallasin, kartochka qanday bo'lsa ham.",
-   "ru": "Фото стоит внутри карточки. Оно должно занять всю ширину карточки, какой бы она ни была.",
-   "en": "The photo sits inside a card. It should fill the card’s full width, whatever the card’s size."
+   "uz": "Zoopark sayti: sher surati telefonda ham, noutbukda ham oynaning butun kengligini egallasin.",
+   "ru": "Сайт зоопарка: фото льва должно занимать всю ширину окна и на телефоне, и на ноутбуке.",
+   "en": "A zoo site: the lion photo should fill the whole window width on both a phone and a laptop."
   },
   "question_text": {
    "uz": "Bo'sh joyga qiymatni yozing.",
    "ru": "Впиши значение на пустое место.",
    "en": "Type the value in the empty spot."
   },
-  "vis": "@htmlvis:{\"css\":\".kartochka {\\n  width: 220px;\\n}\\nimg {\\n  width: ___;\\n}\"}",
+  "vis": "@htmlvis:{\"css\":\"img {\\n  width: ___;\\n}\"}",
   "options": [],
   "correct_answer": "100%",
   "accepted_answers": [
    "100%"
   ],
   "solution_explanation": {
-   "uz": "100% — o'rab turgan blokning butun kengligi. Kartochka 220px bo'lsa, surat ham 220px, kartochka o'zgarsa, surat ham o'zgaradi.",
-   "ru": "100% — это вся ширина блока, в котором стоит элемент. Карточка 220px — и фото 220px, изменится карточка — изменится и фото.",
-   "en": "100% is the full width of the block the element sits in. A 220px card means a 220px photo, and if the card changes, so does the photo."
+   "uz": "100% — oynaning butun kengligi: oyna torayadi — surat ham torayadi, kengayadi — surat ham kengayadi. Piksel esa bitta ekrangagina mos keladi.",
+   "ru": "100% — это вся ширина окна: окно уже — и фото уже, окно шире — и фото шире. А пиксели подойдут только одному экрану.",
+   "en": "100% is the whole window width: a narrower window means a narrower photo, a wider one means a wider photo. Pixels fit only one screen."
   },
   "tags": [
    "dars06",
@@ -6056,25 +6058,25 @@
   "difficulty": "hard",
   "question_type": "text_input",
   "context": {
-   "uz": "Futbol o'yini: .darvoza 500 piksellik .maydon ichida va 100 piksel keng bo'lishi kerak.",
-   "ru": "Футбольная игра: .darvoza стоит внутри .maydon шириной 500 пикселей и должна быть шириной 100.",
-   "en": "A football game: .darvoza sits inside .maydon, 500 pixels wide, and must be 100 pixels wide."
+   "uz": "Futbol sayti: reklama bloki har qanday ekranda oyna kengligining beshdan birini egallasin.",
+   "ru": "Футбольный сайт: блок рекламы должен занимать пятую часть ширины окна на любом экране.",
+   "en": "A football site: the advert block should take one fifth of the window width on any screen."
   },
   "question_text": {
    "uz": "Bo'sh joyga kenglikni foizda yozing.",
    "ru": "Впиши ширину в процентах.",
    "en": "Type the width in percent."
   },
-  "vis": "@htmlvis:{\"css\":\".maydon {\\n  width: 500px;\\n}\\n.darvoza {\\n  width: ___;\\n}\"}",
+  "vis": "@htmlvis:{\"css\":\".reklama {\\n  width: ___;\\n}\"}",
   "options": [],
   "correct_answer": "20%",
   "accepted_answers": [
    "20%"
   ],
   "solution_explanation": {
-   "uz": "100 piksel — 500 ning beshdan biri. Butun kenglik 100% bo'lsa, beshdan biri — 20%.",
-   "ru": "100 пикселей — это пятая часть от 500. Вся ширина — 100%, значит, пятая часть — 20%.",
-   "en": "100 pixels is one fifth of 500. The full width is 100%, so one fifth is 20%."
+   "uz": "Butun oyna — 100%. Beshdan biri — 100 ni 5 ga bo'lamiz: 20%. Foiz oyna bilan birga o'zgaradi, shuning uchun har qanday ekranda beshdan bir bo'ladi.",
+   "ru": "Всё окно — 100%. Пятая часть — 100 делим на 5: 20%. Проценты меняются вместе с окном, поэтому на любом экране это будет пятая часть.",
+   "en": "The whole window is 100%. One fifth is 100 divided by 5: 20%. Percent changes with the window, so on any screen it stays one fifth."
   },
   "tags": [
    "dars06",
@@ -6163,16 +6165,16 @@
   "difficulty": "medium",
   "question_type": "assemble",
   "context": {
-   "uz": "O'yin yuklanyapti: .toldi chizig'i .yuklash ichida turibdi va uning yarmini egallashi kerak.",
-   "ru": "Игра загружается: полоска .toldi стоит внутри .yuklash и должна занять её половину.",
-   "en": "A game is loading: the .toldi bar sits inside .yuklash and should fill half of it."
+   "uz": "O'yin yuklanyapti: yashil .toldi chizig'i har qanday ekranda oynaning yarmigacha yetsin.",
+   "ru": "Игра загружается: зелёная полоска .toldi должна доходить до половины окна на любом экране.",
+   "en": "A game is loading: the green .toldi bar should reach half the window on any screen."
   },
   "question_text": {
    "uz": "Bo'laklarni tartib bilan bosib, qatorni yig'ing",
    "ru": "Нажимай кусочки по порядку и собери строку",
    "en": "Tap the pieces in order to build the line"
   },
-  "vis": "@htmlvis:{\"css\":\".yuklash {\\n  width: 300px;\\n}\\n.toldi {\\n  ___\\n}\"}",
+  "vis": "@htmlvis:{\"css\":\".toldi {\\n  background-color: green;\\n  ___\\n}\"}",
   "options": [
    {
     "id": "a",
@@ -6747,7 +6749,7 @@
     "text": {
      "uz": "Fon o'sha-o'sha, tugma qo'shnilardan uzoqlashadi",
      "ru": "Фон тот же, кнопка отодвинется от соседей",
-     "en": "Same background, the button moves off"
+     "en": "Same background, it moves away from others"
     }
    },
    {
@@ -7225,7 +7227,7 @@
   "options": [
    {
     "id": "a",
-    "text": "border-color"
+    "text": "margin"
    },
    {
     "id": "b",
@@ -7253,9 +7255,9 @@
    "b,f,e,d"
   ],
   "solution_explanation": {
-   "uz": "Chegarani border beradi, qiymati uch qismdan: qalinlik, chiziq turi va rang. 3px red qiymatida chiziq turi yo'q, border-color esa faqat rangni o'zgartiradi.",
-   "ru": "Рамку даёт border, значение из трёх частей: толщина, вид линии и цвет. В 3px red нет вида линии, а border-color меняет только цвет.",
-   "en": "border gives a frame with three parts: thickness, line style and colour. 3px red has no line style, and border-color only changes the colour."
+   "uz": "Chegarani border beradi, qiymati uch qismdan: qalinlik, chiziq turi va rang. 3px red qiymatida chiziq turi yo'q, margin esa chegara emas, tashqi bo'shliq.",
+   "ru": "Рамку даёт border, значение из трёх частей: толщина, вид линии и цвет. В 3px red нет вида линии, а margin — не рамка, а внешний отступ.",
+   "en": "border gives a frame with three parts: thickness, line style and colour. 3px red has no line style, and margin isn’t a border but the outer space."
   },
   "tags": [
    "dars07",
@@ -10518,9 +10520,9 @@
    "en": "The page has four shelves. This rule is written for one of them."
   },
   "question_text": {
-   "uz": "Qoida qaysi javonni shunday qo'ydi? Uni bosing",
-   "ru": "Какую полку так поставило это правило? Нажми на неё",
-   "en": "Which shelf did this rule arrange? Tap it"
+   "uz": "Bu qoida qaysi javonga yozilgan? Ustiga bosing",
+   "ru": "Какой полке написано это правило? Нажми на неё",
+   "en": "Which shelf has this rule? Tap it"
   },
   "vis": "@htmlvis:{\"css\":\".sevimli {\\n  display: flex;\\n  flex-direction: column;\\n}\",\"html\":\"<div class=\\\"p r\\\" data-t=\\\"row\\\">\\n  <div class=\\\"k\\\">1</div><div class=\\\"k\\\">2</div><div class=\\\"k\\\">3</div>\\n</div>\\n<div class=\\\"p cr\\\" data-t=\\\"colrev\\\">\\n  <div class=\\\"k\\\">1</div><div class=\\\"k\\\">2</div><div class=\\\"k\\\">3</div>\\n</div>\\n<div class=\\\"p sevimli\\\" data-t=\\\"col\\\">\\n  <div class=\\\"k\\\">1</div><div class=\\\"k\\\">2</div><div class=\\\"k\\\">3</div>\\n</div>\\n<div class=\\\"p rr\\\" data-t=\\\"rowrev\\\">\\n  <div class=\\\"k\\\">1</div><div class=\\\"k\\\">2</div><div class=\\\"k\\\">3</div>\\n</div>\",\"base\":\"body{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}.p{width:136px;background:#FFF1EC;border:2px dashed #FDBA74;padding:4px}.k{background:#FA4F28;color:#fff;font:bold 14px Arial;text-align:center;padding:4px 9px;margin:3px;border-radius:6px}.r{display:flex}.rr{display:flex;flex-direction:row-reverse}.cr{display:flex;flex-direction:column-reverse}\"}",
   "options": [],
@@ -10728,7 +10730,7 @@
   "solution_explanation": {
    "uz": "gap — oraliq: u faqat qo'shni bolalar orasiga bo'sh joy qo'yadi. Galereyaning chetlari va rasmlarning o'zi o'zgarmaydi.",
    "ru": "gap — промежуток: он ставит пустое место только между соседними детьми. Края галереи и сами картинки не меняются.",
-   "en": "gap is a gap: it only puts empty space between neighboring children. The gallery’s edges and the pictures themselves don’t change."
+   "en": "gap only puts empty space between neighboring children. The gallery’s edges and the pictures themselves don’t change."
   },
   "tags": [
    "dars11",
@@ -10918,7 +10920,7 @@
   "context": {
    "uz": "O'yin ekrani — qator. «O'ynash» tugmasi ekranning qoq o'rtasida tursin: ham eniga, ham bo'yiga.",
    "ru": "Экран игры — ряд. Кнопка «Играть» должна стоять ровно в центре: и по ширине, и по высоте.",
-   "en": "The game screen is a row. The “Play” button must sit right in the center: across and up-down."
+   "en": "The game screen is a row. The “Play” button must sit right in the center, both across and up and down."
   },
   "question_text": {
    "uz": "Ekranga qaysi ikki xususiyat center qiymati bilan yoziladi?",
@@ -11356,8 +11358,8 @@
   "question_type": "text_input",
   "context": {
    "uz": "Albomdagi stikerlar bir qatorga sig'may, siqilib qoldi. Sig'maganlari yangi qatorga o'tsin.",
-   "ru": "Наклейки сжались в одну строку. Лишние пусть перейдут ниже.",
-   "en": "The stickers got squeezed into one row. Extras should move down."
+   "ru": "Наклейки не помещаются в одну строку и сжались. Лишние пусть перейдут на новую строку.",
+   "en": "The album stickers don’t fit in one row and got squeezed. The ones that don’t fit should move to a new row."
   },
   "question_text": {
    "uz": "Bo'sh joyga xususiyat nomini yozing.",
@@ -13065,7 +13067,7 @@
   "solution_explanation": {
    "uz": "transform faqat elementning o'zini suradi, qo'shnilar esa joyida qoladi. Shuning uchun surilgan kartochka qo'shnisining ustiga chiqib qoldi.",
    "ru": "transform сдвигает только сам элемент, а соседи остаются на месте. Поэтому сдвинутая карточка наехала на соседнюю.",
-   "en": "transform moves only the element itself, and its neighbours stay in place. So the moved card ended up on top of its neighbour."
+   "en": "transform moves only the element itself, and its neighbors stay in place. So the moved card ended up on top of its neighbor."
   },
   "tags": [
    "dars13",
@@ -13627,12 +13629,12 @@
    "ru": "Hover и transform",
    "en": "Hover and transform"
   },
-  "difficulty": "hard",
+  "difficulty": "medium",
   "question_type": "assemble",
   "context": {
-   "uz": "Kinoteatr sayti: sichqoncha kelganda film kartochkasi 8 piksel yuqoriga ko'tarilsin.",
-   "ru": "Сайт кинотеатра: при наведении карточка фильма должна подняться на 8 пикселей.",
-   "en": "A cinema site: on hover, a movie card should rise 8 pixels."
+   "uz": "Kinoteatr sayti: sichqoncha kelganda film kartochkasi 12 piksel o'ngga va 4 piksel pastga surilsin.",
+   "ru": "Сайт кинотеатра: при наведении карточка фильма должна сдвинуться на 12 пикселей вправо и на 4 вниз.",
+   "en": "A cinema site: on hover, a movie card should move 12 pixels right and 4 pixels down."
   },
   "question_text": {
    "uz": "Bo'laklarni tartib bilan bosib, qatorni yig'ing",
@@ -13647,7 +13649,7 @@
    },
    {
     "id": "b",
-    "text": "0px, "
+    "text": "12px, "
    },
    {
     "id": "c",
@@ -13663,11 +13665,11 @@
    },
    {
     "id": "f",
-    "text": "8px"
+    "text": "12px"
    },
    {
     "id": "g",
-    "text": "-8px"
+    "text": "4px"
    },
    {
     "id": "h",
@@ -13679,9 +13681,9 @@
    "a,c,e,b,g,d"
   ],
   "solution_explanation": {
-   "uz": "translate ichida birinchi son o'ngga, ikkinchisi pastga suradi. Yuqoriga ko'tarish uchun ikkinchi son minus bilan: translate(0px, -8px). 8px esa pastga tushirardi.",
-   "ru": "В translate первое число сдвигает вправо, второе — вниз. Чтобы поднять, второе число пишут с минусом: translate(0px, -8px). А 8px опустил бы карточку.",
-   "en": "In translate, the first number moves right and the second moves down. To lift it, the second number gets a minus: translate(0px, -8px). 8px would move the card down."
+   "uz": "translate ichida birinchi son o'ngga, ikkinchisi pastga suradi, sonlar orasida vergul: translate(12px, 4px). Vergulsiz brauzer qatorni tashlab yuboradi, rotate esa surmaydi, buradi.",
+   "ru": "В translate первое число сдвигает вправо, второе — вниз, между ними запятая: translate(12px, 4px). Без запятой браузер выбросит строку, а rotate не сдвигает, а поворачивает.",
+   "en": "In translate, the first number moves right and the second moves down, with a comma between them: translate(12px, 4px). Without the comma the browser drops the line, and rotate turns instead of moving."
   },
   "tags": [
    "dars13",
@@ -15507,7 +15509,7 @@
     "id": "b",
     "text": {
      "uz": "Qizildan yashilga silliq o'tib, qayta boshlaydi",
-     "ru": "Плавно станет из красного зелёным, и снова",
+     "ru": "Плавно из красного в зелёный — снова и снова",
      "en": "Fade from red to green, again and again"
     }
    },
@@ -17236,7 +17238,7 @@
   "solution_explanation": {
    "uz": "Brauzer togg.png faylini qidirdi va topmadi. Rasm bo'lmasa, zaxira rang — yashil fon ko'rinadi. Rang rasmni yopmaydi: rasm doim rang ustida turadi.",
    "ru": "Браузер искал файл togg.png и не нашёл. Когда картинки нет, виден запасной цвет — зелёный фон. Цвет картинку не закрывает: она всегда лежит поверх цвета.",
-   "en": "The browser looked for togg.png and didn’t find it. With no picture, the backup color, a green background, shows. Color never covers the picture: it always lies on top."
+   "en": "The browser looked for togg.png and didn’t find it. With no picture, the backup color, a green background, shows. Color never covers the picture: the picture always lies on top of it."
   },
   "tags": [
    "dars17",

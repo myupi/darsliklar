@@ -44,7 +44,7 @@ export default [
     vis: {
       html: {
         uz: "<h1>Lochin FC</h1>\n<p>Har shanba maydonda o'yin.</p>\n<p>Bizga qo'shiling!</p>",
-        ru: '<h1>Лочин FC</h1>\n<p>Игра на поле каждую субботу.</p>\n<p>Приходи к нам!</p>',
+        ru: '<h1>ФК «Лочин»</h1>\n<p>Игра на поле каждую субботу.</p>\n<p>Приходи к нам!</p>',
         en: '<h1>Lochin FC</h1>\n<p>A match on the field every Saturday.</p>\n<p>Join us!</p>',
       },
       goal: 'body { background-color: lightgreen; }',
@@ -244,7 +244,7 @@ export default [
       ctx: 'If the space picture doesn’t load, the page should be black, not white.',
       q: 'Which line goes in the empty spot?',
       opts: ['background-color: black;', 'color: black;', 'background-image: black;', 'background-repeat: black;'],
-      why: 'background-color is the backup colour: where there is a picture you see it, and without one you see this colour. color would make the letters black.',
+      why: 'background-color is the backup color: where there is a picture you see it, and without one you see this color. color would make the letters black.',
     },
   },
   {
@@ -310,8 +310,8 @@ export default [
     en: {
       ctx: 'A café site: the dark blue band should say “Discount today”, but you can’t see it.',
       q: 'Why can’t you see the text?',
-      opts: ['Letters and background share one colour', 'background-color erases the text', 'A paragraph can’t have a background', 'The browser doesn’t know navy'],
-      why: 'color paints the letters and background-color paints behind them. If both are navy, the letters melt into the background: one of them needs another colour.',
+      opts: ['Letters and background share one color', 'background-color erases the text', 'A paragraph can’t have a background', 'The browser doesn’t know navy'],
+      why: 'color paints the letters and background-color paints behind them. If both are navy, the letters melt into the background: one of them needs another color.',
     },
   },
   {
@@ -371,7 +371,7 @@ export default [
     difficulty: 'medium',
     tags: ['background-image'],
     mono: true,
-    answer: ['background-image'],
+    answer: ['background-image', 'background'],
     vis: { css: 'body {\n  ___: url("sher.png");\n}' },
     uz: {
       ctx: "Hayvonot bog'i sayti: sahifa orqasida sher rasmi tursin.",
@@ -386,7 +386,7 @@ export default [
     en: {
       ctx: 'A zoo site: a lion picture should be behind the page.',
       q: 'Type the property name in the empty spot.',
-      why: 'background-image puts a picture on the background, with the file inside url( ). background-color gives only a colour, not a picture.',
+      why: 'background-image puts a picture on the background, with the file inside url( ). background-color gives only a color, not a picture.',
     },
   },
   {

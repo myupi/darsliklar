@@ -101,7 +101,7 @@ export default [
       ctx: 'In the zoo gallery, four pictures stand in a row.',
       q: 'What does gap: 10px do?',
       opts: ['Puts 10px between the pictures', 'Puts 10px around the gallery', 'Puts 10px inside each picture', 'Makes each picture 10px wider'],
-      why: 'gap is a gap: it only puts empty space between neighboring children. The gallery’s edges and the pictures themselves don’t change.',
+      why: 'gap only puts empty space between neighboring children. The gallery’s edges and the pictures themselves don’t change.',
     },
   },
   {
@@ -219,7 +219,7 @@ export default [
       why: 'В ряду ширина — главная ось, её выравнивает justify-content. Высота — поперечная ось, её выравнивает align-items. Оба center — и кнопка ровно в центре.',
     },
     en: {
-      ctx: 'The game screen is a row. The “Play” button must sit right in the center: across and up-down.',
+      ctx: 'The game screen is a row. The “Play” button must sit right in the center, both across and up and down.',
       q: 'Which two properties with the value center does the screen need?',
       opts: ['justify-content and align-items', 'justify-content and text-align', 'align-items and flex-direction', 'flex-direction and text-align'],
       why: 'In a row, the width is the main axis, aligned by justify-content. The height is the cross axis, aligned by align-items. Both center, and the button is dead center.',
@@ -407,12 +407,12 @@ export default [
       why: "flex-wrap: wrap sig'magan bolalarni yangi qatorga o'tkazadi. Ular endi siqilmaydi va o'z kengligida qoladi.",
     },
     ru: {
-      ctx: 'Наклейки сжались в одну строку. Лишние пусть перейдут ниже.',
+      ctx: 'Наклейки не помещаются в одну строку и сжались. Лишние пусть перейдут на новую строку.',
       q: 'Впиши на пустое место имя свойства.',
       why: 'flex-wrap: wrap переносит не поместившихся детей на новую строку. Они больше не сжимаются и остаются своей ширины.',
     },
     en: {
-      ctx: 'The stickers got squeezed into one row. Extras should move down.',
+      ctx: 'The album stickers don’t fit in one row and got squeezed. The ones that don’t fit should move to a new row.',
       q: 'Type the property name in the empty spot.',
       why: 'flex-wrap: wrap moves the children that don’t fit to a new row. They stop getting squeezed and keep their own width.',
     },

@@ -55,6 +55,22 @@ const META = {
       17: { uz: 'Yakuniy CSS loyiha', ru: 'Финальный CSS-проект', en: 'The final CSS project' },
     },
   },
+  // «ИИ» (21.11.2026, заказчик: «по ии тоже нужно создать такие, там только тесты будут»): только вопросы с выбором,
+  // уроки 1–7 по 18, финальный 8 — 21 (повторение всей формулы); картинка — vis.ai (промпт, сообщение клиента, сайт);
+  // миссия «Заказы студии».
+  ai: {
+    lessons: 8, per: { 8: { choice: 21 } }, perDefault: { choice: 18 },
+    topics: {
+      1: { uz: 'Nima yaratamiz va nega?', ru: 'Что создаём и зачем?', en: 'What are we making and why?' },
+      2: { uz: 'Kim uchun yaratamiz?', ru: 'Для кого создаём?', en: 'Who are we making it for?' },
+      3: { uz: "Saytda nima bo'ladi?", ru: 'Что должно быть на сайте?', en: 'What goes on the site?' },
+      4: { uz: "Sayt qanday ko'rinadi?", ru: 'Как должен выглядеть сайт?', en: 'How should the site look?' },
+      5: { uz: 'Sayt qanday ishlaydi?', ru: 'Как сайт должен вести себя?', en: 'How should the site behave?' },
+      6: { uz: 'Aniq talablar qanday beriladi?', ru: 'Как дать ИИ точные требования?', en: 'How to give the AI exact requirements?' },
+      7: { uz: 'Natijani qanday yaxshilaymiz?', ru: 'Как улучшить результат ИИ?', en: 'How to improve the AI’s result?' },
+      8: { uz: 'Yakuniy loyiha', ru: 'Финальный ИИ-проект', en: 'The final AI project' },
+    },
+  },
 }[MOD];
 if (!META) { console.error('Неизвестный модуль: ' + MOD); process.exit(1); }
 
@@ -184,7 +200,29 @@ for (const q of all) {
       }
     }
   } else if (q.type != null) err(id, 'type: input, build, bug, tap или без type');
-  if (q.vis) {
+  if (q.vis && q.vis.ai) {
+    // «ИИ»: { prompt: [{ q: 0–6, t } | { lab, c, bg, t }], msg: { who, text }, site: {…}, focus } — тексты строкой или { uz, ru, en }
+    const A = q.vis.ai;
+    if (Object.keys(q.vis).length !== 1) err(id, 'vis: ai — только вместе с самим собой');
+    if (!A.prompt && !A.msg && !A.site) err(id, 'vis.ai: нужен prompt, msg или site');
+    const L3ok = (v, what) => { if (v == null) return; if (typeof v === 'string') { if (UZ_BAD_APOS.test(v)) err(id, `vis.ai ${what}: апостроф не ASCII`); return; }
+      if (typeof v !== 'object') return err(id, `vis.ai ${what}: текст`);
+      for (const l of LANGS) { if (typeof v[l] !== 'string') err(id, `vis.ai ${what}: нет языка ${l}`); }
+      if (typeof v.uz === 'string' && UZ_BAD_APOS.test(v.uz)) err(id, `vis.ai ${what}: uz апостроф не ASCII`); };
+    const walk = (v, path) => { if (v == null) return; if (typeof v === 'string' || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((k) => LANGS.includes(k)))) return L3ok(v, path);
+      if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`)); else if (typeof v === 'object') Object.entries(v).forEach(([k, x]) => walk(x, `${path}.${k}`)); };
+    walk(A, 'ai');
+    if (A.prompt) {
+      if (!Array.isArray(A.prompt) || !A.prompt.length || A.prompt.length > 8) err(id, 'vis.ai.prompt: 1–8 строк');
+      else A.prompt.forEach((r, i) => { if (!r.lab && !(Number.isInteger(r.q) && r.q >= 0 && r.q <= 6)) err(id, `vis.ai.prompt[${i}]: q 0–6 или lab`); });
+    }
+    if (A.msg && (!A.msg.who || !A.msg.text)) err(id, 'vis.ai.msg: who и text');
+    if (A.site) {
+      const S = A.site;
+      if (!S.title || !S.c || !S.c2) err(id, 'vis.ai.site: title, c, c2');
+      if (!S.mobile && !(Array.isArray(S.nav) && S.nav.length)) warn(id, 'vis.ai.site: нет меню nav');
+    }
+  } else if (q.vis) {
     const cssMode = q.vis.css != null || q.vis.html != null;
     if (cssMode && (q.vis.code != null || q.vis.page != null)) err(id, 'vis: css/html и code/page вместе нельзя');
     if (!cssMode && (q.vis.base != null || q.vis.goal != null)) err(id, 'vis: base/goal — только с css/html');
@@ -219,7 +257,7 @@ const bank = all.map((q) => {
   let vis = null;
   if (q.vis) {
     const v = {};
-    for (const k of ['code', 'page', 'css', 'html', 'base', 'goal', 'vw']) if (q.vis[k] != null) v[k] = q.vis[k];
+    for (const k of ['code', 'page', 'css', 'html', 'base', 'goal', 'vw', 'ai']) if (q.vis[k] != null) v[k] = q.vis[k];
     if (q.vis.mark && q.vis.mark.length) v.mark = q.vis.mark;
     vis = '@htmlvis:' + JSON.stringify(v);
   }

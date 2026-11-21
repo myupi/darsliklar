@@ -206,7 +206,7 @@ export default [
     en: {
       ctx: 'The orange “Buy” button in the game shop gets padding: 10px.',
       q: 'What happens to the button’s orange background?',
-      opts: ['It grows: the background fills the padding too', 'It stays the same, the text gets squeezed', 'A white strip appears around the button', 'Same background, the button moves off'],
+      opts: ['It grows: the background fills the padding too', 'It stays the same, the text gets squeezed', 'A white strip appears around the button', 'Same background, it moves away from others'],
       why: 'padding is inside the box, and the background paints it too. So the button grows by 10 pixels on every side.',
     },
   },
@@ -441,22 +441,22 @@ export default [
     difficulty: 'medium',
     tags: ['border'],
     pieces: ['border', ': ', '3px solid red', ';'],
-    extra: ['border-color', '3px red'],
+    extra: ['margin', '3px red'],
     vis: { css: '.rasm {\n  width: 160px;\n  ___\n}' },
     uz: {
       ctx: "Futbol klubi saytida o'yinchi rasmi atrofida 3 piksellik yaxlit qizil chegara bo'lsin.",
       q: "Bo'laklarni tartib bilan bosib, chegarani yig'ing",
-      why: "Chegarani border beradi, qiymati uch qismdan: qalinlik, chiziq turi va rang. 3px red qiymatida chiziq turi yo'q, border-color esa faqat rangni o'zgartiradi.",
+      why: "Chegarani border beradi, qiymati uch qismdan: qalinlik, chiziq turi va rang. 3px red qiymatida chiziq turi yo'q, margin esa chegara emas, tashqi bo'shliq.",
     },
     ru: {
       ctx: 'На сайте футбольного клуба фото игрока — в сплошной красной рамке толщиной 3 пикселя.',
       q: 'Нажимай кусочки по порядку и собери рамку',
-      why: 'Рамку даёт border, значение из трёх частей: толщина, вид линии и цвет. В 3px red нет вида линии, а border-color меняет только цвет.',
+      why: 'Рамку даёт border, значение из трёх частей: толщина, вид линии и цвет. В 3px red нет вида линии, а margin — не рамка, а внешний отступ.',
     },
     en: {
       ctx: 'On the football club site, a player’s photo has a solid red border 3 pixels thick.',
       q: 'Tap the pieces in order to build the border',
-      why: 'border gives a frame with three parts: thickness, line style and colour. 3px red has no line style, and border-color only changes the colour.',
+      why: 'border gives a frame with three parts: thickness, line style and colour. 3px red has no line style, and margin isn’t a border but the outer space.',
     },
   },
   {

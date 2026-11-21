@@ -3,10 +3,11 @@
 // + игровые: 2 «собери» (q15, q16), 1 «найди ошибку» (q17), 1 «нажми на странице» (q18).
 // Проверяем: width — ширина, height — высота; число и px без пробела (без px строка не действует); без width блок занимает
 // всю строку; картинке только width — высота подстроится сама; px не меняется с экраном (широкий блок вылезает за край),
-// % — часть ширины блока, в котором стоит элемент (100% — вся ширина); низкий height не прячет лишний текст,
+// % — часть ширины окна (50% — половина, 100% — всё окно), меняется вместе с окном; низкий height не прячет лишний текст,
 // а узкий width переносит текст на новые строки.
-// Проценты — всегда с явной шириной родителя в видимом CSS или в base (ширина окна тренажёра у учеников разная).
-// Словарь урока 6: kenglik, balandlik, piksel, foiz, cho'zilmoq, o'rab turgan blok. Апостроф в узбекском — только ASCII «'».
+// Проценты — только от окна (как в уроке): элементы стоят прямо на странице, без обёртки со своей шириной;
+// если ширина окна важна — vw у vis. Варианты без точных пикселей (у body есть margin 12px).
+// Словарь урока 6: kenglik, balandlik, piksel, foiz, cho'zilmoq, oyna. Апостроф в узбекском — только ASCII «'».
 // =============================================================================
 export default [
   {
@@ -17,7 +18,7 @@ export default [
     sort: false,
     vis: null,
     uz: {
-      ctx: "Kinoteatr sayti: afisha bloki 120 piksel baland bo'lishi kerak.",
+      ctx: "Kinoteatr sayti: afisha blokining balandligi 120 piksel bo'lishi kerak.",
       q: 'Qaysi xususiyat balandlikni beradi?',
       opts: ['height', 'width', 'size', 'font-size'],
       why: "height — balandlik, width — kenglik. size degan xususiyat yo'q, font-size esa faqat harflar o'lchami.",
@@ -188,24 +189,24 @@ export default [
     tags: ['percent', 'px'],
     mono: false,
     sort: false,
-    vis: { css: '.oyna {\n  width: 400px;\n}\n.chap {\n  width: 50%;\n}\n.ong {\n  width: 200px;\n}' },
+    vis: { css: '.chap {\n  width: 50%;\n}\n.ong {\n  width: 300px;\n}' },
     uz: {
-      ctx: '.chap va .ong bloklari 400 piksellik .oyna ichida turibdi.',
-      q: "Qaysi blok kengroq bo'ladi?",
-      opts: ['Ikkalasi bir xil: 200px dan', '.chap kengroq: foiz doim kattaroq', '.ong kengroq: 200 soni 50 dan katta', "Bilib bo'lmaydi: height yo'q"],
-      why: "Foiz o'rab turgan blokdan olinadi: 400 ning 50 foizi — 200 piksel. .ong ham 200 piksel, demak ikkalasi teng.",
+      ctx: "Ikkala blok sahifada turibdi. Sayt telefonda ochildi: oyna 360 piksel keng.",
+      q: "Telefonda qaysi blok kengroq bo'ladi?",
+      opts: ['.ong: 50% oynaning yarmidan oshmaydi', '.chap: foiz doim pikseldan kattaroq', 'Bir xil: oyna ikkalasini tenglashtiradi', "Bilib bo'lmaydi: height yo'q"],
+      why: "50% — oynaning yarmi: 360 piksellik telefonda 180 dan ham kam. 300px esa har qanday ekranda 300 piksel, shuning uchun telefonda .ong kengroq.",
     },
     ru: {
-      ctx: 'Блоки .chap и .ong стоят внутри .oyna шириной 400 пикселей.',
-      q: 'Какой блок будет шире?',
-      opts: ['Одинаковые: по 200px', '.chap: проценты всегда больше', '.ong: 200 больше, чем 50', 'Нельзя сказать: нет height'],
-      why: 'Проценты берутся от блока, в котором стоит элемент: 50% от 400 — это 200 пикселей. У .ong тоже 200 пикселей, значит, они равны.',
+      ctx: 'Оба блока стоят на странице. Сайт открыли на телефоне: окно шириной 360 пикселей.',
+      q: 'Какой блок будет шире на телефоне?',
+      opts: ['.ong: 50% — не больше половины окна', '.chap: проценты всегда больше пикселей', 'Одинаковые: окно их выровняет', 'Нельзя сказать: нет height'],
+      why: '50% — половина окна: на телефоне шириной 360 это даже меньше 180 пикселей. А 300px — 300 пикселей на любом экране, поэтому на телефоне шире .ong.',
     },
     en: {
-      ctx: 'The .chap and .ong blocks sit inside .oyna, which is 400 pixels wide.',
-      q: 'Which block will be wider?',
-      opts: ['The same: 200px each', '.chap: percent is always more', '.ong: 200 is more than 50', 'Can’t tell: there is no height'],
-      why: 'Percent is taken from the block the element sits in: 50% of 400 is 200 pixels. .ong is 200 pixels too, so they are equal.',
+      ctx: 'Both blocks sit on the page. The site is opened on a phone: the window is 360 pixels wide.',
+      q: 'Which block will be wider on the phone?',
+      opts: ['.ong: 50% is at most half the window', '.chap: percent is always more than pixels', 'The same: the window evens them out', 'Can’t tell: there is no height'],
+      why: '50% is half the window: on a 360-pixel phone that’s even less than 180 pixels. 300px is 300 pixels on any screen, so .ong is wider on the phone.',
     },
   },
   {
@@ -241,27 +242,32 @@ export default [
     mono: false,
     sort: false,
     vis: {
-      css: '.katta { width: 300px; }\n.kichik { width: 160px; }\n.ichi { width: 50%; }',
-      html: '<div class="katta">\n  <div class="ichi">50%</div>\n</div>\n<div class="kichik">\n  <div class="ichi">50%</div>\n</div>',
-      base: '.katta, .kichik { background-color: #E2E8F0; margin-bottom: 10px; }\n.ichi { background-color: #FA4F28; color: #fff; font-weight: bold; text-align: center; line-height: 32px; }',
+      css: 'h1 {\n  width: 220px;\n}\n.reklama {\n  width: 50%;\n}',
+      html: {
+        uz: "<h1>Lochin FC</h1>\n<p class=\"reklama\">Chiptalar sotuvda!</p>",
+        ru: '<h1>Лочин FC</h1>\n<p class="reklama">Билеты в продаже!</p>',
+        en: '<h1>Lochin FC</h1>\n<p class="reklama">Tickets on sale!</p>',
+      },
+      base: 'h1 { background-color: #CBD5E1; font-size: 26px; }\n.reklama { background-color: #FA4F28; color: #fff; font-weight: bold; line-height: 32px; }',
+      vw: 360,
     },
     uz: {
-      ctx: "Ikkala to'q sariq blokka ham width: 50% yozilgan, lekin ular har xil uzunlikda.",
+      ctx: "Noutbukda to'q sariq reklama sarlavhadan keng edi. Telefonda (oyna 360 piksel) u torroq bo'lib qoldi.",
       q: 'Nega shunday?',
-      opts: ['Har biri o\'z kulrang blokining yarmini oladi', "Brauzer ikkinchi qoidani o'qimadi", '50% faqat birinchi blokda ishlaydi', 'Kichik blokda width ishlamaydi'],
-      why: "Foiz o'rab turgan blokdan olinadi: 300 ning yarmi — 150, 160 ning yarmi — 80 piksel. Tashqi blok kengroq bo'lsa, 50% ham kengroq.",
+      opts: ["50% oyna bilan torayadi, 220px esa o'zgarmaydi", "Brauzer ikkinchi qoidani o'qimadi", 'Telefonda foiz umuman ishlamaydi', 'Telefonda 220px kattalashib ketadi'],
+      why: "50% — oynaning yarmi: oyna tor bo'lsa, yarmi ham tor. 220px esa har qanday ekranda 220 piksel, shuning uchun telefonda sarlavha kengroq.",
     },
     ru: {
-      ctx: 'Обоим оранжевым блокам написан width: 50%, но они разной длины.',
+      ctx: 'На ноутбуке оранжевая реклама была шире заголовка. На телефоне (окно 360 пикселей) она стала уже.',
       q: 'Почему так?',
-      opts: ['Каждый берёт половину своего серого блока', 'Браузер не прочитал второе правило', '50% работает только в первом блоке', 'У маленького блока width не работает'],
-      why: 'Проценты берутся от блока, в котором стоит элемент: половина от 300 — 150, половина от 160 — 80 пикселей. Шире внешний блок — шире и 50%.',
+      opts: ['50% сужается с окном, а 220px — нет', 'Браузер не прочитал второе правило', 'На телефоне проценты не работают', 'На телефоне 220px становятся больше'],
+      why: '50% — это половина окна: окно уже — и половина уже. А 220px — 220 пикселей на любом экране, поэтому на телефоне заголовок шире.',
     },
     en: {
-      ctx: 'Both orange blocks have width: 50%, but they are different lengths.',
+      ctx: 'On a laptop the orange advert was wider than the heading. On a phone (a 360-pixel window) it got narrower.',
       q: 'Why is that?',
-      opts: ['Each takes half of its own gray block', 'The browser skipped the second rule', '50% only works in the first block', 'width doesn’t work in the small block'],
-      why: 'Percent is taken from the block the element sits in: half of 300 is 150, half of 160 is 80 pixels. A wider outer block means a wider 50%.',
+      opts: ['50% shrinks with the window, 220px doesn’t', 'The browser skipped the second rule', 'Percent doesn’t work on phones at all', 'On a phone 220px gets bigger'],
+      why: '50% is half the window: a narrower window means a narrower half. 220px is 220 pixels on any screen, so on the phone the heading is wider.',
     },
   },
   {
@@ -348,21 +354,21 @@ export default [
     tags: ['percent', 'img'],
     mono: true,
     answer: ['100%'],
-    vis: { css: '.kartochka {\n  width: 220px;\n}\nimg {\n  width: ___;\n}' },
+    vis: { css: 'img {\n  width: ___;\n}' },
     uz: {
-      ctx: "Surat kartochka ichida. U kartochkaning butun kengligini egallasin, kartochka qanday bo'lsa ham.",
+      ctx: "Zoopark sayti: sher surati telefonda ham, noutbukda ham oynaning butun kengligini egallasin.",
       q: "Bo'sh joyga qiymatni yozing.",
-      why: "100% — o'rab turgan blokning butun kengligi. Kartochka 220px bo'lsa, surat ham 220px, kartochka o'zgarsa, surat ham o'zgaradi.",
+      why: "100% — oynaning butun kengligi: oyna torayadi — surat ham torayadi, kengayadi — surat ham kengayadi. Piksel esa bitta ekrangagina mos keladi.",
     },
     ru: {
-      ctx: 'Фото стоит внутри карточки. Оно должно занять всю ширину карточки, какой бы она ни была.',
+      ctx: 'Сайт зоопарка: фото льва должно занимать всю ширину окна и на телефоне, и на ноутбуке.',
       q: 'Впиши значение на пустое место.',
-      why: '100% — это вся ширина блока, в котором стоит элемент. Карточка 220px — и фото 220px, изменится карточка — изменится и фото.',
+      why: '100% — это вся ширина окна: окно уже — и фото уже, окно шире — и фото шире. А пиксели подойдут только одному экрану.',
     },
     en: {
-      ctx: 'The photo sits inside a card. It should fill the card’s full width, whatever the card’s size.',
+      ctx: 'A zoo site: the lion photo should fill the whole window width on both a phone and a laptop.',
       q: 'Type the value in the empty spot.',
-      why: '100% is the full width of the block the element sits in. A 220px card means a 220px photo, and if the card changes, so does the photo.',
+      why: '100% is the whole window width: a narrower window means a narrower photo, a wider one means a wider photo. Pixels fit only one screen.',
     },
   },
   {
@@ -372,21 +378,21 @@ export default [
     tags: ['percent'],
     mono: true,
     answer: ['20%'],
-    vis: { css: '.maydon {\n  width: 500px;\n}\n.darvoza {\n  width: ___;\n}' },
+    vis: { css: '.reklama {\n  width: ___;\n}' },
     uz: {
-      ctx: "Futbol o'yini: .darvoza 500 piksellik .maydon ichida va 100 piksel keng bo'lishi kerak.",
+      ctx: "Futbol sayti: reklama bloki har qanday ekranda oyna kengligining beshdan birini egallasin.",
       q: "Bo'sh joyga kenglikni foizda yozing.",
-      why: "100 piksel — 500 ning beshdan biri. Butun kenglik 100% bo'lsa, beshdan biri — 20%.",
+      why: "Butun oyna — 100%. Beshdan biri — 100 ni 5 ga bo'lamiz: 20%. Foiz oyna bilan birga o'zgaradi, shuning uchun har qanday ekranda beshdan bir bo'ladi.",
     },
     ru: {
-      ctx: 'Футбольная игра: .darvoza стоит внутри .maydon шириной 500 пикселей и должна быть шириной 100.',
+      ctx: 'Футбольный сайт: блок рекламы должен занимать пятую часть ширины окна на любом экране.',
       q: 'Впиши ширину в процентах.',
-      why: '100 пикселей — это пятая часть от 500. Вся ширина — 100%, значит, пятая часть — 20%.',
+      why: 'Всё окно — 100%. Пятая часть — 100 делим на 5: 20%. Проценты меняются вместе с окном, поэтому на любом экране это будет пятая часть.',
     },
     en: {
-      ctx: 'A football game: .darvoza sits inside .maydon, 500 pixels wide, and must be 100 pixels wide.',
+      ctx: 'A football site: the advert block should take one fifth of the window width on any screen.',
       q: 'Type the width in percent.',
-      why: '100 pixels is one fifth of 500. The full width is 100%, so one fifth is 20%.',
+      why: 'The whole window is 100%. One fifth is 100 divided by 5: 20%. Percent changes with the window, so on any screen it stays one fifth.',
     },
   },
   // ---- Игровые: «собери» (q15, q16), «найди ошибку» (q17), «нажми на странице» (q18) ----
@@ -421,19 +427,19 @@ export default [
     tags: ['percent'],
     pieces: ['width', ': ', '50%', ';'],
     extra: ['50 %', 'height'],
-    vis: { css: '.yuklash {\n  width: 300px;\n}\n.toldi {\n  ___\n}' },
+    vis: { css: '.toldi {\n  background-color: green;\n  ___\n}' },
     uz: {
-      ctx: "O'yin yuklanyapti: .toldi chizig'i .yuklash ichida turibdi va uning yarmini egallashi kerak.",
+      ctx: "O'yin yuklanyapti: yashil .toldi chizig'i har qanday ekranda oynaning yarmigacha yetsin.",
       q: "Bo'laklarni tartib bilan bosib, qatorni yig'ing",
       why: "Yarmi — 50%, son va foiz belgisi bo'sh joysiz yoziladi. «50 %» yozuvini brauzer tashlab yuboradi, height esa balandlik uchun.",
     },
     ru: {
-      ctx: 'Игра загружается: полоска .toldi стоит внутри .yuklash и должна занять её половину.',
+      ctx: 'Игра загружается: зелёная полоска .toldi должна доходить до половины окна на любом экране.',
       q: 'Нажимай кусочки по порядку и собери строку',
       why: 'Половина — это 50%, число и знак процента пишутся без пробела. «50 %» браузер выбросит, а height — для высоты.',
     },
     en: {
-      ctx: 'A game is loading: the .toldi bar sits inside .yuklash and should fill half of it.',
+      ctx: 'A game is loading: the green .toldi bar should reach half the window on any screen.',
       q: 'Tap the pieces in order to build the line',
       why: 'Half is 50%, written with no space between the number and the percent sign. The browser drops “50 %”, and height is for height.',
     },

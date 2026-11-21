@@ -109,12 +109,37 @@ const MOD_LABELS = {
     },
   },
 };
+// Модуль «ИИ» (21.11.2026): вопросы только с выбором (как тесты модуля); миссия «Заказы студии» — 15 заказов клиентов,
+// верный ответ сдаёт заказ (готовый сайт), неверный — заказ вернулся на доработку. Картинка — «Prompt» и «Sayt».
+MOD_LABELS.ai = {
+  uz: {
+    mod: 'AI', rule1: "Savollarga javob bering: to'rtta variantdan bittasini tanlang. Javobni keyin o'zgartirib bo'lmaydi.",
+    rule3: "Siz sayt studiyasidasiz: har bir to'g'ri javob bitta mijozning buyurtmasini topshiradi. Oxirida — studiyangiz natijasi!",
+    bubble: 'Buyurtmalar keldi!', code: 'Prompt', page: 'Sayt', site: 'Studiyangiz', siteOf: (a, b) => `${a} / ${b} buyurtma topshirildi`,
+    holeHint: "Qaytgan buyurtmani bosing — qaysi savol ekanini ko'rasiz",
+    parts: ['Pitsa kafesi', 'Futbol turniri', "Shaxmat to'garagi", 'Novvoyxona', 'Robot festivali', 'Kutubxona', 'Gul do\'koni', 'Hayvonot bog\'i', 'Musiqa maktabi', 'Sport zali', 'Kino klubi', 'Lager', 'Velosiped ijarasi', 'Rasm studiyasi', 'Ilm yarmarkasi'],
+  },
+  ru: {
+    mod: 'ИИ', rule1: 'Отвечай на вопросы: выбери один вариант из четырёх. Потом ответ не изменить.',
+    rule3: 'Ты в веб-студии: каждый верный ответ сдаёт заказ одного клиента. В конце — итог твоей студии!',
+    bubble: 'Пришли заказы!', code: 'Промпт', page: 'Сайт', site: 'Твоя студия', siteOf: (a, b) => `Сдано заказов: ${a} из ${b}`,
+    holeHint: 'Нажми на вернувшийся заказ — увидишь, какой это был вопрос',
+    parts: ['Пиццерия', 'Футбольный турнир', 'Шахматный кружок', 'Пекарня', 'Фестиваль роботов', 'Библиотека', 'Цветочный магазин', 'Зоопарк', 'Музыкальная школа', 'Спортзал', 'Киноклуб', 'Лагерь', 'Прокат велосипедов', 'Художественная студия', 'Ярмарка науки'],
+  },
+  en: {
+    mod: 'AI', rule1: 'Answer each question: choose one of four options. You can’t change it afterwards.',
+    rule3: 'You run a web studio: every correct answer delivers one client’s order. At the end — your studio’s results!',
+    bubble: 'Orders are in!', code: 'Prompt', page: 'Site', site: 'Your studio', siteOf: (a, b) => `${a} of ${b} orders delivered`,
+    holeHint: 'Tap a returned order to see which question it was',
+    parts: ['Pizza cafe', 'Football tournament', 'Chess club', 'Bakery', 'Robot festival', 'Library', 'Flower shop', 'Zoo', 'Music school', 'Gym', 'Film club', 'Summer camp', 'Bike rental', 'Art studio', 'Science fair'],
+  },
+};
 const labelsOf = (lang, mod) => {
   const base = LABELS[lang] || LABELS.uz;
   const o = MOD_LABELS[mod] && (MOD_LABELS[mod][lang] || MOD_LABELS[mod].uz);
   if (!o) return base;
-  const { rule3, ...rest } = o;
-  return Object.assign({}, base, rest, { rules: base.rules.map((r, i) => (i === 2 && rule3 ? rule3 : r)) });
+  const { rule1, rule3, ...rest } = o;
+  return Object.assign({}, base, rest, { rules: base.rules.map((r, i) => (i === 0 && rule1 ? rule1 : i === 2 && rule3 ? rule3 : r)) });
 };
 
 // ── КОДИ — герой курса (заказчик, 18.11.2026: «поставь наш робот»): тот же рисунок, что в уроках (canon/html/hero-tail.part.jsx,
@@ -250,10 +275,62 @@ function siteStates(N, answers, index, done) {
 }
 // kind 'css' — миссия «Сайт одевается» (19.11.2026): все части сайта уже есть (HTML), но серые и бледные — без CSS;
 // верный ответ раскрашивает свою часть, неверный оставляет её серой с красной пунктирной рамкой.
+// kind 'ai' — миссия «Заказы студии» (21.11.2026): доска из 15 заказов клиентов (5 × 3). Сданный заказ — готовый сайт клиента
+// своего цвета с зелёной галочкой; ещё не взятый — пустой листок; вернувшийся (ошибка) — листок с красной рамкой и стрелкой назад.
+const AI_ORDER_C = ['#FA4F28', '#16A34A', '#334155', '#D97706', '#7C3AED', '#0D9488', '#DB2777', '#65A30D', '#2563EB', '#DC2626', '#9333EA', '#0891B2', '#EA580C', '#C026D3', '#4F46E5'];
+const AI_ORDER_B = AI_ORDER_C.map((_, p) => [3.5 + (p % 5) * 23, 15 + Math.floor(p / 5) * 29.5, 21, 26.5]);
+function aiOrder(p) {
+  const [x, y, w, h] = AI_ORDER_B[p]; const c = AI_ORDER_C[p];
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx="2.6" fill="#fff" stroke={c} strokeWidth=".9" />
+      <rect x={x + 2} y={y + 2.2} width={w - 4} height="2.2" rx="1.1" fill={c} opacity=".35" />
+      <rect x={x + 2} y={y + 6} width={w - 4} height="8.5" rx="1.6" fill={c} />
+      <rect x={x + 5} y={y + 8.4} width={w - 10} height="1.8" rx=".9" fill="#fff" opacity=".9" />
+      <rect x={x + 7.5} y={y + 11.2} width={w - 15} height="1.8" rx=".9" fill="#fff" opacity=".7" />
+      <rect x={x + 2} y={y + 16.5} width={(w - 6) / 2} height="7.5" rx="1.4" fill={c} opacity=".18" />
+      <rect x={x + 4 + (w - 6) / 2} y={y + 16.5} width={(w - 6) / 2} height="7.5" rx="1.4" fill={c} opacity=".18" />
+      <circle cx={x + w - 1.2} cy={y + 1.2} r="3.6" fill="#09B163" stroke="#fff" strokeWidth=".9" />
+      <path d={`M${x + w - 2.9} ${y + 1.3}l1.2 1.2 2.3-2.4`} fill="none" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  );
+}
+function AiBoard({ states, fresh, onPart, sel }) {
+  return (
+    <>
+      <rect x="0.5" y="0.5" width="119" height="103" rx="6" fill="#FBFAFF" stroke="#D9D6E2" />
+      <path d="M0.5 11V6.5a6 6 0 0 1 6-6h107a6 6 0 0 1 6 6V11z" fill="#F3EEFF" />
+      <circle cx="7" cy="5.8" r="2.4" fill="#7C3AED" /><rect x="12" y="4.6" width="22" height="2.4" rx="1.2" fill="#7C3AED" opacity=".55" />
+      <rect x="86" y="3.8" width="30" height="4" rx="2" fill="#fff" stroke="#E4DCFB" strokeWidth=".6" />
+      {AI_ORDER_B.map(([x, y, w, h], p) => {
+        const st = states[p] || 'todo';
+        const click = onPart && st === 'bad';
+        return (
+          <g key={p} className={'ht-sp is-' + st + (fresh.includes(p) ? ' is-new' : '') + (sel === p ? ' is-sel' : '') + (click ? ' is-click' : '')}
+            onClick={click ? () => onPart(p) : undefined}>
+            {st === 'ok' ? aiOrder(p) : <>
+              <rect className="ht-sp-ph" x={x} y={y} width={w} height={h} rx="2.6" />
+              {st === 'bad' ? <path className="ht-ai-back" d={`M${x + w / 2 + 3.5} ${y + h / 2 + 3}v-2.6a2.6 2.6 0 0 0-2.6-2.6h-5.2m2.2-2.4l-2.4 2.4 2.4 2.4`} />
+                : <g className="ht-ai-sheet"><rect x={x + 4} y={y + 7} width={w - 8} height="1.8" rx=".9" /><rect x={x + 4} y={y + 11.5} width={w - 11} height="1.8" rx=".9" /><rect x={x + 4} y={y + 16} width={w - 9} height="1.8" rx=".9" /></g>}
+            </>}
+            {click && <rect x={x - 1} y={y - 1} width={w + 2} height={h + 2} fill="transparent" />}
+          </g>
+        );
+      })}
+    </>
+  );
+}
 let siteUid = 0;
 function Site({ states, fresh = [], onPart, sel, label, className = '', kind }) {
   const gid = useMemo(() => 'hts' + (++siteUid), []);
   const css = kind === 'css';
+  if (kind === 'ai') {
+    return (
+      <svg className={'ht-site is-ai ' + className} viewBox="0 0 120 104" role={onPart ? 'group' : 'img'} aria-label={label}>
+        <AiBoard states={states} fresh={fresh} onPart={onPart} sel={sel} />
+      </svg>
+    );
+  }
   return (
     <svg className={'ht-site ' + (css ? 'is-css ' : '') + className} viewBox="0 0 120 104" role={onPart ? 'group' : 'img'} aria-label={label}>
       {css && <defs><filter id={gid}><feColorMatrix type="saturate" values="0" /></filter></defs>}
@@ -406,6 +483,219 @@ function pageDoc(html, tap) {
   return '<!doctype html><html><head><meta charset="utf-8">' + base + '</head><body>' + h + '</body></html>';
 }
 
+// ── «ИИ» (21.11.2026): картинка вопроса — как в тестах модуля (tools/aitest/kit.jsx): поле промпта с метками формулы,
+// сообщение клиента и сайт, который «собрал ИИ» (тот же вид, что в уроках: меню, баннер, карточки, блоки, раздел цели, подвал).
+// vis.ai = { prompt: [{ q: 0–6, t } | { lab, c, bg, t }], msg: { who, text }, site: { … как AqSite … }, focus }; тексты — строка или { uz, ru, en }.
+const AI_FORMULA = [
+  { uz: 'Nima?', ru: 'Что?', en: 'What?', c: '#FA4F28', bg: '#FFF1EC' },
+  { uz: 'Nega?', ru: 'Зачем?', en: 'Why?', c: '#7C3AED', bg: '#F3EEFF' },
+  { uz: 'Kim uchun?', ru: 'Для кого?', en: 'For whom?', c: '#0D9488', bg: '#E6F7F5' },
+  { uz: 'Ichida nima?', ru: 'Что внутри?', en: 'What’s inside?', c: '#DB2777', bg: '#FDECF4' },
+  { uz: "Ko'rinishi?", ru: 'Как выглядит?', en: 'How it looks?', c: '#65A30D', bg: '#F0F8E4' },
+  { uz: 'Qanday ishlaydi?', ru: 'Как ведёт себя?', en: 'How it behaves?', c: '#B45309', bg: '#FEF3E2' },
+  { uz: 'Qoidalar?', ru: 'Какие правила?', en: 'What rules?', c: '#BE123C', bg: '#FDEBEF' },
+];
+const isL3 = (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length > 0 && Object.keys(v).every((k) => k === 'uz' || k === 'ru' || k === 'en');
+const deepL = (v, lang) => (Array.isArray(v) ? v.map((x) => deepL(x, lang)) : isL3(v) ? tx(v, lang)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deepL(x, lang)])) : v);
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// Сайт «как собрал ИИ» (21.11.2026; разнообразие — заказчик, 21.11.2026: «все однообразные… шаблонные как самый дешёвый промпт»).
+// Шесть раскладок (layout): split / split2 — текст и картинка-иллюстрация рядом, poster — крупный заголовок слева и знак-водяной,
+// soft — мягкий фон и баннер-карточка с пятнами, band — светлый баннер с цветной полосой, photo — баннер из узора значков и
+// белая плашка с текстом; center — прежний (шаблон «Sizning loyihangiz»). Раскладка — своя у каждого сайта (по цветам и значку,
+// одна на всех языках) или явно `layout`. Оформление меняется, содержание — нет: новых блоков, цифр и фактов раскладка не добавляет
+// (иначе вопросы «что ИИ добавил сам», «какие блоки на сайте» стали бы неоднозначными). Классы блоков (.info .cards .blk .goal .foot)
+// — прежние: по ним работает focus.
+const AI_LAYOUTS = ['split', 'poster', 'soft', 'band', 'photo', 'split2'];
+function aiLayoutOf(raw) {
+  if (!raw) return 'center';
+  if (raw.layout) return raw.layout;
+  if (/Sizning loyihangiz|Ваш проект|Your project/.test(JSON.stringify(raw.title || ''))) return 'center';
+  let h = 7; const s = String(raw.c || '') + String(raw.c2 || '') + String(raw.em || '') + String(raw.bg || '');
+  for (const ch of s) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return AI_LAYOUTS[h % AI_LAYOUTS.length];
+}
+const AI_SITE_CSS = `html,body{margin:0}body{background:#F8FAFC;font-family:Inter,system-ui,Arial,sans-serif;color:#0F172A}
+.d{position:relative;padding-bottom:1px;background:#F8FAFC}.nav{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 22px;background:#fff;box-shadow:0 1px 0 #E2E8F0}
+.logo{font-weight:800;font-size:16px;color:var(--c2);white-space:nowrap}.links{display:flex;gap:16px;font-size:13px;color:#475569}.navbtn{background:var(--c);color:#fff;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.burger{font-size:24px;color:var(--c2);line-height:1}
+.nav.pill .links{background:#F1F5F9;padding:6px 14px;border-radius:999px;gap:14px}.nav.pill .links span:first-child{color:var(--c2);font-weight:700}
+.nav.dot .links{gap:10px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}.nav.dot .links span+span:before{content:'•';margin-right:10px;color:var(--c)}
+.nav.dot .navbtn{background:transparent;color:var(--c2);box-shadow:inset 0 0 0 2px var(--c)}
+.hero{position:relative;padding:26px 22px;background-image:linear-gradient(135deg,var(--c),var(--c2));color:#fff;text-align:center;overflow:hidden}
+.badge{display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.2);font-size:12px;font-weight:600}
+.title{margin:8px 0 6px;font-size:30px;font-weight:800;line-height:1.1}.sub{margin:0 0 14px;font-size:15px;opacity:.92}
+.cta-w{position:relative;display:inline-block}.cta{display:inline-block;background:#fff;color:var(--c2);padding:10px 20px;border-radius:12px;font-size:15px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.cta.big{padding:24px 52px;font-size:26px}
+.hero.split{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:center;text-align:left;padding:26px 24px}
+.hero.split2{display:grid;grid-template-columns:.8fr 1.2fr;gap:16px;align-items:center;text-align:left;padding:26px 24px}
+.hero.split2 .art{order:-1}
+.art{position:relative;height:150px;border-radius:24px;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
+.art .ring{position:absolute;inset:14px 22px;border:2px dashed rgba(255,255,255,.4);border-radius:50%}
+.art .big0{position:relative;font-size:72px;line-height:1;filter:drop-shadow(0 10px 14px rgba(0,0,0,.25))}
+.art .fl{position:absolute;width:38px;height:38px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.art .f1{left:-8px;top:16px;transform:rotate(-8deg)}.art .f2{right:-6px;bottom:14px;transform:rotate(7deg)}.art .f3{right:14px;top:-10px;width:30px;height:30px;font-size:16px;border-radius:10px}
+.hero.poster{text-align:left;padding:34px 26px 30px}.poster .title{font-size:42px;letter-spacing:-.02em;max-width:74%;line-height:1.02}
+.poster .badge{background:transparent;padding:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;opacity:.85}.poster .badge:before{content:'';display:inline-block;width:22px;height:3px;background:#fff;vertical-align:middle;margin-right:8px;border-radius:2px}
+.poster .sub{max-width:70%}.wm{position:absolute;right:-6px;bottom:-30px;font-size:160px;line-height:1;opacity:.24;transform:rotate(-12deg);pointer-events:none}
+.d.soft{background:var(--bg)}.hero.soft{margin:14px 18px 0;border-radius:28px;padding:30px 22px}
+.hero.soft .b1,.hero.soft .b2{position:absolute;border-radius:50%;background:rgba(255,255,255,.16)}.hero.soft .b1{width:150px;height:150px;left:-50px;top:-60px}.hero.soft .b2{width:110px;height:110px;right:-30px;bottom:-40px}
+.hero.soft .e1,.hero.soft .e2{position:absolute;font-size:30px;opacity:.9}.hero.soft .e1{left:22px;bottom:18px;transform:rotate(-14deg)}.hero.soft .e2{right:24px;top:18px;transform:rotate(12deg)}
+.hero.band{background:#fff;color:var(--c2);text-align:left;border-left:8px solid var(--c);margin:14px 18px 0;border-radius:18px;box-shadow:0 10px 26px rgba(15,23,42,.08);padding:24px 24px 24px 22px}
+.band .badge{background:var(--bg);color:var(--c2)}.band .sub{color:#475569;opacity:1}.band .cta{background:var(--c);color:#fff;box-shadow:0 8px 18px rgba(15,23,42,.15)}
+.band .wm{right:18px;top:50%;bottom:auto;transform:translateY(-50%) rotate(-8deg);font-size:84px;opacity:1}.band .title,.band .sub{max-width:74%}
+.hero.photo{padding:24px 22px}.pat{position:absolute;inset:-20px;display:grid;grid-template-columns:repeat(8,1fr);gap:14px;font-size:30px;opacity:.28;transform:rotate(-10deg);pointer-events:none}
+.panel{position:relative;background:rgba(255,255,255,.95);color:#0F172A;border-radius:20px;padding:18px 20px;max-width:390px;margin:0 auto;box-shadow:0 18px 36px rgba(0,0,0,.22)}
+.photo .badge{background:var(--bg);color:var(--c2)}.photo .title{color:var(--c2)}.photo .sub{color:#475569;opacity:1}.photo .cta{background:var(--c);color:#fff}
+.cards{display:flex;gap:12px;padding:16px 22px 4px}.card{position:relative;flex:1;background:#fff;border-radius:var(--rad);padding:12px;box-shadow:0 6px 18px rgba(15,23,42,.08)}
+.ic{font-size:24px}.ch{margin:6px 0 3px;font-size:15px;font-weight:700}.cp{margin:0;font-size:12.5px;color:#64748B}.n{display:none}
+.cards.ic .ic{width:42px;height:42px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:21px}
+.cards.mid .card{text-align:center}.cards.mid .ic{margin:0 auto}
+.cards.top .card{padding:0;overflow:hidden}.cards.top .ic{height:58px;background:linear-gradient(135deg,var(--bg),#fff);display:flex;align-items:center;justify-content:center;font-size:30px}.cards.top .ch{padding:0 12px}.cards.top .cp{padding:0 12px 12px}
+.cards.line .card{border-top:4px solid var(--c)}.cards.line .ic{font-size:20px}
+.cards.num .ic{display:none}.cards.num .n{display:block;font-size:24px;font-weight:800;color:var(--c);line-height:1}
+.info{position:relative;display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;padding:11px 18px;background:#fff;box-shadow:0 1px 0 #E2E8F0;font-size:14px;font-weight:600}
+.soft .info,.band .info{margin:12px 18px 0;border-radius:14px;box-shadow:0 4px 14px rgba(15,23,42,.06)}
+.info .g{color:#64748B}.blk{position:relative;margin:12px 22px 4px}.bh{margin:0 0 7px;font-size:17px;font-weight:800;color:var(--c2)}
+.L-poster .bh:before,.L-band .bh:before{content:'';display:inline-block;width:6px;height:16px;border-radius:3px;background:var(--c);margin-right:8px;vertical-align:-2px}
+.L-soft .bh,.L-photo .bh{text-align:center}.L-soft .row3,.L-photo .row3{justify-content:center}
+.row3{display:flex;flex-wrap:wrap;gap:10px}.it{flex:1;background:#fff;border-radius:var(--rad);padding:9px 12px;box-shadow:0 4px 14px rgba(15,23,42,.07);font-size:13.5px;font-weight:600}
+.L-split .it,.L-split2 .it{border-left:4px solid var(--c)}.L-photo .it{text-align:center}
+.it .ic{font-size:22px;margin-bottom:2px}.wide{flex-basis:100%}.pr{margin:3px 0 0;font-size:17px;font-weight:800;color:var(--c2)}
+.tx{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#475569;color:#fff;font-size:11.5px;font-weight:700;font-style:normal;vertical-align:middle}
+.goal{position:relative;margin:12px 22px 6px;padding:14px 16px;border-radius:var(--rad);background:var(--bg)}.gh{margin:0 0 10px;font-size:19px;font-weight:800;color:var(--c2)}
+.L-soft .goal{background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.08)}.L-poster .goal{border:2px solid var(--c);background:#fff}.L-band .goal{border-left:6px solid var(--c)}
+.inp{background:#fff;border:1px solid #CBD5E1;border-radius:9px;padding:9px 12px;color:#94A3B8;margin:0 0 8px;font-size:13.5px}
+.btn2{display:inline-block;background:var(--c);color:#fff;padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:700}
+.foot{padding:12px 22px;color:#64748B;font-size:12px;text-align:center}.L-poster .foot,.L-band .foot{text-align:left;border-top:1px solid #E2E8F0;margin-top:10px}.L-soft .foot{color:var(--c2)}
+.bottom{padding:12px 16px;background:rgba(255,255,255,.95);box-shadow:0 -1px 0 #E2E8F0}.bottom span{display:block;padding:12px;border-radius:12px;background:var(--c);color:#fff;text-align:center;font-size:15px;font-weight:800}
+.pin{position:absolute;right:8px;top:8px;z-index:3;padding:3px 10px;border-radius:999px;color:#fff;font-size:13px;font-weight:800;font-style:normal;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.cta-w .pin{right:auto;left:calc(100% + 12px);top:50%;transform:translateY(-50%)}.info .pin{top:50%;transform:translateY(-50%)}
+.sale{position:absolute;left:18px;top:16px;z-index:2;padding:6px 13px;border-radius:11px;background:#DC2626;color:#fff;font-size:19px;font-weight:800;transform:rotate(-6deg)}
+.hero.split .sale,.hero.poster .sale,.hero.band .sale{left:auto;right:18px}.hero.split>.pin,.hero.poster>.pin,.hero.band>.pin{top:60px}
+.popup{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;flex-direction:column;gap:7px;width:210px;padding:13px;border-radius:14px;background:#fff;box-shadow:0 16px 40px rgba(15,23,42,.3);font-size:13.5px}
+.popup .inp{margin:0}.popup .pin{top:-14px}
+.chat{position:absolute;right:16px;bottom:16px;z-index:2;width:52px;height:52px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+.toast{display:block;width:fit-content;margin:14px auto 0;padding:10px 18px;border-radius:13px;background:#0F172A;color:#fff;font-size:15px;font-weight:700;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.3)}
+.split .toast,.split2 .toast,.poster .toast,.band .toast{margin-left:0}
+.cur{position:absolute;right:-30px;bottom:-30px;width:34px;height:34px}.cur svg{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.cur .ring{position:absolute;left:-12px;top:-12px;width:30px;height:30px;border-radius:50%;border:4px solid #FBBF24}
+.has-btn .navbtn,.has-btn .btn2,.has-btn .cta{background:var(--btn);color:var(--btnfg)}.has-hero .hero{background-image:var(--hero)}
+.sh-big .card,.sh-big .it{box-shadow:0 18px 40px rgba(15,23,42,.22)}.sh-none .card,.sh-none .it{box-shadow:none;border:2px solid #CBD5E1}
+.dark{background:#0B1020;color:#E2E8F0}.dark .nav{background:#0F172A;box-shadow:0 1px 0 #1E293B}.dark .links{color:#94A3B8}.dark .nav.pill .links{background:#1E293B}
+.dark .card,.dark .it,.dark .info,.dark .hero.band,.dark .panel,.dark.L-soft .goal{background:#111827;color:#E2E8F0}.dark .bh{color:var(--c)}.dark .burger{color:#E2E8F0}.dark .cards.ic .ic,.dark .cards.top .ic{background:#1E293B}.dark.soft{background:#0B1020}
+.big{font-size:18px}.big .links{display:none}.big .logo{font-size:20px}.big .navbtn{font-size:16px;padding:9px 16px}.big .title{font-size:36px}.big .sub{font-size:19px}.big .cta{font-size:19px;padding:13px 26px}.big .info{font-size:19px}.big .ch{font-size:18px}.big .cp{font-size:15px}
+@media (max-width:480px){.links{display:none}.nav{padding:10px 16px}.hero{padding:22px 16px}.title{font-size:26px}.cards{gap:8px;padding:12px 16px 4px;flex-wrap:wrap}.card{flex:1 1 40%;padding:10px}
+.cards.top .card{padding:0}.hero.split,.hero.split2{grid-template-columns:1fr;gap:12px}.art{height:84px;order:2}.art .big0{font-size:44px}.art .fl{width:30px;height:30px;font-size:16px}
+.poster .title{font-size:32px;max-width:none}.poster .sub{max-width:none}.wm{font-size:110px}.hero.soft,.hero.band{margin:10px 12px 0}.band .title,.band .sub{max-width:none}.band .wm{display:none}
+.soft .info,.band .info{margin:10px 12px 0}.panel{padding:14px}.blk{margin:10px 16px 4px}.it{flex:1 1 40%}.goal{margin:10px 16px 6px}.btn2{white-space:nowrap}.cta-w .pin{left:auto;right:-6px;top:auto;bottom:-26px;transform:none}}`;
+function aiSiteHtml(S, layout) {
+  let L = layout || 'center';
+  if (L === 'band' && (S.heroBg || S.dark)) L = 'split';   // свой фон баннера или тёмный сайт — баннер должен быть цветным
+  const pin = (m) => (m ? `<i class="pin" style="background:${esc(m.c || '#475569')}">${esc(m.t)}</i>` : '');
+  const M = S.marks || {};
+  const vars = `--c:${S.c || '#FA4F28'};--c2:${S.c2 || '#C2410C'};--bg:${S.bg || '#FFF1EC'};--rad:${S.radius != null ? S.radius : 14}px`
+    + (S.font ? `;font-family:${S.font}` : '') + (S.heroBg ? `;--hero:${S.heroBg}` : '') + (S.btn ? `;--btn:${S.btn};--btnfg:${S.btnFg || '#1F2937'}` : '');
+  const cls = 'd L-' + L + (L === 'soft' ? ' soft' : '') + (S.big ? ' big' : '') + (S.dark ? ' dark' : '') + (S.shadow === 'big' ? ' sh-big' : S.shadow === 'none' ? ' sh-none' : '') + (S.heroBg ? ' has-hero' : '') + (S.btn ? ' has-btn' : '');
+  const title = String(S.title || '');
+  const em = S.em || '✨';
+  // значки для украшений — только те, что уже есть на сайте (логотип, карточки, блоки): украшение не добавляет новых вещей
+  const icons = [em, ...(S.cards || []).map((c) => c.ic), ...[].concat(...(S.blocks || []).map((b) => (b.items || []).map((x) => x.ic)))].filter(Boolean);
+  const ico = (i) => icons[i % icons.length];
+  const hot = S.cursor === 'hover' && S.ctaHot ? ` style="${S.ctaHot.bg ? 'background:' + esc(S.ctaHot.bg) + ';' : ''}${S.ctaHot.fg ? 'color:' + esc(S.ctaHot.fg) + ';' : ''}transform:scale(${Number(S.ctaHot.scale) || 1})"` : '';
+  const cur = S.cursor ? `<span class="cur">${S.cursor === 'click' ? '<i class="ring"></i>' : ''}<svg viewBox="0 0 24 24"><path d="M5 2.5v17.2l4.6-4.4 3 6.6 2.9-1.3-3-6.5h6.4z" fill="#fff" stroke="#111827" stroke-width="1.6" stroke-linejoin="round"/></svg></span>` : '';
+  const ex = S.extras || {};
+  const NAV = { split: 'pill', soft: 'pill', poster: 'dot', photo: 'dot' }[L] || '';
+  const CARDS = { split: 'ic', split2: 'top', poster: 'line', soft: 'ic mid', band: 'num', photo: 'top' }[L] || '';
+  let h = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${AI_SITE_CSS}</style></head><body><div class="${cls}" style="${esc(vars)}">`;
+  h += `<div class="nav ${NAV}"><span class="logo">${esc(((S.em ? S.em + ' ' : '') + title.split(/\s+/).slice(0, 2).join(' ')))}</span>`;
+  h += S.mobile ? '<span class="burger">☰</span>' : `<div class="links">${(S.nav || []).map((x) => `<span>${esc(x)}</span>`).join('')}</div>${S.oneBtn ? '<span></span>' : `<span class="navbtn">${esc(S.cta)}</span>`}`;
+  let inner = '';
+  if (S.badge) inner += `<span class="badge">${esc(S.badge)}</span>`;
+  inner += `<h1 class="title">${esc(title)}</h1>`;
+  if (S.sub) inner += `<p class="sub">${esc(S.sub)}</p>`;
+  if (S.cta) inner += `<span class="cta-w"><span class="cta${S.ctaBig ? ' big' : ''}"${hot}>${esc(S.cta)}</span>${cur}${pin(M.cta)}</span>`;
+  if (S.toast) inner += `<div class="toast">${esc(S.toast)}</div>`;
+  const art = `<div class="art"><i class="ring"></i><span class="big0">${esc(em)}</span>${icons.length > 1 ? `<span class="fl f1">${esc(ico(1))}</span><span class="fl f2">${esc(ico(2))}</span>` : ''}<span class="fl f3">${esc(ico(icons.length > 3 ? 3 : 0))}</span></div>`;
+  h += `</div><div class="hero ${L}">`;
+  if (L === 'split' || L === 'split2') h += `<div>${inner}</div>${art}`;
+  else if (L === 'poster' || L === 'band') h += inner + `<span class="wm">${esc(em)}</span>`;
+  else if (L === 'soft') h += `<i class="b1"></i><i class="b2"></i><span class="e1">${esc(ico(1))}</span><span class="e2">${esc(ico(2))}</span>` + inner;
+  else if (L === 'photo') h += `<div class="pat">${Array.from({ length: 40 }, (_, i) => `<span>${esc(ico(i))}</span>`).join('')}</div><div class="panel">${inner}</div>`;
+  else h += inner;
+  if (ex.sale) h += `<span class="sale">${esc(ex.sale)}</span>`;
+  h += pin(M.hero) + '</div>';
+  if (S.info && S.info.length) h += `<div class="info">${S.info.map((x) => `<span class="${x.guess ? 'g' : ''}">${esc(x.t)}${x.guess ? `<i class="tx">${esc(x.guess)}</i>` : ''}</span>`).join('')}${pin(M.info)}</div>`;
+  if (S.cards && S.cards.length) h += `<div class="cards ${CARDS}">${S.cards.map((c, i) => `<div class="card"><span class="n">0${i + 1}</span><div class="ic">${esc(c.ic || '')}</div><h3 class="ch">${esc(c.h)}</h3><p class="cp">${esc(c.p || '')}</p></div>`).join('')}</div>`;
+  (S.blocks || []).forEach((b) => {
+    h += `<div class="blk"><h2 class="bh">${esc(b.h)}</h2><div class="row3">${(b.items || []).map((x) => `<div class="it${x.wide ? ' wide' : ''}">${x.ic ? `<div class="ic">${esc(x.ic)}</div>` : ''}${esc(x.t)}${x.p ? `<p class="pr">${esc(x.p)}${x.guess ? `<i class="tx">${esc(x.guess)}</i>` : ''}</p>` : x.guess ? `<i class="tx">${esc(x.guess)}</i>` : ''}</div>`).join('')}</div>${pin(b.mark)}</div>`;
+  });
+  if (S.goal) h += `<div class="goal"><h2 class="gh">${esc(S.goal.h)}</h2>${(S.goal.fields || []).map((x) => `<div class="inp">${esc(x)}</div>`).join('')}<span class="btn2">${esc(S.goal.btn)}</span>${pin(S.goal.mark)}</div>`;
+  if (S.bottomBtn) h += `<div class="bottom"><span>${esc(S.bottomBtn)}</span></div>`;
+  if (!S.noFoot) h += `<div class="foot">© 2026 ${esc(title)}. ${esc(S.foot || '')}</div>`;
+  if (ex.popup) h += `<div class="popup"><b>${esc(ex.popup)}</b><span class="inp">✉ email</span>${pin(M.extras)}</div>`;
+  if (ex.chat) h += '<span class="chat">💬</span>';
+  return h + '</div></body></html>';
+}
+// Левая часть картинки «ИИ»: сообщение клиента (облачко) и поле промпта (метка вопроса формулы + текст её цветом, пустая — «…»).
+// Шрифт подбирается по настоящей высоте (оценка строк aiLines — только для раскладки): от fs вниз до 10 px, пока поле
+// не влезет в avail; не влезло и при 10 px — обрезается снизу (onOver сообщает карточке, она ужимается).
+function AiBox({ ai, fs, avail, compact, onOver }) {
+  const box = useRef(null);
+  const [f, setF] = useState(fs);
+  const [cut, setCut] = useState(false);
+  const key = fs + '|' + avail + '|' + JSON.stringify(ai);
+  const last = useRef('');
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    let cur = f;
+    if (last.current !== key) { last.current = key; cur = fs; el.style.fontSize = cur + 'px'; el.style.maxHeight = ''; }
+    else el.style.maxHeight = '';
+    if (avail > 0) while (el.scrollHeight > avail + 1 && cur > 10) { cur = Math.max(10, Math.round((cur - 0.5) * 10) / 10); el.style.fontSize = cur + 'px'; }
+    const over = avail > 0 && el.scrollHeight > avail + 1;
+    if (over) el.style.maxHeight = Math.max(60, avail) + 'px';
+    if (cur !== f) setF(cur);
+    if (over !== cut) setCut(over);
+  });
+  useEffect(() => { if (onOver) onOver(cut); }, [cut]);
+  return (
+    <div ref={box} className={'ht-aib' + (compact ? ' is-compact' : '')} style={{ fontSize: f, maxHeight: cut ? Math.max(60, avail) : undefined }}>
+      {ai.msg && <div className="ht-ai-msg"><b>{ai.msg.who}</b><span>{ai.msg.text}</span></div>}
+      {ai.prompt && ai.prompt.length > 0 && (
+        <div className="ht-ai-prompt">
+          {ai.prompt.map((r, i) => {
+            const f = r.lab ? { c: r.c || '#475569', bg: r.bg || '#F1F5F9' } : AI_FORMULA[r.q] || AI_FORMULA[0];
+            return (
+              <div key={i} className={'ht-ai-pl' + (r.hl ? ' is-hl' : '')}>
+                <span className="ht-ai-pq" style={{ background: f.c }}>{r.lab || r.qlab}</span>
+                {r.t ? <span className="ht-ai-pv" style={{ background: f.bg, color: f.c }}>{r.t}</span> : <span className="ht-ai-pe">…</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+// Сколько «строк» займёт левая часть (для подгонки шрифта, как у кода): строка промпта — 1–2, сообщение — по длине.
+const aiLines = (ai, narrow) => {
+  const per = narrow ? 30 : 44;
+  let n = 0;
+  if (ai.msg) n += 0.8 + Math.max(1, Math.ceil(String(ai.msg.text || '').length / per));
+  (ai.prompt || []).forEach((r) => { n += Math.max(1, Math.ceil((String(r.t || '…').length + String(r.lab || r.qlab || '').length + 3) / per)); });
+  return n;
+};
+function decodeAi(v, lang) {
+  const A = deepL(v.ai, lang) || {};
+  const prompt = Array.isArray(A.prompt) ? A.prompt.map((r) => (r.lab ? r : Object.assign({}, r, { qlab: tx((AI_FORMULA[r.q] || AI_FORMULA[0]), lang) }))) : null;
+  const msg = A.msg && A.msg.text ? A.msg : null;
+  const left = prompt || msg ? { prompt, msg } : null;
+  const page = A.site ? aiSiteHtml(A.site, aiLayoutOf(v.ai.site)) : null;
+  if (!left && !page) return null;
+  return { code: null, aiLeft: left, aiPage: !!page, page, mark: [], vw: page ? (A.site.mobile ? 360 : 600) : 0, focus: A.focus || (A.site && A.site.focus) || null };
+}
+
 function decodeVis(raw, lang) {
   if (!raw) return null;
   let v = raw;
@@ -414,6 +704,7 @@ function decodeVis(raw, lang) {
     try { v = JSON.parse(raw.slice(VIS_PREFIX.length)); } catch { return null; }
   }
   if (!v || typeof v !== 'object') return null;
+  if (v.ai) return decodeAi(v, lang);
   // CSS-вид (тренажёр CSS): в редакторе css (style.css), на странице html + <style> base + css без объявлений с ___ (или goal).
   // Та же логика — visL в tools/trenajor/build.mjs.
   if (v.css != null || v.html != null) {
@@ -446,7 +737,8 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
     const ro = new ResizeObserver(upd); ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const hasCode = vis.code != null;
+  const ai = vis.aiLeft || null;   // «ИИ»: слева — сообщение клиента и поле промпта вместо кода
+  const hasCode = vis.code != null || !!ai;
   const hasPage = vis.page != null;
   const row = hasCode && hasPage && size.w >= 600;
   const vw = !hasPage ? 0 : vis.vw || (size.w < 520 ? 360 : row ? 420 : 520);   // vis.vw — своя ширина страницы (@media, урок 16 CSS)
@@ -457,9 +749,18 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
     const h = Math.max(70, d.documentElement.scrollHeight, d.body ? d.body.scrollHeight : 0);
     f.style.height = old;
     setDocH(h); setDocTitle(d.title || '');
+    // «ИИ»: сайт выше окна — видна его часть от нужного блока (vis.focus — селектор внутри страницы), как в тестах модуля
+    const fe = vis.focus ? d.querySelector(vis.focus) : null;
+    setFocusY(fe ? Math.max(0, fe.getBoundingClientRect().top + (d.defaultView ? d.defaultView.scrollY : 0) - 8) : 0);
+    // края блоков сайта (меню, баннер, карточки, блоки, форма, подвал) — часть сайта начинается с края блока, а не с середины строки
+    const top0 = d.body ? d.body.getBoundingClientRect().top : 0;
+    setBlockTops(vis.focus ? [...d.querySelectorAll('body > div > *')].map((el) => Math.round(el.getBoundingClientRect().top - top0)) : []);
     setLoads((k) => k + 1);
   };
   const [loads, setLoads] = useState(0);
+  const [focusY, setFocusY] = useState(0);
+  const [blockTops, setBlockTops] = useState([]);
+  const [aiOver, setAiOver] = useState(false);   // поле промпта не влезло и при 10 px
   // «Нажми на странице»: состояние целей — атрибутом data-st в самой странице (скриптов в ней нет, всё делает тренажёр).
   useEffect(() => {
     const d = tap && frame.current && frame.current.contentDocument;
@@ -487,9 +788,9 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
     if (el) el.setAttribute('data-hv', '');
   };
   const BAR = 30; const GAP = 10; const SEG = 40;
-  const lines = hasCode ? vis.code.split('\n').length : 0;
   const compact = size.w > 0 && size.w < 520;   // телефон: строки кода плотнее
-  const LH = compact ? 1.36 : 1.5; const ED = compact ? 34 : 44;
+  const lines = ai ? aiLines(ai, compact || (size.w >= 600 && hasPage)) : hasCode ? vis.code.split('\n').length : 0;
+  const LH = ai ? 1.75 : compact ? 1.36 : 1.5; const ED = ai ? (compact ? 34 : 42) + (ai.msg && ai.prompt ? 10 : 0) : compact ? 34 : 44;
   const LP = lineTap ? (compact ? 8 : 6) : 0;   // строки-кнопки «найди ошибку» выше: в них удобно попасть пальцем
   const codeH = (fs) => ED + lines * (fs * LH + LP);
   const dh = docH || 160;
@@ -497,8 +798,9 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
   const fit = (hCode, hPage, wPage) => {
     const o = { codeFs: 14, codeMax: undefined, pageScale: 1, pageCut: undefined };
     if (hasCode) {
-      o.codeFs = Math.min(compact ? 13.5 : 16, Math.max(10, (hCode - ED - lines * LP) / (lines * LH)));
-      if (codeH(o.codeFs) > hCode + 1) o.codeMax = Math.max(60, hCode);
+      o.codeFs = Math.min(ai ? (compact ? 15 : 17) : compact ? 13.5 : 16, Math.max(10, (hCode - ED - lines * LP) / (lines * LH)));
+      if (ai) { o.codeAvail = hCode; if (o.codeFs === 10 && codeH(10) > hCode * 1.25) o.codeMax = Math.max(60, hCode); }   // «ИИ»: шрифт довыберет само поле
+      else if (codeH(o.codeFs) > hCode + 1) o.codeMax = Math.max(60, hCode);
     }
     if (hasPage) {
       // после ответа в «нажми» и «найди ошибку» страница может стать мельче (до 0.34): важнее увидеть её целиком с отметками
@@ -536,26 +838,37 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
   const showPage = hasPage && (!toggle || pageOnly || view === 'page');
   const pageW = Math.round(vw * F.pageScale);
   const pageH = Math.round(dh * F.pageScale);
+  // часть сайта от vis.focus, если он не влез целиком (сдвиг — в пикселях экрана)
+  // Сайт выше окна: сдвиг до блока focus. Если блок у низа и сдвиг упёрся в конец страницы, срез пришёлся бы на середину
+  // блока выше (заголовок баннера резался по строке) — тогда сдвиг до ближайшего края блока ниже, а окно короче (21.11.2026).
+  let pageOff = 0;
+  if (F.pageCut != null && focusY > 0) {
+    const k = F.pageScale; const maxOff = Math.max(0, dh - F.pageCut / k);
+    let off = Math.min(focusY, maxOff);
+    if (off < focusY) { const snap = blockTops.filter((t) => t >= off - 1 && t <= focusY + 8).sort((a, b) => a - b)[0]; if (snap != null) off = snap; }
+    pageOff = Math.round(off * k);
+  }
   const ready = size.h > 0 && (!hasPage || docH > 0);   // пока страница не измерена — не судим, иначе ужатие включится зря
-  const cut = ready && ((showCode && F.codeMax != null) || (showPage && F.pageCut != null));
+  const cut = ready && ((showCode && (ai ? aiOver : F.codeMax != null)) || (showPage && F.pageCut != null));
   useEffect(() => { if (onCut) onCut(!!cut); }, [cut]);   // карточка узнаёт, что картинка не влезает (ужатие)
   return (
-    <div className={'ht-vis' + (row ? ' is-row' : '') + (toggle ? ' is-toggle' : '')} ref={box} data-cut={cut ? '1' : undefined} data-pagecut={ready && showPage && F.pageCut != null ? '1' : undefined}>
+    <div className={'ht-vis' + (row ? ' is-row' : '') + (toggle ? ' is-toggle' : '')} ref={box} data-ai={ai || vis.aiPage ? '1' : undefined} data-cut={cut ? '1' : undefined} data-pagecut={ready && showPage && F.pageCut != null ? '1' : undefined}>
       {toggle && !pageOnly && (
         <div className="ht-seg" role="tablist">
           <button type="button" role="tab" aria-selected={view === 'code'} className={view === 'code' ? 'is-on' : ''} onClick={() => setView('code')}>{T.code}</button>
           <button type="button" role="tab" aria-selected={view === 'page'} className={view === 'page' ? 'is-on' : ''} onClick={() => setView('page')}>{T.page}</button>
         </div>
       )}
-      {showCode && <CodeBox code={vis.code} mark={vis.mark} fs={Math.round(F.codeFs * 10) / 10} maxH={F.codeMax} compact={compact} lines={lineTap} css={vis.css} />}
+      {showCode && (ai ? <AiBox ai={ai} fs={Math.round(F.codeFs * 10) / 10} avail={Math.floor(F.codeAvail || 0)} compact={compact} onOver={setAiOver} />
+        : <CodeBox code={vis.code} mark={vis.mark} fs={Math.round(F.codeFs * 10) / 10} maxH={F.codeMax} compact={compact} lines={lineTap} css={vis.css} />)}
       {hasPage && (
         <div className={'ht-br' + (showPage ? '' : ' is-off')} style={{ width: pageW }} aria-hidden={showPage ? undefined : true}>
           <div className="ht-br-bar"><span className="ht-br-tab"><i className="ht-br-fav" /><span className="ht-br-tt">{docTitle || 'index.html'}</span></span></div>
-          <div className={'ht-br-page' + (tap && !tap.answered ? ' is-tap' : '')} style={{ height: F.pageCut != null ? Math.min(pageH, F.pageCut) : pageH }}
+          <div className={'ht-br-page' + (tap && !tap.answered ? ' is-tap' : '')} style={{ height: F.pageCut != null ? Math.min(pageH - pageOff, F.pageCut) : pageH }}
             {...(tap && !tap.answered ? { onClick: (e) => { const t = tapTarget(e); if (t && !tap.disabled) tap.onTap(t.getAttribute('data-t')); },
               onMouseMove: (e) => hover(tapTarget(e)), onMouseLeave: () => hover(null) } : {})}>
             <iframe ref={frame} title="page" sandbox="allow-same-origin" srcDoc={pageDoc(vis.page, !!tap)} onLoad={onLoad} tabIndex={-1}
-              style={{ width: vw, height: dh, transform: `scale(${F.pageScale})` }} />
+              style={{ width: vw, height: dh, transform: (pageOff ? `translateY(${-pageOff}px) ` : '') + `scale(${F.pageScale})` }} />
           </div>
         </div>
       )}
@@ -643,7 +956,7 @@ function Intro({ attempt, lang, onStart, onExit }) {
   const p = Number(attempt && attempt.points_per_correct);
   const practice = !!attempt && attempt.kind === 'practice';
   const hasReward = !practice && Number.isFinite(c) && Number.isFinite(p) && (c > 0 || p > 0);
-  const mod = moduleName(attempt && attempt.questions);
+  const mod = T.mod || moduleName(attempt && attempt.questions);
   const title = T.title(mod);
   const rules = practice ? [T.rules[0], T.rules[1], T.practiceRule] : T.rules;
   const head = useRef(null);
@@ -801,7 +1114,10 @@ function Body({ attempt, lang, busy, onAnswer, onFinished, onRestart, onExit }) 
     const asmOver = asm && asm.scrollHeight > asm.clientHeight + 1;
     // после ответа страница обрезана: у «найди ошибку» и «нажми» прячем строки-пояснения (картинка остаётся),
     // у остальных на ступени 2 картинка прячется — ответ уже дан, видно пояснение (19.11.2026, низкое окно)
-    const pageCut = !!c.querySelector('.ht-vis[data-pagecut]');
+    // «ИИ» (21.11.2026): сайт выше страниц HTML — после ответа он остаётся частью от focus, прячется только полоской (sliver);
+    // промпт, не влезший и при 10 px, — прячется. Спрятанная картинка больше не считается обрезанной.
+    const isAi = !!(vis && vis.hasAttribute('data-ai'));
+    const pageCut = isAi ? vis.offsetHeight > 0 && !!c.querySelector('.ht-aib[style*="max-height"]') : !!c.querySelector('.ht-vis[data-pagecut]');
     const ixCut = answer && (ix ? visCut : pageCut);
     if (tight < max && (c.scrollHeight > c.clientHeight + 1 || sliver || asmOver || ixCut)) setTight(tight + 1);
   });
@@ -1212,6 +1528,11 @@ const CSS = `
 .ht-sp.is-sel .ht-sp-ol { fill: rgba(224, 82, 82, .18); stroke-width: 1.8; stroke-dasharray: none; }
 .ht-sp.is-new { transform-box: fill-box; transform-origin: center; animation: ht-build .6s cubic-bezier(.3, 1.6, .5, 1) both; }
 .ht-sp.is-click { cursor: pointer; }
+.ht-site.is-ai:not(.is-mini) .ht-sp.is-todo .ht-sp-ph { fill: #fff; }
+.ht-ai-sheet rect { fill: #E6E3EE; }
+.ht-sp.is-cur .ht-ai-sheet rect { fill: #FFC9B5; }
+.ht-ai-back { fill: none; stroke: #E05252; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.ht-site.is-mini.is-ai .ht-ai-sheet, .ht-site.is-mini.is-ai .ht-ai-back { display: none; }
 @media (hover: hover) { .ht-sp.is-click:hover .ht-sp-ph { fill: #FFE6E6; } }
 .ht-sp.is-sel .ht-sp-ph { fill: #FFDADA; stroke-width: 1.8; stroke-dasharray: none; }
 @keyframes ht-ph { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
@@ -1299,6 +1620,23 @@ const CSS = `
 .ht-ed-tab.is-css::before { content: '#'; color: #42A5F5; }
 .ht-c-tg { color: #569CD6; } .ht-c-at { color: #9CDCFE; } .ht-c-str { color: #CE9178; } .ht-c-pn { color: #808080; } .ht-c-tx { color: #D4D4D4; } .ht-c-cm { color: #6A9955; }
 .ht-c-slot { display: inline-block; min-width: 2.2em; margin: 0 2px; padding: 0 6px; border: 1.5px dashed var(--o); border-radius: 5px; color: #FDBA74; text-align: center; line-height: 1.25; }
+
+/* ── «ИИ»: сообщение клиента и поле промпта (как в ИИ-приложении: светлое поле, метки формулы своим цветом) ── */
+.ht-aib { flex: none; align-self: stretch; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: 2px 4px 10px; box-sizing: border-box; font-size: 15px; line-height: 1.35; }   /* отступ — под тень карточек */
+.ht-vis:not(.is-row) > .ht-aib { width: 100%; max-width: 620px; align-self: center; }
+.ht-vis.is-row > .ht-aib { flex: 1 1 50%; min-width: 0; align-self: center; }
+.ht-aib[style*="max-height"]::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 18px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
+.ht-ai-msg { display: flex; flex-direction: column; gap: 3px; padding: .6em .95em; border-radius: 16px 16px 16px 4px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
+.ht-ai-msg b { font-size: .72em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #7C3AED; }
+.ht-ai-msg span { font-weight: 600; color: #1E1B39; overflow-wrap: break-word; }
+.ht-ai-prompt { display: flex; flex-direction: column; gap: .45em; padding: .75em .9em; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px #E2E8F0, 0 6px 18px rgba(15, 23, 42, .06); }
+.ht-ai-pl { display: flex; align-items: flex-start; gap: .5em; min-width: 0; }
+.ht-ai-pl.is-hl { margin: -.2em -.35em; padding: .2em .35em; border-radius: 8px; box-shadow: 0 0 0 2px var(--o); }
+.ht-ai-pq { flex: none; margin-top: .12em; padding: .12em .7em; border-radius: 999px; color: #fff; font-size: .78em; font-weight: 700; white-space: nowrap; }
+.ht-ai-pv { min-width: 0; padding: .08em .5em; border-radius: 6px; font-weight: 600; overflow-wrap: anywhere; }
+.ht-ai-pe { display: inline-block; min-width: 4.5em; padding: 0 .6em; border: 1.5px dashed #CBD5E1; border-radius: 6px; color: #94A3B8; text-align: center; font-weight: 700; }
+.ht-aib.is-compact { gap: 8px; }
+.ht-aib.is-compact .ht-ai-prompt { padding: .6em .7em; }
 
 /* переключатель «Kod / Natija» (маленький телефон) */
 .ht-vis.is-toggle { justify-content: flex-start; }

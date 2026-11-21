@@ -3,8 +3,7 @@
 // Игровые: q15–q16 «собери», q17 «найди ошибку», q18 «нажми на странице».
 // Проверяем: правило с :hover работает только под мышкой (на телефоне — при касании), мышка ушла — всё вернулось;
 // .karta:hover пишется вплотную; transform в обычном правиле — всегда, а не только под мышкой; scale — число без единиц
-// (1 — как было, меньше 1 — меньше, 2px — не работает); rotate — с deg; translate — через запятую, второе число вниз,
-// минус — вверх; transform не двигает соседей; два transform подряд — второй стирает первый; cursor: pointer — рука.
+// (1 — как было, меньше 1 — меньше, 2px — не работает); rotate — с deg; translate — через запятую, второе число вниз; transform не двигает соседей; два transform подряд — второй стирает первый; cursor: pointer — рука.
 // :hover на странице тренажёра не срабатывает: состояние «под мышкой» показано через goal (q18), остальное — по коду.
 // Ситуации тестов курса (tools/webtest/css/l13.jsx) не повторяются. Апостроф в узбекском — только ASCII «'». Формат — FORMAT.md.
 // =============================================================================
@@ -181,7 +180,7 @@ export default [
       ctx: 'A sports club site: the middle card is moved 40 pixels to the right.',
       q: 'What about the card on its right?',
       opts: ['It stayed put, the middle one is over it', 'It also moved 40 pixels right', 'It dropped down to the next row', 'It shrank to make room'],
-      why: 'transform moves only the element itself, and its neighbours stay in place. So the moved card ended up on top of its neighbour.',
+      why: 'transform moves only the element itself, and its neighbors stay in place. So the moved card ended up on top of its neighbor.',
     },
   },
   {
@@ -436,25 +435,25 @@ export default [
   {
     id: 'css_l13_q16',
     type: 'build',
-    difficulty: 'hard',
+    difficulty: 'medium',
     tags: ['translate'],
-    pieces: ['transform', ': ', 'translate(', '0px, ', '-8px', ');'],
-    extra: ['8px', 'rotate('],
+    pieces: ['transform', ': ', 'translate(', '12px, ', '4px', ');'],
+    extra: ['12px', 'rotate('],
     vis: { css: '.karta:hover {\n  ___\n}' },
     uz: {
-      ctx: "Kinoteatr sayti: sichqoncha kelganda film kartochkasi 8 piksel yuqoriga ko'tarilsin.",
+      ctx: "Kinoteatr sayti: sichqoncha kelganda film kartochkasi 12 piksel o'ngga va 4 piksel pastga surilsin.",
       q: "Bo'laklarni tartib bilan bosib, qatorni yig'ing",
-      why: "translate ichida birinchi son o'ngga, ikkinchisi pastga suradi. Yuqoriga ko'tarish uchun ikkinchi son minus bilan: translate(0px, -8px). 8px esa pastga tushirardi.",
+      why: "translate ichida birinchi son o'ngga, ikkinchisi pastga suradi, sonlar orasida vergul: translate(12px, 4px). Vergulsiz brauzer qatorni tashlab yuboradi, rotate esa surmaydi, buradi.",
     },
     ru: {
-      ctx: 'Сайт кинотеатра: при наведении карточка фильма должна подняться на 8 пикселей.',
+      ctx: 'Сайт кинотеатра: при наведении карточка фильма должна сдвинуться на 12 пикселей вправо и на 4 вниз.',
       q: 'Нажимай кусочки по порядку и собери строку',
-      why: 'В translate первое число сдвигает вправо, второе — вниз. Чтобы поднять, второе число пишут с минусом: translate(0px, -8px). А 8px опустил бы карточку.',
+      why: 'В translate первое число сдвигает вправо, второе — вниз, между ними запятая: translate(12px, 4px). Без запятой браузер выбросит строку, а rotate не сдвигает, а поворачивает.',
     },
     en: {
-      ctx: 'A cinema site: on hover, a movie card should rise 8 pixels.',
+      ctx: 'A cinema site: on hover, a movie card should move 12 pixels right and 4 pixels down.',
       q: 'Tap the pieces in order to build the line',
-      why: 'In translate, the first number moves right and the second moves down. To lift it, the second number gets a minus: translate(0px, -8px). 8px would move the card down.',
+      why: 'In translate, the first number moves right and the second moves down, with a comma between them: translate(12px, 4px). Without the comma the browser drops the line, and rotate turns instead of moving.',
     },
   },
   {

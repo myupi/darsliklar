@@ -222,11 +222,11 @@
   "options": [
    {
     "id": "a",
-    "text": "<title>"
+    "text": "<DOCTYPE html>"
    },
    {
     "id": "b",
-    "text": "<body>"
+    "text": "<html>"
    },
    {
     "id": "c",
@@ -234,14 +234,14 @@
    },
    {
     "id": "d",
-    "text": "</html>"
+    "text": "</DOCTYPE html>"
    }
   ],
   "correct_answer": "c",
   "solution_explanation": {
-   "uz": "Birinchi qator — <!DOCTYPE html>. U brauzerga «Bu HTML sahifa» deydi, undan keyin darrov html tegi ochiladi.",
-   "ru": "Первая строка — <!DOCTYPE html>. Она говорит браузеру: «Это HTML-страница», и сразу за ней открывается тег html.",
-   "en": "The first line is <!DOCTYPE html>. It tells the browser “This is an HTML page”, and the html tag opens right after it."
+   "uz": "Birinchi qator — <!DOCTYPE html>: boshida undov belgisi bor, qiya chiziq yo'q. U brauzerga «Bu HTML sahifa» deydi, html tegi esa undan keyin ochiladi.",
+   "ru": "Первая строка — <!DOCTYPE html>: в начале восклицательный знак, косой черты нет. Она говорит браузеру «Это HTML-страница», а тег html открывается после неё.",
+   "en": "The first line is <!DOCTYPE html>: it starts with an exclamation mark and has no slash. It tells the browser “This is an HTML page”, and html opens after it."
   },
   "tags": [
    "dars01",
@@ -278,9 +278,9 @@
    {
     "id": "a",
     "text": {
-     "uz": "Yo'q: DOCTYPE qatorining jufti yo'q, uni yopmaymiz",
+     "uz": "Yo'q: DOCTYPE qatorining jufti yo'q, yopilmaydi",
      "ru": "Нет: у строки DOCTYPE нет пары, её не закрывают",
-     "en": "No: the DOCTYPE line has no pair, so we don’t close it"
+     "en": "No: the DOCTYPE line has no pair to close"
     }
    },
    {
@@ -842,9 +842,9 @@
    "<!DOCTYPE html>"
   ],
   "solution_explanation": {
-   "uz": "Birinchi maxsus qator — <!DOCTYPE html>: burchakli qavs, undov belgisi, DOCTYPE so'zi, bo'sh joy va html. Uning jufti yo'q.",
-   "ru": "Первая особая строка — <!DOCTYPE html>: угловая скобка, восклицательный знак, слово DOCTYPE, пробел и html. Пары у неё нет.",
-   "en": "The special first line is <!DOCTYPE html>: an angle bracket, an exclamation mark, the word DOCTYPE, a space and html. It has no pair."
+   "uz": "Birinchi maxsus qator — <!DOCTYPE html>: chap burchakli qavs, undov belgisi, DOCTYPE so'zi, bo'sh joy, html va o'ng burchakli qavs. Uning jufti yo'q.",
+   "ru": "Первая особая строка — <!DOCTYPE html>: левая угловая скобка, восклицательный знак, слово DOCTYPE, пробел, html и правая угловая скобка. Пары у неё нет.",
+   "en": "The special first line is <!DOCTYPE html>: a left angle bracket, an exclamation mark, the word DOCTYPE, a space, html and a right angle bracket. It has no pair."
   },
   "tags": [
    "dars01",
@@ -2104,7 +2104,7 @@
    "4"
   ],
   "solution_explanation": {
-   "uz": "Sarlavha teglari h1 dan h6 gacha bo'ladi, h7 degan teg yo'q. Brauzer uni tanimaydi va matnni oddiy chiqaradi.",
+   "uz": "Sarlavha teglari oltita: h1, h2, h3, h4, h5, h6. h7 degan teg yo'q: brauzer uni tanimaydi va matnni oddiy chiqaradi.",
    "ru": "Теги заголовков бывают от h1 до h6, тега h7 нет. Браузер его не знает и выводит текст обычным.",
    "en": "Heading tags go from h1 to h6; there is no h7 tag. The browser doesn’t know it and shows the text as plain text."
   },
@@ -2144,7 +2144,7 @@
    "h2"
   ],
   "solution_explanation": {
-   "uz": "h2 asosiy sarlavha h1 dan bir pog'ona kichik, lekin abzas matnidan katta va qalin. h4 esa ancha kichik, deyarli oddiy matndek chiqadi.",
+   "uz": "h2 tegi asosiy sarlavha bo'lgan h1 tegidan bir pog'ona kichik, lekin abzas matnidan katta va qalin. h4 esa ancha kichik, deyarli oddiy matndek chiqadi.",
    "ru": "h2 на ступеньку меньше главного заголовка h1, но крупнее и жирнее текста абзаца. А h4 намного мельче, почти как обычный текст.",
    "en": "h2 is one step smaller than the main heading h1, but bigger and bolder than paragraph text. h4 is much smaller, almost like plain text."
   },
@@ -2474,7 +2474,7 @@
    {
     "id": "b",
     "text": {
-     "uz": "Kod oxiriga yana bitta yopuvchi ul tegi qo'shamiz",
+     "uz": "Kod oxiriga yana bitta </ul> tegini qo'shamiz",
      "ru": "Дописать в конец ещё один закрывающий тег ul",
      "en": "Add one more closing ul tag at the end"
     }
@@ -2490,7 +2490,7 @@
    {
     "id": "d",
     "text": {
-     "uz": "Olma qatoridagi li tegini ul tegiga almashtiramiz",
+     "uz": "Olma qatorida li o'rniga ul tegini yozamiz",
      "ru": "Заменить li в строке с яблоками на ul",
      "en": "Change li in the apples line to ul"
     }
@@ -2836,7 +2836,7 @@
    {
     "id": "c",
     "text": {
-     "uz": "ul va li teglarining hammasini ol tegiga almashtirish",
+     "uz": "Hamma ul va li teglarini ol tegiga almashtirish",
      "ru": "Все теги, и ul, и li, заменить на ol",
      "en": "Replace all the tags, ul and li, with ol"
     }
@@ -3895,7 +3895,7 @@
    {
     "id": "c",
     "text": {
-     "uz": "«Galereya» so'zini a teglarining o'rtasiga olamiz",
+     "uz": "«Galereya» so'zini a teglari o'rtasiga olamiz",
      "ru": "Поставить «Галерея» между тегами a",
      "en": "Put “Gallery” between the a tags"
     }
@@ -4639,7 +4639,7 @@
    "ru": "Почему картинка не появилась?",
    "en": "Why didn’t the picture appear?"
   },
-  "vis": "@htmlvis:{\"code\":{\"uz\":\"<h2>Pitsa</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Pitsa\\\">\",\"ru\":\"<h2>Пицца</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Пицца\\\">\",\"en\":\"<h2>Pizza</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Pizza\\\">\"},\"page\":true,\"mark\":[2]}",
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<h2>Pitsa</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Pitsa\\\">\",\"ru\":\"<h2>Пицца</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Пицца\\\">\",\"en\":\"<h2>Pizza</h2>\\n<img href=\\\"pitsa.png\\\" alt=\\\"Pizza\\\">\"},\"page\":true}",
   "options": [
    {
     "id": "a",
@@ -7195,7 +7195,7 @@
    {
     "id": "d",
     "text": {
-     "uz": "Shahar qatoridan faqat </option> ni o'chirish",
+     "uz": "Shahar qatorida faqat </option> tegini o'chirish",
      "ru": "Удалить в строке Города только </option>",
      "en": "Delete only </option> on the City line"
     }
@@ -7728,7 +7728,7 @@
   "solution_explanation": {
    "uz": "Har bir section — bitta bo'lim, ular uchta. main esa bo'lim emas: u hammasini o'rab turgan asosiy qism.",
    "ru": "Каждый section — один раздел, их три. А main — не раздел: это главная часть, которая обнимает их все.",
-   "en": "Each section is one section, and there are three. main isn't a section: it's the main part that wraps them all."
+   "en": "Each section tag makes one section, and there are three. main isn't a section: it's the main part that wraps them all."
   },
   "tags": [
    "dars08",
@@ -8079,25 +8079,25 @@
    {
     "id": "b",
     "text": {
-     "uz": "header ichiga nav qo'shilsa, rang chiqadi",
-     "ru": "Цвет появится, если добавить в header nav",
-     "en": "Adding nav inside header gives color"
+     "uz": "nav tegi bilan — uni header ichiga qo'yib",
+     "ru": "Тегом nav — если вложить его в header",
+     "en": "The nav tag, placed inside header"
     }
    },
    {
     "id": "c",
     "text": {
-     "uz": "header o'rniga head yozilsa, rang chiqadi",
-     "ru": "Цвет появится, если написать head вместо header",
-     "en": "Writing head instead of header gives color"
+     "uz": "head tegi bilan — uni header o'rniga yozib",
+     "ru": "Тегом head — если написать его вместо header",
+     "en": "The head tag, used instead of header"
     }
    },
    {
     "id": "d",
     "text": {
-     "uz": "header ikki marta yozilsa, rang chiqadi",
-     "ru": "Цвет появится, если написать header дважды",
-     "en": "Writing header twice gives color"
+     "uz": "Ikkinchi header bilan — uni ikki marta yozib",
+     "ru": "Вторым header — если написать его дважды",
+     "en": "A second header, written twice"
     }
    }
   ],
@@ -8220,15 +8220,15 @@
    {
     "id": "b",
     "text": {
-     "uz": "</main> tegini butunlay o'chirib tashlash",
-     "ru": "Совсем удалить закрывающий тег </main>",
-     "en": "Delete the closing </main> tag completely"
+     "uz": "Pingvinlar qatorida section tegini o'chirish",
+     "ru": "Убрать тег section в строке «Пингвины»",
+     "en": "Remove the section tag on the Penguins line"
     }
    },
    {
     "id": "c",
     "text": {
-     "uz": "Pingvinlar bo'limini </main> tegidan oldinga ko'chirish",
+     "uz": "Pingvinlar bo'limini </main> tepasiga ko'chirish",
      "ru": "Перенести раздел «Пингвины» выше </main>",
      "en": "Move the Penguins section above </main>"
     }

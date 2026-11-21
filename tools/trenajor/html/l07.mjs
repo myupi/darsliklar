@@ -429,7 +429,7 @@ export default [
       q: "«Shahar» ro'yxat oldidagi yozuv bo'lishi uchun nima kerak?",
       opts: [
         "Uni label ichiga, select tegidan oldin yozish",
-        "Shahar qatoridan faqat </option> ni o'chirish",
+        "Shahar qatorida faqat </option> tegini o'chirish",
         "Uni select ichida option tegisiz qoldirish",
         "Uni select tegiga placeholder qilib yozish",
       ],

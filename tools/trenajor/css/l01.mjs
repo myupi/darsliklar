@@ -401,7 +401,7 @@ export default [
     difficulty: 'hard',
     tags: ['background-color'],
     mono: true,
-    answer: ['background-color'],
+    answer: ['background-color', 'background'],
     vis: {
       css: 'body {\n  ___: lightblue;\n}',
       html: {

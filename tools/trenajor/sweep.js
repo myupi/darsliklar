@@ -37,6 +37,8 @@ window.__sweep = async (opt) => {
     if (foot.getBoundingClientRect().bottom > r.bottom + 1) pr.push('foot-out');
     const vis = document.querySelector('.ht-vis'); const visOn = vis && vis.offsetHeight > 0;
     if (ed && visOn) { const fs = parseFloat(ed.style.fontSize); if (ed.style.maxHeight) pr.push('code-cut fs' + fs); else if (fs < 11.5) pr.push('code-fs' + fs); }
+    const aib = document.querySelector('.ht-aib');   // «ИИ» (21.11.2026): поле промпта и сообщение клиента
+    if (aib && visOn) { const fs = parseFloat(aib.style.fontSize); if (aib.style.maxHeight) pr.push('prompt-cut fs' + fs); else if (fs < 11.5) pr.push('prompt-fs' + fs); }
     if (fr && visOn) {
       const sc = +(fr.style.transform.match(/scale\(([\d.]+)/) || [0, 1])[1]; const fh = fr.offsetHeight * sc;
       if (pg.offsetHeight < fh - 2) pr.push('page-cut sc' + sc.toFixed(2)); else if (sc < 0.62) pr.push('page-sc' + sc.toFixed(2));

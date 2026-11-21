@@ -253,7 +253,7 @@ export default [
       css: 'h1 {\n  text-align: center;\n}',
       html: {
         uz: "<h1>Lochin FC</h1>\n<p>Har yakshanba o'yin bor.</p>",
-        ru: '<h1>Лочин FC</h1>\n<p>Игра каждое воскресенье.</p>',
+        ru: '<h1>ФК «Лочин»</h1>\n<p>Игра каждое воскресенье.</p>',
         en: '<h1>Lochin FC</h1>\n<p>A match every Sunday.</p>',
       },
     },
@@ -491,7 +491,7 @@ export default [
       html: {
         uz: "<p class=\"nom\" data-t=\"nom\">Kosmik poyga</p>\n<p class=\"chegirma\" data-t=\"chegirma\">90 000 so'm</p>\n<p data-t=\"narx\">60 000 so'm</p>\n<p class=\"izoh\" data-t=\"izoh\">Bu narx juma kunigacha</p>",
         ru: '<p class="nom" data-t="nom">Космические гонки</p>\n<p class="chegirma" data-t="chegirma">90 000 сумов</p>\n<p data-t="narx">60 000 сумов</p>\n<p class="izoh" data-t="izoh">Цена действует до пятницы</p>',
-        en: '<p class="nom" data-t="nom">Space Race</p>\n<p class="chegirma" data-t="chegirma">90,000 sums</p>\n<p data-t="narx">60,000 sums</p>\n<p class="izoh" data-t="izoh">This price lasts until Friday</p>',
+        en: '<p class="nom" data-t="nom">Space Race</p>\n<p class="chegirma" data-t="chegirma">90,000 soums</p>\n<p data-t="narx">60,000 soums</p>\n<p class="izoh" data-t="izoh">This price lasts until Friday</p>',
       },
     },
     uz: {

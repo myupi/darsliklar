@@ -422,12 +422,12 @@ export default [
       why: "rgb kodida sonlar tartibi: qizil, yashil, ko'k. Ko'k nur — uchinchi son, shuning uchun rgb(0, 0, 255). rgb(255, 0, 0) esa qizil.",
     },
     ru: {
-      ctx: 'Музыкальный сайт: абзацы синие — на полную горит только синий луч.',
+      ctx: 'Музыкальный сайт: абзацы должны быть синими — на полную горит только синий луч.',
       q: 'Нажимай кусочки по порядку и собери то, что внутри правила',
       why: 'В rgb числа идут так: красный, зелёный, синий. Синий луч — третье число, поэтому rgb(0, 0, 255). А rgb(255, 0, 0) — красный.',
     },
     en: {
-      ctx: 'Music site: the paragraphs are blue, with only the blue light fully on.',
+      ctx: 'Music site: the paragraphs should be blue, with only the blue light fully on.',
       q: 'Tap the pieces in order to build the inside of the rule',
       why: "In rgb the numbers go red, green, blue. Blue is the third number, so it's rgb(0, 0, 255). rgb(255, 0, 0) is red.",
     },

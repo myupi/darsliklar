@@ -128,7 +128,6 @@ export default [
         ru: '<h2>Пицца</h2>\n<img href="pitsa.png" alt="Пицца">',
         en: '<h2>Pizza</h2>\n<img href="pitsa.png" alt="Pizza">',
       },
-      mark: [2],
       page: true,
     },
     uz: {

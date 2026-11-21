@@ -136,7 +136,7 @@ export default [
       ctx: 'The header should show the picture tog.png, but only a green background appeared.',
       q: 'Why isn’t the picture visible?',
       opts: ['The file name has an extra g', 'background-color covered the picture', 'A background needs an src attribute', 'background-size: cover is missing'],
-      why: 'The browser looked for togg.png and didn’t find it. With no picture, the backup color, a green background, shows. Color never covers the picture: it always lies on top.',
+      why: 'The browser looked for togg.png and didn’t find it. With no picture, the backup color, a green background, shows. Color never covers the picture: the picture always lies on top of it.',
     },
   },
   {

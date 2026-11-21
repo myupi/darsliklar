@@ -295,7 +295,7 @@ export default [
     uz: {
       ctx: "«Galereya» so'zini bosib bo'lmayapti: u oddiy matn bo'lib turibdi.",
       q: 'Uni havola qilish uchun nima qilamiz?',
-      opts: ["«Galereya» so'zini a teglarining o'rtasiga olamiz", "href qiymatini «Galereya» deb yozamiz", 'galereya.html nomini katta harf bilan yozamiz', 'p tegini h1 tegi bilan almashtiramiz'],
+      opts: ["«Galereya» so'zini a teglari o'rtasiga olamiz", "href qiymatini «Galereya» deb yozamiz", 'galereya.html nomini katta harf bilan yozamiz', 'p tegini h1 tegi bilan almashtiramiz'],
       why: "Havola matni ochuvchi <a> va yopuvchi </a> o'rtasida turishi kerak. Bu kodda a tegi bo'm-bo'sh, shuning uchun bosiladigan narsa yo'q.",
     },
     ru: {
