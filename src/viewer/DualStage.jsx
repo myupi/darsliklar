@@ -13,12 +13,30 @@ const PAD = 0;   // поля даёт .stage.dual
 const hasClicked = () => typeof navigator === 'undefined' || !navigator.userActivation || navigator.userActivation.hasBeenActive;
 
 export const ZOOMS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
-function layout(W, H, zoom) {
+// Размеры окон на выбор (заказчик, 21.11.2026: «ноутбук 1366×800 и телефон 390×844… можем как-то оба настроить?»).
+// «По месту» — окно во всё свободное место в масштабе 100% (у ноутбука — свой масштаб − / +).
+export const PHONE_SIZES = ['390x844', '375x667', '360x640', '414x896', 'fit'];
+export const LAPTOP_SIZES = ['1366x800', '1280x720', '1440x900', '1536x864', '1920x1080', 'fit'];
+const sizeOf = (v) => { const m = /^(\d+)x(\d+)$/.exec(v || ''); return m ? { w: +m[1], h: +m[2] } : null; };
+function layout(W, H, zoom, phone, laptop) {
   const h = Math.max(100, Math.floor(H - PAD * 2));
-  const pw = PHONE.w;
-  const aw = Math.max(100, Math.floor(W - PAD * 2 - GAP - pw));
+  const w = Math.max(200, Math.floor(W - PAD * 2));
+  const P = sizeOf(phone), Lp = sizeOf(laptop);
+  if (Lp) {
+    // окна на экране всегда 100% своих размеров (390×844, 1366×800 — «в 100% это норма»); не влезают — сцена листается.
+    // Масштаб − / + — зум браузера внутри ноутбука, как Ctrl + / − (заказчик, 21.11.2026: «масштаб ноутбука нам нужен, зачем
+    // окна больше-меньше делаешь»): окно 1366×800 то же, вьюпорт урока = 1366 / масштаб × 800 / масштаб.
+    const pw0 = P ? P.w : PHONE.w;
+    const pvh = P ? P.h : h;
+    const s = (zoom || 100) / 100;
+    return { ps: 1, pw: pw0, ph: pvh, pvw: pw0, pvh, s, vw: Math.round(Lp.w / s), vh: Math.round(Lp.h / s), lw: Lp.w, lh: Lp.h, fit: false };
+  }
+  const ps = 1;
+  const pvw = P ? P.w : PHONE.w, pvh = P ? P.h : h;
+  const pw = pvw * ps;
+  const aw = Math.max(100, Math.floor(w - GAP - pw));
   const s = (zoom || 100) / 100;
-  return { ps: 1, pw, ph: h, pvh: h, s, vw: Math.round(aw / s), vh: Math.round(h / s), lw: aw, lh: h };
+  return { ps, pw, ph: pvh * ps, pvw, pvh, s, vw: Math.round(aw / s), vh: Math.round(h / s), lw: aw, lh: h, fit: true };
 }
 
 // ── Путь к вещи и поиск её в другом окне ──
@@ -97,7 +115,7 @@ function useMirror(aRef, bRef) {
   }, [aRef, bRef]);
 }
 
-export default function DualStage({ src, srcB, title, frameRef, zoom = 100, onZoom }) {
+export default function DualStage({ src, srcB, title, frameRef, zoom = 100, onZoom, phone = '390x844', laptop = '1366x800', onSize }) {
   const wrapRef = useRef(null);
   const bRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -109,9 +127,33 @@ export default function DualStage({ src, srcB, title, frameRef, zoom = 100, onZo
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const onLoad = useMirror(frameRef, bRef);
-  const L = box.w ? layout(box.w, box.h, zoom) : null;
-  const zi = ZOOMS.indexOf(zoom) >= 0 ? ZOOMS.indexOf(zoom) : ZOOMS.indexOf(100);
+  const onLoadM = useMirror(frameRef, bRef);
+  // Ctrl / Cmd + «+», «−», «0» — масштаб ноутбука в просмотрщике, а не зум всей страницы браузера (заказчик, 21.11.2026).
+  // Слушаем и саму страницу, и оба окна урока: фокус бывает внутри них.
+  const zoomRef = useRef({ zoom, onZoom });
+  zoomRef.current = { zoom, onZoom };
+  const onKey = useCallback((e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key, c = e.code;
+    const dir = k === '+' || k === '=' || c === 'Equal' || c === 'NumpadAdd' ? 1 : k === '-' || k === '_' || c === 'Minus' || c === 'NumpadSubtract' ? -1 : k === '0' || c === 'Digit0' || c === 'Numpad0' ? 0 : null;
+    if (dir === null) return;
+    const { zoom: z, onZoom: set } = zoomRef.current;
+    if (!set) return;
+    e.preventDefault();
+    if (dir === 0) { set(100); return; }
+    const to = dir > 0 ? ZOOMS.find((x) => x > z) : ZOOMS.filter((x) => x < z).pop();
+    if (to) set(to);
+  }, []);
+  useEffect(() => {
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onKey]);
+  const onLoad = (k) => (ev) => {
+    onLoadM(k)(ev);
+    try { ev.currentTarget.contentWindow.addEventListener('keydown', onKey, true); } catch (er) { /* окно с другого адреса */ }
+  };
+  const L = box.w ? layout(box.w, box.h, zoom, phone, laptop) : null;
+  const zPrev = ZOOMS.filter((z) => z < zoom).pop(), zNext = ZOOMS.find((z) => z > zoom);   // «вписать» даёт своё число — шаги идут от него
 
   return (
     <div className="stage dual" ref={wrapRef}>
@@ -119,22 +161,34 @@ export default function DualStage({ src, srcB, title, frameRef, zoom = 100, onZo
         <div className="dual-row" style={{ gap: GAP }}>
           <div className="device" style={{ width: L.pw, height: L.ph }}>
             {armed ? <iframe ref={frameRef} key={'a' + src} src={src} title={title} allow="autoplay; clipboard-write" onLoad={onLoad(0)}
-              style={{ width: PHONE.w, height: L.pvh }} /> : null}
-            <span className="dual-meta">Телефон · {PHONE.w}×{L.pvh} · 100%</span>
+              style={{ width: L.pvw, height: L.pvh, transform: `scale(${L.ps})` }} /> : null}
+            <span className="dual-meta">Телефон · {L.pvw}×{L.pvh} · {Math.round(L.ps * 100)}%</span>
           </div>
           <div className="device" style={{ width: L.lw, height: L.lh }}>
             {armed ? <iframe ref={bRef} key={'b' + srcB} src={srcB} title={title + ' (ноутбук)'} allow="autoplay; clipboard-write" onLoad={onLoad(1)}
               style={{ width: L.vw, height: L.vh, transform: `scale(${L.s})` }} /> : null}
-            <span className="dual-meta">Ноутбук · {L.vw}×{L.vh} · {Math.round(L.s * 100)}%</span>
+            <span className="dual-meta">Ноутбук · {Math.round(L.lw)}×{Math.round(L.lh)} · масштаб {Math.round(L.s * 100)}%</span>
           </div>
         </div>
       ) : null}
-      {onZoom ? (
-        <div className="dual-zoom" role="group" aria-label="Масштаб ноутбука">
+      {onSize ? (
+        <div className="dual-zoom" role="group" aria-label="Размеры окон">
+          <span className="dual-zoom-l">Телефон</span>
+          <select className="dual-size" value={phone} onChange={(e) => onSize({ dualPhone: e.target.value })} aria-label="Размер телефона">
+            {PHONE_SIZES.map((v) => <option key={v} value={v}>{v === 'fit' ? 'по месту' : v.replace('x', '×')}</option>)}
+          </select>
           <span className="dual-zoom-l">Ноутбук</span>
-          <button type="button" className="icon-btn" disabled={zi <= 0} onClick={() => onZoom(ZOOMS[zi - 1])} title="Мельче" aria-label="Мельче">−</button>
-          <button type="button" className="dual-zoom-v" onClick={() => onZoom(100)} title="Сбросить на 100%">{zoom}%</button>
-          <button type="button" className="icon-btn" disabled={zi >= ZOOMS.length - 1} onClick={() => onZoom(ZOOMS[zi + 1])} title="Крупнее" aria-label="Крупнее">+</button>
+          <select className="dual-size" value={laptop} onChange={(e) => onSize({ dualLaptop: e.target.value })} aria-label="Размер ноутбука">
+            {LAPTOP_SIZES.map((v) => <option key={v} value={v}>{v === 'fit' ? 'по месту' : v.replace('x', '×')}</option>)}
+          </select>
+          {onZoom && L ? (
+            <>
+              <span className="dual-zoom-l">Масштаб</span>
+          <button type="button" className="icon-btn" disabled={!zPrev} onClick={() => onZoom(zPrev)} title="Мельче (Ctrl или Cmd и −)" aria-label="Мельче">−</button>
+          <button type="button" className="dual-zoom-v" onClick={() => onZoom(100)} title="Сбросить на 100% (Ctrl или Cmd и 0)">{zoom}%</button>
+          <button type="button" className="icon-btn" disabled={!zNext} onClick={() => onZoom(zNext)} title="Крупнее (Ctrl или Cmd и +)" aria-label="Крупнее">+</button>
+            </>
+          ) : null}
         </div>
       ) : null}
       {armed ? null : (

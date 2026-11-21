@@ -105,7 +105,8 @@ export default function App() {
             />}
             <div className="workspace">
               {file && dual ? (
-                <DualStage frameRef={frameRef} src={src} srcB={srcB} title={sel.lesson.title} zoom={Number(prefs.dualZoom) || 100} onZoom={(z) => set({ dualZoom: z })} />
+                <DualStage frameRef={frameRef} src={src} srcB={srcB} title={sel.lesson.title} zoom={Number(prefs.dualZoom) || 100} onZoom={(z) => set({ dualZoom: z })}
+                  phone={prefs.dualPhone || '390x844'} laptop={prefs.dualLaptop || '1366x800'} onSize={set} />
               ) : file ? (
                 <DeviceStage
                   frameRef={frameRef}
