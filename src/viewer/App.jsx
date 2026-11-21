@@ -3,7 +3,8 @@ import { buildCatalog, findLesson } from '../shared/catalog.js';
 import { MSG_SOURCE } from '../runtime/bridge.js';
 import { readPrefs, writePrefs } from './prefs.js';
 import Sidebar from './Sidebar.jsx';
-import Toolbar from './Toolbar.jsx';
+import Toolbar, { MenuButton, PanelButtons } from './Toolbar.jsx';
+import DualStage, { SlideNav } from './DualStage.jsx';
 import DeviceStage from './DeviceStage.jsx';
 import LogPanel from './LogPanel.jsx';
 import { Placeholder, Welcome } from './Placeholder.jsx';
@@ -43,6 +44,10 @@ export default function App() {
     return q.toString();
   }, [file, sel, prefs.lang, prefs.voice, prefs.name, prefs.start, prefs.quizBar]);
   const src = file ? `/player.html?${playerQuery}&run=${run}` : null;
+  // Все три панели закрыты — два окна сразу: телефон слева, ноутбук справа, действия синхронно (DualStage).
+  // Голос — только у телефона: ноутбук без звука, но с паузами по длине реплик, чтобы окна шли вровень.
+  const dual = !!file && prefs.navHidden && prefs.barHidden && !prefs.logOpen;
+  const srcB = src ? src.replace(/([?&]voice=)browser\b/, '$1simulate') : null;
 
   // ── Журнал: всё, что урок делает с платформой ───────────────────────────
   const frameRef = useRef(null);
@@ -68,7 +73,7 @@ export default function App() {
   const pick = useCallback((key) => { set({ lesson: key, start: '' }); setNavOpen(false); }, [set]);
 
   return (
-    <div className={'app' + (navOpen ? ' nav-open' : '')}>
+    <div className={'app' + (navOpen ? ' nav-open' : '') + (prefs.navHidden ? ' nav-hidden' : '')}>
       <Sidebar catalog={catalog} selectedKey={sel ? sel.lesson.key : null} onPick={pick}
         mode={compilerMode ? 'compiler' : trainerMode ? 'trainer' : 'lessons'} onMode={(m) => { set({ view: m }); setNavOpen(false); }}
         cmpItems={cmpAll} cmpKey={cmpSel ? cmpSel.key : null} onCmp={(k) => { set({ cmp: k }); setNavOpen(false); }}
@@ -83,7 +88,13 @@ export default function App() {
             onPick={(k) => set({ cmp: k })} onMenu={toggleNav} />
         ) : sel ? (
           <>
-            <Toolbar
+            {prefs.barHidden ? (
+              <>{dual ? <SlideNav frameRef={frameRef} onGo={(i) => { if (String(i) === String(prefs.start)) setRun((r) => r + 1); else set({ start: String(i) }); }} /> : null}
+              <div className="bar-peek" role="toolbar" aria-label="Панели просмотрщика">
+                <MenuButton onClick={toggleNav} />
+                <PanelButtons prefs={prefs} set={set} log={!!file} />
+              </div></>
+            ) : <Toolbar
               sel={sel}
               prefs={prefs}
               set={set}
@@ -91,9 +102,11 @@ export default function App() {
               openHref={file ? `/player.html?${playerQuery}` : null}
               onRestart={() => setRun((r) => r + 1)}
               onMenu={toggleNav}
-            />
+            />}
             <div className="workspace">
-              {file ? (
+              {file && dual ? (
+                <DualStage frameRef={frameRef} src={src} srcB={srcB} title={sel.lesson.title} zoom={Number(prefs.dualZoom) || 100} onZoom={(z) => set({ dualZoom: z })} />
+              ) : file ? (
                 <DeviceStage
                   frameRef={frameRef}
                   src={src}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ExternalLink, Keyboard, Laptop, Maximize2, Menu, PanelRightClose, PanelRightOpen, RotateCcw, RotateCw, Smartphone, Tablet,
+  ExternalLink, Keyboard, Laptop, Maximize2, Menu, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, PanelTopClose, PanelTopOpen, RotateCcw, RotateCw, Smartphone, Tablet,
 } from 'lucide-react';
 import { pad2 } from '../shared/catalog.js';
 import { titlesOf } from '../shared/lessonTitles.js';
@@ -74,6 +74,23 @@ export function MenuButton({ onClick }) {
   );
 }
 
+// Кнопки панелей (как у журнала справа): левая — каталог, верхняя — шапка урока, правая — журнал.
+// Левая — только на широком экране (на узком каталог и так выезжает по «≡»).
+export function PanelButtons({ prefs, set, log = true, top = true }) {
+  const b = (on, onClick, hide, show, Close, Open, cls) => (
+    <button type="button" className={'icon-btn' + (on ? ' is-on' : '') + (cls ? ' ' + cls : '')} onClick={onClick} title={on ? hide : show} aria-label={on ? hide : show}>
+      {on ? <Close size={17} /> : <Open size={17} />}
+    </button>
+  );
+  return (
+    <>
+      {b(!prefs.navHidden, () => set({ navHidden: !prefs.navHidden }), 'Скрыть левую панель', 'Показать левую панель', PanelLeftClose, PanelLeftOpen, 'wide-only')}
+      {top ? b(!prefs.barHidden, () => set({ barHidden: !prefs.barHidden }), 'Скрыть верхнюю панель', 'Показать верхнюю панель', PanelTopClose, PanelTopOpen) : null}
+      {log ? b(prefs.logOpen, () => set({ logOpen: !prefs.logOpen }), 'Скрыть журнал', 'Показать журнал', PanelRightClose, PanelRightOpen) : null}
+    </>
+  );
+}
+
 export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, onMenu }) {
   const { course, lesson } = sel;
   const path = lesson.file ? `lessons/${lesson.file}.jsx` : lesson.expected;
@@ -114,17 +131,9 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
               <a className="btn" href={openHref} target="_blank" rel="noreferrer" title="Открыть урок отдельно, во всё окно">
                 <ExternalLink size={15} aria-hidden="true" /> Отдельно
               </a>
-              <button
-                type="button"
-                className={'icon-btn' + (prefs.logOpen ? ' is-on' : '')}
-                onClick={() => set({ logOpen: !prefs.logOpen })}
-                title={prefs.logOpen ? 'Скрыть журнал' : 'Показать журнал'}
-                aria-label={prefs.logOpen ? 'Скрыть журнал' : 'Показать журнал'}
-              >
-                {prefs.logOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-              </button>
             </>
           ) : null}
+          <PanelButtons prefs={prefs} set={set} log={canRun} />
         </div>
       </div>
 

@@ -12,6 +12,9 @@ export const DEFAULTS = {
   voice: 'browser',
   start: '',
   logOpen: true,
+  navHidden: false, // левая панель (каталог) скрыта — на широком экране
+  barHidden: false, // верхняя панель урока (шапка) скрыта
+  dualZoom: 100,    // два окна: масштаб ноутбука, % (как Ctrl + / − в браузере)
   view: 'lessons',   // 'lessons' | 'compiler' | 'trainer' — режим просмотрщика: уроки, задания для компилятора, тренажёры
   trn: 'html',       // тренажёр: '<id>' — попытка, '<id>:bank' — все вопросы, '<id>:bank:<урок>' — вопросы урока
   trnQ: '',          // выбранный вопрос банка (question_id)
