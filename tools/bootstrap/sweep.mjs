@@ -50,7 +50,7 @@ const MEASURE = (kb) => `(() => {
   const row = document.querySelector('.kz-sheet-body > .kz-row, .kz-sheet-body > .kz-pick, .kz-sheet-body > .keys, .kz-sheet-body > .kz-ready-row, .kz-sheet-body > button');
   if (row && sc && !${kb}) { const d = bot - row.getBoundingClientRect().top; if (d > 1) out.push('кнопки на сцене ' + Math.round(d) + 'px'); }
   // поле ввода: в коде урока или на странице в окне (форма урока 7)
-  let field = document.querySelector('.kz-gap textarea, .kz-gap input');
+  let field = document.querySelector('.kz-gap textarea, .kz-gap input, .cp-gap textarea, .cp-ed:not(.cp-static)');   // уроки и практики (tools/bsp)
   let fr = field ? field.getBoundingClientRect() : null;
   if (!field) {
     for (const f of document.querySelectorAll('.kz-br:not(.b1-docs) iframe')) {
@@ -62,7 +62,7 @@ const MEASURE = (kb) => `(() => {
   if (${kb} && field) {
     if (fr.bottom > H + 1) out.push('поле под клавиатурой ' + Math.round(fr.bottom - H) + 'px');
     if (fr.top < -1) out.push('поле выше экрана');
-    const btn = [...document.querySelectorAll('.kz-row .kz-btn.is-coral, .kz-ready-row button, .kz-sheet-body > .kz-row button')].find((x) => x.offsetHeight > 0);
+    const btn = [...document.querySelectorAll('.kz-row .kz-btn.is-coral, .kz-ready-row button, .kz-sheet-body > .kz-row button, .cp-keys .key-go')].find((x) => x.offsetHeight > 0);
     if (btn) { const r = btn.getBoundingClientRect(); if (r.bottom > H + 1) out.push('кнопка проверки под клавиатурой ' + Math.round(r.bottom - H) + 'px'); }
   }
   return res;

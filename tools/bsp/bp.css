@@ -1,0 +1,119 @@
+/* =============================================================================
+   ПРАКТИКИ МОДУЛЯ BOOTSTRAP (bsp, 21.11.2026) — поверх облика практик CSS (../cssp/cp.css).
+   Пример с сайта — светлая карточка, как блок кода на getbootstrap.com (страница светлая, тёмных плашек нет).
+   ============================================================================= */
+.r28 .bp-docs { flex: none; border: 1px solid #DEE2E6; border-radius: 10px; background: #fff; overflow: hidden; text-align: left;
+  font-family: var(--r-font); box-shadow: 0 4px 14px rgba(15, 23, 42, .06); }
+.r28 .bp-docs-top { display: flex; align-items: center; gap: 7px; padding: 6px 10px; background: #F8F9FA; border-bottom: 1px solid #DEE2E6;
+  font: 500 12px/1.2 var(--r-font); color: #495057; min-width: 0; }
+.r28 .bp-docs-logo { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 5px; background: #7952B3;
+  color: #fff; font: 700 11px/1 var(--r-font); font-style: normal; }
+.r28 .bp-docs-url { color: #212529; font-weight: 600; white-space: nowrap; }
+.r28 .bp-docs-page { margin-left: auto; color: #6C757D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.r28 .bp-snip + .bp-snip { border-top: 1px solid #E9ECEF; }
+.r28 .bp-snip-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 3px 10px;
+  font: 600 11.5px/1.2 var(--r-font); color: #6C757D; }
+.r28 .bp-copy { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 10px; border: 1px solid #DEE2E6; border-radius: 7px;
+  background: #fff; color: #495057; font: 600 12px/1 var(--r-font); cursor: pointer; }
+.r28 .bp-copy:hover { background: #F1F3F5; }
+.r28 .bp-copy.is-on { color: #146C43; border-color: #A3CFBB; background: #E8F5EE; }
+.r28 .bp-snip-code { margin: 0 8px 8px; padding: 6px 10px; border-radius: 7px; background: #F8F9FA; overflow-x: auto;
+  font: 500 12.5px/1.5 var(--r-mono); scrollbar-width: thin; }
+.r28 .bp-snip-ln { white-space: pre; color: #212529; }
+/* подсветка в светлом блоке — как на сайте Bootstrap */
+.r28 .bp-snip-code .cp-tb { color: #6C757D; }
+.r28 .bp-snip-code .cp-tn { color: #2F6F9F; }
+.r28 .bp-snip-code .cp-ha { color: #4F9FCF; }
+.r28 .bp-snip-code .cp-hv { color: #D44950; }
+.r28 .bp-snip-code .cp-t { color: #212529; }
+.r28 .bp-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 10px 9px; }
+.r28 .bp-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; background: #F8F9FA; border: 1px solid #E9ECEF;
+  font: 500 12px/1.2 var(--r-mono); color: #212529; }
+.r28 .bp-chip i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+/* «Qo'yish» — рядом с символами */
+.r28 .cp-keys .key-b.bp-paste { flex: none; display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 12px; font: 600 14px/1 var(--r-font);
+  color: #146C43; background: #E8F5EE; border-color: #A3CFBB; }
+@media (max-width: 719px) {
+  .r28 .bp-docs-top { padding: 5px 8px; }
+  .r28 .bp-snip-code { margin: 0 6px 6px; padding: 5px 8px; font-size: 12px; }
+  .r28 .bp-snip-h { padding: 3px 4px 2px 8px; }
+  .r28 .bp-copy { min-height: 28px; padding: 0 8px; }
+}
+
+/* ── ВЫСОТА (замер 21.11.2026: 360×640 … 1440×900) ──
+   Пример с сайта листается сам, как страница сайта; окно браузера рядом с ним ниже; длинные строки link и script
+   в своей странице переносятся — редактор не выше окна и листается сам. */
+.r28 .cp-side > .bp-docs { overflow-y: auto; overscroll-behavior: contain; }
+.r28 .cp-work.has-docs .cp-br { aspect-ratio: 16 / 6.5 !important; }
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .cp-work.has-docs .cp-side { max-height: calc(100dvh - 245px); }
+  .r28 .cp-work.has-docs .cp-side > .kz-br, .r28 .cp-work.has-docs .cp-side > .cp-list { flex: none; }
+  .r28 .cp-work.has-docs .cp-side > .bp-docs { flex: 0 1 auto; min-height: 120px; }
+  .r28 .cp-ed.is-big { max-height: calc(100dvh - 300px); }
+  .r28 .cp-s1 .cp-ed.cp-static { max-height: calc(100dvh - 250px); overflow: auto; }
+  .r28 .cp-fin .cp-ed.cp-static { max-height: calc(100dvh - 400px); min-height: 120px; overflow: auto; }
+}
+/* в столбик (телефон, планшет стоя): пример — не выше своей доли */
+@media not all and (min-width: 760px) and (orientation: landscape) {
+  @media (max-width: 999px) {
+    .r28 .cp-side > .bp-docs { max-height: 24dvh; }
+    .r28 .cp-work.has-docs .cp-br { aspect-ratio: 16 / 5.5 !important; }
+    .r28 .cp-work.has-docs .cp-ed { max-height: 26dvh; }
+    .r28 .cp-work.has-docs .cp-ed.is-big { max-height: 30dvh; }
+  }
+}
+@media (min-width: 600px) and (orientation: portrait) {
+  .r28 .cp-work.has-docs .cp-br { aspect-ratio: 16 / 4.5 !important; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .cp-side > .bp-docs { max-height: 17dvh; }
+  .r28 .cp-work.has-docs .cp-ed { max-height: 21dvh; }
+  .r28 .cp-work.has-docs .cp-ed.is-big { max-height: 21dvh; }
+}
+/* Телефон, переключатель «Kod / Natija»: в «Kod» — пример с сайта и редактор, условия «готово» — в «Natija» рядом со страницей. */
+@media (max-width: 759px) {
+  .r28 .cp-work.has-vt.is-v-code.has-docs .cp-side > .cp-list { display: none; }
+}
+/* Планшет стоя, своя страница: редактор и пример ниже. */
+@media (min-width: 600px) and (orientation: portrait) {
+  .r28 .cp-work.has-docs .cp-ed.is-big { max-height: 23dvh; }
+  .r28 .cp-work.has-docs.is-big .cp-br { aspect-ratio: 16 / 3.8 !important; }
+  .r28 .cp-work.has-docs .cp-side > .bp-docs { max-height: 20dvh; }
+}
+/* Окно телефона (vw, урок 3): страница целиком посередине, правый край телефона — черта; что шире — обрезано, черта красная. */
+.r28 .cp-pagebox.bp-phone { position: relative; background: #F1F3F4; }
+.r28 .cp-pagebox.bp-phone .cp-frame { background: #fff; box-shadow: 0 0 0 1px #DADCE0; }
+.r28 .bp-edge { position: absolute; top: 0; width: 2px; background: #DADCE0; pointer-events: none; }
+.r28 .bp-edge.is-over { width: 3px; background: #E11D48; box-shadow: 0 0 0 2px rgba(225, 29, 72, .18); }
+.r28 .cp-vw.is-over { background: #E11D48; }
+/* Страница-телефон без примера с сайта рядом — окно браузера выше (на ноутбуке), чтобы телефон был крупнее. */
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .cp-work.has-phone:not(.has-docs) .cp-br { aspect-ratio: 4 / 3.3 !important; max-height: calc(100dvh - 270px); }
+}
+/* Вывод на планшете стоя: код своей страницы листается сам (длинный документ с link и script). */
+@media (min-width: 600px) and (orientation: portrait) {
+  .r28 .cp-fin .cp-ed.cp-static { max-height: 24dvh; overflow: auto; }
+}
+/* Открытая клавиатура телефона: пример с сайта прячется (копируют при закрытой), поле и «Проверить» — над клавиатурой. */
+.is-kbd .r28 .cp-side > .bp-docs { display: none; }
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .cp-s1 .cp-ed.cp-static { max-height: calc(100dvh - 300px); }
+}
+/* Страница-телефон рядом с примером с сайта (ноутбук): окно выше, пример листается в оставшемся месте. */
+@media (min-width: 1000px) and (min-height: 700px) {
+  .r28 .cp-work.has-phone.has-docs .cp-br { aspect-ratio: 16 / 8.5 !important; }
+  .r28 .cp-work.has-phone.has-docs .cp-side > .bp-docs { min-height: 110px; }
+}
+/* Низкий ноутбук (1366×657 и т. п.): рядом с примером с сайта окно и пример ниже. */
+@media (min-width: 1000px) and (max-height: 700px) {
+  .r28 .cp-work.has-docs .cp-br { aspect-ratio: 16 / 5.5 !important; }
+  .r28 .cp-work.has-docs .cp-side > .bp-docs { min-height: 80px; }
+}
+/* Крючок на планшете стоя: длинный код страницы листается сам. */
+@media (min-width: 600px) and (orientation: portrait) {
+  .r28 .cp-s1 .cp-ed.cp-static { max-height: 30dvh; overflow: auto; }
+}
+/* Планшет стоя, страница своей ширины (vw) и длинный код вокруг поля (08p: карусель целиком в готовых строках) — редактор ниже, листается сам. */
+@media (min-width: 600px) and (orientation: portrait) {
+  .r28 .cp-work.has-phone:not(.has-docs) .cp-ed:not(.is-big):not(.cp-static) { max-height: 36dvh; }
+}
