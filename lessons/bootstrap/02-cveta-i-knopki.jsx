@@ -14506,6 +14506,43 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .kz-pick.b1-why .kz-btn { min-height: 38px; padding-top: 4px; padding-bottom: 4px; font-size: 14px; }
   .r28 .b1-sheet .kz-scene.b1-pair > .kz-col.b1-t4-page > .kz-br { --brh: 13dvh; }
 }
+
+/* Три окна на ноутбуке и планшете (заказчик, 21.11.2026, снимки урока 2 экран 8: «пустота между кодом и окном страницы,
+   низ не вровень»): правая колонка — образец и код сверху, окно страницы забирает всё оставшееся место; окно сайта
+   слева и правая колонка кончаются вровень. Меры --brh остаются наименьшей высотой окон. */
+@media (min-width: 760px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.is-done):has(> .b1-tri-docs) { grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.is-done) > .b1-tri-docs,
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.is-done):has(> .b1-tri-docs) > .b1-tri-page { display: flex; flex-direction: column; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.is-done) > .b1-tri-docs > .kz-br.b1-docs { height: auto; min-height: var(--brh); max-height: none; flex: 1 1 auto; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri:not(.is-done):has(> .b1-tri-docs) > .b1-tri-page > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: var(--brh); flex: 1 1 auto; }
+}
+
+/* «Какой код рисует образец» (Q1, уроки 2–5) на ноутбуке и планшете (заказчик, 21.11.2026, снимок урока 2 экран 15: «Kerak»
+   и окно браузера не на одной линии, над ними пусто): оба блока одной высоты, вровень, окно занимает место сцены. */
+@media (min-width: 760px) {
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 { align-items: stretch; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col { justify-content: center; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col > .b2-goal,
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col > .kz-br { flex: 1 1 auto; height: auto; aspect-ratio: auto; min-height: 120px; max-height: 46dvh; }
+  /* в высоком «Kerak» — метка сверху, образец — там же, где результат в окне браузера (под его шапкой, слева сверху) */
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col > .b2-goal { flex-direction: column; align-items: stretch; padding: 10px 12px; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col > .b2-goal > .b2-goal-h { align-self: flex-start; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1 > .kz-col > .b2-goal > .b2-goal-in { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 30px; }
+}
+
+/* Пары «код — страница» на ноутбуке и планшете (заказчик, 21.11.2026: окна разной высоты по центру — «не на одной линии»):
+   колонки одной высоты, вровень по верху и низу; короткое окно (обычно код) тянется до высоты соседнего. Сцена — по
+   своему содержимому, посередине свободного места. */
+@media (min-width: 760px) {
+  .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) { align-items: stretch; flex: 0 1 auto; margin-block: auto; }
+  .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { justify-content: flex-start; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-code { flex: 1 1 auto; }
+  /* окно браузера: не ниже своей прежней меры (пропорция колонки 16:11, но не выше --brh), а если соседняя колонка выше
+     (итог: код, умения, «Следующий урок») — дотягивается до её низа */
+  .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
+  .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+}
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.
    ============================================================================= */

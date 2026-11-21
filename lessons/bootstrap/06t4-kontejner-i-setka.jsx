@@ -787,8 +787,9 @@ function WqVis({ code, file, mark, html, css, bs, vw: vwOwn, focus, title }) {
     }
     let pg = null;
     if (hasPage && frame.current && docH) {
-      const vw = vwOwn || (row ? 420 : wide ? 560 : 360);   // текст страницы — почти в натуральную величину
-      const maxW = row ? Math.floor((f.width - gap) * (wideDoc ? 0.6 : 0.5)) : Math.min(f.width, wide ? 640 : 480);
+      const big = bs && f.width >= 900;   // Bootstrap на широком ноутбуке: страница шире (блок теста там шире — CSS .is-bs)
+      const vw = vwOwn || (row ? (big ? 480 : 420) : wide ? (big ? 720 : 560) : 360);   // текст страницы — почти в натуральную величину
+      const maxW = row ? Math.floor((f.width - gap) * (wideDoc ? 0.6 : 0.5)) : Math.min(f.width, wide ? (big ? 820 : 640) : 480);
       // высота полос Chrome — по самим полосам: у спрятанного окна высота 0, и разность ушла бы в минус (окно мигало бы)
       const chrome = Array.prototype.reduce.call(frame.current.querySelectorAll('.aq-br-bar, .aq-br-tool'), (n, el) => n + el.offsetHeight, 0);
       const freeH = (both && !row ? f.free - codeH - gap : f.free) - chrome;
@@ -802,7 +803,10 @@ function WqVis({ code, file, mark, html, css, bs, vw: vwOwn, focus, title }) {
         const el = ifr.current.contentDocument.querySelector(focus);
         if (el) off = Math.min(fullH - viewH, Math.max(0, Math.round((el.getBoundingClientRect().top - 8) * k)));
       }
-      pg = { vw, k, viewH, off, hide: dropPage || viewH < Math.min(70, fullH - 1) };   // короткая страница видна целиком — не прячем (тесты Bootstrap, 20.11.2026)   // места на окно нет (телефон после ответа) — окно прячется, как в тестах «ИИ»
+      // Bootstrap (заказчик, 21.11.2026: «окна не вровень»): рядом с кодом окно страницы не ниже редактора — страница
+      // белая до низа, как в настоящем браузере; редактор, если он ниже, тянется до низа окна (CSS .is-bs).
+      const viewH2 = bs && row && codeH ? Math.max(viewH, Math.min(freeH, codeH - chrome)) : viewH;
+      pg = { vw, k, viewH: viewH2, off, hide: dropPage || viewH < Math.min(70, fullH - 1) };   // короткая страница видна целиком — не прячем (тесты Bootstrap, 20.11.2026)   // места на окно нет (телефон после ответа) — окно прячется, как в тестах «ИИ»
     }
     const next = { row, wideDoc: row && wideDoc, fs, cut, pg };
     setFit((p) => (JSON.stringify(p) === JSON.stringify(next) ? p : next));
@@ -811,7 +815,7 @@ function WqVis({ code, file, mark, html, css, bs, vw: vwOwn, focus, title }) {
   const vw = pg ? pg.vw : (vwOwn || 360);
   useEffect(() => { if (hasPage) measure(); }, [vw]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div ref={box} className={'wq-vis' + (fit && fit.row ? ' is-row' : '') + (fit && fit.wideDoc ? ' is-wide-doc' : '') + (hasCode && hasPage ? ' is-both' : '')}>
+    <div ref={box} className={'wq-vis' + (bs ? ' is-bs' : '') + (fit && fit.row ? ' is-row' : '') + (fit && fit.wideDoc ? ' is-wide-doc' : '') + (hasCode && hasPage ? ' is-both' : '')}>
       {hasCode ? <WqCode code={code} file={file} mark={mark} fs={fit && fit.fs} cut={fit && fit.cut} innerRef={edRef} /> : null}
       {hasPage ? (
         <AqBrowser title={tabTitle} innerRef={frame} style={pg ? (pg.hide ? { width: Math.round(vw * pg.k), visibility: 'hidden', height: 0, position: 'absolute' } : { width: Math.round(vw * pg.k) }) : { visibility: 'hidden', width: 240 }}>
@@ -850,6 +854,14 @@ const WQ_CSS = `
 .wq-page { overflow: hidden; background: #fff; }
 .wq-page iframe { display: block; border: 0; transform-origin: 0 0; background: #fff; pointer-events: none; }
 .wq-vis .aq-br { flex: none; }
+/* Тесты Bootstrap (заказчик, 21.11.2026: «узко, окна не вровень»): на широком ноутбуке блок теста шире; код и окно страницы
+   рядом — одной высоты. */
+.wq-vis.is-row.is-bs { align-items: stretch; }
+.wq-vis.is-row.is-bs > .wq-ed { align-self: stretch; }
+@media (min-width: 1100px) {
+  .aq-main:has(.wq-vis.is-bs) { max-width: 1040px; }
+  .aq:has(.wq-vis.is-bs) .aq-fb-in { max-width: 1040px; }
+}
 `;
 
 // Bootstrap v6.0.0-alpha.1 (MIT, getbootstrap.com) — bootstrap.min.css, встраивается сборкой.
