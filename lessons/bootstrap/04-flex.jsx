@@ -14506,6 +14506,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
      (итог: код, умения, «Следующий урок») — дотягивается до её низа */
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+  /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
+  .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
 }
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.

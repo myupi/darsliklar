@@ -6885,6 +6885,7 @@ const FB = {
   // атрибуты data-bs-* (урок 8: карусель, урок 9: меню и окно)
   bsHash: L3("data-bs-target da panjara yo'q. id ga ishora qilganda oldiga panjara qo'yiladi: {w}. Busiz tugma o'z narsasini topmaydi.", 'В data-bs-target нет решётки. Когда указываешь на id, впереди ставится решётка: {w}. Без неё кнопка не найдёт свою вещь.', 'There’s no hash in data-bs-target. When you point to an id, a hash goes in front: {w}. Without it the button can’t find its target.'),
   bsDot: L3("Nuqta class uchun. id ga panjara bilan ishora qilinadi: {w}.", 'Точка — для class. На id указывают решёткой: {w}.', 'A dot is for class. You point to an id with a hash: {w}.'),
+  bsToggle: L3("data-bs-toggle nima ochilishini aytadi: menyu uchun menu, oyna uchun dialog.", 'data-bs-toggle говорит, что открыть: для меню — menu, для окна — dialog.', 'data-bs-toggle says what to open: menu for a menu, dialog for a dialog.'),
   bsSlide: L3("data-bs-slide faqat ikki so'zni biladi: next, ya'ni keyingi, va prev, ya'ni oldingi.", 'data-bs-slide знает только два слова: next, то есть следующий, и prev, то есть предыдущий.', 'data-bs-slide knows just two words: next and prev.'),
   slotEmpty: L3("Hozircha bo'sh: kerakli so'zni ramka ichiga yozing.", 'Пока пусто: впиши нужное в рамку.', 'It’s empty so far: type what’s needed into the box.'),
   slotCls: L3("Ramkaga faqat class so'zlarini yozing: qo'shtirnoq va burchakli qavslar o'z joyida turibdi.", 'В рамку — только слова для class: кавычки и угловые скобки уже на месте.', 'Only the class words go in the box: the quotes and angle brackets are already there.'),
@@ -9679,6 +9680,9 @@ function bpDiagnose(full, code) {
     m = /\sdata-bs-target\s*=\s*(["'])\s*([^"'\s]+)\s*\1/i.exec(t.raw);
     if (m && m[2].charAt(0) === '.') return at(t.i + m.index + 1, fillL(FB.bsDot, { w: '#' + m[2].slice(1) }));
     if (m && m[2].charAt(0) !== '#') return at(t.i + m.index + 1, fillL(FB.bsHash, { w: '#' + m[2] }));
+    m = /\sdata-bs-(toggle|dismiss)\s*=\s*(["'])\s*([^"'\s]*)\s*\2/i.exec(t.raw);
+    if (m && /^(dropdown|modal)$/i.test(m[3])) return at(t.i + m.index + 1, fillL(FB.v5, { w: m[3] }));
+    if (m && m[3] && !/^(menu|dialog|collapse|tooltip|popover|tab|offcanvas|button|alert|toast)$/.test(m[3])) return at(t.i + m.index + 1, FB.bsToggle);
     m = /\sdata-bs-slide\s*=\s*(["'])\s*([^"'\s]*)\s*\1/i.exec(t.raw);
     if (m && m[2] && !/^(next|prev)$/.test(m[2])) return at(t.i + m.index + 1, FB.bsSlide);
   }
@@ -9816,6 +9820,72 @@ function bpCarouselClick(doc, e) {
   return true;
 }
 
+// МЕНЮ И ОКНО (урок 9) — тоже только при верной строке script: кнопка data-bs-toggle="menu" открывает соседний .menu под
+// собой (пункт или щелчок мимо закрывает), data-bs-toggle="dialog" + data-bs-target="#id" открывает <dialog> (showModal),
+// закрывают data-bs-dismiss="dialog", фон и Esc (data-bs-backdrop="static" — только кнопки). Без script, с чужим словом
+// или без «#» кнопка мёртвая. Открытое окно выше страницы — страница подрастает (doc.__bpRefit).
+const bpMenuOf = (btn) => { let m = btn.nextElementSibling; while (m && !(m.classList && m.classList.contains('menu'))) m = m.nextElementSibling; return m; };
+function bpCloseMenus(doc, keep) {
+  doc.querySelectorAll('.menu.show').forEach((m) => { if (m === keep || m.classList.contains('position-static')) return; m.classList.remove('show'); if (m.__btn) m.__btn.setAttribute('aria-expanded', 'false'); });
+}
+function bpOpenDialog(doc, dlg) {
+  if (!dlg || dlg.open || typeof dlg.showModal !== 'function') return;
+  doc.body.style.minHeight = '';
+  dlg.showModal();
+  dlg.style.maxHeight = 'none';
+  const need = Math.ceil(dlg.getBoundingClientRect().height + 64);
+  dlg.style.maxHeight = '';
+  if (doc.body.getBoundingClientRect().height < need) doc.body.style.minHeight = need + 'px';
+  if (!dlg.__bpClose) {
+    dlg.__bpClose = true;
+    dlg.addEventListener('close', () => { doc.body.style.minHeight = ''; if (doc.__bpRefit) doc.__bpRefit(); });
+    dlg.addEventListener('cancel', (e) => { if (dlg.__static) e.preventDefault(); });
+  }
+  if (doc.__bpRefit) doc.__bpRefit();
+}
+function bpUiClick(doc, e) {
+  const t = e.target;
+  if (!t || !t.closest) return false;
+  if (t.tagName === 'DIALOG' && t.open) {   // щелчок мимо коробки окна — по фону
+    const r = t.getBoundingClientRect();
+    if ((e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) && !t.__static) t.close();
+    return true;
+  }
+  const dis = t.closest('[data-bs-dismiss]');
+  if (dis && dis.closest('dialog')) { if (dis.getAttribute('data-bs-dismiss') === 'dialog') dis.closest('dialog').close(); return true; }
+  const tg = t.closest('[data-bs-toggle]');
+  if (tg) {
+    const kind = tg.getAttribute('data-bs-toggle');
+    if (kind === 'menu') {
+      const m = bpMenuOf(tg);
+      if (!m) return true;
+      const on = !m.classList.contains('show');
+      bpCloseMenus(doc, m);
+      m.__btn = tg;
+      if (on) {
+        doc.body.style.position = 'relative';
+        const br = tg.getBoundingClientRect(), dr = doc.body.getBoundingClientRect();
+        Object.assign(m.style, { top: Math.round(br.bottom - dr.top + 2) + 'px', left: Math.round(br.left - dr.left) + 'px' });
+        m.classList.add('show'); tg.setAttribute('aria-expanded', 'true');
+      } else { m.classList.remove('show'); tg.setAttribute('aria-expanded', 'false'); }
+      return true;
+    }
+    if (kind === 'dialog') {
+      const sel = (tg.getAttribute('data-bs-target') || '').trim();
+      let dlg = null;
+      try { dlg = /^#[\w-]+$/.test(sel) ? doc.querySelector(sel) : null; } catch (er) { dlg = null; }
+      if (!dlg || dlg.tagName !== 'DIALOG') return true;
+      dlg.__static = tg.getAttribute('data-bs-backdrop') === 'static';
+      bpOpenDialog(doc, dlg);
+      return true;
+    }
+    return false;
+  }
+  const inMenu = t.closest('.menu');
+  if (!inMenu || t.closest('.menu-item')) bpCloseMenus(doc, null);
+  return false;
+}
+
 // Документ рамки: свой каркас, CSS Bootstrap (bp-bs) — только при верной строке link, свои стили страницы (bp-b).
 // Картинки сами не сжимаются (как в Bootstrap 6: это делает img-fluid, урок 3).
 const BP_BASE_CSS = 'html,body{margin:0}body{padding:10px 12px}';
@@ -9859,8 +9929,10 @@ function BpPage({ full, frameRef, fit = true, flash, onApply, vw }) {
     doc.body.dataset.bs = bsOn ? '1' : '0';
     if (!doc.__bpUi) {
       doc.__bpUi = true;
-      doc.addEventListener('click', (e) => { if (doc.body && doc.body.dataset.js === '1') bpCarouselClick(doc, e); });
+      doc.addEventListener('click', (e) => { if (doc.body && doc.body.dataset.js === '1' && !bpUiClick(doc, e)) bpCarouselClick(doc, e); });
     }
+    doc.__bpRefit = () => setOk((x) => x + 1);
+    if (js !== '1') doc.querySelectorAll('dialog[open]').forEach((d) => d.close());
     if (onApply) onApply();
     if (vw && bw && bh) {
       // телефон целиком: вся страница видна, уменьшенная; что шире телефона — обрезано краем (красная черта)

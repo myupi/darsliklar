@@ -28,7 +28,7 @@ export default {
     { n: 6, slug: 'kontejner-i-setka', title: 'Контейнер и сетка', topics: ['container', 'row', 'col', 'колонки по ширине экрана'], practiceTitle: 'Сетка страницы' },
     { n: 7, slug: 'formy', title: 'Формы', topics: ['form-control', 'form-label', 'form-select', 'form-check'], practiceTitle: 'Анкета записи' },
     { n: 8, slug: 'karusel', title: 'Карусель', topics: ['carousel', 'carousel-item', 'slide'], practiceTitle: 'Выставка роботов' },
-    { n: 9, slug: 'menu-i-dialog', title: 'Menu и Dialog', topics: ['menu', 'dialog', 'data-bs-toggle'] },   // в Bootstrap 6 Dropdown → Menu, Modal → Dialog
+    { n: 9, slug: 'menu-i-dialog', title: 'Menu и Dialog', topics: ['menu', 'dialog', 'data-bs-toggle'], practiceTitle: 'Страница турнира' },   // в Bootstrap 6 Dropdown → Menu, Modal → Dialog
     { n: 10, slug: 'final-proekt', title: 'Финальный проект', topics: [], final: true },
   ],
 };
