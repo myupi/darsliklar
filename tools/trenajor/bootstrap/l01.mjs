@@ -1,0 +1,531 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА BOOTSTRAP · урок 1 «Введение в Bootstrap» — 11 вопросов с выбором (4 easy, 5 medium, 2 hard)
+// + 3 «впиши ответ» (q12–q14) + игровые: 2 «собери» (q15, q16), 1 «найди ошибку» (q17), 1 «нажми на странице» (q18).
+// Проверяем: Bootstrap — готовый CSS, мы ставим имена классов; сайт getbootstrap.com: Read the docs, Getting started → Install,
+// Components → Alert, Variants; строка link (href, rel="stylesheet", integrity — печать защиты) в head, script — в конце body;
+// link приносит правила, class их включает (нужны оба); e'lon = alert + theme-*; крестик работает только со script;
+// скопированный пример — шаблон: свой текст, свой цвет словом с сайта; класс без точки; alert-* — имя версии 5.
+// Словарь: sayt, bo'lim, namuna, nusxalash, qo'yish, moslash, ulash, qator, e'lon, rang so'zi, himoya muhri, eski nom.
+// Тесты модуля (tools/webtest/bootstrap/l01.jsx) не повторяем. Апостроф в узбекском — только ASCII «'».
+// =============================================================================
+export default [
+  {
+    id: 'bootstrap_l01_q01',
+    difficulty: 'easy',
+    tags: ['bootstrap'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Kodi do'stiga maqtandi: «Bootstrap bilan e'lonni bir daqiqada chiroyli qildim!»",
+      q: 'Bootstrap o\'zi nima?',
+      opts: ["Tayyor CSS: biz faqat class nomini qo'yamiz", "Kompyuterga o'rnatiladigan katta dastur", "HTML o'rniga yoziladigan yangi til", 'VS Code kabi kod yozish muharriri'],
+      why: "Bootstrapni boshqa veb-dasturchilar yozib qo'yishgan: tugma, e'lon va boshqalar uchun minglab CSS qoidalari tayyor. Uni o'rnatish shart emas, biz faqat class nomini yozamiz.",
+    },
+    ru: {
+      ctx: 'Коди хвастается другу: «С Bootstrap я сделал красивое объявление за минуту!»',
+      q: 'Что такое Bootstrap?',
+      opts: ['Готовый CSS: мы только ставим имена классов', 'Большая программа, её ставят на компьютер', 'Новый язык, который пишут вместо HTML', 'Редактор для кода, как VS Code'],
+      why: 'Bootstrap уже написали другие веб-разработчики: в нём тысячи готовых CSS-правил для кнопок, объявлений и прочего. Устанавливать его не нужно, мы только пишем имя класса.',
+    },
+    en: {
+      ctx: 'Kodi brags to a friend: “With Bootstrap I made a nice notice in a minute!”',
+      q: 'What is Bootstrap?',
+      opts: ['Ready-made CSS: we only add class names', 'A big program you install on a computer', 'A new language you write instead of HTML', 'A code editor, like VS Code'],
+      why: 'Other web developers already wrote Bootstrap: it has thousands of ready CSS rules for buttons, notices and more. You don’t install it; you just write the class name.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q02',
+    difficulty: 'easy',
+    tags: ['install', 'cdn'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Bootstrapni sahifaga ulash uchun saytdan link va script qatorlarini olish kerak.",
+      q: 'Bu qatorlar saytning qaysi sahifasida turadi?',
+      opts: ['Getting started → Install', 'Components → Alert', 'Utilities → Colors', 'Customize → Color'],
+      why: "Ulash qatorlari Install sahifasidagi CDN blokida turadi. Hujjatlar ochilganda birinchi bo'lib aynan shu sahifa chiqadi.",
+    },
+    ru: {
+      ctx: 'Чтобы подключить Bootstrap, нужно взять с сайта строки link и script.',
+      q: 'На какой странице сайта лежат эти строки?',
+      opts: ['Getting started → Install', 'Components → Alert', 'Utilities → Colors', 'Customize → Color'],
+      why: 'Строки подключения лежат в блоке CDN на странице Install. Она открывается первой, когда заходишь в документацию.',
+    },
+    en: {
+      ctx: 'To connect Bootstrap, you need the link and script lines from the site.',
+      q: 'Which page of the site has these lines?',
+      opts: ['Getting started → Install', 'Components → Alert', 'Utilities → Colors', 'Customize → Color'],
+      why: 'The connection lines are in the CDN block on the Install page. It is the first page that opens in the docs.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q03',
+    difficulty: 'easy',
+    tags: ['alert', 'theme'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<div class="alert theme-warning" role="alert">\n  <p>Ertaga to'garak yo'q!</p>\n</div>`,
+        ru: '<div class="alert theme-warning" role="alert">\n  <p>Завтра кружка нет!</p>\n</div>',
+        en: '<div class="alert theme-warning" role="alert">\n  <p>No club tomorrow!</p>\n</div>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "To'garak saytida sariq e'lon paydo bo'ldi.",
+      q: "Qaysi so'z e'lonni sariq qildi?",
+      opts: ['theme-warning', 'alert', 'role', 'div'],
+      why: "alert so'zi e'lonning o'zini yasaydi: fon, chegara, ichki bo'shliq. Rangni esa theme-warning beradi, warning — sariq.",
+    },
+    ru: {
+      ctx: 'На сайте кружка появилось жёлтое объявление.',
+      q: 'Какое слово сделало объявление жёлтым?',
+      opts: ['theme-warning', 'alert', 'role', 'div'],
+      why: 'Слово alert делает само объявление: фон, рамку, отступы внутри. А цвет даёт theme-warning, warning — жёлтый.',
+    },
+    en: {
+      ctx: 'A yellow notice appeared on the club site.',
+      q: 'Which word made the notice yellow?',
+      opts: ['theme-warning', 'alert', 'role', 'div'],
+      why: 'The word alert builds the notice itself: background, border, inner space. The color comes from theme-warning; warning is yellow.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q04',
+    difficulty: 'easy',
+    tags: ['docs'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Siz getbootstrap.com saytining bosh sahifasidasiz. Sizga misollar va ularning kodi kerak.",
+      q: 'Qaysi tugmani bosasiz?',
+      opts: ['Read the docs', 'Blog', 'Icons', 'For Agents'],
+      why: "Misollar va kodlar hujjatlarda turadi, ularga bosh sahifadagi Read the docs tugmasi olib boradi. Blog — yangiliklar, Icons — belgilar to'plami.",
+    },
+    ru: {
+      ctx: 'Ты на главной странице getbootstrap.com. Нужны примеры и их код.',
+      q: 'Какую кнопку нажмёшь?',
+      opts: ['Read the docs', 'Blog', 'Icons', 'For Agents'],
+      why: 'Примеры и код лежат в документации, туда ведёт кнопка Read the docs на главной. Blog — новости, Icons — набор значков.',
+    },
+    en: {
+      ctx: 'You are on the getbootstrap.com home page. You need examples and their code.',
+      q: 'Which button do you press?',
+      opts: ['Read the docs', 'Blog', 'Icons', 'For Agents'],
+      why: 'Examples and code are in the docs, and the Read the docs button on the home page leads there. Blog is news, Icons is a set of icons.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q05',
+    difficulty: 'medium',
+    tags: ['alert', 'theme'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<div class="alert" role="alert">\n  <p>Kutubxona shanba kuni ochiq.</p>\n</div>',
+        ru: '<div class="alert" role="alert">\n  <p>Библиотека открыта в субботу.</p>\n</div>',
+        en: '<div class="alert" role="alert">\n  <p>The library is open on Saturday.</p>\n</div>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Saytdan Alert namunasini nusxaladingiz. E'lon kulrang, sizga esa yashil kerak.",
+      q: 'Nima qilasiz?',
+      opts: ["alert so'zidan keyin theme-success yozaman", "alert so'zini success bilan almashtiraman", 'alert o\'rniga alert-success yozaman', "link qatoriga green so'zini qo'shaman"],
+      why: "alert so'zi e'lonni yasaydi, u qoladi. Rang uchun yoniga Variants bo'limidagi so'z yoziladi: theme-success. alert-success — 5-versiyaning eski nomi, 6-versiyada ishlamaydi.",
+    },
+    ru: {
+      ctx: 'Пример Alert скопирован с сайта. Объявление серое, а нужно зелёное.',
+      q: 'Что сделаешь?',
+      opts: ['Допишу theme-success после alert', 'Заменю слово alert на success', 'Напишу alert-success вместо alert', 'Добавлю слово green в строку link'],
+      why: 'Слово alert делает само объявление, оно остаётся. Для цвета рядом пишут слово из раздела Variants: theme-success. alert-success — старое имя из 5-й версии, в 6-й не работает.',
+    },
+    en: {
+      ctx: 'The Alert example is copied from the site. The notice is gray, but you need green.',
+      q: 'What do you do?',
+      opts: ['Add theme-success after alert', 'Replace the word alert with success', 'Write alert-success instead of alert', 'Add the word green to the link line'],
+      why: 'The word alert builds the notice, so it stays. For the color, add the word from the Variants section next to it: theme-success. alert-success is an old version 5 name; it doesn’t work in 6.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q06',
+    difficulty: 'medium',
+    tags: ['namuna', 'moslash'],
+    mono: false,
+    sort: false,
+    vis: { code: '<div class="alert theme-info" role="alert">\n  <p>A simple alert—check it out!</p>\n</div>' },
+    uz: {
+      ctx: "Saytdan e'lon nusxalandi. Unda inglizcha yozuv bor, bizga esa «Musobaqa shanba kuni!» kerak.",
+      q: "Koddagi qaysi joyni o'zgartirasiz?",
+      opts: ['p tegi ichidagi matnni', "class ichidagi alert so'zini", 'div tegidagi role atributini', 'head ichidagi link qatorini'],
+      why: "Nusxalangan kod — shablon: teglar o'rtasidagi matnni xohlagancha o'zgartirsa bo'ladi. class va role esa ko'rinish uchun kerak, ular qoladi.",
+    },
+    ru: {
+      ctx: 'С сайта скопировано объявление. В нём английский текст, а нужно «Соревнования в субботу!».',
+      q: 'Что в коде ты поменяешь?',
+      opts: ['Текст внутри тега p', 'Слово alert внутри class', 'Атрибут role у тега div', 'Строку link внутри head'],
+      why: 'Скопированный код — шаблон: текст между тегами можно менять как угодно. А class и role нужны для вида, их оставляют.',
+    },
+    en: {
+      ctx: 'A notice was copied from the site. It has English text, but we need “Contest on Saturday!”.',
+      q: 'What will you change in the code?',
+      opts: ['The text inside the p tag', 'The word alert inside class', 'The role attribute of the div', 'The link line inside head'],
+      why: 'Copied code is a template: you can change the text between the tags as you like. class and role are needed for the look, so they stay.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q07',
+    difficulty: 'medium',
+    tags: ['script'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<div class="alert theme-success" role="alert">\n  <p>Ro'yxat ochildi!</p>\n  <button class="btn-close"\n    data-bs-dismiss="alert"></button>\n</div>`,
+        ru: '<div class="alert theme-success" role="alert">\n  <p>Запись открыта!</p>\n  <button class="btn-close"\n    data-bs-dismiss="alert"></button>\n</div>',
+        en: '<div class="alert theme-success" role="alert">\n  <p>Sign-up is open!</p>\n  <button class="btn-close"\n    data-bs-dismiss="alert"></button>\n</div>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Bootstrap ulangan, e'lon chiroyli. Lekin yopish belgisini bossangiz, hech narsa bo'lmayapti.",
+      q: 'Sahifada nima yetishmayapti?',
+      opts: ['body oxirida script qatori', 'head ichida link qatori', "class ichida theme-danger so'zi", 'div tegida role atributi'],
+      why: "link qatori faqat ko'rinishni olib keladi. Bosganda ishlaydigan narsalarni, masalan yopish belgisini, script qatori jonlantiradi. U yopuvchi body tegidan oldin turadi.",
+    },
+    ru: {
+      ctx: 'Bootstrap подключён, объявление красивое. Но если нажать на крестик, ничего не происходит.',
+      q: 'Чего не хватает на странице?',
+      opts: ['Строки script в конце body', 'Строки link внутри head', 'Слова theme-danger в class', 'Атрибута role у тега div'],
+      why: 'Строка link приносит только внешний вид. То, что работает по нажатию, например крестик, оживляет строка script. Она стоит перед закрывающим тегом body.',
+    },
+    en: {
+      ctx: 'Bootstrap is connected and the notice looks nice. But clicking the close icon does nothing.',
+      q: 'What is missing on the page?',
+      opts: ['A script line at the end of body', 'A link line inside head', 'The word theme-danger in class', 'A role attribute on the div'],
+      why: 'The link line brings only the look. Things that work on click, like the close icon, are brought to life by the script line. It goes right before the closing body tag.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q08',
+    difficulty: 'medium',
+    tags: ['cdn', 'nusxa'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Do'stingiz link qatorini nusxalamay, ekranga qarab qo'lda yozib chiqmoqchi.",
+      q: "Nega bunday qilmagan ma'qul?",
+      opts: ['Bitta harf adashsa, fayl yuklanmaydi', "head ichiga qo'lda yozish taqiqlangan", "Qo'lda yozilgan qator sekinroq ishlaydi", "Qo'lda yozilsa, script kerak bo'lmaydi"],
+      why: "Qatorda uzun manzil va himoya muhri bor. Bitta harf adashsa, brauzer faylni topmaydi va sahifa oddiy qoladi. Nusxa olish belgisi esa hech qachon adashmaydi.",
+    },
+    ru: {
+      ctx: 'Друг хочет не копировать строку link, а переписать её с экрана руками.',
+      q: 'Почему так лучше не делать?',
+      opts: ['Ошибка в одной букве — и файл не загрузится', 'Писать в head руками запрещено', 'Набранная руками строка работает медленнее', 'Если набрать руками, script не понадобится'],
+      why: 'В строке длинный адрес и печать защиты. Ошибка в одной букве — и браузер не найдёт файл, страница останется обычной. А значок копирования не ошибается.',
+    },
+    en: {
+      ctx: 'A friend wants to type the link line by hand from the screen instead of copying it.',
+      q: 'Why is that a bad idea?',
+      opts: ['One wrong letter and the file won’t load', 'Typing inside head by hand is forbidden', 'A typed line works more slowly', 'If you type it, you won’t need script'],
+      why: 'The line has a long address and a safety seal. One wrong letter and the browser can’t find the file, so the page stays plain. The copy icon never makes mistakes.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q09',
+    difficulty: 'medium',
+    tags: ['link', 'class'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<head>\n  <link href="…/bootstrap.min.css" rel="stylesheet">\n</head>\n<body>\n  <div role="alert">\n    <p>Yangi kitoblar keldi!</p>\n  </div>\n</body>',
+        ru: '<head>\n  <link href="…/bootstrap.min.css" rel="stylesheet">\n</head>\n<body>\n  <div role="alert">\n    <p>Пришли новые книги!</p>\n  </div>\n</body>',
+        en: '<head>\n  <link href="…/bootstrap.min.css" rel="stylesheet">\n</head>\n<body>\n  <div role="alert">\n    <p>New books have arrived!</p>\n  </div>\n</body>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Kutubxona sayti: link qatori joyida, lekin e'lon oddiy matn bo'lib turibdi.",
+      q: "Nega Bootstrap e'lonni chiroyli qilmadi?",
+      opts: ["class ichida alert so'zi yo'q", 'link qatori body ichida turishi kerak', "Bootstrapni kompyuterga o'rnatish kerak", 'role atributi xalal beryapti'],
+      why: "link qatori faqat qoidalarni olib keladi. Qaysi qoidani yoqishni esa class aytadi: unda alert so'zi bo'lmasa, qoida ishlamaydi va e'lon oddiy qoladi.",
+    },
+    ru: {
+      ctx: 'Сайт библиотеки: строка link на месте, но объявление осталось простым текстом.',
+      q: 'Почему Bootstrap не сделал объявление красивым?',
+      opts: ['В class нет слова alert', 'Строка link должна стоять в body', 'Bootstrap надо установить на компьютер', 'Атрибут role мешает'],
+      why: 'Строка link только приносит правила. А какое правило включить, говорит class: без слова alert в нём правило не работает, и объявление остаётся обычным.',
+    },
+    en: {
+      ctx: 'A library site: the link line is in place, but the notice is still plain text.',
+      q: 'Why didn’t Bootstrap make the notice nice?',
+      opts: ['class has no word alert', 'The link line must be in body', 'Bootstrap must be installed on the computer', 'The role attribute gets in the way'],
+      why: 'The link line only brings the rules. class says which rule to turn on: without the word alert in it the rule isn’t used, and the notice stays plain.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q10',
+    difficulty: 'hard',
+    tags: ['theme', 'alert'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: '<div class="theme-success" role="alert">\n  <p>Musobaqa boshlandi!</p>\n</div>',
+        ru: '<div class="theme-success" role="alert">\n  <p>Соревнование началось!</p>\n</div>',
+        en: '<div class="theme-success" role="alert">\n  <p>The contest has started!</p>\n</div>',
+      },
+    },
+    uz: {
+      ctx: "Bootstrap ulangan. Kodi e'londan alert so'zini o'chirib, faqat rang so'zini qoldirdi.",
+      q: "Sahifada nima ko'rinadi?",
+      opts: ["Oddiy matn: rang bor, e'lonning o'zi yo'q", "Yashil e'lon, xuddi oldingidek", 'Yashil harflar, chegarasiz va fonsiz', "Hech narsa: matn butunlay yo'qoladi"],
+      why: "theme-success faqat qaysi rangda bo'yashni aytadi. Bo'yaladigan e'lonni esa alert so'zi yasaydi. Usiz rang ishlatilmaydi va matn oddiy qoladi.",
+    },
+    ru: {
+      ctx: 'Bootstrap подключён. Коди стёр из объявления слово alert и оставил только слово цвета.',
+      q: 'Что покажет страница?',
+      opts: ['Обычный текст: цвет есть, объявления нет', 'Зелёное объявление, как и раньше', 'Зелёные буквы без рамки и фона', 'Ничего: текст совсем пропадёт'],
+      why: 'theme-success только говорит, каким цветом красить. А само объявление, которое красят, делает слово alert. Без него цвет не применяется, и текст остаётся обычным.',
+    },
+    en: {
+      ctx: 'Bootstrap is connected. Kodi deleted the word alert and kept only the color word.',
+      q: 'What will the page show?',
+      opts: ['Plain text: a color, but no notice', 'A green notice, same as before', 'Green letters with no border or background', 'Nothing: the text disappears completely'],
+      why: 'theme-success only says which color to paint with. The notice that gets painted is built by the word alert. Without it the color isn’t used, and the text stays plain.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q11',
+    difficulty: 'hard',
+    tags: ['integrity', 'cdn'],
+    mono: false,
+    sort: false,
+    vis: { code: '<link href="…/bootstrap.min.css"\n  rel="stylesheet"\n  integrity="sha384-B/GM…CrCe"\n  crossorigin="anonymous">', mark: [3] },
+    uz: {
+      ctx: 'Saytdan nusxalangan link qatorida integrity atributi bor.',
+      q: 'U nimaga kerak?',
+      opts: ['Himoya muhri: fayl o\'sha ekanini tekshiradi', "Rang: sahifa qaysi rangda bo'lishini aytadi", 'Tezlik: fayl tezroq yuklanishi uchun', 'Parol: faylni faqat o\'qituvchi ocha oladi'],
+      why: "integrity — faylning himoya muhri. Brauzer yuklangan faylni shu muhr bilan solishtiradi: fayl o'zgargan bo'lsa yoki muhrda bitta harf adashsa, uni ishlatmaydi.",
+    },
+    ru: {
+      ctx: 'В скопированной с сайта строке link есть атрибут integrity.',
+      q: 'Зачем он нужен?',
+      opts: ['Печать защиты: проверка, что файл тот самый', 'Цвет: какого цвета будет страница', 'Скорость: чтобы файл грузился быстрее', 'Пароль: файл откроет только учитель'],
+      why: 'integrity — печать защиты файла. Браузер сверяет скачанный файл с этой печатью: если файл изменился или в печати ошибка в одной букве, он его не использует.',
+    },
+    en: {
+      ctx: 'The link line copied from the site has an integrity attribute.',
+      q: 'What is it for?',
+      opts: ['A safety seal: checks it’s the right file', 'Color: what color the page will be', 'Speed: so the file loads faster', 'A password: only a teacher can open it'],
+      why: 'integrity is the file’s safety seal. The browser compares the downloaded file with it: if the file changed or one letter of the seal is wrong, the file isn’t used.',
+    },
+  },
+  // ---- «Впиши ответ» (type: 'input') ----
+  {
+    id: 'bootstrap_l01_q12',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['alert'],
+    mono: true,
+    answer: ['alert'],
+    vis: {
+      code: {
+        uz: `<div class="___ theme-success" role="alert">\n  <p>Ro'yxat ochiq!</p>\n</div>`,
+        ru: '<div class="___ theme-success" role="alert">\n  <p>Запись открыта!</p>\n</div>',
+        en: '<div class="___ theme-success" role="alert">\n  <p>Sign-up is open!</p>\n</div>',
+      },
+    },
+    uz: {
+      ctx: "Yashil e'lon kerak. Rang so'zi bor, lekin e'lonni yasaydigan so'z tushib qolgan.",
+      q: "Bo'sh joyga bitta so'z yozing.",
+      why: "E'lonni alert so'zi yasaydi: fon, chegara, ichki bo'shliq. theme-success esa unga yashil rang beradi.",
+    },
+    ru: {
+      ctx: 'Нужно зелёное объявление. Слово цвета есть, а слово, которое делает само объявление, пропало.',
+      q: 'Впиши на пустое место одно слово.',
+      why: 'Объявление делает слово alert: фон, рамку, отступы внутри. А theme-success даёт ему зелёный цвет.',
+    },
+    en: {
+      ctx: 'We need a green notice. The color word is there, but the word that builds the notice is missing.',
+      q: 'Type one word in the empty spot.',
+      why: 'The word alert builds the notice: background, border, inner space. theme-success gives it the green color.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q13',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['theme'],
+    mono: true,
+    answer: ['theme-danger'],
+    vis: {
+      code: {
+        uz: `<div class="alert ___" role="alert">\n  <p>Bugun dars yo'q!</p>\n</div>`,
+        ru: '<div class="alert ___" role="alert">\n  <p>Сегодня занятия нет!</p>\n</div>',
+        en: '<div class="alert ___" role="alert">\n  <p>No class today!</p>\n</div>',
+      },
+    },
+    uz: {
+      ctx: "Muhim xabar: e'lon qizil bo'lsin. So'zni saytdagi Variants bo'limidan olamiz.",
+      q: "Bo'sh joyga rang so'zini yozing.",
+      why: "Bootstrapda qizil — danger, ya'ni xavf degani. E'lon rangi theme bilan boshlanadi: theme-danger. alert-danger — 5-versiyaning eski nomi, 6-versiyada ishlamaydi.",
+    },
+    ru: {
+      ctx: 'Важная новость: объявление должно быть красным. Слово берём из раздела Variants на сайте.',
+      q: 'Впиши на пустое место слово цвета.',
+      why: 'Красный в Bootstrap — danger, то есть «опасность». Цвет объявления начинается с theme: theme-danger. alert-danger — старое имя из 5-й версии, в 6-й не работает.',
+    },
+    en: {
+      ctx: 'Important news: the notice should be red. We take the word from the Variants section on the site.',
+      q: 'Type the color word in the empty spot.',
+      why: 'Red in Bootstrap is danger. A notice color starts with theme: theme-danger. alert-danger is an old version 5 name; it doesn’t work in 6.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q14',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['link', 'rel'],
+    mono: true,
+    answer: ['stylesheet'],
+    vis: { code: '<head>\n  <link href="…/bootstrap.min.css" rel="___">\n</head>' },
+    uz: {
+      ctx: "link qatoridan bitta so'z o'chib ketibdi: u brauzerga bu uslublar fayli ekanini aytadi.",
+      q: "Bo'sh joyga rel atributining qiymatini yozing.",
+      why: "rel atributidagi stylesheet so'zi brauzerga aytadi: bu CSS fayli, uni sahifaga qo'lla. Usiz brauzer faylni uslub sifatida ishlatmaydi va sahifa oddiy qoladi.",
+    },
+    ru: {
+      ctx: 'Из строки link пропало одно слово: оно говорит браузеру, что это файл стилей.',
+      q: 'Впиши на пустое место значение атрибута rel.',
+      why: 'rel="stylesheet" говорит браузеру: это файл CSS, применяй его к странице. Без него браузер не использует файл как стили, и страница остаётся обычной.',
+    },
+    en: {
+      ctx: 'One word is missing from the link line: it tells the browser this is a style file.',
+      q: 'Type the value of the rel attribute in the empty spot.',
+      why: 'rel="stylesheet" tells the browser: this is a CSS file, apply it to the page. Without it the browser doesn’t use the file as styles, and the page stays plain.',
+    },
+  },
+  // ---- Игровые: «собери» (q15, q16), «найди ошибку» (q17), «нажми на странице» (q18) ----
+  {
+    id: 'bootstrap_l01_q15',
+    type: 'build',
+    difficulty: 'medium',
+    tags: ['link'],
+    pieces: ['<link', ' href="….min.css"', ' rel="stylesheet">'],
+    extra: ['<script', ' rel="style">'],
+    vis: {
+      code: {
+        uz: `<head>\n  <title>Robot to'garagi</title>\n  ___\n</head>`,
+        ru: '<head>\n  <title>Кружок роботов</title>\n  ___\n</head>',
+        en: '<head>\n  <title>Robot club</title>\n  ___\n</head>',
+      },
+    },
+    uz: {
+      ctx: "Sahifa hali oddiy: head ichida Bootstrapni ulaydigan qator yo'q.",
+      q: "Bo'laklarni tartib bilan bosib, link qatorini yig'ing",
+      why: "link tegi uslublar faylini ulaydi: href atributida faylning manzili, rel atributidagi stylesheet esa bu CSS fayli ekanini aytadi. script boshqa qator, u body oxirida turadi.",
+    },
+    ru: {
+      ctx: 'Страница пока обычная: в head нет строки, которая подключает Bootstrap.',
+      q: 'Нажимай кусочки по порядку и собери строку link',
+      why: 'Тег link подключает файл стилей: href — адрес файла, rel="stylesheet" — что это файл CSS. А script — другая строка, она стоит в конце body.',
+    },
+    en: {
+      ctx: 'The page is still plain: head has no line that connects Bootstrap.',
+      q: 'Tap the pieces in order to build the link line',
+      why: 'The link tag connects a style file: href is the file address, rel="stylesheet" says it is a CSS file. script is a different line; it goes at the end of body.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q16',
+    type: 'build',
+    difficulty: 'easy',
+    tags: ['alert', 'theme'],
+    pieces: ['<div', ' class="', 'alert theme-warning', '">', { uz: 'Ertaga sayohat!', ru: 'Завтра экскурсия!', en: 'Trip tomorrow!' }, '</div>'],
+    extra: ['alert-warning', '</alert>'],
+    vis: { code: '<body>\n  ___\n</body>' },
+    uz: {
+      ctx: "Sariq e'lon kerak: «Ertaga sayohat!».",
+      q: "Bo'laklarni tartib bilan bosib, sariq e'lonni yig'ing",
+      why: "E'lon — div tegi, class ichida ikki so'z: alert e'lonni yasaydi, theme-warning sariq qiladi. alert-warning — 5-versiyaning eski nomi, yopuvchi teg esa </div>.",
+    },
+    ru: {
+      ctx: 'Нужно жёлтое объявление: «Завтра экскурсия!».',
+      q: 'Нажимай кусочки по порядку и собери жёлтое объявление',
+      why: 'Объявление — тег div, в class два слова: alert делает объявление, theme-warning — жёлтый цвет. alert-warning — старое имя из 5-й версии, а закрывающий тег — </div>.',
+    },
+    en: {
+      ctx: 'We need a yellow notice: “Trip tomorrow!”.',
+      q: 'Tap the pieces in order to build the yellow notice',
+      why: 'A notice is a div tag with two words in class: alert builds the notice, theme-warning makes it yellow. alert-warning is an old version 5 name, and the closing tag is </div>.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q17',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['class'],
+    line: 4,
+    vis: {
+      code: {
+        uz: '<div class="alert theme-success" role="alert">\n  <p>Yangi kitoblar keldi!</p>\n</div>\n<div class=".alert theme-danger" role="alert">\n  <p>Dushanba kuni yopiq.</p>\n</div>',
+        ru: '<div class="alert theme-success" role="alert">\n  <p>Пришли новые книги!</p>\n</div>\n<div class=".alert theme-danger" role="alert">\n  <p>В понедельник закрыто.</p>\n</div>',
+        en: '<div class="alert theme-success" role="alert">\n  <p>New books have arrived!</p>\n</div>\n<div class=".alert theme-danger" role="alert">\n  <p>Closed on Monday.</p>\n</div>',
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Kutubxona saytida ikkita e'lon bor. Birinchisi chiroyli, ikkinchisi esa oddiy matn bo'lib qoldi.",
+      q: 'Qaysi qatorda xato bor? Shu qatorni bosing',
+      why: "4-qatorda class ichida .alert yozilgan. Nuqta faqat CSS selektorida bo'ladi, class ichida so'z nuqtasiz yoziladi: alert.",
+    },
+    ru: {
+      ctx: 'На сайте библиотеки два объявления. Первое красивое, а второе осталось простым текстом.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В строке 4 внутри class написано .alert. Точка бывает только в CSS-селекторе, а в class слово пишется без точки: alert.',
+    },
+    en: {
+      ctx: 'The library site has two notices. The first looks nice, but the second is still plain text.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'Line 4 has .alert inside class. A dot belongs only in a CSS selector; inside class the word is written without a dot: alert.',
+    },
+  },
+  {
+    id: 'bootstrap_l01_q18',
+    type: 'tap',
+    difficulty: 'easy',
+    tags: ['theme'],
+    answer: 'warning',
+    vis: {
+      page: {
+        uz: `<div style="display:grid;gap:10px">\n<div class="alert theme-success" role="alert" data-t="success"><p>Ro'yxat ochiq</p></div>\n<div class="alert theme-warning" role="alert" data-t="warning"><p>Ertaga yomg'ir</p></div>\n<div class="alert theme-danger" role="alert" data-t="danger"><p>Bugun dars yo'q</p></div>\n<div class="alert theme-info" role="alert" data-t="info"><p>Yangi xona: 12</p></div>\n</div>`,
+        ru: '<div style="display:grid;gap:10px">\n<div class="alert theme-success" role="alert" data-t="success"><p>Запись открыта</p></div>\n<div class="alert theme-warning" role="alert" data-t="warning"><p>Завтра дождь</p></div>\n<div class="alert theme-danger" role="alert" data-t="danger"><p>Сегодня занятия нет</p></div>\n<div class="alert theme-info" role="alert" data-t="info"><p>Новый кабинет: 12</p></div>\n</div>',
+        en: '<div style="display:grid;gap:10px">\n<div class="alert theme-success" role="alert" data-t="success"><p>Sign-up is open</p></div>\n<div class="alert theme-warning" role="alert" data-t="warning"><p>Rain tomorrow</p></div>\n<div class="alert theme-danger" role="alert" data-t="danger"><p>No class today</p></div>\n<div class="alert theme-info" role="alert" data-t="info"><p>New room: 12</p></div>\n</div>',
+      },
+    },
+    uz: {
+      ctx: "To'garak saytida to'rtta e'lon, har biri o'z rang so'zi bilan.",
+      q: "theme-warning qaysi e'lonni bo'yadi? Ustiga bosing",
+      why: "warning, ya'ni ogohlantirish degani: Bootstrapda u sariq. success — yashil, danger — qizil, info — havorang.",
+    },
+    ru: {
+      ctx: 'На сайте кружка четыре объявления, у каждого своё слово цвета.',
+      q: 'Какое объявление покрасил theme-warning? Нажми на него',
+      why: 'warning значит «предупреждение»: в Bootstrap это жёлтый. success — зелёный, danger — красный, info — голубой.',
+    },
+    en: {
+      ctx: 'The club site has four notices, each with its own color word.',
+      q: 'Which notice did theme-warning paint? Tap it',
+      why: 'warning means a caution: in Bootstrap it is yellow. success is green, danger is red, info is light blue.',
+    },
+  },
+];

@@ -1,0 +1,695 @@
+// =============================================================================
+// БАНК ТРЕНАЖЁРА BOOTSTRAP · урок 10 «Финальный проект» (повторение модуля, уроки 1–9) — 12 вопросов с выбором (q01–q12)
+// + 4 «впиши ответ» (q13–q16). Игровые: q17–q18 «собери», q19–q20 «найди ошибку», q21 «нажми на странице».
+// Сайт вопросов — кружок роботов, как в уроке 10. По урокам: link в head и script в конце body, нет link — страница голая (1);
+// один цвет theme-accent для кнопки и e'lon, две кнопки-слова (2); два слова в class у картинки (3); flex-wrap, d-flex
+// у шапки (4); card-img-top, что оставить в примере карточки с сайта (5); md:col-6 на телефоне, container, col-4 из 12,
+// md-col-4 (6); switch, form-select (7); carousel-fade, кнопка «›» (8); меню или окно — что брать с сайта (9);
+// имена версии 5 — какая строка работает в 6. Ситуации тестов модуля (tools/webtest/bootstrap/l01…l09.jsx) не повторяются.
+// Формат — tools/trenajor/bootstrap/FORMAT.md.
+// =============================================================================
+export default [
+  {
+    id: 'bootstrap_l10_q01',
+    difficulty: 'easy',
+    tags: ['link', 'script'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "To'garak saytiga Bootstrap saytidan ikki qator olindi: link va script.",
+      q: "Ular sahifa kodida qayerda turadi?",
+      opts: [
+        "link — head ichida, script — body oxirida",
+        "ikkalasi ham head ichida, title ostida",
+        "link — body oxirida, script — head ichida",
+        "ikkalasi ham body boshida, h1 ustida",
+      ],
+      why: "link Bootstrap bezagini ulaydi, shuning uchun head ichida turadi. script menyu, oyna va karuselni ishlatadi, u body oxiriga qo'yiladi.",
+    },
+    ru: {
+      ctx: 'Для сайта кружка с сайта Bootstrap взяли две строки: link и script.',
+      q: 'Где они стоят в коде страницы?',
+      opts: [
+        'link — в head, script — в конце body',
+        'обе в head, под title',
+        'link — в конце body, script — в head',
+        'обе в начале body, над h1',
+      ],
+      why: 'link подключает оформление Bootstrap, поэтому стоит в head. script оживляет меню, окна и карусель — его ставят в конец body.',
+    },
+    en: {
+      ctx: 'Two lines were taken from the Bootstrap site for the club site: link and script.',
+      q: 'Where do they go in the page code?',
+      opts: [
+        'link in head, script at the end of body',
+        'both in head, under title',
+        'link at the end of body, script in head',
+        'both at the start of body, above h1',
+      ],
+      why: 'link connects Bootstrap’s styles, so it goes in head. script makes menus, dialogs and the carousel work; it goes at the end of body.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q02',
+    difficulty: 'medium',
+    tags: ['theme'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<button class="btn-solid ___">Yozilish</button>\n<div class="alert ___" role="alert">\n  Shanba kuni musobaqa!\n</div>`,
+        ru: `<button class="btn-solid ___">Записаться</button>\n<div class="alert ___" role="alert">\n  В субботу соревнования!\n</div>`,
+        en: `<button class="btn-solid ___">Sign up</button>\n<div class="alert ___" role="alert">\n  Contest on Saturday!\n</div>`,
+      },
+      mark: [1, 2],
+    },
+    uz: {
+      ctx: "Sayt rangi binafsha: tugma ham, e'lon ham. Ikkala bo'sh joyga bir xil so'z yoziladi.",
+      q: "Qaysi so'z?",
+      opts: ['theme-accent', 'theme-purple', 'btn-accent', 'alert-accent'],
+      why: "Bootstrap 6 da rang bitta oila: theme- va rang nomi. Binafsha — accent. Bitta so'z tugmaga ham, e'longa ham tushadi.",
+    },
+    ru: {
+      ctx: 'Цвет сайта — фиолетовый: и у кнопки, и у объявления. В оба пустых места пишется одно слово.',
+      q: 'Какое?',
+      opts: ['theme-accent', 'theme-purple', 'btn-accent', 'alert-accent'],
+      why: 'В Bootstrap 6 цвета — одна семья: theme- и имя цвета. Фиолетовый — accent. Одно слово подходит и кнопке, и объявлению.',
+    },
+    en: {
+      ctx: 'The site color is purple, for both the button and the alert. The same word goes in both empty spots.',
+      q: 'Which word?',
+      opts: ['theme-accent', 'theme-purple', 'btn-accent', 'alert-accent'],
+      why: 'In Bootstrap 6 colors are one family: theme- plus the color name. Purple is accent. One word works for both the button and the alert.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q03',
+    difficulty: 'medium',
+    tags: ['img-fluid', 'rounded'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<h2>Bizning jamoa</h2>\n<img src="banner.png" class="___" alt="Jamoa">`,
+        ru: `<h2>Наша команда</h2>\n<img src="banner.png" class="___" alt="Команда">`,
+        en: `<h2>Our team</h2>\n<img src="banner.png" class="___" alt="Team">`,
+      },
+      mark: [2],
+    },
+    uz: {
+      ctx: "Jamoa rasmi telefonga sig'sin va burchaklari yumaloq bo'lsin.",
+      q: "class ichiga qanday yoziladi?",
+      opts: ['img-fluid rounded', 'img-fluid, rounded', 'img-fluid.rounded', 'img-fluid-rounded'],
+      why: "class ichida so'zlar bo'sh joy bilan ajratiladi: img-fluid rasmni ekranga moslaydi, rounded burchaklarni yumaloqlaydi. Vergul va nuqta kerak emas.",
+    },
+    ru: {
+      ctx: 'Фото команды должно помещаться в телефон и иметь скруглённые углы.',
+      q: 'Как это пишется в class?',
+      opts: ['img-fluid rounded', 'img-fluid, rounded', 'img-fluid.rounded', 'img-fluid-rounded'],
+      why: 'В class слова разделяются пробелом: img-fluid подгоняет фото под экран, rounded скругляет углы. Запятая и точка не нужны.',
+    },
+    en: {
+      ctx: 'The team photo should fit the phone and have rounded corners.',
+      q: 'How is it written in class?',
+      opts: ['img-fluid rounded', 'img-fluid, rounded', 'img-fluid.rounded', 'img-fluid-rounded'],
+      why: 'Words in class are separated by a space: img-fluid fits the photo to the screen, rounded rounds the corners. No comma or dot.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q04',
+    difficulty: 'medium',
+    tags: ['flex-wrap'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: `<div class="d-flex gap-3">\n  <img src="robot.png" alt="Robo-1">\n  <img src="it.png" alt="Robo-2">\n  <img src="top.png" alt="Robo-3">\n</div>`,
+      page: true,
+      vw: 360,
+    },
+    uz: {
+      ctx: "Telefonda uchta robot rasmi bir qatorga sig'madi, uchinchisi ekrandan chiqib ketdi.",
+      q: "Sig'maganlari keyingi qatorga o'tishi uchun class-ga nima qo'shiladi?",
+      opts: ['flex-wrap', 'flex-wrap-row', 'justify-content-wrap', 'align-items-wrap'],
+      why: "flex-wrap qatorga sig'magan bo'laklarni keyingi qatorga tushiradi. Busiz d-flex hammasini bitta qatorda ushlab turadi.",
+    },
+    ru: {
+      ctx: 'На телефоне три фото роботов не поместились в ряд: третье вылезло за экран.',
+      q: 'Что добавить в class, чтобы лишние переносились на новую строку?',
+      opts: ['flex-wrap', 'flex-wrap-row', 'justify-content-wrap', 'align-items-wrap'],
+      why: 'flex-wrap переносит на следующую строку то, что не поместилось. Без него d-flex держит всё в одном ряду.',
+    },
+    en: {
+      ctx: 'On a phone the three robot photos don’t fit in one row: the third goes off the screen.',
+      q: 'What do you add to class so the extra ones move to a new line?',
+      opts: ['flex-wrap', 'flex-wrap-row', 'justify-content-wrap', 'align-items-wrap'],
+      why: 'flex-wrap moves whatever doesn’t fit onto the next line. Without it, d-flex keeps everything in one row.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q05',
+    difficulty: 'easy',
+    tags: ['card-img-top'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: `<div class="card" style="max-width: 220px">\n  <img src="robot.png" class="___" alt="Robo-1">\n  <div class="card-body">\n    <h4 class="card-title">Robo-1</h4>\n  </div>\n</div>`,
+      mark: [2],
+    },
+    uz: {
+      ctx: "Robot rasmi kartochkaning tepasida tursin, burchaklari kartochkaga mos bo'lsin.",
+      q: "Rasmning bo'sh joyiga nima yoziladi?",
+      opts: ['card-img-top', 'card-image', 'img-top', 'card-header'],
+      why: "card-img-top — kartochka tepasidagi rasm: u kartochka kengligini oladi va yuqori burchaklari kartochkaga mos yumaloqlanadi.",
+    },
+    ru: {
+      ctx: 'Фото робота должно стоять наверху карточки, а углы — совпадать с её углами.',
+      q: 'Что пишется на пустое место у картинки?',
+      opts: ['card-img-top', 'card-image', 'img-top', 'card-header'],
+      why: 'card-img-top — картинка наверху карточки: она берёт ширину карточки, а верхние углы скругляются вместе с ней.',
+    },
+    en: {
+      ctx: 'The robot photo should sit at the top of the card, with corners that match the card.',
+      q: 'What goes in the empty spot on the image?',
+      opts: ['card-img-top', 'card-image', 'img-top', 'card-header'],
+      why: 'card-img-top is the image at the top of a card: it takes the card’s width, and its top corners round with the card.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q06',
+    difficulty: 'medium',
+    tags: ['md:col-6'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<div class="container">\n  <div class="row">\n    <div class="md:col-6">Robototexnika</div>\n    <div class="md:col-6">Dasturlash</div>\n  </div>\n</div>`,
+        ru: `<div class="container">\n  <div class="row">\n    <div class="md:col-6">Робототехника</div>\n    <div class="md:col-6">Программирование</div>\n  </div>\n</div>`,
+        en: `<div class="container">\n  <div class="row">\n    <div class="md:col-6">Robotics</div>\n    <div class="md:col-6">Coding</div>\n  </div>\n</div>`,
+      },
+      mark: [3, 4],
+    },
+    uz: {
+      ctx: "Sayt telefonda ochildi, ekran kengligi 360 px.",
+      q: "Bu ikki blok telefonda qanday turadi?",
+      opts: [
+        "Ostma-ost, har biri butun kenglikda",
+        "Yonma-yon, har biri yarim kenglikda",
+        "Faqat birinchisi ko'rinadi, ikkinchisi yo'q",
+        "Yonma-yon, lekin ekrandan chiqib ketadi",
+      ],
+      why: "md:col-6 faqat md dan boshlab ishlaydi, md esa 768 px va undan keng ekran. Telefon torroq, shuning uchun bloklar ostma-ost, har biri butun qatorda.",
+    },
+    ru: {
+      ctx: 'Сайт открыли на телефоне, ширина экрана — 360 px.',
+      q: 'Как эти два блока встанут на телефоне?',
+      opts: [
+        'Друг под другом, каждый во всю ширину',
+        'Рядом, каждый на половину ширины',
+        'Виден только первый, второго нет',
+        'Рядом, но вылезут за край экрана',
+      ],
+      why: 'md:col-6 работает только с md, то есть от 768 px. Телефон уже, поэтому блоки стоят друг под другом, каждый во всю строку.',
+    },
+    en: {
+      ctx: 'The site is opened on a phone with a 360 px screen.',
+      q: 'How will these two blocks sit on the phone?',
+      opts: [
+        'One under the other, each full width',
+        'Side by side, each half the width',
+        'Only the first shows, the second is gone',
+        'Side by side, but off the edge of the screen',
+      ],
+      why: 'md:col-6 works only from md, that is from 768 px. A phone is narrower, so the blocks stack, each taking the whole row.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q07',
+    difficulty: 'medium',
+    tags: ['switch'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Yozilish formasida «Yangiliklarni olish» o'tkazgichi kerak. Misol saytda, Switch sahifasida.",
+      q: "Misolda input atrofidagi div qaysi?",
+      opts: ['<div class="switch">', '<div class="form-switch">', '<div class="form-check">', '<div class="toggle">'],
+      why: "Oltinchi versiyada o'tkazgich — switch class-li div va ichida role switch bo'lgan checkbox. form-switch va form-check — eski nomlar.",
+    },
+    ru: {
+      ctx: 'В форме записи нужен переключатель «Получать новости». Пример — на сайте, на странице Switch.',
+      q: 'Какой div стоит вокруг input в примере?',
+      opts: ['<div class="switch">', '<div class="form-switch">', '<div class="form-check">', '<div class="toggle">'],
+      why: 'В шестой версии переключатель — div с class switch и внутри checkbox с role switch. form-switch и form-check — старые имена.',
+    },
+    en: {
+      ctx: 'The sign-up form needs a “Get news” switch. The example is on the site, on the Switch page.',
+      q: 'Which div wraps the input in the example?',
+      opts: ['<div class="switch">', '<div class="form-switch">', '<div class="form-check">', '<div class="toggle">'],
+      why: 'In version six a switch is a div with class switch and a checkbox with role switch inside. form-switch and form-check are old names.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q08',
+    difficulty: 'medium',
+    tags: ['carousel-fade'],
+    mono: true,
+    sort: false,
+    vis: {
+      code: `<div class="carousel ___" id="galereya">\n  <div class="carousel-inner">\n    <div class="carousel-item active">…</div>\n    <div class="carousel-item">…</div>\n  </div>\n</div>`,
+      mark: [1],
+    },
+    uz: {
+      ctx: "Karusel slaydlari yonga surilmasin: biri sekin xiralashsin, keyingisi paydo bo'lsin.",
+      q: "Bo'sh joyga qaysi so'z yoziladi?",
+      opts: ['carousel-fade', 'carousel-slow', 'carousel-blur', 'fade-in'],
+      why: "carousel-fade slaydlarni surmasdan, xiralashtirib almashtiradi. Bu so'z tashqi div-dagi carousel yonida yoziladi.",
+    },
+    ru: {
+      ctx: 'Слайды карусели не должны уезжать вбок: один плавно гаснет, следующий проявляется.',
+      q: 'Какое слово пишется на пустое место?',
+      opts: ['carousel-fade', 'carousel-slow', 'carousel-blur', 'fade-in'],
+      why: 'carousel-fade меняет слайды не сдвигом, а плавным угасанием. Слово пишется во внешнем div рядом с carousel.',
+    },
+    en: {
+      ctx: 'The carousel slides shouldn’t slide sideways: one fades out and the next fades in.',
+      q: 'Which word goes in the empty spot?',
+      opts: ['carousel-fade', 'carousel-slow', 'carousel-blur', 'fade-in'],
+      why: 'carousel-fade swaps slides by fading instead of sliding. The word goes in the outer div, next to carousel.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q09',
+    difficulty: 'easy',
+    tags: ['menu', 'dialog'],
+    mono: false,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "«Yozilish» bosilsa, sahifa ustida forma chiqsin. «Bo'limlar» bosilsa, tugma ostida ro'yxat ochilsin.",
+      q: "Saytning Components bo'limidan qaysi misollarni olasiz?",
+      opts: [
+        "Yozilish — Dialog, Bo'limlar — Menu",
+        "Yozilish — Menu, Bo'limlar — Dialog",
+        "Ikkalasi uchun ham Carousel",
+        "Yozilish — Alert, Bo'limlar — Card",
+      ],
+      why: "Sahifa ustida ochiladigan oyna — Dialog. Tugma ostida ochiladigan ro'yxat — Menu. Ikkalasi Components bo'limida turadi.",
+    },
+    ru: {
+      ctx: 'По нажатию «Записаться» поверх страницы появляется форма. По «Разделы» под кнопкой открывается список.',
+      q: 'Какие примеры из раздела Components взять?',
+      opts: [
+        'Записаться — Dialog, Разделы — Menu',
+        'Записаться — Menu, Разделы — Dialog',
+        'Для обоих — Carousel',
+        'Записаться — Alert, Разделы — Card',
+      ],
+      why: 'Окно поверх страницы — Dialog. Список, который открывается под кнопкой, — Menu. Оба лежат в разделе Components.',
+    },
+    en: {
+      ctx: 'Tapping “Sign up” shows a form over the page. Tapping “Sections” opens a list under the button.',
+      q: 'Which examples from Components do you take?',
+      opts: [
+        'Sign up — Dialog, Sections — Menu',
+        'Sign up — Menu, Sections — Dialog',
+        'Carousel for both',
+        'Sign up — Alert, Sections — Card',
+      ],
+      why: 'A window over the page is a Dialog. A list that opens under a button is a Menu. Both are in the Components section.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q10',
+    difficulty: 'easy',
+    tags: ['link'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: {
+        uz: `<head>\n  <title>Robot to'garagi</title>\n</head>\n<body>\n  <button class="btn-solid theme-success">\n    Yozilish\n  </button>\n  <script src="…/bootstrap.bundle.min.js"></script>\n</body>`,
+        ru: `<head>\n  <title>Кружок роботов</title>\n</head>\n<body>\n  <button class="btn-solid theme-success">\n    Записаться\n  </button>\n  <script src="…/bootstrap.bundle.min.js"></script>\n</body>`,
+        en: `<head>\n  <title>Robot club</title>\n</head>\n<body>\n  <button class="btn-solid theme-success">\n    Sign up\n  </button>\n  <script src="…/bootstrap.bundle.min.js"></script>\n</body>`,
+      },
+    },
+    uz: {
+      ctx: "Kodda Bootstrap so'zlari ham, script qatori ham bor. Lekin tugma oddiy, kulrang chiqdi.",
+      q: "Nima yetishmayapti?",
+      opts: [
+        "head ichida Bootstrapning link qatori",
+        "script qatorini head ichiga ko'chirish",
+        "tugmaga btn-primary so'zi",
+        "theme-success o'rniga faqat success",
+      ],
+      why: "Bezakni link qatori ulaydi, u head ichida turishi kerak. script faqat menyu va oynalarni ishlatadi, bezak bermaydi.",
+    },
+    ru: {
+      ctx: 'В коде есть слова Bootstrap и строка script. Но кнопка вышла обычной, серой.',
+      q: 'Чего не хватает?',
+      opts: [
+        'строки link Bootstrap в head',
+        'перенести строку script в head',
+        'слова btn-primary у кнопки',
+        'просто success вместо theme-success',
+      ],
+      why: 'Оформление подключает строка link, она должна стоять в head. script только оживляет меню и окна, оформления он не даёт.',
+    },
+    en: {
+      ctx: 'The code has Bootstrap words and the script line. But the button came out plain and grey.',
+      q: 'What is missing?',
+      opts: [
+        'Bootstrap’s link line in head',
+        'moving the script line into head',
+        'the word btn-primary on the button',
+        'just success instead of theme-success',
+      ],
+      why: 'The link line connects the styles, and it belongs in head. script only makes menus and dialogs work; it gives no styling.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q11',
+    difficulty: 'hard',
+    tags: ['version 5'],
+    mono: true,
+    sort: false,
+    vis: null,
+    uz: {
+      ctx: "Eski darslikdan to'rtta qator ko'chirildi. Sayt Bootstrap 6 bilan ulangan.",
+      q: "Qaysi qator oltinchi versiyada ishlaydi?",
+      opts: ['<div class="md:col-6">', '<div class="col-md-6">', '<a class="dropdown-item">', '<select class="form-select">'],
+      why: "md:col-6 — oltinchi versiyaning yozuvi, ikki nuqta bilan. col-md-6, dropdown-item va form-select — beshinchi versiyaning eski nomlari.",
+    },
+    ru: {
+      ctx: 'Из старого учебника скопировали четыре строки. Сайт подключён к Bootstrap 6.',
+      q: 'Какая строка работает в шестой версии?',
+      opts: ['<div class="md:col-6">', '<div class="col-md-6">', '<a class="dropdown-item">', '<select class="form-select">'],
+      why: 'md:col-6 — запись шестой версии, через двоеточие. col-md-6, dropdown-item и form-select — старые имена пятой версии.',
+    },
+    en: {
+      ctx: 'Four lines were copied from an old tutorial. The site uses Bootstrap 6.',
+      q: 'Which line works in version six?',
+      opts: ['<div class="md:col-6">', '<div class="col-md-6">', '<a class="dropdown-item">', '<select class="form-select">'],
+      why: 'md:col-6 is how version six writes it, with a colon. col-md-6, dropdown-item and form-select are old version 5 names.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q12',
+    difficulty: 'hard',
+    tags: ['card', 'docs'],
+    mono: false,
+    sort: false,
+    vis: {
+      code: `<section class="card" style="max-width: 320px">\n  <img src="..." class="card-img-top" alt="...">\n  <div class="card-body">\n    <h4 class="card-title">Card title</h4>\n    <a href="#" class="btn-solid theme-primary">\n      Go somewhere\n    </a>\n  </div>\n</section>`,
+    },
+    uz: {
+      ctx: "Saytdan kartochka misoli nusxalandi. Uni o'z robotingizga moslaysiz.",
+      q: "Nimani o'zgartirmay qoldirasiz?",
+      opts: ["card va card-body class-larini", "src ichidagi uch nuqtani", "Card title yozuvini", "Go somewhere yozuvini"],
+      why: "card va card-body kartochkani yasaydi, ular qoladi. src ichiga rasm fayli nomi, sarlavha va tugmaga o'z yozuvingiz yoziladi.",
+    },
+    ru: {
+      ctx: 'С сайта скопировали пример карточки. Ты настраиваешь его под своего робота.',
+      q: 'Что оставишь без изменений?',
+      opts: ['class card и card-body', 'три точки в src', 'надпись Card title', 'надпись Go somewhere'],
+      why: 'card и card-body делают карточку — они остаются. В src пишется имя файла картинки, а в заголовок и кнопку — свои надписи.',
+    },
+    en: {
+      ctx: 'A card example was copied from the site. You adapt it for your robot.',
+      q: 'What do you leave unchanged?',
+      opts: ['the card and card-body classes', 'the three dots in src', 'the text Card title', 'the text Go somewhere'],
+      why: 'card and card-body build the card, so they stay. src gets your image file name, and the title and button get your own text.',
+    },
+  },
+  // ---- «Впиши ответ» (type: 'input') ----
+  {
+    id: 'bootstrap_l10_q13',
+    type: 'input',
+    difficulty: 'easy',
+    tags: ['container'],
+    mono: true,
+    answer: ['container'],
+    vis: {
+      code: {
+        uz: `<div class="___">\n  <div class="row">\n    <div class="md:col-4">Robotlar</div>\n    <div class="md:col-4">Jadval</div>\n    <div class="md:col-4">Aloqa</div>\n  </div>\n</div>`,
+        ru: `<div class="___">\n  <div class="row">\n    <div class="md:col-4">Роботы</div>\n    <div class="md:col-4">Расписание</div>\n    <div class="md:col-4">Контакты</div>\n  </div>\n</div>`,
+        en: `<div class="___">\n  <div class="row">\n    <div class="md:col-4">Robots</div>\n    <div class="md:col-4">Schedule</div>\n    <div class="md:col-4">Contacts</div>\n  </div>\n</div>`,
+      },
+      mark: [1],
+    },
+    uz: {
+      ctx: "Katta ekranda sayt mazmuni o'rtada tursin, chetlarida bo'sh joy qolsin.",
+      q: "Bo'sh joyga bitta so'z yozing.",
+      why: "container mazmunni o'rtaga qo'yadi va kengligini cheklaydi, chetlarda bo'sh joy qoladi. Ichida row va ustunlar turadi.",
+    },
+    ru: {
+      ctx: 'На большом экране содержимое сайта должно стоять посередине, по краям — свободное место.',
+      q: 'Впиши на пустое место одно слово.',
+      why: 'container ставит содержимое посередине и ограничивает его ширину, по краям остаётся место. Внутри — row и колонки.',
+    },
+    en: {
+      ctx: 'On a big screen the site content should sit in the middle, with space at the sides.',
+      q: 'Type one word in the empty spot.',
+      why: 'container centers the content and limits its width, leaving space at the sides. Inside it are the row and the columns.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q14',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['btn-solid', 'theme-success'],
+    mono: true,
+    answer: ['btn-solid theme-success', 'theme-success btn-solid'],
+    vis: {
+      code: {
+        uz: `<header class="d-flex justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <button class="___">Yozilish</button>\n</header>`,
+        ru: `<header class="d-flex justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <button class="___">Записаться</button>\n</header>`,
+        en: `<header class="d-flex justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <button class="___">Sign up</button>\n</header>`,
+      },
+      mark: [3],
+    },
+    uz: {
+      ctx: "Shapkadagi tugma to'liq bo'yalgan va yashil bo'lsin.",
+      q: "Bo'sh joyga ikki so'zni bo'sh joy bilan ajratib yozing.",
+      why: "Tugma ikki so'zdan: uslub btn-solid — to'liq bo'yalgan, rang theme-success — yashil. Bittasi bo'lmasa, tugma chala chiqadi.",
+    },
+    ru: {
+      ctx: 'Кнопка в шапке должна быть залитой и зелёной.',
+      q: 'Впиши на пустое место два слова через пробел.',
+      why: 'Кнопка — это два слова: стиль btn-solid — залитая, цвет theme-success — зелёный. Без одного из них кнопка выйдет неполной.',
+    },
+    en: {
+      ctx: 'The header button should be filled and green.',
+      q: 'Type two words separated by a space in the empty spot.',
+      why: 'A button takes two words: the style btn-solid makes it filled, and the color theme-success makes it green. Without one of them it looks unfinished.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q15',
+    type: 'input',
+    difficulty: 'medium',
+    tags: ['d-flex'],
+    mono: true,
+    answer: ['d-flex'],
+    vis: {
+      code: {
+        uz: `<header class="___ justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <a href="#">Bo'limlar</a>\n</header>`,
+        ru: `<header class="___ justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <a href="#">Разделы</a>\n</header>`,
+        en: `<header class="___ justify-content-between">\n  <img src="logo.png" alt="Logo">\n  <a href="#">Sections</a>\n</header>`,
+      },
+      mark: [1],
+    },
+    uz: {
+      ctx: "justify-content-between yozilgan, lekin logotip va havola hali ham ostma-ost turibdi.",
+      q: "Bo'sh joyga bitta so'z yozing.",
+      why: "justify-content faqat flex ichida ishlaydi. d-flex shapkani flex qiladi, keyin between logotipni chapga, havolani o'ngga suradi.",
+    },
+    ru: {
+      ctx: 'justify-content-between написан, но логотип и ссылка всё равно стоят друг под другом.',
+      q: 'Впиши на пустое место одно слово.',
+      why: 'justify-content работает только во flex. d-flex делает шапку flex, и тогда between разводит логотип влево, а ссылку вправо.',
+    },
+    en: {
+      ctx: 'justify-content-between is there, but the logo and the link still sit one under the other.',
+      q: 'Type one word in the empty spot.',
+      why: 'justify-content works only inside flex. d-flex makes the header flex, and then between pushes the logo left and the link right.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q16',
+    type: 'input',
+    difficulty: 'hard',
+    tags: ['col'],
+    mono: false,
+    answer: ['4'],
+    vis: {
+      code: {
+        uz: `<div class="row">\n  <div class="col-3">Rasm</div>\n  <div class="col-5">Matn</div>\n  <div class="col-___">Tugmalar</div>\n</div>`,
+        ru: `<div class="row">\n  <div class="col-3">Фото</div>\n  <div class="col-5">Текст</div>\n  <div class="col-___">Кнопки</div>\n</div>`,
+        en: `<div class="row">\n  <div class="col-3">Photo</div>\n  <div class="col-5">Text</div>\n  <div class="col-___">Buttons</div>\n</div>`,
+      },
+      mark: [4],
+    },
+    uz: {
+      ctx: "Uchinchi ustun qatorning qolgan qismini aniq to'ldirsin.",
+      q: "Bo'sh joyga qaysi son yoziladi? Raqam bilan yozing.",
+      why: "Qator 12 ulushdan iborat. 3 va 5 birga 8 ulush oladi, qolgani 12 dan 8 ni ayirsak 4 bo'ladi: col-4.",
+    },
+    ru: {
+      ctx: 'Третья колонка должна точно заполнить остаток строки.',
+      q: 'Какое число пишется на пустое место? Напиши цифрой.',
+      why: 'Строка делится на 12 долей. 3 и 5 вместе занимают 8, остаётся 12 минус 8, то есть 4: col-4.',
+    },
+    en: {
+      ctx: 'The third column should fill exactly the rest of the row.',
+      q: 'Which number goes in the empty spot? Write it in digits.',
+      why: 'A row has 12 parts. 3 and 5 together take 8, and 12 minus 8 leaves 4: col-4.',
+    },
+  },
+  // ---- Игровые: «собери» (q17, q18), «найди ошибку» (q19, q20), «нажми на странице» (q21) ----
+  {
+    id: 'bootstrap_l10_q17',
+    type: 'build',
+    difficulty: 'medium',
+    tags: ['alert', 'theme-warning'],
+    pieces: ['<div', ' class="alert', ' theme-warning"', ' role="alert">', { uz: "Ertaga dars yo'q", ru: 'Завтра занятий нет', en: 'No class tomorrow' }, '</div>'],
+    extra: [' alert-warning"', '<span'],
+    vis: {
+      code: {
+        uz: `<body>\n  <h1>Robot to'garagi</h1>\n  ___\n</body>`,
+        ru: `<body>\n  <h1>Кружок роботов</h1>\n  ___\n</body>`,
+        en: `<body>\n  <h1>Robot club</h1>\n  ___\n</body>`,
+      },
+    },
+    uz: {
+      ctx: "Sarlavha ostida sariq e'lon kerak: «Ertaga dars yo'q».",
+      q: "Bo'laklarni tartib bilan bosib, e'lonni yig'ing",
+      why: "E'lon — alert class-li div, sariq rangni theme-warning beradi. alert-warning esa beshinchi versiyaning eski nomi.",
+    },
+    ru: {
+      ctx: 'Под заголовком нужно жёлтое объявление: «Завтра занятий нет».',
+      q: 'Нажимай кусочки по порядку и собери объявление',
+      why: 'Объявление — div с class alert, цвет theme-warning, то есть жёлтый. alert-warning — старое имя из пятой версии.',
+    },
+    en: {
+      ctx: 'Under the heading there should be a yellow alert: “No class tomorrow”.',
+      q: 'Tap the pieces in order to build the alert',
+      why: 'An alert is a div with class alert, and theme-warning makes it yellow. alert-warning is an old version 5 name.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q18',
+    type: 'build',
+    difficulty: 'hard',
+    tags: ['data-bs-slide', 'data-bs-target'],
+    pieces: ['<button', ' data-bs-target=', '"#galereya"', ' data-bs-slide=', '"next">', '›', '</button>'],
+    extra: ['"galereya"'],
+    vis: {
+      code: `<div class="d-flex align-items-center gap-3">\n  <button data-bs-target="#galereya"\n          data-bs-slide="prev">‹</button>\n  ___\n</div>`,
+    },
+    uz: {
+      ctx: "Karusel ostida «‹» tugmasi bor. Yoniga keyingi slaydga o'tkazadigan «›» tugmasi kerak.",
+      q: "Bo'laklarni tartib bilan bosib, «›» tugmasini yig'ing",
+      why: "data-bs-target karuselni id bo'yicha topadi, id oldida panjara turadi: #galereya. data-bs-slide next esa keyingi slaydga o'tkazadi.",
+    },
+    ru: {
+      ctx: 'Под каруселью есть кнопка «‹». Рядом нужна кнопка «›», которая листает на следующий слайд.',
+      q: 'Нажимай кусочки по порядку и собери кнопку «›»',
+      why: 'data-bs-target находит карусель по id, перед id стоит решётка: #galereya. А data-bs-slide="next" листает на следующий слайд.',
+    },
+    en: {
+      ctx: 'Under the carousel there is a “‹” button. Next to it we need a “›” button that goes to the next slide.',
+      q: 'Tap the pieces in order to build the “›” button',
+      why: 'data-bs-target finds the carousel by its id, with a hash in front: #galereya. data-bs-slide="next" moves to the next slide.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q19',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['md:col-4'],
+    line: 3,
+    vis: {
+      code: {
+        uz: `<div class="row">\n  <div class="md:col-4 bg-warning">Robotlar</div>\n  <div class="md-col-4 bg-info">Dasturlash</div>\n  <div class="md:col-4 bg-success">3D</div>\n</div>`,
+        ru: `<div class="row">\n  <div class="md:col-4 bg-warning">Роботы</div>\n  <div class="md-col-4 bg-info">Код</div>\n  <div class="md:col-4 bg-success">3D</div>\n</div>`,
+        en: `<div class="row">\n  <div class="md:col-4 bg-warning">Robots</div>\n  <div class="md-col-4 bg-info">Coding</div>\n  <div class="md:col-4 bg-success">3D</div>\n</div>`,
+      },
+      page: true,
+      vw: 800,
+    },
+    uz: {
+      ctx: "Planshetda uchta blok bir qatorda turishi kerak edi, lekin bittasi butun qatorni egalladi.",
+      q: "Qaysi qatorda xato bor? Shu qatorni bosing",
+      why: "3-qatorda md-col-4 yozilgan: md dan keyin chiziqcha emas, ikki nuqta kerak — md:col-4. Bunday so'zni Bootstrap bilmaydi.",
+    },
+    ru: {
+      ctx: 'На планшете три блока должны стоять в ряд, но один занял всю строку.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В 3-й строке написано md-col-4: после md нужен не дефис, а двоеточие — md:col-4. Такого слова Bootstrap не знает.',
+    },
+    en: {
+      ctx: 'On a tablet the three blocks should be in one row, but one took the whole row.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'Line 3 says md-col-4: after md you need a colon, not a dash, so md:col-4. Bootstrap doesn’t know the dashed word.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q20',
+    type: 'bug',
+    difficulty: 'medium',
+    tags: ['form-control', 'select'],
+    line: 4,
+    vis: {
+      code: {
+        uz: `<label class="form-label">Ism</label>\n<input class="form-control" type="text">\n<label class="form-label">Guruh</label>\n<select class="form-select">\n  <option>Robototexnika</option>\n</select>`,
+        ru: `<label class="form-label">Имя</label>\n<input class="form-control" type="text">\n<label class="form-label">Группа</label>\n<select class="form-select">\n  <option>Робототехника</option>\n</select>`,
+        en: `<label class="form-label">Name</label>\n<input class="form-control" type="text">\n<label class="form-label">Group</label>\n<select class="form-select">\n  <option>Robotics</option>\n</select>`,
+      },
+      page: true,
+    },
+    uz: {
+      ctx: "Yozilish formasida «Guruh» ro'yxati boshqa maydonlarga o'xshamay qoldi: kichkina va oddiy.",
+      q: "Qaysi qatorda xato bor? Shu qatorni bosing",
+      why: "4-qatorda form-select yozilgan — beshinchi versiyaning nomi. Oltinchisida select ham input kabi form-control oladi.",
+    },
+    ru: {
+      ctx: 'В форме записи список «Группа» не похож на другие поля: маленький и простой.',
+      q: 'В какой строке ошибка? Нажми на эту строку',
+      why: 'В 4-й строке написано form-select — имя пятой версии. В шестой select получает form-control, как и input.',
+    },
+    en: {
+      ctx: 'In the sign-up form the “Group” list doesn’t look like the other fields: small and plain.',
+      q: 'Which line has the mistake? Tap that line',
+      why: 'Line 4 says form-select, a version 5 name. In version six a select gets form-control, just like an input.',
+    },
+  },
+  {
+    id: 'bootstrap_l10_q21',
+    type: 'tap',
+    difficulty: 'medium',
+    tags: ['card'],
+    answer: 'card',
+    vis: {
+      page: {
+        uz: `<div class="alert theme-warning" role="alert" data-t="alert">Shanba kuni musobaqa!</div>\n<div class="card" style="max-width: 240px" data-t="card"><div class="card-body"><h4 class="card-title">Robo-1</h4><p class="card-text">Chiziq bo'ylab yuradi.</p></div></div>\n<input class="form-control mt-3" placeholder="Ismingiz" data-t="input">\n<button class="btn-solid theme-primary mt-3" data-t="btn">Yozilish</button>`,
+        ru: `<div class="alert theme-warning" role="alert" data-t="alert">В субботу соревнования!</div>\n<div class="card" style="max-width: 240px" data-t="card"><div class="card-body"><h4 class="card-title">Robo-1</h4><p class="card-text">Ездит по линии.</p></div></div>\n<input class="form-control mt-3" placeholder="Твоё имя" data-t="input">\n<button class="btn-solid theme-primary mt-3" data-t="btn">Записаться</button>`,
+        en: `<div class="alert theme-warning" role="alert" data-t="alert">Contest on Saturday!</div>\n<div class="card" style="max-width: 240px" data-t="card"><div class="card-body"><h4 class="card-title">Robo-1</h4><p class="card-text">Follows the line.</p></div></div>\n<input class="form-control mt-3" placeholder="Your name" data-t="input">\n<button class="btn-solid theme-primary mt-3" data-t="btn">Sign up</button>`,
+      },
+    },
+    uz: {
+      ctx: "To'garak sahifasida e'lon, kartochka, maydon va tugma bor.",
+      q: "Sahifada card class-i yasagan qismni bosing",
+      why: "card — ramkali, burchaklari yumaloq quti, ichida card-body bilan sarlavha va matn. Sariq quti esa e'lon: alert theme-warning.",
+    },
+    ru: {
+      ctx: 'На странице кружка есть объявление, карточка, поле и кнопка.',
+      q: 'Нажми на часть страницы, которую сделал class card',
+      why: 'card — коробка с рамкой и скруглёнными углами, внутри card-body с заголовком и текстом. А жёлтая коробка — объявление: alert theme-warning.',
+    },
+    en: {
+      ctx: 'The club page has an alert, a card, a field and a button.',
+      q: 'Tap the part of the page made by the card class',
+      why: 'card is a box with a border and rounded corners, with card-body inside holding the title and text. The yellow box is the alert: alert theme-warning.',
+    },
+  },
+];

@@ -12,6 +12,7 @@ const LIST = [
   { id: 'html', module: 'html', title: 'HTML', dir: 'html', langs: ['uz', 'ru', 'en'], pick: 'lesson' },
   { id: 'css', module: 'css', title: 'CSS', dir: 'css', langs: ['uz', 'ru', 'en'], pick: 'lesson' },
   { id: 'ai', module: 'ai', title: 'ИИ', dir: 'ai', langs: ['uz', 'ru', 'en'], pick: 'lesson' },
+  { id: 'bootstrap', module: 'bootstrap', title: 'Bootstrap', dir: 'bootstrap', langs: ['uz', 'ru', 'en'], pick: 'lesson' },
   { id: 'g01', title: 'Математика 1-sinf', dir: 'obrazec-matematika', langs: ['uz', 'ru'], pick: 'block', sample: true,
     color: '#FF7A1A', short: 'MAT', blocks: ['b01', 'b02', 'b03', 'b04'], size: 15, fixedSize: true },
 ];

@@ -107,6 +107,28 @@ const MOD_LABELS = {
     },
   },
 };
+// Модуль Bootstrap (21.11.2026): миссия — та же «Сайт одевается», что у CSS: каждый верный ответ одевает одну часть сайта
+// готовым словом Bootstrap (подписи частей — слова модуля). Картинка вопроса — HTML с классами и страница на настоящем CSS Bootstrap 6.
+MOD_LABELS.bootstrap = {
+  uz: {
+    mod: 'Bootstrap',
+    rule3: "Har bir to'g'ri javob saytingizning bitta qismiga Bootstrap so'zini beradi: rang, tugma, karta. Oxirida — tayyor sayt!",
+    bubble: 'Saytni Bootstrap bilan bezaymizmi?', siteOf: (a, b) => `${a} / ${b} qism bezaldi`, holeHint: "Bezalmay qolgan qismni bosing — qaysi savol ekanini ko'rasiz",
+    parts: ['Logo: rounded-circle', 'Sarlavha: fg-*', 'Menyu: d-flex', 'Rasm: img-fluid', 'Banner: alert', 'Tugma: btn-solid', '1-karta: card', '2-karta: card', '3-karta: card', 'Matn: bg-*', 'Menyu: menu', 'Maydon: form-control', 'Tugma: theme-*', 'Pastki qism: container', 'Oyna: dialog'],
+  },
+  ru: {
+    mod: 'Bootstrap',
+    rule3: 'Каждый верный ответ даёт одной части твоего сайта слово Bootstrap: цвет, кнопка, карточка. В конце — готовый сайт!',
+    bubble: 'Оформим сайт на Bootstrap?', siteOf: (a, b) => `Оформлено частей: ${a} из ${b}`, holeHint: 'Нажми на неоформленную часть — увидишь, какой это был вопрос',
+    parts: ['Логотип: rounded-circle', 'Заголовок: fg-*', 'Меню: d-flex', 'Картинка: img-fluid', 'Баннер: alert', 'Кнопка: btn-solid', 'Карточка 1: card', 'Карточка 2: card', 'Карточка 3: card', 'Текст: bg-*', 'Меню: menu', 'Поле: form-control', 'Кнопка: theme-*', 'Подвал: container', 'Окно: dialog'],
+  },
+  en: {
+    mod: 'Bootstrap',
+    rule3: 'Every correct answer gives one part of your website a Bootstrap word: colour, button, card. At the end — a finished site!',
+    bubble: 'Let’s style the site with Bootstrap?', siteOf: (a, b) => `${a} of ${b} parts styled`, holeHint: 'Tap an unstyled part to see which question it was',
+    parts: ['Logo: rounded-circle', 'Heading: fg-*', 'Menu: d-flex', 'Picture: img-fluid', 'Banner: alert', 'Button: btn-solid', 'Card 1: card', 'Card 2: card', 'Card 3: card', 'Text: bg-*', 'Menu: menu', 'Field: form-control', 'Button: theme-*', 'Footer: container', 'Dialog: dialog'],
+  },
+};
 // Модуль «ИИ» (21.11.2026): вопросы только с выбором (как тесты модуля); миссия «Заказы студии» — 15 заказов клиентов,
 // верный ответ сдаёт заказ (готовый сайт), неверный — заказ вернулся на доработку. Картинка — «Prompt» и «Sayt».
 MOD_LABELS.ai = {
@@ -321,7 +343,7 @@ function AiBoard({ states, fresh, onPart, sel }) {
 let siteUid = 0;
 function Site({ states, fresh = [], onPart, sel, label, className = '', kind }) {
   const gid = useMemo(() => 'hts' + (++siteUid), []);
-  const css = kind === 'css';
+  const css = kind === 'css' || kind === 'bootstrap';   // Bootstrap — та же миссия «Сайт одевается»
   if (kind === 'ai') {
     return (
       <svg className={'ht-site is-ai ' + className} viewBox="0 0 120 104" role={onPart ? 'group' : 'img'} aria-label={label}>
@@ -467,6 +489,7 @@ const FILES = {
   'sher.png': pic('#FDE68A', '🦁'), 'mushuk.png': pic('#FBCFE8', '🐱'), 'it.png': pic('#BFDBFE', '🐶'), 'pingvin.png': pic('#E0F2FE', '🐧'),
   'robot.png': pic('#DDD6FE', '🤖'), 'pitsa.png': pic('#FED7AA', '🍕'), 'tort.png': pic('#FCE7F3', '🎂'), 'top.png': pic('#DCFCE7', '⚽'),
   'logo.png': pic('#FFEDD5', '🏕️', 90, 90), 'tog.png': pic('#BAE6FD', '🏔️', 320, 180),
+  'banner.png': pic('#C7D2FE', '🏟️', 800, 300),   // Bootstrap (21.11.2026): широкое фото шире страницы — для img-fluid
 };
 const withFiles = (s) => s.replace(/(src\s*=\s*")([^"]+)(")/g, (m, a, n, b) => (FILES[n] ? a + FILES[n] + b : m))
   .replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/g, (m, q, n) => (FILES[n] ? 'url("' + FILES[n] + '")' : m));   // фон из CSS: url(tog.png)
@@ -474,7 +497,14 @@ const withFiles = (s) => s.replace(/(src\s*=\s*")([^"]+)(")/g, (m, a, n, b) => (
 const TAP_CSS = '[data-t]{outline:2px dashed rgba(250,79,40,.45);outline-offset:3px;cursor:pointer;transition:outline-color .15s,background-color .15s}'
   + '[data-hv]{outline:2.5px solid #FA4F28;background-color:rgba(250,79,40,.08)}[data-st=pick]{outline:3px solid #FA4F28;background-color:rgba(250,79,40,.12)}'
   + '[data-st=ok]{outline:3px solid #09B163;background-color:rgba(9,177,99,.12)}[data-st=bad]{outline:3px solid #D93A3A;background-color:rgba(217,58,58,.10)}[data-st=off]{outline-color:rgba(150,150,170,.35)}';
-function pageDoc(html, tap) {
+// Bootstrap (21.11.2026): CSS Bootstrap 6.0.0-alpha.1 кладёт сборщик только в тренажёр модуля bootstrap (в остальных строка пустая).
+// Страница с bs — светлая тема, свой отступ после сброса Bootstrap; картинки сами не сжимаются (это делает img-fluid).
+const BS_CSS = /*@BS_CSS@*/'';
+function pageDoc(html, tap, bs) {
+  if (bs && BS_CSS) {
+    const h0 = withFiles(html);
+    return '<!doctype html><html data-bs-theme="light" style="color-scheme:light"><head><meta charset="utf-8"><style>' + BS_CSS + '</style><style>body{padding:12px}' + (tap ? TAP_CSS : '') + '</style></head><body>' + h0 + '</body></html>';
+  }
   const base = '<style>html{font-family:Arial,Helvetica,sans-serif;color:#111}body{margin:12px}img{max-width:100%}' + (tap ? TAP_CSS : '') + '</style>';
   const h = withFiles(html);
   if (/<html[\s>]/i.test(h)) return /<head[\s>]/i.test(h) ? h.replace(/<head([^>]*)>/i, '<head$1>' + base) : h.replace(/<html([^>]*)>/i, '<html$1>' + base);
@@ -714,7 +744,7 @@ function decodeVis(raw, lang) {
   const raw0 = v.code != null ? tx(v.code, lang).replace(/^\n+|\s+$/g, '') : null;
   const page = v.page === true ? raw0 : v.page != null ? tx(v.page, lang) : null;
   const code = raw0 == null ? null : raw0.replace(/\s+data-t="[^"]*"/g, '');   // метки целей «нажми на странице» ученику не видны
-  return code == null && page == null ? null : { code, page, mark: v.mark || [] };
+  return code == null && page == null ? null : { code, page, mark: v.mark || [], bs: !!v.bs, vw: Number(v.vw) || 0 };
 }
 
 // Картинка вопроса подстраивается под оставшееся место: код — размером шрифта (не мельче 10 px, иначе видна часть),
@@ -738,7 +768,8 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
   const ai = vis.aiLeft || null;   // «ИИ»: слева — сообщение клиента и поле промпта вместо кода
   const hasCode = vis.code != null || !!ai;
   const hasPage = vis.page != null;
-  const row = hasCode && hasPage && size.w >= 600;
+  // Bootstrap (21.11.2026): широкая страница (vw ≥ 700, сетка md:) рядом с кодом на планшете была бы мельче 0.45 — там код над ней
+  const row = hasCode && hasPage && size.w >= (vis.bs && vis.vw >= 700 ? 900 : 600);
   const vw = !hasPage ? 0 : vis.vw || (size.w < 520 ? 360 : row ? 420 : 520);   // vis.vw — своя ширина страницы (@media, урок 16 CSS)
   const onLoad = () => {
     const d = frame.current && frame.current.contentDocument;
@@ -865,7 +896,7 @@ function Visual({ vis, T, onCut, lines: lineTap, tap }) {
           <div className={'ht-br-page' + (tap && !tap.answered ? ' is-tap' : '')} style={{ height: F.pageCut != null ? Math.min(pageH - pageOff, F.pageCut) : pageH }}
             {...(tap && !tap.answered ? { onClick: (e) => { const t = tapTarget(e); if (t && !tap.disabled) tap.onTap(t.getAttribute('data-t')); },
               onMouseMove: (e) => hover(tapTarget(e)), onMouseLeave: () => hover(null) } : {})}>
-            <iframe ref={frame} title="page" sandbox="allow-same-origin" srcDoc={pageDoc(vis.page, !!tap)} onLoad={onLoad} tabIndex={-1}
+            <iframe ref={frame} title="page" sandbox="allow-same-origin" srcDoc={pageDoc(vis.page, !!tap, vis.bs)} onLoad={onLoad} tabIndex={-1}
               style={{ width: vw, height: dh, transform: (pageOff ? `translateY(${-pageOff}px) ` : '') + `scale(${F.pageScale})` }} />
           </div>
         </div>

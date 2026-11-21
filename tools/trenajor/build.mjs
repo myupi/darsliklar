@@ -71,6 +71,23 @@ const META = {
       8: { uz: 'Yakuniy loyiha', ru: 'Финальный ИИ-проект', en: 'The final AI project' },
     },
   },
+  // Bootstrap (21.11.2026, заказчик: «делай тренажёр для бутстрапа»): уроки 1–9 по 18 вопросов, финальный 10 — 21; типы как у
+  // HTML и CSS; картинка — HTML-вид { code, page } на настоящем CSS Bootstrap 6 (vis.bs, по умолчанию да); миссия «Сайт одевается».
+  bootstrap: {
+    lessons: 10, per: { 10: { choice: 12, input: 4, build: 2, bug: 2, tap: 1 } }, perDefault: { choice: 11, input: 3, build: 2, bug: 1, tap: 1 },
+    topics: {
+      1: { uz: 'Bootstrapga kirish', ru: 'Введение в Bootstrap', en: 'Getting started with Bootstrap' },
+      2: { uz: 'Ranglar va tugmalar', ru: 'Цвета и кнопки', en: 'Colors and buttons' },
+      3: { uz: 'Yuklanish va rasmlar', ru: 'Загрузка и изображения', en: 'Loading and images' },
+      4: { uz: 'Flex', ru: 'Flex', en: 'Flex' },
+      5: { uz: 'Kartochkalar', ru: 'Карточки', en: 'Cards' },
+      6: { uz: 'Konteyner va setka', ru: 'Контейнер и сетка', en: 'Container and grid' },
+      7: { uz: 'Formalar', ru: 'Формы', en: 'Forms' },
+      8: { uz: 'Karusel', ru: 'Карусель', en: 'Carousel' },
+      9: { uz: 'Menu va Dialog', ru: 'Menu и Dialog', en: 'Menu and Dialog' },
+      10: { uz: 'Yakuniy loyiha', ru: 'Финальный проект', en: 'Final project' },
+    },
+  },
 }[MOD];
 if (!META) { console.error('Неизвестный модуль: ' + MOD); process.exit(1); }
 
@@ -115,7 +132,8 @@ for (let n = 1; n <= META.lessons; n++) {
   const cnt = { choice: 0, input: 0, build: 0, bug: 0, tap: 0 };
   qs.forEach((q) => { cnt[q.type || 'choice'] = (cnt[q.type || 'choice'] || 0) + 1; });
   if (!draft && Object.keys(need).some((k) => cnt[k] !== need[k])) err(`l${n}`, `вопросов ${JSON.stringify(cnt)}, нужно ${JSON.stringify(need)}`);
-  qs.forEach((q) => all.push({ ...q, lesson: n }));
+  // Bootstrap: страница вопроса — с CSS Bootstrap, если не сказано bs: false (вопросы «нет строки link»)
+  qs.forEach((q) => all.push(MOD === 'bootstrap' && q.vis && !q.vis.css && !q.vis.html && q.vis.bs == null ? { ...q, vis: { ...q.vis, bs: true }, lesson: n } : { ...q, lesson: n }));
 }
 
 const ids = new Set();
@@ -259,6 +277,7 @@ const bank = all.map((q) => {
     const v = {};
     for (const k of ['code', 'page', 'css', 'html', 'base', 'goal', 'vw', 'ai']) if (q.vis[k] != null) v[k] = q.vis[k];
     if (q.vis.mark && q.vis.mark.length) v.mark = q.vis.mark;
+    if (q.vis.bs) v.bs = true;   // Bootstrap: страница на CSS Bootstrap 6
     vis = '@htmlvis:' + JSON.stringify(v);
   }
   const base = {
@@ -339,7 +358,14 @@ if (checkOnly) { console.log('\nПроверка пройдена.'); process.ex
 fs.mkdirSync(OUT, { recursive: true });
 const jsxName = `trenajor_${MOD}_v1.jsx`;
 const bankName = `savollar_banki_${MOD}_v1.json`;
-const src = fs.readFileSync(path.join(ROOT, 'tools/trenajor/trenajor.jsx'), 'utf8');
+let src = fs.readFileSync(path.join(ROOT, 'tools/trenajor/trenajor.jsx'), 'utf8');
+// CSS Bootstrap 6 — только в тренажёр модуля bootstrap (тот же файл, что в уроках: tools/bootstrap/vendor); «//» в строке —
+// кодом, как в уроках (валидатор LMS).
+if (MOD === 'bootstrap') {
+  const css = fs.readFileSync(path.join(ROOT, 'tools/bootstrap/vendor/bootstrap-6.0.0-alpha.1.min.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  if (!src.includes("/*@BS_CSS@*/''")) { console.error('В trenajor.jsx нет места /*@BS_CSS@*/'); process.exit(1); }
+  src = src.replace("/*@BS_CSS@*/''", JSON.stringify(css).replace(/\/\//g, '/\\u002F'));
+}
 const head = `// @junior-trainer ${MOD} v1 — СОБРАН node tools/trenajor/build.mjs ${MOD} из tools/trenajor/trenajor.jsx. Править исходник, не этот файл.\n// LMS: этот JSX + ${bankName} (${bank.length} вопросов: single_choice, text_input, assemble, find_error, tap_page; block_id "${MOD}", у каждого — lesson).\n`;
 fs.writeFileSync(path.join(OUT, jsxName), head + src);
 fs.writeFileSync(path.join(OUT, bankName), JSON.stringify(bank, null, 1) + '\n');
