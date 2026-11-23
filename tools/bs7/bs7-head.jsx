@@ -103,7 +103,7 @@ function CssCard({ pick, rules, on }) {
 }
 const FORM_RULES = {
   'form-control': ['form-control', 'display: flex; width: 100%; padding; border; border-radius'],
-  'form-label': ['form-label', 'margin-bottom: .5rem'],
+  'form-label': ['form-label', 'margin-bottom: .5rem; font-weight: 500'],
   check: ['check', 'appearance: none; width: 1.25rem; border; border-radius: 33%'],
   radio: ['radio', 'appearance: none; width: 1.25rem; border-radius: 50%'],
   switch: ['switch', 'width: 2.2rem; border-radius: 10rem'],

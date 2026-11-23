@@ -1,6 +1,6 @@
 // =============================================================================
 // ЭКРАНЫ УРОКА 9 «Menu и Dialog» (20.11.2026). Помощники — bs9-head.jsx, общие куски — bs9-common.jsx.
-// Сценарий — docs/scenarij-bootstrap-09-menu-i-dialog.md.
+// Сценарий — docs/scenarij-bootstrap-10-menu-i-dialog.md.
 // =============================================================================
 const NEWL = 'is-new is-read';
 const PLAIN_M = { btn: null, toggle: null, cls: null, items: MENU_FULL.items.map((x) => Object.assign({}, x, { cls: null })) };
@@ -256,13 +256,14 @@ const S6_STATES = [
 ];
 const S6 = ({ p }) => <UiShow p={p} id="s6" c={C.s6} states={S6_STATES} />;
 
-// T2 — menu-divider и menu-header (меню открыто на месте).
+// T2 — menu-header и пункт «Aloqa» (меню открыто на месте). Черты в задании нет: обычный hr рисует её и без класса,
+// разницы ученик не видит (заказчик, 23.11.2026: «есть некоторые непонятные задания») — черта показана на S6 и стоит в коде готовой.
 function T2({ p }) {
   const pick = usePick();
   const c = C.t2;
   const rounds = [
-    fillUi(pick, { m: setMI(S6_M2, 4, { cls: null }), key: 'm4', attr: 'class', set: (v) => [setMI(S6_M2, 4, { cls: v }), null], want: 'menu-divider', kind: 'cls', ask: c.ask1, hints: c.hints1, why: c.why1, goal: true, gz: 0.36 }),
-    fillUi(pick, { m: setMI(S6_M2, 0, { cls: null }), key: 'm0', attr: 'class', set: (v) => [setMI(S6_M2, 0, { cls: v }), null], want: 'menu-header', kind: 'cls', ask: c.ask2, hints: c.hints2, why: c.why2, goal: true, gz: 0.36 })
+    fillUi(pick, { m: setMI(S6_M2, 0, { cls: null }), key: 'm0', attr: 'class', set: (v) => [setMI(S6_M2, 0, { cls: v }), null], want: 'menu-header', kind: 'cls', ask: c.ask1, hints: c.hints1, why: c.why1, goal: true, gz: 0.36 }),
+    fillUi(pick, { m: setMI(S6_M2, 5, { cls: null }), key: 'm5', attr: 'class', set: (v) => [setMI(S6_M2, 5, { cls: v }), null], want: 'menu-item', kind: 'cls', ask: c.ask2, hints: c.hints2, why: c.why2, goal: true, gz: 0.36 })
   ];
   return <FillRounds p={p} id="t2" c={c} rounds={rounds} type="menu-parts" />;
 }
@@ -360,24 +361,42 @@ const S11_STATES = [
 ];
 const S11 = ({ p }) => <UiShow p={p} id="s11" c={C.s11} states={S11_STATES} />;
 
-// X2. ОПЫТ — открыть окно и закрыть тремя способами: крестиком, кнопкой внизу, щелчком мимо.
+// X2. ОПЫТ — открыть окно и закрыть тремя способами (переделано 23.11.2026, заказчик: «закрыть с тремя разными способами —
+// даже взрослый человек не понял»): по одному способу за раз — строка задания называет одно действие (открой → нажми
+// крестик / «Понятно» / мимо окна), на странице оранжевая рамка вокруг того, что нажать (фон — оранжевым оттенком),
+// слева вместо кода — список «3 способа» с галочками. Закрыл другим, ещё не пройденным способом — тоже засчитано.
+const X2_WAYS = ['x', 'btn', 'backdrop'];
+const X2_MARK = 'outline: 5px solid #FA4F28; outline-offset: 3px; border-radius: 8px; box-shadow: 0 0 0 10px rgba(250,79,40,.3); animation: b9x2 1.1s ease-in-out infinite;';
+const x2Style = (way) => '<style>@keyframes b9x2 { 50% { box-shadow: 0 0 0 18px rgba(250,79,40,.1); } }'
+  + '[data-bs-toggle="dialog"] { ' + X2_MARK + ' }'
+  + 'body:has(dialog[open]) [data-bs-toggle="dialog"] { outline: none; box-shadow: none; animation: none; }'
+  // крестик Bootstrap 6 нарисован маской (mask-image) — рамку и тень она обрезает; поэтому крестик сам оранжевый и «дышит»
+  + (way === 'x' ? '@keyframes b9x2s { 50% { transform: scale(1.7); } } dialog .btn-close { color: #FA4F28; opacity: 1; transform: scale(1.35); animation: b9x2s 1.1s ease-in-out infinite; }' : '')
+  + (way === 'btn' ? 'dialog .dialog-footer .btn-solid { ' + X2_MARK + ' }' : '')
+  + (way === 'backdrop' ? 'dialog.dialog::backdrop { background: rgba(250,79,40,.38); }' : '')
+  + '</style>';
 function X2({ p }) {
   const pick = usePick();
   const log = useLog();
   const c = C.x2;
   const [rec, put] = useRec('x2');
   const solved = !!(rec && rec.done);
-  const [seen, setSeen] = useState(solved ? ['x', 'btn', 'backdrop'] : []);
+  const [seen, setSeen] = useState(solved ? X2_WAYS : []);
+  const [open, setOpen] = useState(false);
   const [ok, setOk] = useState(solved);
   const lad = useKzLadder(!ok);
-  const st = useRef({ tries: 0, seen: solved ? ['x', 'btn', 'backdrop'] : [] });
+  const st = useRef({ tries: 0, seen: solved ? X2_WAYS : [] });
   const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'curious' }]);
   const canGo = useAdvanceGate(solved || ok, spoken);
   const live = useRef({});
   live.current = { ok };
+  const cur = X2_WAYS.find((w) => seen.indexOf(w) < 0) || null;
   useEffect(() => { if (ok) return undefined; const t = setTimeout(() => lad.bump(), 15000); return () => clearTimeout(t); }, [ok, lad.lv]); // eslint-disable-line react-hooks/exhaustive-deps
   const onUi = (ev, how) => {
-    if (live.current.ok || ev !== 'close') return;
+    if (live.current.ok) return;
+    if (ev === 'open') { setOpen(true); return; }
+    if (ev !== 'close') return;
+    setOpen(false);
     const h = how === 'esc' ? 'backdrop' : how;
     st.current.tries += 1;
     if (st.current.seen.indexOf(h) >= 0) { sayNow(c.same, 'point'); return; }
@@ -387,22 +406,35 @@ function X2({ p }) {
       sfx('win', true); setOk(true); put({ done: true });
       log({ screenId: 'x2', type: 'close-dialog', correct: true, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
       sayNow(joinL(c.how[h], c.ok), 'cheer'); say(c.done, 'smile');
-    } else sayNow(joinL(c.how[h], c.more), 'point');
+    } else sayNow(joinL(c.how[h], c.next[X2_WAYS.find((w) => s2.indexOf(w) < 0)]), 'point');
   };
+  const askNow = ok ? c.askDone : open && cur ? c.step[cur] : c.open;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={ok ? c.askDone : c.ask} hint={ok ? null : hintAt(lad.lv, c.hints)} n={Math.min(3, seen.length) + '/3'} />
+        <KzAsk text={askNow} hint={ok ? null : hintAt(lad.lv, c.hints)} n={Math.min(3, seen.length) + '/3'} />
         <div className="kz-scene b1-pair b9-pair b9-x2">
-          <div className="kz-col"><KzCode lines={uiLines(pick, null, DLG_FULL, { script: true, hl: { x: 'is-read', fbtn: 'is-read' } })} cls="kz-code-sm b2-small" /></div>
-          <div className="kz-col"><SitePage pick={pick} body={uiH(pick, null, DLG_FULL)} js title={pick(C.site.title)} onUi={onUi} /></div>
+          <div className="kz-col">
+            <div className="b9-ways">
+              <div className="b9-ways-h">{pick(c.title)}</div>
+              {X2_WAYS.map((w, j) => {
+                const done = seen.indexOf(w) >= 0;
+                return (
+                  <div key={w} className={'b9-way' + (done ? ' is-done' : '') + (w === cur && !ok ? ' is-cur' : '')} data-way={w}>
+                    <span className="b9-way-n">{done ? '✓' : j + 1}</span>
+                    <span className="b9-way-t">{pick(c.ways[w])}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="kz-col"><SitePage pick={pick} body={(ok ? '' : x2Style(cur)) + uiH(pick, null, DLG_FULL)} js title={pick(C.site.title)} onUi={onUi} /></div>
         </div>
       </Sheet>
     </StageB>
   );
 }
 
-// T4. СБОРКА ПО ПОРЯДКУ: кнопка → <dialog> → шапка → текст → низ → закрыть.
 const T4_ORDER = ['tbtn', 'dlg', 'hdr', 'body', 'foot', 'dlgc'];
 const T4_SHUFFLE = ['body', 'dlgc', 'tbtn', 'foot', 'dlg', 'hdr'];
 function T4({ p }) {
@@ -429,7 +461,7 @@ function T4({ p }) {
     return html ? rowHtml9(rows[k]) : rowSrc9(rows[k]);
   };
   const depth = { tbtn: 0, dlg: 0, hdr: 1, body: 1, foot: 1, dlgc: 0 };
-  const label = { tbtn: 'button · data-bs-toggle', dlg: '<dialog class="dialog">', hdr: 'dialog-header', body: 'dialog-body', foot: 'dialog-footer', dlgc: '</dialog>' };
+  const label = { tbtn: '<button data-bs-toggle="dialog">', dlg: '<dialog class="dialog">', hdr: '<div class="dialog-header">', body: '<div class="dialog-body">', foot: '<div class="dialog-footer">', dlgc: '</dialog>' };
   const tap = (k) => {
     if (!canTap || fin || done.indexOf(k) >= 0) return;
     st.current.tries += 1;
@@ -466,11 +498,11 @@ function T4({ p }) {
   );
 }
 
-// Q1. КАРТИНКА → CLASS (4 раунда): пункт меню, черта, шапка окна, низ окна. Меню и окно — открыты на месте.
+// Q1. КАРТИНКА → CLASS (4 раунда): пункт меню, заголовок меню, шапка окна, низ окна. Меню и окно — открыты на месте.
 const Q_DLG = (add) => dlgO(Object.assign({ trig: false, open: true }, add));
 const Q1_ROUNDS = [
   { opts: ['menu-item', 'dropdown-item', 'menu-link', 'item'], a: 0, make: (x) => [menuO({ stat: true, items: MENU_FULL.items.map((it) => Object.assign({}, it, { cls: x })) }), null] },
-  { opts: ['dropdown-divider', 'menu-divider', 'divider', 'menu-line'], a: 1, make: (x) => [setMI(menuO({ stat: true, items: S6_M2.items.slice(1) }), 3, { cls: x }), null] },
+  { opts: ['dropdown-header', 'menu-header', 'title', 'menu-title'], a: 1, make: (x) => [setMI(S6_M1, 0, { cls: x }), null] },
   { opts: ['modal-header', 'dialog-top', 'dialog-header', 'header'], a: 2, make: (x) => [null, Q_DLG({ hdr: x })] },
   { opts: ['dialog-bottom', 'footer', 'modal-footer', 'dialog-footer'], a: 3, make: (x) => [null, Q_DLG({ foot: x })] }
 ];
@@ -532,10 +564,14 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ: нет строки script (меню молчит); data-bs-toggle="modal" (версия 5); data-bs-target без «#».
 const T6_ROUNDS = [
-  { k: 'noScript', m: MENU_FULL, dl: null, js: false, script: false, hl: { mbtn: 'is-hl' } },
+  { k: 'noScript', m: MENU_FULL, dl: null, js: false, script: false, hl: {} },   // строку кнопки не подсвечиваем — не хватает строки в конце
   { k: 'old', m: null, dl: trigO(DLG_FULL, { toggle: 'modal' }), js: true, script: true, hl: { tbtn: 'is-hl' } },
   { k: 'noHash', m: null, dl: trigO(DLG_FULL, { target: DLG_ID }), js: true, script: true, hl: { tbtn: 'is-hl' } }
 ];
@@ -561,7 +597,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -574,7 +610,7 @@ function T6({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
+        <KzAsk text={R.done ? c.ok : c.asks[R.ii]} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
         <div className="kz-scene b1-pair b1-wide-code b9-pair b9-t6" key={'r' + R.ii}>
           <div className="kz-col"><KzCode lines={uiLines(pick, RR.m, RR.dl, { hl: RR.hl, script: RR.script, fold: FOLD_HF })} cls="kz-code-sm b2-small" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} body={uiH(pick, RR.m, RR.dl)} js={RR.js} title={pick(C.site.title)} /></div>

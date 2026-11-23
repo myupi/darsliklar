@@ -7,9 +7,9 @@
 // найти нужное на сайте Bootstrap, скопировать и настроить под себя. Состав — как в HTML и CSS (облик «Редактор»), но
 // задания компилятора и тренажёр — позже, по слову заказчика.
 // Практики (заказчик, 21.11.2026: «сегодня должны создать практики для бутстрапа… вот эти jsx») — каркас tools/bsp
-// (поверх каркаса практик CSS), файлы lessons/bootstrap/NNp-<slug>.jsx, сборка node tools/bsp/build.mjs NN; финальному уроку 10 — нет.
+// (поверх каркаса практик CSS), файлы lessons/bootstrap/NNp-<slug>.jsx, сборка node tools/bsp/build.mjs NN; финальному уроку 11 — нет.
 // Тесты (заказчик, 20.11.2026: «делай тесты для уроков бутстрапа») — как у HTML и CSS: после урока «Тест 1/5…5/5»,
-// файлы lessons/bootstrap/NNtK-<slug>.jsx, сборка node tools/webtest/build.mjs bootstrap; финальному уроку 10 — нет.
+// файлы lessons/bootstrap/NNtK-<slug>.jsx, сборка node tools/webtest/build.mjs bootstrap; финальному уроку 11 — нет.
 
 export default {
   title: 'Bootstrap',
@@ -26,9 +26,11 @@ export default {
     { n: 4, slug: 'flex', title: 'Flex', topics: ['d-flex', 'justify-content-*', 'align-items-*', 'gap-*'], practiceTitle: 'Всё в ряд' },
     { n: 5, slug: 'kartochki', title: 'Карточки', topics: ['card', 'card-body', 'card-title', 'card-img-top'], practiceTitle: 'Карточки роботов' },
     { n: 6, slug: 'kontejner-i-setka', title: 'Контейнер и сетка', topics: ['container', 'row', 'col', 'колонки по ширине экрана'], practiceTitle: 'Сетка страницы' },
-    { n: 7, slug: 'formy', title: 'Формы', topics: ['form-control', 'form-label', 'form-select', 'form-check'], practiceTitle: 'Анкета записи' },
-    { n: 8, slug: 'karusel', title: 'Карусель', topics: ['carousel', 'carousel-item', 'slide'], practiceTitle: 'Выставка роботов' },
-    { n: 9, slug: 'menu-i-dialog', title: 'Menu и Dialog', topics: ['menu', 'dialog', 'data-bs-toggle'], practiceTitle: 'Страница турнира' },   // в Bootstrap 6 Dropdown → Menu, Modal → Dialog
-    { n: 10, slug: 'final-proekt', title: 'Финальный проект', topics: [], final: true },
+    // Урок 7 «Navbar и Pagination» (заказчик, 23.11.2026: «давай после сетки поставим») — прежние 7–10 стали 8–11.
+    { n: 7, slug: 'navbar-i-pagination', title: 'Navbar и Pagination', topics: ['navbar', 'navbar-brand', 'nav-link', 'md:navbar-expand', 'pagination'], practiceTitle: 'Навигация сайта' },
+    { n: 8, slug: 'formy', title: 'Формы', topics: ['form-control', 'form-label', 'form-select', 'form-check'], practiceTitle: 'Анкета записи' },
+    { n: 9, slug: 'karusel', title: 'Карусель', topics: ['carousel', 'carousel-item', 'slide'], practiceTitle: 'Выставка роботов' },
+    { n: 10, slug: 'menu-i-dialog', title: 'Menu и Dialog', topics: ['menu', 'dialog', 'data-bs-toggle'], practiceTitle: 'Страница турнира' },   // в Bootstrap 6 Dropdown → Menu, Modal → Dialog
+    { n: 11, slug: 'final-proekt', title: 'Финальный проект', topics: [], final: true },
   ],
 };

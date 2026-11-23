@@ -1,8 +1,8 @@
 // =============================================================================
-// МОДУЛЬ «BOOTSTRAP» · Урок 8 — «Карусель»
+// МОДУЛЬ «BOOTSTRAP» · Урок 9 — «Карусель»
 // (облик «Редактор», как уроки 1–7 модуля; 20.11.2026). Дети 11–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node tools/bs8/build.mjs → lessons/bootstrap/08-karusel.jsx
+// Сборка: node tools/bs8/build.mjs → lessons/bootstrap/09-karusel.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -15,7 +15,7 @@
 // смена — carousel-fade. Кнопки и автопрокрутку ведёт скрипт Bootstrap — строка script из урока 1 (без неё кнопки мёртвые).
 // Загадка (без имён): Коди думает, что для карусели надо писать свой JavaScript; разгадка — классы, data-bs-* и одна строка.
 //
-// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-08-karusel.md.
+// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-09-karusel.md.
 //
 // СИСТЕМА СЛОВ: carousel, carousel-inner, carousel-item, active, data-bs-*, carousel-fade — по-английски; karusel —
 // карусель; slayd / rasm — слайд; tugma — кнопка; nuqtalar — точки (indicators); millisekund — миллисекунда.
@@ -23,12 +23,12 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'bootstrap-08-karusel',
+  lessonId: 'bootstrap-09-karusel',
   module: 'bootstrap-m1',
   lessonTitle: {
-    uz: '8-dars. Karusel',
-    ru: 'Урок 8. Карусель',
-    en: 'Lesson 8. Carousel'
+    uz: '9-dars. Karusel',
+    ru: 'Урок 9. Карусель',
+    en: 'Lesson 9. Carousel'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -171,8 +171,8 @@ const C = {
   t1: {
     eyebrow: L3("Karuselni yig'ing", 'Собери карусель', 'Build the carousel'),
     say: L3("Endi o'zingiz. Namunaga qarang va bo'sh joyga kerakli so'zni yozing.", 'Теперь сам. Посмотри на образец и впиши в пустое место нужное слово.', 'Now you. Look at the goal and type the right word into the empty spot.'),
-    ask1: L3("Rasmlar bitta qatorga tizilsin", 'Фото — в один ряд', 'Line the photos up in a row'),
-    ask2: L3("Uchinchi rasm ham karusel rasmi bo'lsin", 'Третье фото — тоже слайд карусели', 'Make the third photo a carousel slide too'),
+    ask1: L3("Rasmlar ustma-ust emas, bittadan chiqsin", 'Фото не столбиком, а по одному', 'Show the photos one at a time, not in a stack'),
+    ask2: L3("Namunadagi uchinchi rasm sahifada ham chiqsin", 'Третье фото из образца — пусть будет и на странице', 'Make the goal’s third photo show on the page too'),
     ask3: L3("Karusel ikkinchi rasmdan boshlansin", 'Карусель начинается со второго фото', 'Start the carousel from the second photo'),
     hints1: [
       L3("Rasmlar qaysi quti ichida turadi?", 'В какой коробке стоят фото?', 'Which box holds the photos?'),
@@ -189,8 +189,8 @@ const C = {
       L3("Bu so'z ikkinchi tushuntirishda edi: faol degani.", 'Это слово было во втором показе: «активный».', 'That word was in the second show: it means active.'),
       L3("Yozing: active", 'Впиши: active', 'Type: active')
     ],
-    why1: L3("carousel-inner rasmlarni bitta qatorga tizdi.", 'carousel-inner поставил фото в один ряд.', 'carousel-inner lined the photos up in a row.'),
-    why2: L3("carousel-item uchinchi rasmni ham butun kenglikka cho'zdi.", 'carousel-item растянул и третье фото на всю ширину.', 'carousel-item stretched the third photo to full width too.'),
+    why1: L3("carousel-inner rasmlarni bir qatorga terdi: endi ular bittadan ko'rinadi.", 'carousel-inner выстроил фото в ряд: теперь их видно по одному.', 'carousel-inner lined the photos up in a row: now they show one at a time.'),
+    why2: L3("carousel-item uchinchi rasmni ham karusel rasmi qildi: endi u ko'rinadi.", 'carousel-item сделал и третье фото слайдом: теперь его видно.', 'carousel-item made the third photo a slide too: now you can see it.'),
     why3: L3("active karuselni ikkinchi rasmdan boshladi.", 'active начал карусель со второго фото.', 'active started the carousel from the second photo.'),
     done: L3("Qoyil! Karusel tuzilishi tayyor.", 'Класс! Устройство карусели готово.', 'Nice! The carousel structure is ready.')
   },
@@ -377,6 +377,12 @@ const C = {
     eyebrow: L3('Nega ishlamayapti?', 'Почему не работает?', 'Why isn’t it working?'),
     say: L3("Oxirgi sinov. Uchta karusel ishlamayapti, har birida sabab boshqa. Sahifadagi tugmalarni bosib ko'ring, kodga qarang va sababini tanlang.", 'Последнее испытание. Три карусели не работают, у каждой своя причина. Понажимай кнопки на странице, посмотри на код и выбери причину.', 'The last test. Three carousels don’t work, each for a different reason. Try the buttons on the page, look at the code and pick the reason.'),
     ask: L3('Nega ishlamayapti? Sababini tanlang', 'Почему не работает? Выбери причину', 'Why isn’t it working? Pick the reason'),
+    // Строка-симптом своего раунда (как t6 финального урока, tools/bs10): что ученик видит на странице.
+    asks: [
+      L3("O'ng tugmani bosing: rasm almashmayapti. Nega?", 'Нажми правую кнопку — фото не меняется. Почему?', 'Tap the right button: the photo doesn’t change. Why?'),
+      L3("O'ng tugmani bosing: rasm almashmayapti. Nega?", 'Нажми правую кнопку — фото не меняется. Почему?', 'Tap the right button: the photo doesn’t change. Why?'),
+      L3("Karusel o'zi aylanishi kerak edi, lekin turibdi. Nega?", 'Карусель должна листаться сама, а стоит. Почему?', 'The carousel should slide by itself, but it stands still. Why?')
+    ],
     opts: {
       noScript: L3("script qatori yo'q", 'Нет строки script', 'No script line'),
       noHash: L3("Panjara # yo'q", 'Нет решётки #', 'No hash #'),
@@ -397,7 +403,7 @@ const C = {
     say: L3("Endi karuselni o'zingizga sozlang. Effektni tanlang va har bir rasm necha millisekund turishini yozing: 1000 dan 10000 gacha. Keyin «Tayyor»ni bosing.",
       'Теперь настрой карусель под себя. Выбери эффект и впиши, сколько миллисекунд стоит каждое фото: от 1000 до 10000. Потом нажми «Готово».',
       'Now set up the carousel your way. Pick the effect and type how many milliseconds each photo stays: from 1000 to 10000. Then tap “Done”.'),
-    ask: L3("Vaqtni millisekundda yozing", 'Впиши время в миллисекундах', 'Type the time in milliseconds'),
+    ask: L3("Vaqtni millisekundda yozing, masalan, 3000", 'Впиши время в миллисекундах, например, 3000', 'Type the time in milliseconds, for example, 3000'),
     range: L3("Vaqt 1000 dan 10000 gacha bo'lsin, ya'ni bir soniyadan o'n soniyagacha degani.", 'Пусть время будет от 1000 до 10000, то есть от одной до десяти секунд.', 'Keep the time between 1000 and 10000, from one to ten seconds.'),
     hints: [
       L3("Bitta raqam yozing, millisekundda.", 'Впиши одно число, в миллисекундах.', 'Type one number, in milliseconds.'),
@@ -417,7 +423,7 @@ const C = {
       { text: L3("Tugmalarga data-bs-slide va data-bs-target, nuqtalarga carousel-indicators.", 'Кнопкам — data-bs-slide и data-bs-target, точкам — carousel-indicators.', 'Buttons get data-bs-slide and data-bs-target, dots get carousel-indicators.'), k: 'btn' },
       { text: L3("data-bs-autoplay true — o'zi aylanadi, data-bs-interval — vaqt millisekundda.", 'data-bs-autoplay true — листается сама, data-bs-interval — время в миллисекундах.', 'data-bs-autoplay true slides by itself, data-bs-interval is the time in milliseconds.'), k: 'auto' },
       { text: L3("Hammasi saytda: Components bo'limi, Carousel sahifasi.", 'Всё это — на сайте: раздел Components, страница Carousel.', 'It’s all on the site: Components, the Carousel page.'), k: 'site' },
-      { text: L3("Tabriklayman! Siz sakkizinchi darsni tugatdingiz. Keyingi darsda menyu va oynalar yasaymiz, Bootstrapda ular Menu va Dialog deb ataladi. Ko'rishguncha!", 'Ура! Ты прошёл восьмой урок. На следующем уроке сделаем меню и окна, в Bootstrap они называются Menu и Dialog. До встречи!', 'Hooray! You finished the eighth lesson. Next time we’ll make menus and windows, called Menu and Dialog in Bootstrap. See you!'), k: null }
+      { text: L3("Tabriklayman! Siz to'qqizinchi darsni tugatdingiz. Keyingi darsda menyu va oynalar yasaymiz, Bootstrapda ular Menu va Dialog deb ataladi. Ko'rishguncha!", 'Ура! Ты прошёл девятый урок. На следующем уроке сделаем меню и окна, в Bootstrap они называются Menu и Dialog. До встречи!', 'Hooray! You finished the ninth lesson. Next time we’ll make menus and windows, called Menu and Dialog in Bootstrap. See you!'), k: null }
     ],
     roles: {
       item: L3('carousel-inner · carousel-item', 'carousel-inner · carousel-item', 'carousel-inner · carousel-item'),

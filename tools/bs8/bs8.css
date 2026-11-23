@@ -31,9 +31,31 @@
 @media (max-width: 759px) {
   .r28 .b1-sheet .b8-pair .kz-code > *, .r28 .b1-sheet .b8-end .kz-code > * { flex-shrink: 0; }
   .r28 .b1-sheet .b8-t6 .kz-code { max-height: 24dvh; }
-  /* Картинка → код: два окна рядом (фото широкое — в узком окне ниже), варианты 2 × 2. */
-  .r28 .b1-sheet .kz-scene.b8-q1 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b8-q1 > .kz-col > .kz-br { --brh: 22dvh; }
+  /* Картинка → код: окна друг под другом во всю ширину (рядом фото карусели было мелким, под ним пусто — заказчик,
+     23.11.2026, снимок экрана 14), варианты 2 × 2. */
+  .r28 .b1-sheet .kz-scene.b8-q1 { display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 6px; }
+  /* окна — во всю высоту сцены, а не по пропорции узкой колонки (заказчик, 23.11.2026, снимок экрана 14: окна полоской, под ними пусто) */
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b8-q1 { align-items: stretch; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b8-q1 > .kz-col { display: flex; flex-direction: column; justify-content: flex-start; min-height: 0; }
+  .r28 .b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1.b8-q1 > .kz-col > .kz-br { flex: 1 1 auto; height: auto; aspect-ratio: auto; min-height: 100px; max-height: 30dvh; }
   .r28 .b1-sheet .b8-q1 ~ .kz-pick.b2-codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .r28 .b1-sheet .b8-q1 ~ .kz-pick.b2-codes .kz-btn { min-height: 40px; font-size: 12px; padding: 4px 6px; }
 }
+/* Низкий телефон (360×640): у окон «Картинка → код» нет адресной строки — больше места фото карусели. */
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .b1-sheet .kz-scene.b8-q1 .kz-br-tool { display: none; }
+}
+/* «Почему не работает» (t6), раунд 1: пустое место в конце кода, где должна быть строка script, — пунктиром. */
+.r28 .b1-sheet .b8-t6c .kz-line.b8-gap { outline: 1.5px dashed rgba(250, 79, 40, .8); outline-offset: -2px; }
+/* Телефон: окно страницы — по высоте карусели с кнопками ‹ › (их просят нажать): код ниже (листается к нужной строке сам),
+   у окна страницы нет адресной строки. То же в «Настрой кнопку» (t2) — кнопки ‹ › крупнее (страница не ужимается до 0.55). */
+@media (max-width: 759px) {
+  .r28 .b1-sheet .kz-scene.b8-t6c .kz-code { max-height: 17dvh; }
+  .r28 .b1-sheet .kz-scene.b8-t6c > .kz-col:first-child { flex-shrink: 0; }
+  .r28 .b1-sheet .kz-scene.b8-t6c .kz-br-tool { display: none; }
+  .r28 .b1-sheet .kz-scene.b8-fr-t2 .kz-code { max-height: 21dvh; }
+  .r28 .b1-sheet .kz-scene.b8-fr-t2 .kz-br-tool { display: none; }
+}
+/* «Собери карусель» (t1): строка с полем у слайда одной строкой — перенос хвоста «<img src=…>» наезжал на следующую строку
+   (строку сжимало по высоте окна кода); хвост обрезан краем, как у соседних строк. */
+.r28 .b1-sheet .kz-scene.b8-fr-t1 .kz-code .kz-line:has(.kz-gap) { white-space: nowrap; overflow: hidden; flex-shrink: 0; }

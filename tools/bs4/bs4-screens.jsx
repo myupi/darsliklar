@@ -162,17 +162,21 @@ function T1({ p }) {
     line: (f) => [divField('d-flex', null)(f)].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
     body: (v) => headH(pick, 'd-flex ' + v), goal: goalHead(pick, 'd-flex ' + want) });
   const rounds = [mk('justify-content-center', c.ask1, c.hints1, c.why1), mk('justify-content-end', c.ask2, c.hints2, c.why2), mk('justify-content-between', c.ask3, c.hints3, c.why3)];
-  return <FillRounds p={p} id="t1" c={c} rounds={rounds} docs={{ page: 'Justify content', only: 'justify' }} type="justify-by-sample" />;
+  // 23.11.2026: на телефоне окно сайта — полоса; прокручено к строкам кода примера (слова justify-content-…).
+  return <FillRounds p={p} id="t1" c={c} rounds={rounds} docs={{ page: 'Justify content', only: 'justify', scroll: 'ln:justify:0' }} type="justify-by-sample" />;
 }
 function T2({ p }) {
   const pick = usePick();
   const c = C.t2;
   const base = 'd-flex justify-content-between';
-  const mk = (want, ask, hints, why) => ({ kind: 'ai', want, ask, hints, why, ph: L3('align-items-…', 'align-items-…', 'align-items-…'), vw: WIDE, gz: 0.42,
-    line: (f) => [divField(base, null)(f)].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
+  // 23.11.2026: образец крупнее (0.65 — разница по низу и по середине видна); строка с полем переносится перед полем (l4-fl),
+  // иначе поле после длинной основы уходило за правый край.
+  const mk = (want, ask, hints, why) => ({ kind: 'ai', want, ask, hints, why, ph: L3('align-items-…', 'align-items-…', 'align-items-…'), vw: WIDE, gz: 0.65,
+    line: (f) => [{ k: 'o', d: 0, cls: 'b1-line is-hl l4-fl', parts: clsParts({ tag: 'div', attrs: [], before: null, field: <React.Fragment key="ff">{base.split(' ').map((w) => <React.Fragment key={w}><span className="b1-st l4-w">{w}</span>{' '}</React.Fragment>)}{f}</React.Fragment> }) }]
+      .concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
     body: (v) => headH(pick, base + ' ' + v), goal: goalHead(pick, base + ' ' + want) });
   const rounds = [mk('align-items-end', c.ask1, c.hints1, c.why1), mk('align-items-center', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Align items', only: 'align' }} type="align-by-sample" />;
+  return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Align items', only: 'align', scroll: 'ln:align:0' }} type="align-by-sample" />;
 }
 function T3({ p }) {
   const c = C.t3;
@@ -181,7 +185,8 @@ function T3({ p }) {
     line: (f) => [divField('d-flex', null)(f)].concat(cardsLines(null).slice(1)),
     body: (v) => cardsH('d-flex ' + v), goal: goalCards(want, px) });
   const rounds = [mk('gap-5', '16 px', c.ask1, c.hints1, c.why1), mk('gap-9', '32 px', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Gap', only: 'notation' }} type="gap-by-table" />;
+  // 23.11.2026: на телефоне таблица прокручена к строкам вокруг нужного размера (16 px — gap-5, 32 px — gap-9), без подсветки.
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Gap', only: 'notation', scroll: (i) => (i === 0 ? 'ln:notation:4' : 'ln:notation:8') }} type="gap-by-table" />;
 }
 
 // S6. ПОПЕРЕЧНАЯ ОСЬ (показ) — шапка по краям; align-items-start → end → center: логотип высокий, кнопка низкая.
@@ -326,7 +331,7 @@ function T4({ p }) {
         <KzAsk text={ok ? c.ok : c.ask} hint={ok ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className="kz-scene b1-pair b4-t4">
           <div className="kz-col">
-            <Goal pick={pick} html={headH(pick, T4_WANT.join(' '))} zoom={0.42} />
+            <Goal pick={pick} html={headH(pick, T4_WANT.join(' '))} zoom={0.65} />
             <KzCode lines={headLines(pick, cls || null, { cls: 'is-hl' }, true)} cls="kz-code-sm" />
           </div>
           <div className="kz-col"><SitePage pick={pick} body={headH(pick, cls || null)} vw={WIDE} title={vwTitle(pick, WIDE)} /></div>
@@ -409,6 +414,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ — нет d-flex; значение CSS вместо класса; gap-16 — такого размера нет.
 const T6_ROUNDS = [
@@ -437,7 +446,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -479,6 +488,7 @@ function W1({ p }) {
   const solved = !!(rec && rec.done);
   const [jc, setJc] = useState(store.get('myJc') || '');
   const [gp, setGp] = useState(store.get('myGap') || '');
+  const [fld, setFld] = useState(null);   // в каком поле ученик: 'jc' | 'gp'
   const [msg, setMsg] = useState(null);
   const lad = useKzLadder(!solved);
   const st = useRef({ tries: 0, misses: 0 });
@@ -497,16 +507,20 @@ function W1({ p }) {
     log({ screenId: 'w1', type: 'own-header', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv, cls: vj + ' ' + vg });
     sayNow(c.ok, 'cheer');
   };
+  // 23.11.2026: сайт рядом — по шагу: пока ученик в первом поле — Justify content; во втором (или первое уже верно) — Gap.
+  const onGap = !solved && (fld === 'gp' || (fld !== 'jc' && !!vj && !wordIssue(vj, 'jc', null)));
   const f = (val, set, k, ph, lit) => (solved ? <span key={k} className="b1-st">{val.trim()}</span>
-    : <span key={k} className={'kz-gap b1-slotin b2-field' + (lit ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { set(x); setMsg(null); }} onEnter={confirm} placeholder={ph} label={c.ask} max={28} /></span>);
+    : <span key={k} className={'kz-gap b1-slotin b2-field' + (lit ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { set(x); setMsg(null); }} onEnter={confirm} onFocus={() => setFld(k)} placeholder={ph} label={k === 'gp' ? c.askGap : c.ask} max={28} /></span>);
   const l1 = clsParts({ tag: 'div', attrs: [], before: 'd-flex', field: <React.Fragment key="ff">{f(jc, setJc, 'jc', L3('justify-content-…', 'justify-content-…', 'justify-content-…'), led)}<span className="b1-st">{' align-items-center '}</span>{f(gp, setGp, 'gp', L3('gap-…', 'gap-…', 'gap-…'))}</React.Fragment> });
   const cls = ('d-flex ' + vj + ' align-items-center ' + vg).replace(/\s+/g, ' ').trim();
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
+        <KzAsk text={solved ? c.ok : onGap ? c.askGap : c.ask} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className={docsPhoneCls({ ref: true, done: solved })}>
-          {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Justify content"><BsDocs page="Justify content" only="justify" copyOff /></DocsBr></div> : null}
+          {!solved ? <div className="kz-col b1-tri-docs" key={onGap ? 'gap' : 'jc'}>{onGap
+            ? <DocsBr page="Gap"><BsDocs page="Gap" only="notation" copyOff /></DocsBr>
+            : <DocsBr page="Justify content"><BsDocs page="Justify content" only="justify" copyOff /></DocsBr>}</div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 0, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')])} cls="kz-code-sm" /></div>
           <div className="kz-col b1-tri-page"><SitePage pick={pick} body={headH(pick, cls)} vw={WIDE} title={pick(UI.mySite)} /></div>
         </div>

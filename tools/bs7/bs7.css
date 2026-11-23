@@ -37,3 +37,9 @@
   .r28 .b1-sheet .b7-s1 .kz-code.b2-small .kz-line.b1-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .r28 .b1-sheet .b7-s1 .kz-code.b2-small .kz-line.b1-line .b1-st { word-break: normal; overflow-wrap: normal; }
 }
+/* «Список и дата» (t2) на низком телефоне: задание теперь в две строки — у окна сайта Bootstrap нет адресной строки,
+   окно страницы не уходит под «Tekshirish». */
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .b1-sheet .kz-scene.b7-fr-t2 .b1-tri-docs .kz-br-tool { display: none; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.b7-pair.b7-fr-t2.is-ref:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 16dvh; }
+}

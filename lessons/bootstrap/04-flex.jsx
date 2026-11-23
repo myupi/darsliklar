@@ -7035,8 +7035,8 @@ const C = {
   t2: {
     eyebrow: L3("Ko'ndalang o'q", 'Поперечная ось', 'Cross axis'),
     say: L3("Endi ko'ndalang o'q. Namunaga qarang va oxiriga kerakli so'zni yozing.", 'Теперь поперечная ось. Посмотри на образец и впиши в конец нужное слово.', 'Now the cross axis. Look at the goal and type the right word at the end.'),
-    ask1: L3("Hammasi pastga tekislansin", 'Всё выровнять по низу', 'Line everything up at the bottom'),
-    ask2: L3("Hammasi o'rtaga tekislansin", 'Всё выровнять по середине', 'Line everything up in the middle'),
+    ask1: L3("Logotip, nom va tugma pastki chiziqqa tekislansin", 'Логотип, название и кнопка — по нижнему краю', 'Logo, title and button lined up along the bottom edge'),
+    ask2: L3("Logotip, nom va tugma o'rta chiziqqa tekislansin", 'Логотип, название и кнопка — по середине', 'Logo, title and button lined up along the middle'),
     hints1: [
       L3("So'z align-items bilan boshlanadi.", 'Слово начинается с align-items.', 'The word starts with align-items.'),
       L3("Past — oxiri, inglizcha end.", 'Низ — это конец, по-английски end.', 'The bottom is the end, end in English.'),
@@ -7192,11 +7192,11 @@ const C = {
     rounds: [
       L3("justify-content-between bor, lekin d-flex yo'q. Bloklar qatorga tizilmagan, shuning uchun joylashuv ishlamaydi.", 'justify-content-between есть, а d-flex нет. Блоки не выстроены в ряд, поэтому расстановка не работает.', 'justify-content-between is there, but d-flex isn’t. The blocks aren’t in a row, so the arrangement doesn’t work.'),
       L3("space-between bu CSS qiymati. Bootstrap da qisqasi: justify-content-between.", 'space-between — значение из CSS. В Bootstrap короче: justify-content-between.', 'space-between is the CSS value. In Bootstrap it’s shorter: justify-content-between.'),
-      L3("gap-16 degan o'lcham yo'q. 16 piksel uchun jadvalda gap-5.", 'Размера gap-16 нет. Для 16 пикселей в таблице — gap-5.', 'There’s no gap-16 size. For 16 pixels the table says gap-5.')
+      L3("gap-16 degan o'lcham yo'q. 16 piksel: gap-5 (Gap sahifasidagi jadvalda).", 'Размера gap-16 нет. 16 пикселей — это gap-5 (таблица на странице Gap).', 'There’s no gap-16 size. 16 pixels is gap-5 (the table on the Gap page).')
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Oldin d-flex bormi, tekshiring.", 'Сначала проверь, есть ли d-flex.', 'First check whether d-flex is there.'),
-    hint2: L3("So'zni saytdagi bilan solishtiring: qisqa Bootstrap so'zimi, CSS qiymatimi, raqami jadvaldami?", 'Сравни слово с сайтом: это короткое слово Bootstrap, значение CSS, есть ли такое число в таблице?', 'Compare the word with the site: is it a short Bootstrap word, a CSS value, is that number in the table?'),
+    hint2: L3("So'zni saytdagi bilan solishtiring: qisqa Bootstrap so'zimi, CSS qiymatimi, raqami Gap sahifasidagi jadvaldami?", 'Сравни слово с сайтом: это короткое слово Bootstrap, значение CSS, есть ли такое число в таблице на странице Gap?', 'Compare the word with the site: is it a short Bootstrap word, a CSS value, is that number in the table on the Gap page?'),
     ok: L3("Hammasi to'g'ri! Endi joylashuv ishlamasa, sababini o'zingiz topasiz.", 'Всё верно! Теперь, если расстановка не работает, причину найдёшь сам.', 'All correct! Now if an arrangement doesn’t work, you’ll find the reason yourself.')
   },
   w1: {
@@ -7204,7 +7204,8 @@ const C = {
     say: L3("Endi sarlavhani o'zingizga moslang. Bosh o'q bo'yicha joylashuvni va oraliqni tanlang. So'zlar saytda. Ikkalasi tayyor bo'lsa, «Tayyor»ni bosing.",
       'Теперь настрой шапку под себя. Выбери расстановку по главной оси и расстояние. Слова — на сайте. Когда оба готовы, нажми «Готово».',
       'Now make the header your own. Pick the main axis arrangement and the spacing. The words are on the site. When both are ready, tap “Done”.'),
-    ask: L3("Joylashuv va oraliq so'zini yozing", 'Впиши слово расстановки и расстояния', 'Type the arrangement word and the spacing word'),
+    ask: L3("Joylashuvni tanlang, keyin oraliqni (gap-…)", 'Выбери расстановку, потом расстояние (gap-…)', 'Pick the arrangement, then the spacing (gap-…)'),
+    askGap: L3("Endi oraliqni tanlang: gap-… (Gap sahifasidagi jadval)", 'Теперь выбери расстояние: gap-… (таблица на странице Gap)', 'Now pick the spacing: gap-… (the table on the Gap page)'),
     hints: [
       L3("Kodda ikkita bo'sh joy bor: bosh o'q va oraliq.", 'В коде два пустых места: главная ось и расстояние.', 'The code has two empty spots: the main axis and the spacing.'),
       L3("Birinchisi justify-content bilan, ikkinchisi gap bilan boshlanadi.", 'Первое начинается с justify-content, второе — с gap.', 'The first starts with justify-content, the second with gap.'),
@@ -9913,7 +9914,9 @@ function BsDocs({ page, open, onOpen, onNav, onCopy, copied, hl: H, lit, only, m
     if (!m || !scrollTo) return undefined;
     const go = () => {
       // «sec:имя» — к началу раздела (заголовок и пример), иначе сначала блок кода (урок 2, 20.11.2026)
-      const el = /^sec:/.test(scrollTo) ? m.querySelector('[data-sec="' + scrollTo.slice(4) + '"]') : (m.querySelector('[data-code="' + scrollTo + '"]') || m.querySelector('[data-sec="' + scrollTo + '"]'));
+      // «ln:блок:N» — к строке N блока кода или таблицы (урок 4, 23.11.2026: на телефоне задание t3 — строки таблицы Gap)
+      const ln = /^ln:([^:]+):(\d+)$/.exec(scrollTo);
+      const el = ln ? m.querySelector('[data-code="' + ln[1] + '"] [data-ln="' + ln[2] + '"]') : /^sec:/.test(scrollTo) ? m.querySelector('[data-sec="' + scrollTo.slice(4) + '"]') : (m.querySelector('[data-code="' + scrollTo + '"]') || m.querySelector('[data-sec="' + scrollTo + '"]'));
       if (el) m.scrollTop = Math.max(0, Math.round(el.getBoundingClientRect().top - m.getBoundingClientRect().top + m.scrollTop - (only ? 4 : 30)));
     };
     go();
@@ -10409,6 +10412,9 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
     } else { sayNow(line, 'smile'); R.setNext(true); }
   };
   const v = normCls(val);
+  // 23.11.2026: на телефоне окно сайта — полоса; docs.scroll (строка или функция раунда) — к чему его прокрутить.
+  const isPhone = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(max-width: 759px)').matches;
+  const dScroll = docs && docs.scroll && isPhone ? (typeof docs.scroll === 'function' ? docs.scroll(R.ii) : docs.scroll) : null;
   const field = R.ok ? <span key="f" className="b1-st b2-done">{v || want0}</span>
     : <span key="f" className={'kz-gap b1-slotin b2-field' + (led ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { setVal(x); setMsg(null); }} onEnter={check} placeholder={RR.ph || L3('…', '…', '…')} label={RR.ask} max={28} /></span>;
   return (
@@ -10416,7 +10422,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
         <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
-          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
+          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff scrollTo={dScroll} scrollKey={'r' + R.ii} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
             {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm" />
@@ -10602,17 +10608,21 @@ function T1({ p }) {
     line: (f) => [divField('d-flex', null)(f)].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
     body: (v) => headH(pick, 'd-flex ' + v), goal: goalHead(pick, 'd-flex ' + want) });
   const rounds = [mk('justify-content-center', c.ask1, c.hints1, c.why1), mk('justify-content-end', c.ask2, c.hints2, c.why2), mk('justify-content-between', c.ask3, c.hints3, c.why3)];
-  return <FillRounds p={p} id="t1" c={c} rounds={rounds} docs={{ page: 'Justify content', only: 'justify' }} type="justify-by-sample" />;
+  // 23.11.2026: на телефоне окно сайта — полоса; прокручено к строкам кода примера (слова justify-content-…).
+  return <FillRounds p={p} id="t1" c={c} rounds={rounds} docs={{ page: 'Justify content', only: 'justify', scroll: 'ln:justify:0' }} type="justify-by-sample" />;
 }
 function T2({ p }) {
   const pick = usePick();
   const c = C.t2;
   const base = 'd-flex justify-content-between';
-  const mk = (want, ask, hints, why) => ({ kind: 'ai', want, ask, hints, why, ph: L3('align-items-…', 'align-items-…', 'align-items-…'), vw: WIDE, gz: 0.42,
-    line: (f) => [divField(base, null)(f)].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
+  // 23.11.2026: образец крупнее (0.65 — разница по низу и по середине видна); строка с полем переносится перед полем (l4-fl),
+  // иначе поле после длинной основы уходило за правый край.
+  const mk = (want, ask, hints, why) => ({ kind: 'ai', want, ask, hints, why, ph: L3('align-items-…', 'align-items-…', 'align-items-…'), vw: WIDE, gz: 0.65,
+    line: (f) => [{ k: 'o', d: 0, cls: 'b1-line is-hl l4-fl', parts: clsParts({ tag: 'div', attrs: [], before: null, field: <React.Fragment key="ff">{base.split(' ').map((w) => <React.Fragment key={w}><span className="b1-st l4-w">{w}</span>{' '}</React.Fragment>)}{f}</React.Fragment> }) }]
+      .concat(headKids(pick, 1, true), [hl('c', 0, '</div>')]),
     body: (v) => headH(pick, base + ' ' + v), goal: goalHead(pick, base + ' ' + want) });
   const rounds = [mk('align-items-end', c.ask1, c.hints1, c.why1), mk('align-items-center', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Align items', only: 'align' }} type="align-by-sample" />;
+  return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Align items', only: 'align', scroll: 'ln:align:0' }} type="align-by-sample" />;
 }
 function T3({ p }) {
   const c = C.t3;
@@ -10621,7 +10631,8 @@ function T3({ p }) {
     line: (f) => [divField('d-flex', null)(f)].concat(cardsLines(null).slice(1)),
     body: (v) => cardsH('d-flex ' + v), goal: goalCards(want, px) });
   const rounds = [mk('gap-5', '16 px', c.ask1, c.hints1, c.why1), mk('gap-9', '32 px', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Gap', only: 'notation' }} type="gap-by-table" />;
+  // 23.11.2026: на телефоне таблица прокручена к строкам вокруг нужного размера (16 px — gap-5, 32 px — gap-9), без подсветки.
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Gap', only: 'notation', scroll: (i) => (i === 0 ? 'ln:notation:4' : 'ln:notation:8') }} type="gap-by-table" />;
 }
 
 // S6. ПОПЕРЕЧНАЯ ОСЬ (показ) — шапка по краям; align-items-start → end → center: логотип высокий, кнопка низкая.
@@ -10766,7 +10777,7 @@ function T4({ p }) {
         <KzAsk text={ok ? c.ok : c.ask} hint={ok ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className="kz-scene b1-pair b4-t4">
           <div className="kz-col">
-            <Goal pick={pick} html={headH(pick, T4_WANT.join(' '))} zoom={0.42} />
+            <Goal pick={pick} html={headH(pick, T4_WANT.join(' '))} zoom={0.65} />
             <KzCode lines={headLines(pick, cls || null, { cls: 'is-hl' }, true)} cls="kz-code-sm" />
           </div>
           <div className="kz-col"><SitePage pick={pick} body={headH(pick, cls || null)} vw={WIDE} title={vwTitle(pick, WIDE)} /></div>
@@ -10849,6 +10860,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ — нет d-flex; значение CSS вместо класса; gap-16 — такого размера нет.
 const T6_ROUNDS = [
@@ -10877,7 +10892,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -10919,6 +10934,7 @@ function W1({ p }) {
   const solved = !!(rec && rec.done);
   const [jc, setJc] = useState(store.get('myJc') || '');
   const [gp, setGp] = useState(store.get('myGap') || '');
+  const [fld, setFld] = useState(null);   // в каком поле ученик: 'jc' | 'gp'
   const [msg, setMsg] = useState(null);
   const lad = useKzLadder(!solved);
   const st = useRef({ tries: 0, misses: 0 });
@@ -10937,16 +10953,20 @@ function W1({ p }) {
     log({ screenId: 'w1', type: 'own-header', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv, cls: vj + ' ' + vg });
     sayNow(c.ok, 'cheer');
   };
+  // 23.11.2026: сайт рядом — по шагу: пока ученик в первом поле — Justify content; во втором (или первое уже верно) — Gap.
+  const onGap = !solved && (fld === 'gp' || (fld !== 'jc' && !!vj && !wordIssue(vj, 'jc', null)));
   const f = (val, set, k, ph, lit) => (solved ? <span key={k} className="b1-st">{val.trim()}</span>
-    : <span key={k} className={'kz-gap b1-slotin b2-field' + (lit ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { set(x); setMsg(null); }} onEnter={confirm} placeholder={ph} label={c.ask} max={28} /></span>);
+    : <span key={k} className={'kz-gap b1-slotin b2-field' + (lit ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { set(x); setMsg(null); }} onEnter={confirm} onFocus={() => setFld(k)} placeholder={ph} label={k === 'gp' ? c.askGap : c.ask} max={28} /></span>);
   const l1 = clsParts({ tag: 'div', attrs: [], before: 'd-flex', field: <React.Fragment key="ff">{f(jc, setJc, 'jc', L3('justify-content-…', 'justify-content-…', 'justify-content-…'), led)}<span className="b1-st">{' align-items-center '}</span>{f(gp, setGp, 'gp', L3('gap-…', 'gap-…', 'gap-…'))}</React.Fragment> });
   const cls = ('d-flex ' + vj + ' align-items-center ' + vg).replace(/\s+/g, ' ').trim();
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
+        <KzAsk text={solved ? c.ok : onGap ? c.askGap : c.ask} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className={docsPhoneCls({ ref: true, done: solved })}>
-          {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Justify content"><BsDocs page="Justify content" only="justify" copyOff /></DocsBr></div> : null}
+          {!solved ? <div className="kz-col b1-tri-docs" key={onGap ? 'gap' : 'jc'}>{onGap
+            ? <DocsBr page="Gap"><BsDocs page="Gap" only="notation" copyOff /></DocsBr>
+            : <DocsBr page="Justify content"><BsDocs page="Justify content" only="justify" copyOff /></DocsBr>}</div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 0, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }].concat(headKids(pick, 1, true), [hl('c', 0, '</div>')])} cls="kz-code-sm" /></div>
           <div className="kz-col b1-tri-page"><SitePage pick={pick} body={headH(pick, cls)} vw={WIDE} title={pick(UI.mySite)} /></div>
         </div>
@@ -14509,6 +14529,41 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
   .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
 }
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
+}
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.
    ============================================================================= */
@@ -14655,6 +14710,26 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) and (max-height: 700px) {
   .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 10dvh; }
 }
+
+/* «Картинка → код» (Q1) на телефоне — во всех уроках 3–11 (23.11.2026, проверка непонятных заданий: окна «Kerak» и
+   «Sizning kodingiz» рядом были полоской, образец не виден, под ними пусто): окна друг под другом во всю ширину и делят
+   высоту сцены; на низком телефоне — без адресной строки. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 { display: grid !important; grid-template-columns: 1fr !important; grid-template-rows: 1fr 1fr !important; gap: 6px !important; align-items: stretch !important; flex: 1 1 auto; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col { display: flex !important; flex-direction: column; justify-content: flex-start !important; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col > .kz-br { flex: 1 1 auto !important; height: auto !important; aspect-ratio: auto !important; min-height: 100px !important; max-height: 30dvh !important; }
+}
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 .kz-br-tool { display: none; }
+}
+
+/* Низкий телефон (360×640): задание с образцом «Kerak» — справка сайта, образец, код и окно страницы не помещались, сцена
+   наезжала на строку задания (23.11.2026, прогон снимков: уроки 3 · 13, 4 · 8, 5 · 7). Только при высоте до 700 px: справку
+   сайта прячем, если есть образец (подсказки называют слова), у окна страницы — без адресной строки. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene.b1-tri.is-ref > .b1-tri-docs { display: none; }
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene > .kz-col > .kz-br:not(.b1-docs) .kz-br-tool { display: none; }
+}
 /* =============================================================================
    УРОК 4 МОДУЛЯ BOOTSTRAP «Flex» — свои стили поверх bs1.css, bs2.css, bs3.css. Префикс b4-.
    ============================================================================= */
@@ -14706,4 +14781,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) {
   .r28 .b1-sheet .b4-t4 .kz-code .kz-line.b2-cut { display: none; }
 }
+/* Урок 4, t2 (23.11.2026): строка с полем после длинной основы «d-flex justify-content-between» переносится перед полем —
+   поле видно целиком на телефоне и ноутбуке (класс l4-fl только у этой строки). */
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st { white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st.l4-w { white-space: nowrap; }   /* слово class целиком, перенос — только между словами */
 `;

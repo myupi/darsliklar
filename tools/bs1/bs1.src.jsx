@@ -269,6 +269,8 @@ const C = {
     ],
     ok: L3("Ajoyib! link head ichida, script body oxirida. Bootstrap to'liq ulandi.", 'Отлично! link — в head, script — в конце body. Bootstrap подключён полностью.', 'Great! link is in head, script is at the end of body. Bootstrap is fully connected.'),
     ask: L3("CDN ni nusxalab, head ichiga qo'ying", 'Скопируй CDN и вставь в head', 'Copy the CDN and paste it into head'),
+    // На телефоне заголовок «CDN» уезжает вверх, блок подписан «HTML» — строка задания называет значок (23.11.2026).
+    askPhone: L3("Saytdagi kodni nusxalang (burchakdagi belgi) va head ichiga qo'ying", 'Скопируй код с сайта (значок в углу) и вставь в head', 'Copy the code from the site (the icon in the corner) and paste it into head'),
     askMove: L3("script qatorini body oxiriga olib boring", 'Перенеси строку script в конец body', 'Move the script line to the end of body')
   },
   t2: {
@@ -288,7 +290,10 @@ const C = {
     ],
     ok: L3("To'ppa-to'g'ri! E'lon sahifaga tushdi. Endi uni o'zingizga moslaysiz.", 'Точно! Объявление на странице. Теперь настроишь его под себя.', 'Spot on! The notice is on the page. Now you’ll make it your own.'),
     ask: L3("Alert misolini nusxalab, body ichiga qo'ying", 'Скопируй пример Alert и вставь в body', 'Copy the Alert example and paste it into body'),
-    askFind: L3('Menyudan Alert sahifasini toping', 'Найди в меню страницу Alert', 'Find the Alert page in the menu')
+    // Меню сайта в узком окне спрятано за ☰ — строка задания и первая подсказка называют её (23.11.2026); меню слева — askFindSide.
+    askFind: L3("☰ tugmasini bosing va Components → Alert sahifasini toping", 'Нажми ☰ и найди Components → Alert', 'Tap ☰ and find Components → Alert'),
+    askFindSide: L3("Chapdagi menyudan Components → Alert sahifasini toping", 'Найди в меню слева Components → Alert', 'Find Components → Alert in the menu on the left'),
+    hintMenu: L3("Menyu yashiringan. Sayt oynasining yuqori o'ng burchagidagi uch chiziqli tugmani bosing.", 'Меню спрятано. Нажми кнопку с тремя полосками в правом верхнем углу окна сайта.', 'The menu is hidden. Tap the three-line button in the top right corner of the site window.')
   },
   w1: {
     eyebrow: L3("O'z e'loningiz", 'Своё объявление', 'Your own notice'),
@@ -300,7 +305,10 @@ const C = {
       native: L3("Bootstrap o'zbekcha so'zlarni bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает таких слов. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know such words. Take a word from the Variants section on the site.'),
       noTheme: L3("Oz qoldi! Saytdagi so'z theme va chiziqcha bilan boshlanadi.", 'Почти! Слово на сайте начинается с theme и дефиса.', 'Close! The word on the site starts with theme and a dash.'),
       notTheme: L3("Bootstrap {w} so'zini bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает слова {w}. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know the word {w}. Take a word from the Variants section on the site.'),
-      same: L3("Bu hali saytdagi inglizcha matn. O'z e'loningizni yozing.", 'Это ещё английский текст с сайта. Напиши своё объявление.', 'That’s still the English text from the site. Write your own notice.')
+      same: L3("Bu hali saytdagi inglizcha matn. O'z e'loningizni yozing.", 'Это ещё английский текст с сайта. Напиши своё объявление.', 'That’s still the English text from the site. Write your own notice.'),
+      // «Tayyor» с одним пустым полем — причина, а не молча (23.11.2026).
+      noText: L3("E'loningiz matnini 2-qatorga yozing", 'Впиши текст своего объявления — строка 2', 'Type your notice text — line 2'),
+      noColor: L3("E'lon rangining so'zini 1-qatorga yozing", 'Впиши слово цвета объявления — строка 1', 'Type the notice color word — line 1')
     },
     hints: [
       L3("E'londa ikkita bo'sh joy bor: rang so'zi va matn.", 'В объявлении два пустых места: слово цвета и текст.', 'The notice has two empty spots: the color word and the text.'),
@@ -323,9 +331,9 @@ const C = {
     },
     // why звучит и при промахе (причина), и после верного ответа (за «Barakalla!») — без «To'g'ri / Ha» в начале (20.11.2026).
     rounds: [
-      { k: 'noLink', why: L3("Kodda head ichida link qatori yo'q. Fayl ulanmagan, demak qoidalar ham yo'q.", 'В head нет строки link. Файл не подключён, значит, и правил нет.', 'There’s no link line in head. The file isn’t connected, so there are no rules.') },
-      { k: 'typo', why: L3("Havolada bootstrap so'zi buzilgan. Brauzer bunday faylni topa olmadi.", 'В ссылке испорчено слово bootstrap. Браузер не нашёл такой файл.', 'The word bootstrap is broken in the link. The browser couldn’t find that file.') },
-      { k: 'oldClass', why: L3("alert-success eski nom, beshinchi versiyadan. Oltinchi versiyada theme-success.", 'alert-success — старое имя из пятой версии. В шестой — theme-success.', 'alert-success is an old name from version five. In version six it’s theme-success.') }
+      { k: 'noLink', ask: L3("E'lon yashil kartochka bo'lishi kerak edi, lekin oddiy matn chiqdi. Nega?", 'Объявление должно было стать зелёной карточкой, а вышел простой текст. Почему?', 'The notice should have been a green card, but it came out as plain text. Why?'), why: L3("Kodda head ichida link qatori yo'q. Fayl ulanmagan, demak qoidalar ham yo'q.", 'В head нет строки link. Файл не подключён, значит, и правил нет.', 'There’s no link line in head. The file isn’t connected, so there are no rules.') },
+      { k: 'typo', ask: L3("link qatori bor, lekin e'lon baribir oddiy matn. Nega?", 'Строка link есть, а объявление всё равно простой текст. Почему?', 'The link line is there, but the notice is still plain text. Why?'), why: L3("Havolada bootstrap so'zi buzilgan. Brauzer bunday faylni topa olmadi.", 'В ссылке испорчено слово bootstrap. Браузер не нашёл такой файл.', 'The word bootstrap is broken in the link. The browser couldn’t find that file.') },
+      { k: 'oldClass', ask: L3("E'lon yashil bo'lishi kerak edi. Nega bo'lmadi?", 'Объявление должно было стать зелёным. Почему не стало?', 'The notice should have turned green. Why didn’t it?'), why: L3("alert-success eski nom, beshinchi versiyadan. Oltinchi versiyada theme-success.", 'alert-success — старое имя из пятой версии. В шестой — theme-success.', 'alert-success is an old name from version five. In version six it’s theme-success.') }
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Oldin head ichiga qarang: link qatori bormi?", 'Сначала посмотри в head: есть ли строка link?', 'First look in head: is there a link line?'),
@@ -359,8 +367,8 @@ const C = {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hints: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayFile: 1, sayClass: 1, sayMenu: 1, sayExample: 1,
-  sayCode: 1, sayCopy: 1, linkOnly: 1, classOnly: 1, none: 1, sayOld: 1, picked: 1, rounds: 1, sayType: 1, sayResults: 1, sayHome: 1, sayDocs: 1, sayAlert: 1, sayMove: 1, sayClose: 1, sayLink: 1, sayParts: 1, sayScript: 1, sayText: 1, sayColor: 1, sayPaste: 1, sayDead: 1, sayClosed: 1, pasted: 1, fine: 1, found: 1, items: 1, right: 1 });
-Object.assign(NOT_SPOKEN_IN, { items: { k: 1 }, rounds: { k: 1 } });
+  sayCode: 1, sayCopy: 1, linkOnly: 1, classOnly: 1, none: 1, sayOld: 1, picked: 1, rounds: 1, sayType: 1, sayResults: 1, sayHome: 1, sayDocs: 1, sayAlert: 1, sayMove: 1, sayClose: 1, sayLink: 1, sayParts: 1, sayScript: 1, hintMenu: 1, sayText: 1, sayColor: 1, sayPaste: 1, sayDead: 1, sayClosed: 1, pasted: 1, fine: 1, found: 1, items: 1, right: 1 });
+Object.assign(NOT_SPOKEN_IN, { items: { k: 1 }, rounds: { k: 1, ask: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/
 

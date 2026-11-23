@@ -1,8 +1,8 @@
 // =============================================================================
-// МОДУЛЬ «BOOTSTRAP» · Урок 7 — «Формы»
+// МОДУЛЬ «BOOTSTRAP» · Урок 8 — «Формы»
 // (облик «Редактор», как уроки 1–6 модуля; 20.11.2026). Дети 11–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node tools/bs7/build.mjs → lessons/bootstrap/07-formy.jsx
+// Сборка: node tools/bs7/build.mjs → lessons/bootstrap/08-formy.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -10,12 +10,12 @@
 //
 // ЗАМЫСЕЛ (20.11.2026). Кнопка «Yozilish» ведёт на форму записи в кружок. Без Bootstrap форма — каша: подписи и поля в
 // строку, крошечная галочка, серая кнопка. Ученик ставит form-control (поле, список, большое поле — одно слово; в Bootstrap 6
-// select тоже с form-control, form-select — имя версии 5), form-label (подпись над полем), check / radio / switch и
+// select тоже с form-control, form-select — имя версии 5), form-label (отступ под подписью; над полем подпись стоит потому, что form-control растягивает поле на всю ширину), check / radio / switch и
 // form-field, берёт примеры с сайта (Forms → Form control, Switch) и меняет их подписи, а в конце сам заполняет форму на
 // честной странице и отправляет — над формой e'lon «Rahmat!». Загадка (без имён): Коди думает, что каждому виду поля
 // нужно своё слово; разгадка — одно form-control.
 //
-// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-07-formy.md.
+// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-08-formy.md.
 //
 // СИСТЕМА СЛОВ: form-control, form-label, check, radio, switch, form-field, Forms — по-английски; forma — форма;
 // maydon — поле; yozuv — подпись (label); ro'yxat — список (select); katta maydon — textarea; galochka — checkbox;
@@ -24,12 +24,12 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'bootstrap-07-formy',
+  lessonId: 'bootstrap-08-formy',
   module: 'bootstrap-m1',
   lessonTitle: {
-    uz: '7-dars. Formalar',
-    ru: 'Урок 7. Формы',
-    en: 'Lesson 7. Forms'
+    uz: '8-dars. Formalar',
+    ru: 'Урок 8. Формы',
+    en: 'Lesson 8. Forms'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -125,13 +125,13 @@ const C = {
     eyebrow: L3('Maydon va yozuv', 'Поле и подпись', 'Field and label'),
     help: [
       L3("Ism maydoniga, keyin yozuvlarga qarang.", 'Посмотри на поле «Имя», потом на подписи.', 'Look at the Name field, then at the labels.'),
-      L3("form-control maydonni butun kenglikka cho'zadi, ramka va yumaloq burchak beradi. form-label yozuvni maydon ustiga qo'yadi.", 'form-control растягивает поле на всю ширину, даёт рамку и круглые углы. form-label ставит подпись над полем.', 'form-control stretches the field to full width and gives it a border and round corners. form-label puts the label above the field.'),
-      L3("Bu anketaga o'xshaydi: savol tepada, javob uchun keng chiziq pastda.", 'Это как анкета: вопрос сверху, широкая строка для ответа снизу.', 'It’s like a questionnaire: the question on top, a wide line for the answer below.')
+      L3("form-control maydonni butun kenglikka cho'zadi, ramka va yumaloq burchak beradi. Keng maydon yonida joy qolmaydi, shuning uchun yozuv tepada turadi. form-label esa yozuv ostiga ozgina joy qo'shadi va harflarini sal qalinroq qiladi.", 'form-control растягивает поле на всю ширину, даёт рамку и круглые углы. Рядом с широким полем места нет, поэтому подпись стоит сверху. А form-label добавляет под подписью немного места и делает буквы чуть жирнее.', 'form-control stretches the field to full width and gives it a border and round corners. There’s no room beside a wide field, so the label sits on top. form-label adds a little space under the label and makes its letters a bit bolder.'),
+      L3("Bu anketaga o'xshaydi: savol tepada, javob uchun keng chiziq pastda, orasida esa ozgina bo'sh joy.", 'Это как анкета: вопрос сверху, широкая строка для ответа снизу, а между ними — немного места.', 'It’s like a questionnaire: the question on top, a wide line for the answer below, and a little space between them.')
     ],
     say: L3("Birinchi so'z form-control. Hozir kodda class yo'q: Ism maydoni kichkina va yozuv bilan bir qatorda. Qarang.", 'Первое слово — form-control. Сейчас в коде нет class: поле «Имя» маленькое и стоит в одной строке с подписью. Смотри.', 'The first word is form-control. Right now the code has no class: the Name field is small and shares a line with its label. Watch.'),
-    sayCtl: L3("Ism maydoniga form-control yozdim. Maydon butun kenglikka cho'zildi, ramkasi va yumaloq burchaklari bor, ichida yozish uchun joy ko'p.", 'Полю «Имя» написал form-control. Поле растянулось на всю ширину, у него рамка и круглые углы, внутри много места для текста.', 'I gave the Name field form-control. It stretched to full width, got a border and round corners, and has plenty of room inside.'),
+    sayCtl: L3("Ism maydoniga form-control yozdim. Maydon butun kenglikka cho'zildi, ramkasi va yumaloq burchaklari bor. Yonida joy qolmadi, shuning uchun yozuv endi tepada.", 'Полю «Имя» написал form-control. Поле растянулось на всю ширину, у него рамка и круглые углы. Рядом места не осталось, поэтому подпись теперь сверху.', 'I gave the Name field form-control. It stretched to full width and got a border and round corners. There’s no room beside it now, so the label sits on top.'),
     sayTwo: L3("Telefon maydoniga ham xuddi shu so'z. Endi ikkala maydon bir xil.", 'Полю «Телефон» — то же слово. Теперь оба поля одинаковые.', 'The Phone field gets the same word. Now both fields match.'),
-    sayLab: L3("Endi yozuvlarga form-label. U yozuvni maydon ustiga qo'yadi va pastidan ozgina joy qoldiradi.", 'А теперь подписям — form-label. Она ставит подпись над полем и оставляет снизу немного места.', 'Now the labels get form-label. It puts the label above the field and leaves a little space below.'),
+    sayLab: L3("Endi yozuvlarga form-label. U yozuv ostiga ozgina joy qo'shadi: yozuv maydonga yopishib turmaydi, harflari esa sal qalinroq bo'ladi.", 'А теперь подписям — form-label. Он добавляет под подписью немного места: подпись не прилипает к полю, а буквы становятся чуть жирнее.', 'Now the labels get form-label. It adds a little space under the label, so the label doesn’t stick to the field, and its letters get a bit bolder.'),
     done: L3("Eslab qoling: maydonga form-control, yozuvga form-label.", 'Запомни: полю — form-control, подписи — form-label.', 'Remember: the field gets form-control, the label gets form-label.'),
     askStart: L3("Qarang: class yo'q", 'Смотри: class нет', 'Watch: no class'),
     askCtl: L3('Qarang: form-control', 'Смотри: form-control', 'Watch: form-control'),
@@ -145,10 +145,10 @@ const C = {
       'Теперь попробуй сам. Внизу включены четыре слова. Выключи каждое и посмотри, что изменилось на странице.',
       'Now try it yourself. Four words are switched on below. Switch each one off and watch what changes on the page.'),
     what: {
-      'form-label': { off: L3("form-label o'chdi: yozuv maydon yoniga qochdi.", 'form-label выключен: подпись убежала вбок от поля.', 'form-label is off: the label ran off beside the field.'), on: L3("form-label qaytdi: yozuv yana maydon ustida.", 'form-label вернулся: подпись снова над полем.', 'form-label is back: the label is above the field again.') },
+      'form-label': { off: L3("form-label o'chdi: yozuv maydonga yopishib qoldi.", 'form-label выключен: подпись прилипла к полю.', 'form-label is off: the label stuck to the field.'), on: L3("form-label qaytdi: yozuv ostida yana joy bor.", 'form-label вернулся: под подписью снова есть место.', 'form-label is back: there’s space under the label again.') },
       'form-control': { off: L3("form-control o'chdi: maydon kichkina va oddiy bo'lib qoldi.", 'form-control выключен: поле стало маленьким и простым.', 'form-control is off: the field turned small and plain.'), on: L3("form-control qaytdi: maydon yana keng.", 'form-control вернулся: поле снова широкое.', 'form-control is back: the field is wide again.') },
       check: { off: L3("check o'chdi: galochka yana mitti, brauzerning o'zinikidek.", 'check выключен: галочка опять крошечная, как у браузера.', 'check is off: the checkbox is tiny again, the browser’s own.'), on: L3("check qaytdi: galochka yana katta.", 'check вернулся: галочка снова крупная.', 'check is back: the checkbox is big again.') },
-      'btn-solid': { off: L3("btn-solid o'chdi: tugma kulrang va oddiy.", 'btn-solid выключен: кнопка серая и простая.', 'btn-solid is off: the button is gray and plain.'), on: L3("btn-solid qaytdi: tugma yana ko'k.", 'btn-solid вернулся: кнопка снова синяя.', 'btn-solid is back: the button is blue again.') }
+      'btn-solid': { off: L3("btn-solid o'chdi: theme-primary qoldi, lekin tugma kulrang va oddiy. Rang faqat btn-solid bilan ishlaydi.", 'btn-solid выключен: theme-primary остался, но кнопка серая и простая. Цвет работает только вместе с btn-solid.', 'btn-solid is off: theme-primary stayed, but the button is gray and plain. The color only works together with btn-solid.'), on: L3("btn-solid qaytdi: tugma yana ko'k.", 'btn-solid вернулся: кнопка снова синяя.', 'btn-solid is back: the button is blue again.') }
     },
     ok: L3("Ajoyib! Har bir so'z o'z ishini qiladi.", 'Отлично! Каждое слово делает своё дело.', 'Great! Each word does its own job.'),
     done: L3("Endi bunday maydonni Bootstrap saytidan qanday olishni ko'ramiz.", 'Теперь посмотрим, как взять такое поле с сайта Bootstrap.', 'Now let’s see how to take a field like this from the Bootstrap site.'),
@@ -184,9 +184,9 @@ const C = {
   t1: {
     eyebrow: L3('Maydonni bezang', 'Укрась поле', 'Style the field'),
     say: L3("Endi o'zingiz. Namunaga qarang va bo'sh joyga kerakli so'zni yozing.", 'Теперь сам. Посмотри на образец и впиши в пустое место нужное слово.', 'Now you. Look at the goal and type the right word into the empty spot.'),
-    ask1: L3("Telefon maydoni ham chiroyli bo'lsin", 'Поле «Телефон» — тоже красивое', 'Make the Phone field look good too'),
-    ask2: L3("Telefon yozuvi maydon ustida tursin", 'Подпись «Телефон» — над полем', 'Put the Phone label above its field'),
-    ask3: L3("Izoh maydoni ham chiroyli bo'lsin", 'Поле «Комментарий» — тоже красивое', 'Make the Comment field look good too'),
+    ask1: L3("Telefon maydoni Ism maydonidek keng bo'lsin", 'Поле «Телефон» — широкое, как «Имя»', 'Make the Phone field wide, like Name'),
+    ask2: L3("Telefon yozuvi ostida Ismdagidek joy bo'lsin", 'Под подписью «Телефон» — отступ, как у «Имя»', 'Give the Phone label space below, like Name'),
+    ask3: L3("Izoh maydoni Ism maydonidek keng bo'lsin", 'Поле «Комментарий» — широкое, как «Имя»', 'Make the Comment field wide, like Name'),
     hints1: [
       L3("Ism maydonida qaysi so'z bor?", 'Какое слово у поля «Имя»?', 'Which word does the Name field have?'),
       L3("form bilan boshlanadi, keyin control.", 'Начинается с form, потом control.', 'It starts with form, then control.'),
@@ -202,9 +202,9 @@ const C = {
       L3("Ism maydonidagi so'zni yozib ko'ring.", 'Попробуй слово из поля «Имя».', 'Try the word from the Name field.'),
       L3("Yozing: form-control", 'Впиши: form-control', 'Type: form-control')
     ],
-    why1: L3("form-control maydonni keng va chiroyli qildi.", 'form-control сделал поле широким и красивым.', 'form-control made the field wide and neat.'),
-    why2: L3("form-label yozuvni maydon ustiga qo'ydi.", 'form-label поставил подпись над полем.', 'form-label put the label above the field.'),
-    why3: L3("Katta maydonga ham form-control mos keldi.", 'Большому полю тоже подошёл form-control.', 'form-control fit the big field too.'),
+    why1: L3("form-control maydonni butun kenglikka cho'zdi va ramka berdi.", 'form-control растянул поле на всю ширину и дал ему рамку.', 'form-control stretched the field to full width and gave it a border.'),
+    why2: L3("form-label yozuv ostiga joy qo'shdi.", 'form-label добавил отступ под подписью.', 'form-label added space under the label.'),
+    why3: L3("Katta maydonga ham form-control mos keldi: u ham keng bo'ldi.", 'Большому полю тоже подошёл form-control: оно тоже стало широким.', 'form-control fit the big field too: it went wide as well.'),
     done: L3("Qoyil! form-control oddiy maydonga ham, katta maydonga ham ishladi.", 'Класс! form-control сработал и у обычного, и у большого поля.', 'Nice! form-control worked on the plain field and the big one.')
   },
   g2: {
@@ -227,8 +227,8 @@ const C = {
   t2: {
     eyebrow: L3("Ro'yxat va sana", 'Список и дата', 'List and date'),
     say: L3("Saytdagi Select bo'limiga qarang va bo'sh joyga kerakli so'zni yozing. Keyin sana maydoni.", 'Посмотри на раздел Select на сайте и впиши в пустое место нужное слово. Потом — поле даты.', 'Look at the Select section on the site and type the right word into the empty spot. Then the date field.'),
-    ask1: L3("Guruh ro'yxati chiroyli bo'lsin", 'Список «Группа» — красивый', 'Make the Group list look good'),
-    ask2: L3("Tug'ilgan kun maydoni ham chiroyli bo'lsin", 'Поле «День рождения» — тоже красивое', 'Make the Birthday field look good too'),
+    ask1: L3("Guruh ro'yxati butun kenglikka cho'zilsin", 'Список «Группа» — на всю ширину', 'Stretch the Group list to full width'),
+    ask2: L3("Tug'ilgan kun maydoni ham keng bo'lsin", 'Поле «День рождения» — тоже широкое', 'Make the Birthday field wide too'),
     hints1: [
       L3("Saytdagi Heads up yozuvini o'qing.", 'Прочитай надпись Heads up на сайте.', 'Read the Heads up note on the site.'),
       L3("Ro'yxat ham oddiy maydon so'zi bilan bezaladi.", 'Список украшается тем же словом, что и обычное поле.', 'The list takes the same word as a plain field.'),
@@ -239,7 +239,7 @@ const C = {
       L3("Oddiy maydonga qaysi so'z yozilardi?", 'Какое слово пишут обычному полю?', 'Which word does a plain field get?'),
       L3("Yozing: form-control", 'Впиши: form-control', 'Type: form-control')
     ],
-    why1: L3("Ro'yxat ham form-control bilan chiroyli.", 'Список тоже красивый с form-control.', 'The list looks good with form-control too.'),
+    why1: L3("form-control ro'yxatni ham butun kenglikka cho'zdi.", 'form-control растянул на всю ширину и список.', 'form-control stretched the list to full width too.'),
     why2: L3("type date bo'lsa ham, bu input: form-control.", 'Хоть type и date, это input: form-control.', 'Even with type date, it’s an input: form-control.'),
     done: L3("Zo'r! Har qanday maydon form-control bilan bezaladi.", 'Огонь! Любое поле украшается form-control.', 'Awesome! Any field gets styled with form-control.')
   },
@@ -285,8 +285,8 @@ const C = {
   t3: {
     eyebrow: L3('Galochka va doiracha', 'Галочка и кружок', 'Checkbox and radio'),
     say: L3("Namunaga qarang va bo'sh joyga kerakli so'zni yozing. Har biriga o'z so'zi.", 'Посмотри на образец и впиши в пустое место нужное слово. У каждого своё слово.', 'Look at the goal and type the right word into the empty spot. Each has its own word.'),
-    ask1: L3("Galochka chiroyli bo'lsin", 'Галочка — красивая', 'Make the checkbox look good'),
-    ask2: L3("Doiracha chiroyli bo'lsin", 'Кружок — красивый', 'Make the radio look good'),
+    ask1: L3("Galochka namunadagidek yozuv yonida tursin", 'Галочка — рядом с подписью, как в образце', 'Put the checkbox beside its label, like the goal'),
+    ask2: L3("Doiracha namunadagidek yozuv yonida tursin", 'Кружок — рядом с подписью, как в образце', 'Put the radio beside its label, like the goal'),
     ask3: L3("O'tkazgich paydo bo'lsin", 'Пусть появится переключатель', 'Make the switch appear'),
     hints1: [
       L3("Galochkaning so'zi qisqa, besh harf.", 'Слово галочки короткое, пять букв.', 'The checkbox word is short, five letters.'),
@@ -303,8 +303,8 @@ const C = {
       L3("O'tkazgich inglizcha switch.", 'Переключатель по-английски — switch.', 'A toggle in English is a switch.'),
       L3("Yozing: switch", 'Впиши: switch', 'Type: switch')
     ],
-    why1: L3("check galochkani chiroyli qildi.", 'check сделал галочку красивой.', 'check made the checkbox neat.'),
-    why2: L3("radio doirachani chiroyli qildi.", 'radio сделал кружок красивым.', 'radio made the radio button neat.'),
+    why1: L3("check galochkani yozuv yoniga qo'ydi va kattaroq qildi.", 'check поставил галочку рядом с подписью и сделал крупнее.', 'check put the checkbox beside its label and made it bigger.'),
+    why2: L3("radio doirachani yozuv yoniga qo'ydi va kattaroq qildi.", 'radio поставил кружок рядом с подписью и сделал крупнее.', 'radio put the radio button beside its label and made it bigger.'),
     why3: L3("switch div tegini o'tkazgichga aylantirdi.", 'switch превратил div в переключатель.', 'switch turned the div into a toggle.'),
     done: L3("Ajoyib! check, radio va switch — bir oila.", 'Отлично! check, radio и switch — одна семья.', 'Great! check, radio and switch are one family.')
   },
@@ -412,13 +412,16 @@ const C = {
   },
   w1: {
     eyebrow: L3("O'z savolingiz", 'Свой вопрос', 'Your own question'),
-    say: L3("Endi formaga o'z savolingizni qo'shing. Yozuvni o'zingiz o'ylab toping, maydon turini tanlang va maydonga kerakli class ni yozing. Keyin «Tayyor»ni bosing.",
+    say: L3("Endi formaga o'z savolingizni qo'shing. Yozuvni o'zingiz o'ylab toping, maydon turini tanlang va maydonga kerakli class-ni yozing. Keyin «Tayyor»ni bosing.",
       'Теперь добавь в форму свой вопрос. Придумай подпись, выбери вид поля и впиши полю нужный class. Потом нажми «Готово».',
       'Now add your own question to the form. Come up with a label, pick the field type and give the field the right class. Then tap “Done”.'),
-    ask: L3('Yozuv va class ni yozing', 'Впиши подпись и class', 'Type the label and the class'),
+    ask: L3('Yozuv va class-ni yozing', 'Впиши подпись и class', 'Type the label and the class'),
+    // Строка по шагам: пока подпись пустая — про вопрос, потом — про class поля.
+    askName: L3('Savolingizni yozing', 'Напиши свой вопрос', 'Type your question'),
+    askClass: L3('Endi maydonga class yozing', 'Теперь впиши class полю', 'Now type the field’s class'),
     askLab: L3('Yozuv matni', 'Текст подписи', 'Label text'),
-    askCls: L3('Maydon class i', 'class поля', 'The field’s class'),
-    labPh: L3('Sevimli robotingiz', 'Любимый робот', 'Favorite robot'),
+    askCls: L3('Maydonning class-i', 'class поля', 'The field’s class'),
+    labPh: L3('…', '…', '…'),
     noLabel: L3("Yozuv bo'sh. Savolingizni yozing, masalan: Sevimli robotingiz.", 'Подпись пустая. Напиши свой вопрос, например: Любимый робот.', 'The label is empty. Type your question, for example: Favorite robot.'),
     kinds: { text: L3('Matn', 'Текст', 'Text'), date: L3('Sana', 'Дата', 'Date'), number: L3('Raqam', 'Число', 'Number'), textarea: L3('Katta maydon', 'Большое поле', 'Big field') },
     hints: [
@@ -436,10 +439,10 @@ const C = {
         'Back to our riddle. Remember, I thought each kind of field needed its own word? Sadly, I was wrong. Look: the plain field, the list and the big field all use one word, form-control. Just one word to learn!'), k: 'riddle' },
       { text: L3("Qarang, mana sizning formangiz!", 'Смотри, вот твоя форма!', 'Look, here’s your form!'), k: null },
       { text: L3("form-control maydonni, ro'yxatni va katta maydonni chiroyli qiladi.", 'form-control делает красивыми поле, список и большое поле.', 'form-control styles the field, the list and the big field.'), k: 'ctl' },
-      { text: L3("form-label yozuvni maydon ustiga qo'yadi.", 'form-label ставит подпись над полем.', 'form-label puts the label above the field.'), k: 'lab' },
+      { text: L3("form-label yozuv ostiga ozgina joy qo'shadi: yozuv maydonga yopishmaydi.", 'form-label добавляет отступ под подписью: она не прилипает к полю.', 'form-label adds space under the label, so it doesn’t stick to the field.'), k: 'lab' },
       { text: L3("check, radio va switch — galochka, doiracha va o'tkazgich. Yozuv yonida tursin desangiz, form-field.", 'check, radio и switch — галочка, кружок и переключатель. Чтобы подпись была рядом — form-field.', 'check, radio and switch are the checkbox, radio and toggle. To keep the label beside them, use form-field.'), k: 'chk' },
       { text: L3("Hammasi saytda, Forms bo'limida. Misolni nusxalaysiz va yozuvini o'zingizga moslaysiz.", 'Всё это — на сайте, в разделе Forms. Копируешь пример и подгоняешь подпись под себя.', 'It’s all on the site, in Forms. You copy the example and make the label your own.'), k: 'site' },
-      { text: L3("Tabriklayman! Siz yettinchi darsni tugatdingiz. Keyingi darsda karusel yasaymiz, ya'ni o'zi aylanadigan rasmlar degani. Ko'rishguncha!", 'Ура! Ты прошёл седьмой урок. На следующем уроке сделаем карусель — картинки, которые листаются сами. До встречи!', 'Hooray! You finished the seventh lesson. Next time we’ll make a carousel, pictures that slide by themselves. See you!'), k: null }
+      { text: L3("Tabriklayman! Siz sakkizinchi darsni tugatdingiz. Keyingi darsda karusel yasaymiz, ya'ni o'zi aylanadigan rasmlar degani. Ko'rishguncha!", 'Ура! Ты прошёл восьмой урок. На следующем уроке сделаем карусель — картинки, которые листаются сами. До встречи!', 'Hooray! You finished the eighth lesson. Next time we’ll make a carousel, pictures that slide by themselves. See you!'), k: null }
     ],
     roles: {
       ctl: L3('form-control — maydonlar', 'form-control — поля', 'form-control — fields'),

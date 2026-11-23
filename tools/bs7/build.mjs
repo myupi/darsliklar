@@ -1,5 +1,5 @@
 // Сборка урока 7 модуля Bootstrap «Формы» в облике «Редактор» (20.11.2026).
-//   node tools/bs7/build.mjs   → lessons/bootstrap/07-formy.jsx
+//   node tools/bs7/build.mjs   → lessons/bootstrap/08-formy.jsx
 // Исходник — bs7.src.jsx (тексты по /uzbekcha), набор — bs7-kit.jsx (копия набора урока 6 + доступ к странице: onPick с
 // документом, api { doc, fit }, отправка формы не уходит), похожий сайт Bootstrap — bs7-site.jsx (копия сайта урока 6 +
 // Forms → Overview, Form control, Checkbox, Radio, Switch), экраны — bs7-screens.jsx,
@@ -39,4 +39,4 @@ naborRedaktor(gen);
 }
 
 mkdirSync(join(root, 'lessons/bootstrap'), { recursive: true });
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs7.src.jsx'), join(root, 'lessons/bootstrap/07-formy.jsx'), 'bootstrap'], { stdio: 'inherit' });
+execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs7.src.jsx'), join(root, 'lessons/bootstrap/08-formy.jsx'), 'bootstrap'], { stdio: 'inherit' });

@@ -129,6 +129,9 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
     } else { sayNow(line, 'smile'); R.setNext(true); }
   };
   const v = normCls(val);
+  // 23.11.2026: на телефоне окно сайта — полоса; docs.scroll (строка или функция раунда) — к чему его прокрутить.
+  const isPhone = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(max-width: 759px)').matches;
+  const dScroll = docs && docs.scroll && isPhone ? (typeof docs.scroll === 'function' ? docs.scroll(R.ii) : docs.scroll) : null;
   const field = R.ok ? <span key="f" className="b1-st b2-done">{v || want0}</span>
     : <span key="f" className={'kz-gap b1-slotin b2-field' + (led ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={(x) => { setVal(x); setMsg(null); }} onEnter={check} placeholder={RR.ph || L3('…', '…', '…')} label={RR.ask} max={28} /></span>;
   return (
@@ -136,7 +139,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
         <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
-          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
+          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff scrollTo={dScroll} scrollKey={'r' + R.ii} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
             {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm" />

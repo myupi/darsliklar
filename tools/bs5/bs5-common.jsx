@@ -98,6 +98,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
   const solved = !!(rec && rec.done);
   const R = useRounds(rounds.length, solved);
   const RR = rounds[R.ii];
+  if (RR.docs !== undefined) docs = RR.docs;   // справка своего раунда (null — без сайта; урок 5, t5, 23.11.2026)
   const want0 = [].concat(RR.want)[0];
   const [val, setVal] = useState(solved ? want0 : '');
   const [msg, setMsg] = useState(null);

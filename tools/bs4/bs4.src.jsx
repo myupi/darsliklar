@@ -252,8 +252,8 @@ const C = {
   t2: {
     eyebrow: L3("Ko'ndalang o'q", 'Поперечная ось', 'Cross axis'),
     say: L3("Endi ko'ndalang o'q. Namunaga qarang va oxiriga kerakli so'zni yozing.", 'Теперь поперечная ось. Посмотри на образец и впиши в конец нужное слово.', 'Now the cross axis. Look at the goal and type the right word at the end.'),
-    ask1: L3("Hammasi pastga tekislansin", 'Всё выровнять по низу', 'Line everything up at the bottom'),
-    ask2: L3("Hammasi o'rtaga tekislansin", 'Всё выровнять по середине', 'Line everything up in the middle'),
+    ask1: L3("Logotip, nom va tugma pastki chiziqqa tekislansin", 'Логотип, название и кнопка — по нижнему краю', 'Logo, title and button lined up along the bottom edge'),
+    ask2: L3("Logotip, nom va tugma o'rta chiziqqa tekislansin", 'Логотип, название и кнопка — по середине', 'Logo, title and button lined up along the middle'),
     hints1: [
       L3("So'z align-items bilan boshlanadi.", 'Слово начинается с align-items.', 'The word starts with align-items.'),
       L3("Past — oxiri, inglizcha end.", 'Низ — это конец, по-английски end.', 'The bottom is the end, end in English.'),
@@ -409,11 +409,11 @@ const C = {
     rounds: [
       L3("justify-content-between bor, lekin d-flex yo'q. Bloklar qatorga tizilmagan, shuning uchun joylashuv ishlamaydi.", 'justify-content-between есть, а d-flex нет. Блоки не выстроены в ряд, поэтому расстановка не работает.', 'justify-content-between is there, but d-flex isn’t. The blocks aren’t in a row, so the arrangement doesn’t work.'),
       L3("space-between bu CSS qiymati. Bootstrap da qisqasi: justify-content-between.", 'space-between — значение из CSS. В Bootstrap короче: justify-content-between.', 'space-between is the CSS value. In Bootstrap it’s shorter: justify-content-between.'),
-      L3("gap-16 degan o'lcham yo'q. 16 piksel uchun jadvalda gap-5.", 'Размера gap-16 нет. Для 16 пикселей в таблице — gap-5.', 'There’s no gap-16 size. For 16 pixels the table says gap-5.')
+      L3("gap-16 degan o'lcham yo'q. 16 piksel: gap-5 (Gap sahifasidagi jadvalda).", 'Размера gap-16 нет. 16 пикселей — это gap-5 (таблица на странице Gap).', 'There’s no gap-16 size. 16 pixels is gap-5 (the table on the Gap page).')
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Oldin d-flex bormi, tekshiring.", 'Сначала проверь, есть ли d-flex.', 'First check whether d-flex is there.'),
-    hint2: L3("So'zni saytdagi bilan solishtiring: qisqa Bootstrap so'zimi, CSS qiymatimi, raqami jadvaldami?", 'Сравни слово с сайтом: это короткое слово Bootstrap, значение CSS, есть ли такое число в таблице?', 'Compare the word with the site: is it a short Bootstrap word, a CSS value, is that number in the table?'),
+    hint2: L3("So'zni saytdagi bilan solishtiring: qisqa Bootstrap so'zimi, CSS qiymatimi, raqami Gap sahifasidagi jadvaldami?", 'Сравни слово с сайтом: это короткое слово Bootstrap, значение CSS, есть ли такое число в таблице на странице Gap?', 'Compare the word with the site: is it a short Bootstrap word, a CSS value, is that number in the table on the Gap page?'),
     ok: L3("Hammasi to'g'ri! Endi joylashuv ishlamasa, sababini o'zingiz topasiz.", 'Всё верно! Теперь, если расстановка не работает, причину найдёшь сам.', 'All correct! Now if an arrangement doesn’t work, you’ll find the reason yourself.')
   },
   w1: {
@@ -421,7 +421,8 @@ const C = {
     say: L3("Endi sarlavhani o'zingizga moslang. Bosh o'q bo'yicha joylashuvni va oraliqni tanlang. So'zlar saytda. Ikkalasi tayyor bo'lsa, «Tayyor»ni bosing.",
       'Теперь настрой шапку под себя. Выбери расстановку по главной оси и расстояние. Слова — на сайте. Когда оба готовы, нажми «Готово».',
       'Now make the header your own. Pick the main axis arrangement and the spacing. The words are on the site. When both are ready, tap “Done”.'),
-    ask: L3("Joylashuv va oraliq so'zini yozing", 'Впиши слово расстановки и расстояния', 'Type the arrangement word and the spacing word'),
+    ask: L3("Joylashuvni tanlang, keyin oraliqni (gap-…)", 'Выбери расстановку, потом расстояние (gap-…)', 'Pick the arrangement, then the spacing (gap-…)'),
+    askGap: L3("Endi oraliqni tanlang: gap-… (Gap sahifasidagi jadval)", 'Теперь выбери расстояние: gap-… (таблица на странице Gap)', 'Now pick the spacing: gap-… (the table on the Gap page)'),
     hints: [
       L3("Kodda ikkita bo'sh joy bor: bosh o'q va oraliq.", 'В коде два пустых места: главная ось и расстояние.', 'The code has two empty spots: the main axis and the spacing.'),
       L3("Birinchisi justify-content bilan, ikkinchisi gap bilan boshlanadi.", 'Первое начинается с justify-content, второе — с gap.', 'The first starts with justify-content, the second with gap.'),

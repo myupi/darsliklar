@@ -135,7 +135,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, R.lad.lv + 1), RR.hints) || RR.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
-        <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) + ' b7-pair b7-fill-r' : 'kz-scene b1-pair b7-pair b7-fill-r'} key={'r' + R.ii}>
+        <div className={(docs ? docsPhoneCls({ ref: true, done: R.done }) + ' b7-pair b7-fill-r' : 'kz-scene b1-pair b7-pair b7-fill-r') + ' b7-fr-' + id} key={'r' + R.ii}>
           {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
             {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}

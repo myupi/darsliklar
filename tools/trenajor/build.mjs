@@ -74,7 +74,8 @@ const META = {
   // Bootstrap (21.11.2026, заказчик: «делай тренажёр для бутстрапа»): уроки 1–9 по 18 вопросов, финальный 10 — 21; типы как у
   // HTML и CSS; картинка — HTML-вид { code, page } на настоящем CSS Bootstrap 6 (vis.bs, по умолчанию да); миссия «Сайт одевается».
   bootstrap: {
-    lessons: 10, per: { 10: { choice: 12, input: 4, build: 2, bug: 2, tap: 1 } }, perDefault: { choice: 11, input: 3, build: 2, bug: 1, tap: 1 },
+    // 23.11.2026: урок 7 «Navbar и Pagination» встал после сетки — прежние 7–10 стали 8–11 (id вопросов тоже).
+    lessons: 11, per: { 11: { choice: 12, input: 4, build: 2, bug: 2, tap: 1 } }, perDefault: { choice: 11, input: 3, build: 2, bug: 1, tap: 1 },
     topics: {
       1: { uz: 'Bootstrapga kirish', ru: 'Введение в Bootstrap', en: 'Getting started with Bootstrap' },
       2: { uz: 'Ranglar va tugmalar', ru: 'Цвета и кнопки', en: 'Colors and buttons' },
@@ -82,10 +83,11 @@ const META = {
       4: { uz: 'Flex', ru: 'Flex', en: 'Flex' },
       5: { uz: 'Kartochkalar', ru: 'Карточки', en: 'Cards' },
       6: { uz: 'Konteyner va setka', ru: 'Контейнер и сетка', en: 'Container and grid' },
-      7: { uz: 'Formalar', ru: 'Формы', en: 'Forms' },
-      8: { uz: 'Karusel', ru: 'Карусель', en: 'Carousel' },
-      9: { uz: 'Menu va Dialog', ru: 'Menu и Dialog', en: 'Menu and Dialog' },
-      10: { uz: 'Yakuniy loyiha', ru: 'Финальный проект', en: 'Final project' },
+      7: { uz: 'Navbar va Pagination', ru: 'Navbar и Pagination', en: 'Navbar and Pagination' },
+      8: { uz: 'Formalar', ru: 'Формы', en: 'Forms' },
+      9: { uz: 'Karusel', ru: 'Карусель', en: 'Carousel' },
+      10: { uz: 'Menu va Dialog', ru: 'Menu и Dialog', en: 'Menu and Dialog' },
+      11: { uz: 'Yakuniy loyiha', ru: 'Финальный проект', en: 'Final project' },
     },
   },
 }[MOD];

@@ -1,8 +1,8 @@
 // =============================================================================
-// МОДУЛЬ «BOOTSTRAP» · Урок 9 — «Menu и Dialog»
+// МОДУЛЬ «BOOTSTRAP» · Урок 10 — «Menu и Dialog»
 // (облик «Редактор», как уроки 1–8 модуля; 20.11.2026). Дети 11–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node tools/bs9/build.mjs → lessons/bootstrap/09-menu-i-dialog.jsx
+// Сборка: node tools/bs9/build.mjs → lessons/bootstrap/10-menu-i-dialog.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -15,7 +15,7 @@
 // закрывает скрипт Bootstrap (строка script урока 1). В версии 5 — Dropdown и Modal (dropdown-item, data-bs-toggle="modal") —
 // одной фразой. Загадка (без имён): Коди думает, что для окна нужна отдельная страница; разгадка — окно в той же странице.
 //
-// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-09-menu-i-dialog.md.
+// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-10-menu-i-dialog.md.
 //
 // СИСТЕМА СЛОВ: menu, menu-item, dialog, dialog-header, data-bs-toggle — по-английски; menyu — меню; oyna — окно (dialog);
 // bo'lim — раздел; fon — фон (backdrop); yopish — закрыть.
@@ -23,12 +23,12 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'bootstrap-09-menu-i-dialog',
+  lessonId: 'bootstrap-10-menu-i-dialog',
   module: 'bootstrap-m1',
   lessonTitle: {
-    uz: '9-dars. Menu va Dialog',
-    ru: 'Урок 9. Menu и Dialog',
-    en: 'Lesson 9. Menu and Dialog'
+    uz: '10-dars. Menu va Dialog',
+    ru: 'Урок 10. Menu и Dialog',
+    en: 'Lesson 10. Menu and Dialog'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -95,9 +95,9 @@ const C = {
       fam: L3("{w} boshqa narsa uchun. Bu yerga boshqa so'z kerak.", '{w} — для другой вещи. Сюда нужно другое слово.', '{w} is for something else. This spot needs another word.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas.", 'Bootstrap это слово знает, но результат не как в образце.', 'Bootstrap knows that word, but the result isn’t like the goal.'),
       unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось.', 'Bootstrap doesn’t know the word {w}, so nothing changed.'),
-      noHash: L3("id ga ishora qilganda oldiga panjara qo'yiladi: {w}. Busiz tugma oynani topmaydi.", 'Когда указываешь на id, впереди ставится решётка: {w}. Без неё кнопка не найдёт окно.', 'Pointing to an id needs a hash in front: {w}. Without it the button won’t find the window.'),
-      otherId: L3("Bunday id yo'q. Oynaning id si dialog qatorida: {w}.", 'Такого id нет. id окна — в строке dialog: {w}.', 'There’s no such id. The window’s id is on the dialog line: {w}.'),
-      dotTarget: L3("Nuqta class uchun. id ga panjara bilan ishora qilinadi: {w}.", 'Точка — для class. На id указывают решёткой: {w}.', 'A dot is for class. An id is pointed to with a hash: {w}.'),
+      noHash: L3("id-ga ishora qilganda oldiga panjara qo'yiladi: {w}. Busiz tugma oynani topmaydi.", 'Когда указываешь на id, впереди ставится решётка: {w}. Без неё кнопка не найдёт окно.', 'Pointing to an id needs a hash in front: {w}. Without it the button won’t find the window.'),
+      otherId: L3("Bunday id yo'q. Oynaning id-si dialog qatorida: {w}.", 'Такого id нет. id окна — в строке dialog: {w}.', 'There’s no such id. The window’s id is on the dialog line: {w}.'),
+      dotTarget: L3("Nuqta class uchun. id-ga panjara bilan ishora qilinadi: {w}.", 'Точка — для class. На id указывают решёткой: {w}.', 'A dot is for class. An id is pointed to with a hash: {w}.'),
       otherUi: L3("Bu boshqa narsani ochadi. Bu yerga kerakli so'z: {w}.", 'Это слово открывает другую вещь. Сюда нужно: {w}.', 'That word opens something else. This spot needs: {w}.'),
       uiWord: L3("Bootstrap qisqa inglizcha so'zni kutadi: {w}.", 'Bootstrap ждёт короткое английское слово: {w}.', 'Bootstrap expects a short English word: {w}.')
     }
@@ -119,7 +119,7 @@ const C = {
   s2: {
     eyebrow: L3('Menyu', 'Меню', 'Menu'),
     help: [
-      L3("Kodda menu va menu-item so'zlariga, keyin tugmadagi data-bs-toggle ga qarang.", 'Посмотри на слова menu и menu-item в коде, потом на data-bs-toggle у кнопки.', 'Look at menu and menu-item in the code, then data-bs-toggle on the button.'),
+      L3("Kodda menu va menu-item so'zlariga, keyin tugmadagi data-bs-toggle-ga qarang.", 'Посмотри на слова menu и menu-item в коде, потом на data-bs-toggle у кнопки.', 'Look at menu and menu-item in the code, then data-bs-toggle on the button.'),
       L3("menu ro'yxatni yashiradi. Tugmada data-bs-toggle menu bo'lsa, Bootstrap skripti ro'yxatni tugma ostida ochadi. Bo'limni tanlasangiz, menyu yopiladi.", 'menu прячет список. Если у кнопки data-bs-toggle равен menu, скрипт Bootstrap открывает список под кнопкой. Выбрал раздел — меню закрылось.', 'menu hides the list. If the button has data-bs-toggle menu, Bootstrap’s script opens the list under the button. Pick a section and the menu closes.'),
       L3("Bu oshxonadagi menyuga o'xshaydi: kerak bo'lganda ochasiz, tanlaysiz va yopasiz.", 'Это как меню в кафе: открыл, выбрал, закрыл.', 'It’s like a café menu: open it, choose, close it.')
     ],
@@ -147,7 +147,7 @@ const C = {
       L3("Ochilgan ro'yxatdan bitta bo'limni bosing.", 'В открывшемся списке нажми раздел.', 'Tap a section in the list that opens.'),
       L3("Keyin yana oching va boshqasini bosing.", 'Потом открой снова и нажми другой.', 'Then open it again and tap another.')
     ],
-    ask: L3("Ikkita bo'limni tanlang", 'Выбери два раздела', 'Pick two sections'),
+    ask: L3("Bo'limlar tugmasini bosing va ikkita bo'limni tanlang", 'Нажми «Разделы» и выбери два раздела', 'Tap Sections and pick two sections'),
     askDone: L3("Menyu ishlaydi", 'Меню работает', 'The menu works')
   },
   g1: {
@@ -205,8 +205,8 @@ const C = {
       L3("Bu kitob mundarijasiga o'xshaydi: boblar sarlavhasi bor, qismlar chiziq bilan ajratilgan.", 'Это как оглавление книги: есть названия глав, части разделены чертой.', 'It’s like a book’s contents: chapter titles, and parts split by lines.')
     ],
     say: L3("Menyuni chiroyliroq qilamiz. Ko'rish oson bo'lishi uchun uni ochiq qoldirdik: show va position-static, xuddi saytdagi misollardek. Qarang.", 'Сделаем меню красивее. Чтобы было видно, оставили его открытым: show и position-static, как в примерах на сайте. Смотри.', 'Let’s make the menu nicer. To see it, we left it open with show and position-static, like the site examples. Watch.'),
-    sayHdr: L3("Tepaga h6 qatorini qo'shdim, class i menu-header. Bu menyuning sarlavhasi: Kurslar.", 'Сверху добавил строку h6 с class menu-header. Это заголовок меню: Курсы.', 'I added an h6 on top with class menu-header. It’s the menu’s title: Courses.'),
-    sayDiv: L3("Pastga hr qatorini qo'shdim, class i menu-divider. U chiziq tortdi, undan keyin Aloqa bandi.", 'Снизу добавил строку hr с class menu-divider. Она провела черту, а за ней — пункт «Контакты».', 'I added an hr with class menu-divider. It drew a line, followed by the Contacts item.'),
+    sayHdr: L3("Tepaga h6 qatorini qo'shdim, class-i menu-header. Bu menyuning sarlavhasi: Kurslar.", 'Сверху добавил строку h6 с class menu-header. Это заголовок меню: Курсы.', 'I added an h6 on top with class menu-header. It’s the menu’s title: Courses.'),
+    sayDiv: L3("Pastga hr qatorini qo'shdim, class-i menu-divider. U chiziq tortdi, undan keyin Aloqa bandi.", 'Снизу добавил строку hr с class menu-divider. Она провела черту, а за ней — пункт «Контакты».', 'I added an hr with class menu-divider. It drew a line, followed by the Contacts item.'),
     done: L3("Eslab qoling: menu-header — sarlavha, menu-divider — chiziq.", 'Запомни: menu-header — заголовок, menu-divider — черта.', 'Remember: menu-header is a title, menu-divider is a line.'),
     askStart: L3('Qarang: ochiq menyu', 'Смотри: открытое меню', 'Watch: an open menu'),
     askHdr: L3('Qarang: menu-header', 'Смотри: menu-header', 'Watch: menu-header'),
@@ -216,26 +216,26 @@ const C = {
   t2: {
     eyebrow: L3('Menyuni bezang', 'Укрась меню', 'Style the menu'),
     say: L3("Namunaga qarang va bo'sh joyga kerakli so'zni yozing.", 'Посмотри на образец и впиши в пустое место нужное слово.', 'Look at the goal and type the right word into the empty spot.'),
-    ask1: L3("Aloqa oldida chiziq bo'lsin", 'Перед «Контактами» — черта', 'Put a line before Contacts'),
-    ask2: L3("Kurslar sarlavha bo'lsin", '«Курсы» — заголовок', 'Make Courses a header'),
+    ask1: L3("Kurslar sarlavha bo'lsin", '«Курсы» — заголовок', 'Make Courses a header'),
+    ask2: L3("Aloqa ham menyu bandi bo'lsin", '«Контакты» — тоже пункт меню', 'Make Contacts a menu item too'),
     hints1: [
-      L3("hr chiziq tortadi. Uning class i qanday?", 'hr рисует черту. Какой у него class?', 'hr draws a line. What’s its class?'),
-      L3("menu va divider, ya'ni ajratuvchi degani.", 'menu и divider, то есть «разделитель».', 'menu and divider.'),
-      L3("Yozing: menu-divider", 'Впиши: menu-divider', 'Type: menu-divider')
-    ],
-    hints2: [
-      L3("h6 menyuning sarlavhasi.", 'h6 — заголовок меню.', 'h6 is the menu’s title.'),
+      L3("h6 menyuning sarlavhasi. Uning class-i qanday?", 'h6 — заголовок меню. Какой у него class?', 'h6 is the menu’s title. What’s its class?'),
       L3("menu va header, ya'ni sarlavha degani.", 'menu и header, то есть «заголовок».', 'menu and header.'),
       L3("Yozing: menu-header", 'Впиши: menu-header', 'Type: menu-header')
     ],
-    why1: L3("menu-divider bo'limlarni chiziq bilan ajratdi.", 'menu-divider разделил пункты чертой.', 'menu-divider split the items with a line.'),
-    why2: L3("menu-header Kurslarni sarlavha qildi.", 'menu-header сделал «Курсы» заголовком.', 'menu-header made Courses a header.'),
-    done: L3("Zo'r! Menyuda sarlavha ham, chiziq ham bor.", 'Огонь! В меню есть и заголовок, и черта.', 'Awesome! The menu has a header and a line.')
+    hints2: [
+      L3("Qolgan bandlarda qaysi class bor?", 'Какой class у других пунктов?', 'Which class do the other items have?'),
+      L3("menu va item, ya'ni band degani.", 'menu и item, то есть «пункт».', 'menu and item.'),
+      L3("Yozing: menu-item", 'Впиши: menu-item', 'Type: menu-item')
+    ],
+    why1: L3("menu-header Kurslarni sarlavha qildi.", 'menu-header сделал «Курсы» заголовком.', 'menu-header made Courses a header.'),
+    why2: L3("menu-item Aloqani ham menyu bandi qildi.", 'menu-item сделал «Контакты» пунктом меню.', 'menu-item made Contacts a menu item.'),
+    done: L3("Zo'r! Menyuda sarlavha ham, chiziq ham, barcha bandlar ham bor.", 'Огонь! В меню есть заголовок, черта и все пункты.', 'Awesome! The menu has a header, a line and all the items.')
   },
   s8: {
     eyebrow: L3('Oyna', 'Окно', 'Dialog'),
     help: [
-      L3("Kodda dialog qatoriga, tugmadagi data-bs-toggle va data-bs-target ga qarang.", 'Посмотри на строку dialog и на data-bs-toggle и data-bs-target у кнопки.', 'Look at the dialog line and data-bs-toggle and data-bs-target on the button.'),
+      L3("Kodda dialog qatoriga, tugmadagi data-bs-toggle va data-bs-target-ga qarang.", 'Посмотри на строку dialog и на data-bs-toggle и data-bs-target у кнопки.', 'Look at the dialog line and data-bs-toggle and data-bs-target on the button.'),
       L3("dialog — brauzerning o'z oynasi, u yopiq turadi. Tugmada data-bs-toggle dialog va data-bs-target panjara bilan id bo'lsa, Bootstrap oynani ochadi. Krestik data-bs-dismiss bilan yopadi.", 'dialog — собственное окно браузера, оно закрыто. Если у кнопки data-bs-toggle dialog и data-bs-target с решёткой и id, Bootstrap открывает окно. Крестик с data-bs-dismiss закрывает.', 'dialog is the browser’s own window, closed by default. If the button has data-bs-toggle dialog and data-bs-target with a hash and the id, Bootstrap opens it. The cross with data-bs-dismiss closes it.'),
       L3("Bu muzlatkichga o'xshaydi: ovqat ichida bor, eshikni ochsangiz ko'rinadi.", 'Это как холодильник: еда внутри есть, видно её, когда откроешь дверцу.', 'It’s like a fridge: the food is inside, you see it when you open the door.')
     ],
@@ -274,11 +274,11 @@ const C = {
   t3: {
     eyebrow: L3('Oynani sozlang', 'Настрой окно', 'Set up the window'),
     say: L3("Kodga qarang va bo'sh joyga kerakli so'zni yozing. Keyin sahifada tugmani bosib tekshiring.", 'Посмотри на код и впиши в пустое место нужное слово. Потом проверь на странице.', 'Look at the code and type the right word into the empty spot. Then test it on the page.'),
-    ask1: L3("Tugma bizning oynani topsin", 'Кнопка находит наше окно', 'The button finds our window'),
+    ask1: L3("Tugma Qoidalar oynasini ochsin", 'Кнопка открывает окно правил', 'Make the button open the rules window'),
     ask2: L3("Krestik oynani yopsin", 'Крестик закрывает окно', 'The cross closes the window'),
-    ask3: L3("Matn oynaning asosiy qismi bo'lsin", 'Текст — в основной части окна', 'Put the text in the window’s main part'),
+    ask3: L3("Matn oyna chetiga yopishmasin", 'Текст не прилипает к краю окна', 'Keep the text off the window’s edge'),
     hints1: [
-      L3("Oynaning id si qanday?", 'Какой id у окна?', 'What’s the window’s id?'),
+      L3("Oynaning id-si qanday?", 'Какой id у окна?', 'What’s the window’s id?'),
       L3("Panjara va id: #qoidalar.", 'Решётка и id: #qoidalar.', 'A hash and the id: #qoidalar.'),
       L3("Yozing: #qoidalar", 'Впиши: #qoidalar', 'Type: #qoidalar')
     ],
@@ -300,7 +300,7 @@ const C = {
   s11: {
     eyebrow: L3('Fon', 'Фон', 'Backdrop'),
     help: [
-      L3("Oyna ochilganda orqadagi xira fonga va data-bs-backdrop ga qarang.", 'Посмотри на затемнённый фон за окном и на data-bs-backdrop.', 'Look at the dimmed backdrop and data-bs-backdrop.'),
+      L3("Oyna ochilganda orqadagi xira fonga va data-bs-backdrop-ga qarang.", 'Посмотри на затемнённый фон за окном и на data-bs-backdrop.', 'Look at the dimmed backdrop and data-bs-backdrop.'),
       L3("Odatda fonni bossangiz oyna yopiladi. data-bs-backdrop static bo'lsa, fon yopmaydi, faqat tugma yoki krestik.", 'Обычно нажатие на фон закрывает окно. Если data-bs-backdrop равен static, фон не закрывает — только кнопка или крестик.', 'Usually tapping the backdrop closes the window. With data-bs-backdrop static it doesn’t; only a button or the cross does.'),
       L3("Bu muhim xatga o'xshaydi: o'qimaguncha yopib bo'lmaydi.", 'Это как важное письмо: пока не прочитаешь, не закроешь.', 'It’s like an important letter: you can’t close it before reading.')
     ],
@@ -317,22 +317,40 @@ const C = {
   },
   x2: {
     eyebrow: L3('Tajriba', 'Опыт', 'Experiment'),
-    say: L3("Endi o'zingiz. Qoidalar oynasini oching va uni uch xil yo'l bilan yoping: krestik, pastdagi tugma va xira fon.", 'Теперь сам. Открой окно правил и закрой его тремя способами: крестиком, кнопкой внизу и нажатием на фон.', 'Now you. Open the rules window and close it three ways: the cross, the bottom button and the backdrop.'),
+    say: L3("Oynani yopishning uch yo'li bor. Keling, birma-bir sinab ko'ramiz. Avval Qoidalar tugmasini bosing, oyna ochiladi. Keyin to'q sariq ramkadagi krestikni bosing.",
+      'У окна есть три способа закрыться. Попробуем по очереди. Сначала нажми «Правила», окно откроется. Потом нажми крестик в оранжевой рамке.',
+      'A window can be closed three ways. Let’s try them one by one. First tap Rules, and the window opens. Then tap the cross in the orange frame.'),
+    title: L3("Oynani yopishning 3 yo'li", '3 способа закрыть окно', '3 ways to close the window'),
+    ways: {
+      x: L3("Krestik ✕", 'Крестик ✕', 'The cross ✕'),
+      btn: L3("«Tushunarli» tugmasi", 'Кнопка «Понятно»', 'The Got it button'),
+      backdrop: L3("Oyna tashqarisi", 'Место вне окна', 'Outside the window')
+    },
+    open: L3("Qoidalar tugmasini bosing", 'Нажми «Правила»', 'Tap Rules'),
+    step: {
+      x: L3("✕ krestikni bosing", 'Нажми крестик ✕', 'Tap the cross ✕'),
+      btn: L3("«Tushunarli» tugmasini bosing", 'Нажми кнопку «Понятно»', 'Tap the Got it button'),
+      backdrop: L3("Oynadan tashqaridagi to'q sariq joyni bosing", 'Нажми на оранжевое место вне окна', 'Tap the orange area outside the window')
+    },
     how: {
       x: L3("Krestik bilan yopildi.", 'Закрыто крестиком.', 'Closed with the cross.'),
-      btn: L3("Pastdagi tugma bilan yopildi.", 'Закрыто кнопкой внизу.', 'Closed with the bottom button.'),
-      backdrop: L3("Fon bilan yopildi.", 'Закрыто нажатием на фон.', 'Closed with the backdrop.')
+      btn: L3("Tushunarli tugmasi bilan yopildi.", 'Закрыто кнопкой «Понятно».', 'Closed with the Got it button.'),
+      backdrop: L3("Oyna tashqarisini bosdingiz, yopildi.", 'Нажал мимо окна — закрылось.', 'You tapped outside, and it closed.')
     },
-    same: L3("Bu yo'l bor edi. Boshqasini sinang.", 'Этот способ уже был. Попробуй другой.', 'You’ve done that one. Try another.'),
-    more: L3("Yana oching va boshqa yo'l bilan yoping.", 'Открой снова и закрой по-другому.', 'Open it again and close it another way.'),
+    next: {
+      x: L3("Endi yana oching va krestikni bosing.", 'Теперь открой снова и нажми крестик.', 'Now open it again and tap the cross.'),
+      btn: L3("Endi yana oching va pastdagi Tushunarli tugmasini bosing.", 'Теперь открой снова и нажми внизу «Понятно».', 'Now open it again and tap Got it at the bottom.'),
+      backdrop: L3("Endi yana oching va oynadan tashqaridagi to'q sariq joyni bosing.", 'Теперь открой снова и нажми на оранжевое место вне окна.', 'Now open it again and tap the orange area outside the window.')
+    },
+    same: L3("Bu yo'l bor edi. To'q sariq ramkadagini bosing.", 'Этот способ уже был. Нажми то, что в оранжевой рамке.', 'You’ve done that one. Tap what’s in the orange frame.'),
     ok: L3("Ajoyib! Oynani uch xil yo'l bilan yopa olasiz.", 'Отлично! Ты закрываешь окно тремя способами.', 'Great! You can close the window three ways.'),
     done: L3("Endi oyna kodini tartib bilan yig'amiz.", 'Теперь соберём код окна по порядку.', 'Now let’s build the window code in order.'),
     hints: [
-      L3("Sahifadagi Qoidalar tugmasini bosing.", 'Нажми кнопку «Правила» на странице.', 'Tap Rules on the page.'),
-      L3("Krestik, Tushunarli va oyna tashqarisi — uch yo'l.", 'Крестик, «Понятно» и место вне окна — три способа.', 'The cross, Got it, and outside the window: three ways.'),
-      L3("Oyna tashqarisidagi xira joyni bosing.", 'Нажми на затемнённое место вне окна.', 'Tap the dim area outside the window.')
+      L3("Sahifadagi Qoidalar tugmasini bosing, oyna ochiladi.", 'Нажми на странице «Правила» — окно откроется.', 'Tap Rules on the page, and the window opens.'),
+      L3("Oynada to'q sariq ramkadagi narsani bosing.", 'В окне нажми то, что в оранжевой рамке.', 'In the window, tap what’s in the orange frame.'),
+      L3("Chapdagi ro'yxatga qarang: galochkasiz yo'lni sinang.", 'Посмотри на список слева: попробуй способ без галочки.', 'Look at the list: try a way without a tick.')
     ],
-    ask: L3("Oynani uch xil yo'l bilan yoping", 'Закрой окно тремя способами', 'Close the window three ways'),
+    ask: L3("Qoidalarni oching va oynani yoping", 'Открой «Правила» и закрой окно', 'Open Rules and close the window'),
     askDone: L3("Uch yo'l — tayyor", 'Три способа — готово', 'Three ways: done')
   },
   t4: {
@@ -361,7 +379,7 @@ const C = {
     empty: L3("Variantni tanlang, natija shu yerda chiqadi", 'Выбери вариант, результат появится здесь', 'Pick an option, the result shows here'),
     why: [
       L3("Menyu bandlari: menu-item.", 'Пункты меню: menu-item.', 'Menu items: menu-item.'),
-      L3("Chiziq: menu-divider.", 'Черта: menu-divider.', 'A line: menu-divider.'),
+      L3("Menyu sarlavhasi: menu-header.", 'Заголовок меню: menu-header.', 'The menu header: menu-header.'),
       L3("Oyna sarlavhasi: dialog-header.", 'Шапка окна: dialog-header.', 'The window header: dialog-header.'),
       L3("Oyna pasti: dialog-footer.", 'Низ окна: dialog-footer.', 'The window footer: dialog-footer.')
     ],
@@ -369,9 +387,9 @@ const C = {
       'dropdown-item': L3("Bu eski nom, beshinchi versiyadan: bandlar oddiy havola bo'lib qoldi.", 'Это старое имя из пятой версии: пункты остались простыми ссылками.', 'That’s an old name from version five: the items stayed plain links.'),
       'menu-link': L3("Bunday class yo'q: bandlar oddiy havola bo'lib qoldi.", 'Такого class нет: пункты остались простыми ссылками.', 'There’s no such class: the items stayed plain links.'),
       item: L3("Oldida menu so'zi kerak: bandlar oddiy havola bo'lib qoldi.", 'Впереди нужно слово menu: пункты остались простыми ссылками.', 'It needs menu in front: the items stayed plain links.'),
-      'dropdown-divider': L3("Bu eski nom, beshinchi versiyadan: chiziq oddiy hr bo'lib qoldi.", 'Это старое имя из пятой версии: черта осталась обычной hr.', 'That’s an old name from version five: the line stayed a plain hr.'),
-      divider: L3("Oldida menu so'zi kerak: chiziq oddiy hr bo'lib qoldi.", 'Впереди нужно слово menu: черта осталась обычной hr.', 'It needs menu in front: the line stayed a plain hr.'),
-      'menu-line': L3("Bunday class yo'q: chiziq oddiy hr bo'lib qoldi.", 'Такого class нет: черта осталась обычной hr.', 'There’s no such class: the line stayed a plain hr.'),
+      'dropdown-header': L3("Bu eski nom, beshinchi versiyadan: sarlavha qora bo'lib, chetga yopishib qoldi.", 'Это старое имя из пятой версии: заголовок остался тёмным и прижался к краю.', 'That’s an old name from version five: the header stayed dark and stuck to the edge.'),
+      'menu-title': L3("Bunday class yo'q: sarlavha qora bo'lib, chetga yopishib qoldi.", 'Такого class нет: заголовок остался тёмным и прижался к краю.', 'There’s no such class: the header stayed dark and stuck to the edge.'),
+      title: L3("Oldida menu so'zi kerak: sarlavha qora bo'lib, chetga yopishib qoldi.", 'Впереди нужно слово menu: заголовок остался тёмным и прижался к краю.', 'It needs menu in front: the header stayed dark and stuck to the edge.'),
       'modal-header': L3("Bu eski nom, beshinchi versiyadan: sarlavha oddiy bo'lib qoldi.", 'Это старое имя из пятой версии: шапка осталась простой.', 'That’s an old name from version five: the header stayed plain.'),
       'dialog-top': L3("Bunday class yo'q: sarlavha oddiy bo'lib qoldi.", 'Такого class нет: шапка осталась простой.', 'There’s no such class: the header stayed plain.'),
       header: L3("Oldida dialog so'zi kerak: sarlavha oddiy bo'lib qoldi.", 'Впереди нужно слово dialog: шапка осталась простой.', 'It needs dialog in front: the header stayed plain.'),
@@ -388,6 +406,11 @@ const C = {
     eyebrow: L3('Nega ishlamayapti?', 'Почему не работает?', 'Why isn’t it working?'),
     say: L3("Oxirgi sinov. Uchta tugma ishlamayapti, har birida sabab boshqa. Sahifada bosib ko'ring, kodga qarang va sababini tanlang.", 'Последнее испытание. Три кнопки не работают, у каждой своя причина. Понажимай на странице, посмотри на код и выбери причину.', 'The last test. Three buttons don’t work, each for a different reason. Try them on the page, look at the code and pick the reason.'),
     ask: L3('Nega ishlamayapti? Sababini tanlang', 'Почему не работает? Выбери причину', 'Why isn’t it working? Pick the reason'),
+    asks: [
+      L3("Bo'limlar tugmasini bosing: menyu ochilmayapti. Nega?", 'Нажми «Разделы»: меню не открывается. Почему?', 'Tap Sections: the menu won’t open. Why?'),
+      L3("Qoidalar tugmasini bosing: oyna ochilmayapti. Nega?", 'Нажми «Правила»: окно не открывается. Почему?', 'Tap Rules: the window won’t open. Why?'),
+      L3("Qoidalar tugmasini bosing: oyna yana ochilmayapti. Nega?", 'Нажми «Правила»: окно снова не открывается. Почему?', 'Tap Rules: the window still won’t open. Why?')
+    ],
     opts: {
       noScript: L3("script qatori yo'q", 'Нет строки script', 'No script line'),
       old: L3('Eski nom, 5-versiyadan', 'Старое имя из версии 5', 'An old name from version 5'),
@@ -396,7 +419,7 @@ const C = {
     rounds: [
       L3("Kod oxirida script qatori yo'q. Bootstrap skriptisiz menyu ochilmaydi.", 'В конце кода нет строки script. Без скрипта Bootstrap меню не открывается.', 'There’s no script line at the end. Without Bootstrap’s script the menu won’t open.'),
       L3("modal beshinchi versiyaning nomi. Oltinchisida data-bs-toggle dialog.", 'modal — имя пятой версии. В шестой — data-bs-toggle dialog.', 'modal is a version five name. In version six it’s data-bs-toggle dialog.'),
-      L3("data-bs-target da panjara yo'q: qoidalar emas, #qoidalar bo'lishi kerak.", 'В data-bs-target нет решётки: нужно не qoidalar, а #qoidalar.', 'data-bs-target has no hash: it must be #qoidalar, not qoidalar.')
+      L3("data-bs-target-da panjara yo'q: qoidalar emas, #qoidalar bo'lishi kerak.", 'В data-bs-target нет решётки: нужно не qoidalar, а #qoidalar.', 'data-bs-target has no hash: it must be #qoidalar, not qoidalar.')
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Kodni saytdagi misol bilan solishtiring.", 'Сравни код с примером на сайте.', 'Compare the code with the site example.'),
@@ -405,12 +428,12 @@ const C = {
   },
   w1: {
     eyebrow: L3("O'z bo'limingiz", 'Свой раздел', 'Your own section'),
-    say: L3("Endi menyuga o'z bo'limingizni qo'shing. Nomini o'zingiz o'ylab toping va kerakli class ni yozing. Keyin «Tayyor»ni bosing va menyuni ochib ko'ring.",
+    say: L3("Endi menyuga o'z bo'limingizni qo'shing. Nomini o'zingiz o'ylab toping va kerakli class-ni yozing. Keyin «Tayyor»ni bosing va menyuni ochib ko'ring.",
       'Теперь добавь в меню свой раздел. Придумай название и впиши нужный class. Потом нажми «Готово» и открой меню.',
       'Now add your own section to the menu. Come up with a name and type the right class. Then tap “Done” and open the menu.'),
-    ask: L3("Bo'lim nomi va class ini yozing", 'Впиши название и class раздела', 'Type the section name and class'),
+    ask: L3("Bo'lim nomi va class-ini yozing", 'Впиши название и class раздела', 'Type the section name and class'),
     askText: L3("Bo'lim nomi", 'Название раздела', 'Section name'),
-    askCls: L3('Bandning class i', 'class пункта', 'The item’s class'),
+    askCls: L3('Bandning class-i', 'class пункта', 'The item’s class'),
     ph: L3('Shaxmat', 'Шахматы', 'Chess'),
     noText: L3("Bo'lim nomi bo'sh. Nom yozing, masalan: Shaxmat.", 'Название пустое. Напиши его, например: Шахматы.', 'The name is empty. Type one, for example: Chess.'),
     hints: [
@@ -431,13 +454,13 @@ const C = {
       { text: L3("Oyna: dialog ichida dialog-header, dialog-body va dialog-footer.", 'Окно: в dialog — dialog-header, dialog-body и dialog-footer.', 'Window: dialog-header, dialog-body and dialog-footer inside dialog.'), k: 'dlg' },
       { text: L3("Oynani data-bs-toggle dialog va panjara bilan data-bs-target ochadi, data-bs-dismiss yopadi.", 'Окно открывают data-bs-toggle dialog и data-bs-target с решёткой, закрывает data-bs-dismiss.', 'data-bs-toggle dialog and data-bs-target with a hash open the window, data-bs-dismiss closes it.'), k: 'tgl' },
       { text: L3("Ularni birinchi darsdagi script qatori ishlatadi. Hammasi saytda, Components bo'limida.", 'Работает всё благодаря строке script с первого урока. Всё это — на сайте, в разделе Components.', 'The script line from lesson one makes it all work. It’s all on the site, in Components.'), k: 'site' },
-      { text: L3("Tabriklayman! Siz to'qqizinchi darsni tugatdingiz. Keyingi dars — yakuniy loyiha: o'rgangan hamma narsadan bitta sayt yasaymiz. Ko'rishguncha!", 'Ура! Ты прошёл девятый урок. Следующий урок — финальный проект: соберём сайт из всего, что изучили. До встречи!', 'Hooray! You finished the ninth lesson. Next comes the final project: we’ll build one site from everything we learned. See you!'), k: null }
+      { text: L3("Tabriklayman! Siz o'ninchi darsni tugatdingiz. Keyingi dars — yakuniy loyiha: o'rgangan hamma narsadan bitta sayt yasaymiz. Ko'rishguncha!", 'Ура! Ты прошёл десятый урок. Следующий урок — финальный проект: соберём сайт из всего, что изучили. До встречи!', 'Hooray! You finished the tenth lesson. Next comes the final project: we’ll build one site from everything we learned. See you!'), k: null }
     ],
     roles: {
       menu: L3('menu · menu-item', 'menu · menu-item', 'menu · menu-item'),
       dlg: L3('dialog · header · body · footer', 'dialog · header · body · footer', 'dialog · header · body · footer'),
       tgl: L3('data-bs-toggle · data-bs-dismiss', 'data-bs-toggle · data-bs-dismiss', 'data-bs-toggle · data-bs-dismiss'),
-      site: L3("So'zlar — Components da", 'Слова — в Components', 'Words are in Components')
+      site: L3("So'zlar — Components bo'limida", 'Слова — в Components', 'Words are in Components')
     },
     ask: L3('Sahifangizga qarang', 'Посмотри на свою страницу', 'Look at your page')
   }

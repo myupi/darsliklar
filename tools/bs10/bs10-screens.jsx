@@ -1,6 +1,6 @@
 // =============================================================================
 // ЭКРАНЫ УРОКА 10 «Финальный проект» (20.11.2026). Помощники — bs10-head.jsx, общие куски — bs10-common.jsx.
-// Сценарий — docs/scenarij-bootstrap-10-final-proekt.md.
+// Сценарий — docs/scenarij-bootstrap-11-final-proekt.md.
 // =============================================================================
 const NEWL = 'is-new is-read';
 
@@ -36,7 +36,8 @@ function S1({ p }) {
 }
 
 // S2. КАРТА ПУТИ — 9 станций, по одной на урок модуля.
-const ST_KEYS = ['st1', 'st2', 'st3', 'st4', 'st5', 'st6', 'st7', 'st8', 'st9'];
+// 23.11.2026: станция урока 7 «Navbar и Pagination» (stp) — между сеткой и формой; id прочих станций прежние.
+const ST_KEYS = ['st1', 'st2', 'st3', 'st4', 'st5', 'st6', 'stp', 'st7', 'st8', 'st9'];
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -74,10 +75,11 @@ const st2 = (pick) => ({ kind: 'theme', want: 'success', ph: L3('…', '…', '�
     fLine('h2', 1, 'button', [['class', FIELD]], f, 'btn-solid theme-', pick(C.site.join) + '</button>'), hl('h3', 0, '</div>')],
   goal: '<div class="d-flex justify-content-between align-items-center"><h4>' + TX(pick, 'title') + '</h4><button class="btn-solid theme-success">' + TX(pick, 'join') + '</button></div>',
   body: (v) => '<div class="d-flex justify-content-between align-items-center"><h4>' + TX(pick, 'title') + '</h4><button class="btn-solid' + (v ? ' theme-' + escH(v) : '') + '">' + TX(pick, 'join') + '</button></div>', gz: 0.5 });
-const st3 = (pick) => ({ kind: 'cls', want: 'img-fluid', vw: PHONE, badge: true,
+const st3 = (pick) => ({ kind: 'cls', want: 'img-fluid', vw: PHONE, badge: true, no: { 'img-thumbnail': C.st3.noThumb },
   line: (f) => [hl('i0', 0, '<h4>' + pick(C.site.team) + '</h4>'), fLine('i1', 0, 'img', [['src', 'jamoa.jpg'], ['class', FIELD], ['alt', 'Jamoa']], f)],
   body: (v) => '<h4>' + TX(pick, 'team') + '</h4><img src="jamoa.jpg"' + (v ? ' class="' + escH(v) + '"' : '') + ' alt="Jamoa">' });
 const st4 = (pick) => ({ kind: 'cls', want: 'justify-content-between', gz: 0.5,
+  no: { 'justify-content-around': C.st4.noJc, 'justify-content-evenly': C.st4.noJc, 'justify-content-center': C.st4.noJc, 'justify-content-start': C.st4.noJc, 'justify-content-end': C.st4.noJc },
   line: (f) => [fLine('j0', 0, 'div', [['class', FIELD]], f, 'd-flex '), hl('j1', 1, '<img src="logo.png" alt="Logo">'), hl('j2', 1, '<h4>' + pick(C.site.title) + '</h4>'), hl('j3', 1, '<button class="btn-solid theme-success">' + pick(C.site.join) + '</button>'), hl('j4', 0, '</div>')],
   goal: '<div class="d-flex justify-content-between align-items-center">' + HDR_KIDS(pick) + '<button class="btn-solid theme-success">' + TX(pick, 'join') + '</button></div>',
   body: (v) => '<div class="d-flex' + (v ? ' ' + escH(v) : '') + ' align-items-center">' + HDR_KIDS(pick) + '<button class="btn-solid theme-success">' + TX(pick, 'join') + '</button></div>' });
@@ -103,6 +105,13 @@ const st9 = (pick) => ({ kind: 'toggle', want: 'menu', js: true,
   line: (f) => [fLine('m0', 0, 'button', [['class', 'btn-outline theme-success'], ['data-bs-toggle', FIELD]], f, '', pick(C.site.sections) + '</button>'), hl('m1', 0, '<div class="menu">'),
     hl('m2', 1, '<a class="menu-item" href="#">' + pick(C.site.g1) + '</a>'), hl('m3', 1, '<a class="menu-item" href="#">' + pick(C.site.g2) + '</a>'), hl('m4', 1, '<a class="menu-item" href="#">' + pick(C.site.g3) + '</a>'), hl('m5', 0, '</div>'), scriptL('m6', 0, { cls: 'b2-cut' })],
   body: (v) => P_MENU(pick, false, 'success', v || null) });
+const P_PAG = (pick, cls) => '<ul' + (cls ? ' class="' + escH(cls) + '"' : '') + '>' + ['1', '2', '3'].map((t, i) => '<li class="page-item' + (i ? '' : ' active') + '"><a class="page-link" href="#">' + t + '</a></li>').join('') + '</ul>';
+const stp = (pick) => ({ kind: 'cls', want: 'pagination', gz: 0.5, no: { 'd-flex': C.stp.noFlex },
+  line: (f) => [fLine('p1', 0, 'ul', [['class', FIELD]], f), hl('p2', 1, '<li class="page-item active"><a class="page-link" href="#">1</a></li>'),
+    hl('p3', 1, '<li class="page-item"><a class="page-link" href="#">2</a></li>'), hl('p4', 1, '<li class="page-item"><a class="page-link" href="#">3</a></li>'), hl('p5', 0, '</ul>')],
+  goal: P_PAG(pick, 'pagination'),
+  body: (v) => P_PAG(pick, v || '') });
+const STP = ({ p }) => <Station p={p} id="stp" spec={stp} />;
 const ST2 = ({ p }) => <Station p={p} id="st2" spec={st2} />;
 const ST3 = ({ p }) => <Station p={p} id="st3" spec={st3} />;
 const ST4 = ({ p }) => <Station p={p} id="st4" spec={st4} />;
@@ -228,7 +237,7 @@ function T4({ p }) {
   const line = (k, cls) => (k === 'link' ? linkL('d' + k, 1, { cls: 'b2-cut ' + cls }) : k === 'sc' ? scriptL('d' + k, 1, { cls: 'b2-cut ' + cls })
     : hl('d' + k, k === 'bo' || k === 'bc' ? 0 : 1, { bo: '<body>', bc: '</body>', hdr: '<div class="d-flex justify-content-between …">…</div>', car: '<div id="galereya" class="carousel slide">…</div>', row: '<div class="row">…md:col-4 · card…</div>' }[k], { cls: 'b2-cut ' + cls }));
   const html = { link: '', bo: '', bc: '', sc: '', hdr: P_HDR(pick, false, 'success'), car: P_CAR(pick, false), row: P_ROW(pick, false) };
-  const label = { link: '<link …bootstrap.min.css>', bo: '<body>', hdr: 'd-flex · ' + pick(C.site.title), car: 'carousel', row: 'row · card', sc: '<script …bundle.min.js>', bc: '</body>' };
+  const label = { link: '<link …bootstrap.min.css>', bo: '<body>', hdr: pick(c.parts.hdr) + ' · d-flex', car: pick(c.parts.car) + ' · carousel', row: pick(c.parts.row) + ' · row · card', sc: '<script …bundle.min.js>', bc: '</body>' };
   const tap = (k) => {
     if (!canTap || fin || done.indexOf(k) >= 0) return;
     st.current.tries += 1;
@@ -242,9 +251,10 @@ function T4({ p }) {
       sayNow(c.ok, 'cheer');
     }
   };
-  const head = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(done.indexOf('link') >= 0 ? [line('link', done[done.length - 1] === 'link' ? 'is-new' : '')] : [], [hl('hc', 0, '</head>', { cls: 'b1-edge' })]);
+  const wantLink = !fin && T4_ORDER[done.length] === 'link';   // место для link — внутри head, а не после него
+  const head = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(done.indexOf('link') >= 0 ? [line('link', done[done.length - 1] === 'link' ? 'is-new' : '')] : [], wantLink ? [quietSlot('slot', 1, pick, true)] : [], [hl('hc', 0, '</head>', { cls: 'b1-edge' })]);
   const bodyLines = done.filter((k) => k !== 'link').map((k, j, arr) => line(k, j === arr.length - 1 && done[done.length - 1] === k ? 'is-new' : ''));
-  const lines = head.concat(bodyLines, fin ? [] : [quietSlot('slot', T4_ORDER[done.length] === 'link' || T4_ORDER[done.length] === 'bo' || T4_ORDER[done.length] === 'bc' ? 0 : 1, pick, true)]);
+  const lines = head.concat(bodyLines, fin || wantLink ? [] : [quietSlot('slot', T4_ORDER[done.length] === 'bo' || T4_ORDER[done.length] === 'bc' ? 0 : 1, pick, true)]);
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
@@ -266,6 +276,10 @@ function T4({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // TF. ВЕРНО ИЛИ НЕТ (5 утверждений).
 const TF_A = [true, false, true, false, true];
@@ -285,12 +299,12 @@ function TF({ p }) {
   const right = TF_A[R.ii] ? 'yes' : 'no';
   const why = c.why[R.ii];
   const ch = useChoiceHints(!R.ok, R.ii);
-  const hints = choiceHints(c.hint1, c.hint2, why, c.opts[right]);
+  const hints = choiceHints(c.hint1s[R.ii], c.hint2s[R.ii], why, c.opts[right]);
   const led = useIdleLed(canTap && !R.ok, R.ii * 10 + off.length);
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== right) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== right) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_TF, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -321,7 +335,7 @@ function TF({ p }) {
 const T6_ROUNDS = [
   { k: 'noLink', o: { noLink: true }, bs: false, js: true, hl: { link: '' } },
   { k: 'old', o: { btnCls: 'btn-primary' }, bs: true, js: true, hl: { hdr: 'is-hl' } },
-  { k: 'noScript', o: { noScript: true }, bs: true, js: false, hl: { hdr: 'is-hl' } }
+  { k: 'noScript', o: { noScript: true }, bs: true, js: false, hl: {} }
 ];
 function T6({ p }) {
   const pick = usePick();
@@ -345,7 +359,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -359,7 +373,7 @@ function T6({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
+        <KzAsk text={R.done ? c.ok : c.asks[R.ii]} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
         <div className="kz-scene b1-pair b1-wide-code b10-pair b10-t6" key={'r' + R.ii}>
           <div className="kz-col"><KzCode lines={siteLines(pick, RR.o, RR.hl)} cls="kz-code-sm b2-small" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} body={body} bs={RR.bs} js={RR.js} title={pick(C.site.title)} /></div>
@@ -405,10 +419,10 @@ function W1({ p }) {
     log({ screenId: 'w1', type: 'own-theme', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv, theme: v });
     sayNow(c.ok, 'cheer');
   };
-  const th = good ? v : 'success';
+  const th = good ? v : 'secondary';   // до выбора — нейтральный цвет: видно, что выбор ученика что-то меняет
   const field = solved ? <span key="f" className="b1-st">{v}</span>
     : <span key="f" className={'kz-gap b1-slotin b2-field' + (led ? ' kz-gap-led' : '')}><InlineInput value={tv} onChange={(x) => { setTv(x); setMsg(null); }} onEnter={confirm} placeholder={L3('…', '…', '…')} label={c.ask} max={14} /></span>;
-  const lines = [hl('c0', 0, '<div class="container">'), hl('c1', 1, '<div class="d-flex justify-content-between …">…theme-' + (good ? v : '…') + '…</div>', { cls: 'b2-cut' }),
+  const lines = [hl('c0', 0, '<div class="container">'), hl('c1', 1, '<div class="d-flex justify-content-between …">…theme-' + th + '…</div>', { cls: 'b2-cut' }),
     fLine('c2', 1, 'div', [['class', FIELD], ['role', 'alert']], field, 'alert theme-', '…</div>'), hl('c3', 1, '<div class="row">…</div>', { cls: 'b2-cut' }), hl('c4', 0, '</div>')];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
@@ -463,7 +477,7 @@ function S18({ p }) {
 const SCREENS = [
   { id: 's1', code: 'HOOK', Comp: S1 }, { id: 's2', code: 'SHOW', Comp: S2 },
   { id: 'st1', code: 'LEVEL-1', Comp: ST1 }, { id: 'st2', code: 'LEVEL-1', Comp: ST2 }, { id: 'st3', code: 'LEVEL-1', Comp: ST3 }, { id: 'st4', code: 'LEVEL-2', Comp: ST4 },
-  { id: 'st5', code: 'LEVEL-2', Comp: ST5 }, { id: 'st6', code: 'LEVEL-2', Comp: ST6 }, { id: 'st7', code: 'LEVEL-2', Comp: ST7 }, { id: 'st8', code: 'LEVEL-2', Comp: ST8 },
+  { id: 'st5', code: 'LEVEL-2', Comp: ST5 }, { id: 'st6', code: 'LEVEL-2', Comp: ST6 }, { id: 'stp', code: 'LEVEL-2', Comp: STP }, { id: 'st7', code: 'LEVEL-2', Comp: ST7 }, { id: 'st8', code: 'LEVEL-2', Comp: ST8 },
   { id: 'g1', code: 'SHOW', Comp: G1 }, { id: 'st9', code: 'LEVEL-2', Comp: ST9 },
   { id: 't4', code: 'LEVEL-2', Comp: T4 }, { id: 'tf', code: 'CHECK', Comp: TF }, { id: 't6', code: 'CHECK', Comp: T6 },
   { id: 'w1', code: 'LEVEL-3', Comp: W1 },

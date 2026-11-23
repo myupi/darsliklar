@@ -31,6 +31,16 @@ async function pageImage(frame, outW, outH) {
     } catch (e) { /* картинки нет — останется alt */ }
   }));
   clone.querySelectorAll('script').forEach((s) => s.remove());
+  // Внешние стили (Bootstrap с CDN) в картинке SVG не грузятся — кладём их текстом в <style> (23.11.2026).
+  await Promise.all([...clone.querySelectorAll('link[rel="stylesheet"]')].map(async (ln) => {
+    try {
+      const href = new URL(ln.getAttribute('href'), doc.baseURI).href;
+      const sheet = [...doc.styleSheets].find((x) => x.href === href);
+      let text = '';
+      try { text = [...sheet.cssRules].map((r) => r.cssText).join('\n'); } catch (e) { text = await (await fetch(href)).text(); }
+      const st = doc.createElement('style'); st.textContent = text; ln.replaceWith(st);
+    } catch (e) { /* без стиля — как есть */ }
+  }));
   const w = frame.offsetWidth, h = frame.offsetHeight;   // размер страницы до уменьшения
   const xhtml = new XMLSerializer().serializeToString(clone);
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + outW + '" height="' + outH + '" viewBox="0 0 ' + w + ' ' + h + '">' +

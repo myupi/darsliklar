@@ -4,7 +4,8 @@
 // Bootstrap 6 в окне заданной ширины (vw) — @media (width>=768px) срабатывают по ширине окна, как в браузере.
 // =============================================================================
 const PHONE = 360, TABLET = 768, LAPTOP = 1024;   // ноутбук 1024 px: на телефоне страница крупнее (container — 960 px)
-const vwTitle = (pick, vw) => (vw === PHONE ? pick(UI.phone) : vw === TABLET ? pick(UI.tablet) : vw === LAPTOP ? pick(UI.laptop) : vw ? vw + ' px' : pick(C.site.title));
+const WIDE6 = 1200;   // широкий ноутбук (t1, раунд 1): container 960 px, поля по краям видны
+const vwTitle = (pick, vw) => (vw === PHONE ? pick(UI.phone) : vw === TABLET ? pick(UI.tablet) : vw === LAPTOP ? pick(UI.laptop) : vw === WIDE6 ? pick(UI.laptopW) : vw ? vw + ' px' : pick(C.site.title));
 const docsPhoneCls = (o) => 'kz-scene b1-tri ms-root' + (o.clip ? ' has-clip' : '') + (o.nav ? ' is-nav' : '') + (o.done ? ' is-done' : '') + (o.ref ? ' is-ref' : '') + (o.show ? ' is-show' : '');
 // Блоки страницы кружка (карточки из урока 5).
 const BLOCK_KEYS = ['b1', 'b2', 'b3', 'b4'];
@@ -46,10 +47,11 @@ const colRule = (c) => {
 };
 const BP_PX = { sm: 576, md: 768, lg: 1024, xl: 1280, '2xl': 1536 };
 // Переключатель ширины экрана (телефон / планшет / ноутбук).
-function WidthChips({ pick, vw, onPick, seen, disabled, led }) {
+// ws — только эти ширины (t3: две ширины раунда, 23.11.2026).
+function WidthChips({ pick, vw, onPick, seen, disabled, led, ws }) {
   return (
     <div className="b6-widths">
-      {[['phone', PHONE], ['tablet', TABLET], ['laptop', LAPTOP]].map(([k, w]) => (
+      {[['phone', PHONE], ['tablet', TABLET], ['laptop', LAPTOP]].filter(([, w]) => !ws || ws.indexOf(w) >= 0).map(([k, w]) => (
         <button key={k} type="button" className={'b2-chip is-shape' + (vw === w ? ' is-on' : '') + (seen && seen[w] ? ' is-seen' : '')} onClick={() => onPick(w)} disabled={disabled} data-w={w}>
           <span>{pick(UI[k])}</span><Led on={!!led && !(seen && seen[w])} />
         </button>

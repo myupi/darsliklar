@@ -49,3 +49,7 @@
 @media (max-width: 759px) {
   .r28 .b1-sheet .b4-t4 .kz-code .kz-line.b2-cut { display: none; }
 }
+/* Урок 4, t2 (23.11.2026): строка с полем после длинной основы «d-flex justify-content-between» переносится перед полем —
+   поле видно целиком на телефоне и ноутбуке (класс l4-fl только у этой строки). */
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st { white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st.l4-w { white-space: nowrap; }   /* слово class целиком, перенос — только между словами */

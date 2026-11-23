@@ -55,12 +55,12 @@ function rowSrc8(r, openDots) {
   return open;
 }
 // Строка с полем: в значении атрибута name (before — что стоит в значении перед полем: «carousel-item »).
-function fieldParts(r, name, node, before) {
+function fieldParts(r, name, node, before, after) {
   const out = [pn('a', '<'), <span key="t" className="b1-tg">{r.tag}</span>];
   r.attrs.forEach((a, j) => {
     if (a[0] !== name && (a[1] == null || a[1] === '')) return;
     out.push(<React.Fragment key={'s' + j}>{sp()}</React.Fragment>, <span key={'n' + j} className="b1-at">{a[0]}</span>, pn('e' + j, '='));
-    if (a[0] === name) out.push(<span key={'q' + j} className="b1-st">{'"' + (before || '')}</span>, node, <span key={'z' + j} className="b1-st">"</span>);
+    if (a[0] === name) out.push(<span key={'q' + j} className="b1-st">{'"' + (before || '')}</span>, node, <span key={'z' + j} className="b1-st">{(after || '') + '"'}</span>);
     else out.push(<span key={'v' + j} className="b1-st">{'"' + a[1] + '"'}</span>);
   });
   out.push(pn('g', '>'));
@@ -68,8 +68,8 @@ function fieldParts(r, name, node, before) {
   if (r.btn) out.push(<span key="bt" className="b1-tx">{'…</button>'}</span>);
   return out;
 }
-// Код карусели: opt = { hl: { ключ строки: класс }, field: { key, attr, node, before }, openDots, foldCtl — кнопки и точки одной
-// строкой, script: строка script в конце }.
+// Код карусели: opt = { hl: { ключ строки: класс }, field: { key, attr, node, before, after }, openDots, foldCtl — кнопки и точки одной
+// строкой, script: строка script в конце, src: { ключ строки: своя (свёрнутая) запись }, gapEnd — подсвеченное пустое место в конце }.
 function carLines(pick, o, opt) {
   const O = opt || {};
   const H = O.hl || {};
@@ -80,17 +80,18 @@ function carLines(pick, o, opt) {
     if (O.foldCtl && r.key === 'ctl') { inCtl = true; out.push(hl(k + 'z', r.d, rowSrc8(r) + '…</div>', { cls: 'b2-cut' + (H.ctl ? ' ' + H.ctl : '') })); return; }
     if (inCtl) { if (r.key === 'ctlc') inCtl = false; return; }
     if (O.field && r.key === O.field.key) {
-      out.push({ k: k + 'f', d: r.d, cls: 'b1-line is-hl', parts: fieldParts(r, O.field.attr, O.field.node, O.field.before) });
+      out.push({ k: k + 'f', d: r.d, cls: 'b1-line is-hl', parts: fieldParts(r, O.field.attr, O.field.node, O.field.before, O.field.after) });
       return;
     }
     const cut = r.img || r.btn || r.dots != null ? 'b2-cut' : '';
-    out.push(hl(k, r.d, rowSrc8(r, O.openDots), { cls: [cut, H[r.key] || ''].filter(Boolean).join(' ') }));
+    out.push(hl(k, r.d, (O.src && O.src[r.key]) || rowSrc8(r, O.openDots), { cls: [cut, H[r.key] || ''].filter(Boolean).join(' ') }));
     if (r.dots != null && O.openDots) {
       [0, 1, 2].forEach((i) => out.push(hl('dt' + i + r.dots, r.d + 1, '<button data-bs-target="' + r.dots + '" data-bs-slide-to="' + i + '"></button>', { cls: H['dot' + i] || '' })));
       out.push(hl('dtc', r.d, '</div>'));
     }
   });
   if (O.script) out.push(scriptL('sc', 0, { cls: H.script || '' }));
+  if (O.gapEnd) out.push({ k: 'scgap', d: 0, cls: 'b1-line is-hl b8-gap', parts: [<span key="g" className="b1-tx">{'\u00a0'}</span>] });   // пустое место, где должна быть строка script
   return out;
 }
 // Карточка «внутри Bootstrap».

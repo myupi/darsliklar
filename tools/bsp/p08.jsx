@@ -1,191 +1,141 @@
 // =============================================================================
-// ===== ПРАКТИКА 8 · «Robotlar ko'rgazmasi» · к уроку 8 «Карусель» · модуль bootstrap-m1 =====
+// ===== ПРАКТИКА 7 · «Ro'yxat formasi» · к уроку 8 «Формы» · модуль bootstrap-m1 =====
 //
-// ЗАМЫСЕЛ (21.11.2026). Страница выставки роботов кружка: фото выставки в карусели (баннеры урока 8, slayd1–3.jpg).
-// При обновлении у карусели пропали слова — три фото встали столбиком, кнопки опустели, вкладки погасли. Ученик чинит пять
-// страниц: значение data-bs-slide у правой кнопки (prev → next: кнопка листала назад) → вписать carousel-inner в пустой class
-// (слайды в ряд) → взять карусель с сайта (Components → Carousel → Bottom controls), вставить и вписать свои файлы вместо «...»
-// → починить имя версии 5 data-bs-ride (→ data-bs-autoplay="true") и data-bs-target без «#» → свой альбом: пустые class
-// (carousel, carousel-inner), active на одном слайде, data-bs-target кнопок, строка script с сайта в конце body.
-// Окно страницы — 480 px. Карусель в окне работает, как со скриптом Bootstrap, только при верной строке script (bp-kit).
-// 7 слайдов: крючок · пять заданий · вывод. Сценарий — docs/scenarij-bootstrap-08p-karusel.md.
+// ЗАМЫСЕЛ (21.11.2026). Анкета записи в кружок роботов (как в уроке 7). При обновлении у полей пропали слова форм —
+// анкета стала «кашей» браузера, вкладки погасли. Ученик чинит пять страниц: поменять слово у подписи (form-control →
+// form-label: подпись выглядела полем) → вписать form-control в пустой class у textarea (одно слово для всех полей) →
+// взять переключатель с сайта (Forms → Switch) и настроить подпись → починить имена версии 5 (form-select, form-check,
+// form-check-input) → своя анкета: подпись form-label, поле form-control, галочка или переключатель с сайта, кнопка.
+// 7 слайдов: крючок · пять заданий · вывод. Сценарий — docs/scenarij-bootstrap-08p-formy.md.
 // Узбекский — по /uzbekcha (апостроф ASCII, «Siz»); RU — «ты» без рода.
 // =============================================================================
 const META = {
-  lessonId: 'bootstrap-08p-karusel',
+  lessonId: 'bootstrap-08p-formy',
   module: 'bootstrap-m1',
-  lessonTitle: { uz: "8-amaliyot. Robotlar ko'rgazmasi", ru: 'Практика 8. Выставка роботов', en: 'Practice 8. The robot show' }
+  lessonTitle: { uz: "8-amaliyot. Ro'yxat formasi", ru: 'Практика 8. Анкета записи', en: 'Practice 8. The sign-up form' }
 };
 
-// Фото выставки — баннеры урока 8 (те же рисунки: tools/bs8/bs8-kit.jsx), 480×200.
-const P8_SVG_NS = 'http:' + '//' + 'www.w3.org/2000/svg';
-const p8Svg = (w, h, inner) => 'data:image/svg+xml,' + encodeURIComponent("<svg xmlns='" + P8_SVG_NS + "' width='" + w + "' height='" + h + "' viewBox='0 0 " + w + ' ' + h + "'>" + inner + '</svg>');
-const P8_ROBOT = (x, y, k, c) => "<g transform='translate(" + x + ' ' + y + ') scale(' + k + ")'><line x1='60' y1='-6' x2='60' y2='-30' stroke='#475569' stroke-width='6'/><circle cx='60' cy='-34' r='9' fill='" + c + "'/>"
-  + "<rect x='0' y='0' width='120' height='92' rx='22' fill='#E2E8F0' stroke='#475569' stroke-width='6'/><rect x='18' y='20' width='84' height='44' rx='14' fill='#1E293B'/><circle cx='42' cy='42' r='9' fill='#38BDF8'/><circle cx='78' cy='42' r='9' fill='#38BDF8'/>"
-  + "<rect x='10' y='102' width='100' height='86' rx='18' fill='" + c + "' stroke='#475569' stroke-width='6'/><rect x='38' y='124' width='44' height='26' rx='6' fill='#FDE68A'/><circle cx='30' cy='202' r='16' fill='#334155'/><circle cx='90' cy='202' r='16' fill='#334155'/></g>";
-const P8_FILES = {
-  'slayd1.jpg': p8Svg(480, 200, "<rect width='480' height='200' fill='#CFFAFE'/><rect y='168' width='480' height='32' fill='#86EFAC'/><circle cx='410' cy='48' r='26' fill='#FDE68A'/>" + P8_ROBOT(205, 34, 0.6, '#0FA38E')),
-  'slayd2.jpg': p8Svg(480, 200, "<rect width='480' height='200' fill='#EDE9FE'/><rect y='168' width='480' height='32' fill='#C4B5FD'/><rect x='40' y='60' width='90' height='70' rx='8' fill='#fff' stroke='#7c3aed' stroke-width='4'/><path d='M58 110l18-22 14 16 10-10 18 16' fill='none' stroke='#7c3aed' stroke-width='4'/>" + P8_ROBOT(250, 34, 0.6, '#7c3aed')),
-  'slayd3.jpg': p8Svg(480, 200, "<rect width='480' height='200' fill='#FFEDD5'/><rect y='168' width='480' height='32' fill='#FDBA74'/><path d='M370 40l10 20 22 3-16 15 4 22-20-11-20 11 4-22-16-15 22-3z' fill='#FACC15'/>" + P8_ROBOT(160, 34, 0.6, '#FA4F28') + P8_ROBOT(260, 34, 0.6, '#0FA38E'))
+const P7 = {
+  club: L3("Robot to'garagiga yozilish", 'Запись в кружок роботов', 'Robot club sign-up'),
+  name: L3("Ism", 'Имя', 'Name'), phone: L3("Telefon", 'Телефон', 'Phone'), note: L3("Izoh", 'Комментарий', 'Comment'),
+  group: L3("Guruh", 'Группа', 'Group'), g1: L3("Robototexnika", 'Робототехника', 'Robotics'), g2: L3("Dasturlash", 'Программирование', 'Coding'),
+  agree: L3("Qoidalarga roziman", 'Согласен с правилами', 'I agree to the rules'), news: L3("Yangiliklarni olish", 'Получать новости', 'Get the news'),
+  morning: L3("Ertalab", 'Утром', 'Morning'), send: L3("Yuborish", 'Отправить', 'Send'),
+  t1: L3("Ism", 'Имя', 'Name'), t2: L3("Izoh", 'Комментарий', 'Comment'), t3: L3("Yangiliklar", 'Новости', 'News'), t4: L3("Guruh", 'Группа', 'Group'),
+  mine: L3("Mening formam", 'Моя анкета', 'My form'), myH: L3("Musobaqaga yozilish", 'Запись на соревнование', 'Contest sign-up'),
+  team: L3("Jamoa nomi", 'Название команды', 'Team name')
 };
-const P8_PICS = ['slayd1.jpg', 'slayd2.jpg', 'slayd3.jpg'];
-
-const P8 = {
-  club: L3("Robotlar ko'rgazmasi", 'Выставка роботов', 'The robot show'),
-  t1: L3("Tugmalar", 'Кнопки', 'Buttons'), t2: L3("Slaydlar", 'Слайды', 'Slides'), t3: L3("Ko'rgazma", 'Выставка', 'Show'), t4: L3("Avtomat", 'Автомат', 'Autoplay'),
-  h1: L3("Ko'rgazmadan suratlar", 'Фото с выставки', 'Photos from the show'),
-  h3: L3("Ko'rgazma kunlari", 'Дни выставки', 'Show days'),
-  h4: L3("Ko'rgazma o'zi aylansin", 'Выставка листается сама', 'The show slides by itself'),
-  mine: L3("Mening albomim", 'Мой альбом', 'My album'), myH: L3("Mening albomim", 'Мой альбом', 'My album')
-};
-const P8_ID = 'korgazma';
-const P8_PRE = (pk, h) => ['<head>', '  ' + BP_LINK, '</head>', '<body>', '  <h4>' + pk(h || P8.club) + '</h4>'];
-const P8_POST = ['  ' + BP_SCRIPT, '</body>'];
-// Карусель кружка, по частям (отступы: карусель — 2, обёртка слайдов и ряд кнопок — 4, слайды и кнопки — 6).
-// o: { id, car — class карусели (false — без class), auto — data-bs-autoplay, ride — data-bs-ride (версия 5), inner, items — class
-// слайдов, btnCls — class кнопок (строка или [prev, next]), tgt — data-bs-target кнопок, slides — data-bs-slide [левая, правая],
-// icons — значки кнопок, ctl — class ряда кнопок, dots — data-bs-slide-to точек (null — без точек), dotsCls, dotOn }.
-const P8_O = { id: P8_ID, car: 'carousel slide', auto: null, ride: false, inner: 'carousel-inner', items: ['carousel-item active', 'carousel-item', 'carousel-item'],
-  btnCls: 'btn-icon btn-sm', tgt: '#' + P8_ID, slides: ['prev', 'next'], icons: true, ctl: 'd-flex align-items-center gap-3', dots: null, dotsCls: 'carousel-indicators', dotOn: true };
-const p8c = (v) => (v === false ? '' : ' class="' + v + '"');
-const p8x = (o) => Object.assign({}, P8_O, o || {});
-const p8Open = (o) => { const x = p8x(o); return '  <div id="' + x.id + '"' + p8c(x.car) + (x.auto ? ' data-bs-autoplay="' + x.auto + '"' : '') + (x.ride ? ' data-bs-ride="carousel"' : '') + '>'; };
-const p8Inner = (o) => { const x = p8x(o); return ['    <div' + p8c(x.inner) + '>'].concat(x.items.map((c, i) => '      <div' + p8c(c) + '><img src="' + P8_PICS[i] + '" class="d-block w-100" alt="Robot"></div>'), ['    </div>']); };
-const p8Btns = (o) => {
-  const x = p8x(o);
-  const out = [];
-  ['prev', 'next'].forEach((dir, k) => {
-    const bc = Array.isArray(x.btnCls) ? x.btnCls[k] : x.btnCls;
-    out.push('      <button' + p8c(bc) + ' data-bs-target="' + x.tgt + '" data-bs-slide="' + x.slides[k] + '">', '        <span' + p8c(x.icons ? 'carousel-icon-' + dir : false) + '></span>', '      </button>');
-  });
-  return out;
-};
-const p8Dots = (o) => { const x = p8x(o); return ['      <div' + p8c(x.dotsCls) + '>'].concat(x.dots.map((t, i) => '        <button data-bs-target="' + x.tgt + '" data-bs-slide-to="' + t + '"' + (i || !x.dotOn ? '' : ' class="active"') + '></button>'), ['      </div>']); };
-const p8CtlOpen = (o) => '    <div' + p8c(p8x(o).ctl) + '>';
-const p8Car = (o) => { const x = p8x(o); return [p8Open(x)].concat(p8Inner(x), [p8CtlOpen(x)], p8Btns(x), x.dots ? p8Dots(x) : [], ['    </div>', '  </div>']); };
-// Пример с сайта (Components → Carousel → Bottom controls / Crossfade) — как в уроке 8: src="..." — место для своего файла.
-const p8SiteItems = (rounded) => ['  <div class="carousel-inner' + (rounded ? ' rounded-5' : '') + '">'].concat([0, 1, 2].map((i) => ['    <div class="carousel-item' + (i ? '' : ' active') + '">', '      <img src="..." class="d-block w-100" alt="...">', '    </div>'].join('\n')), ['  </div>']);
-const p8SiteBtn = (id, dir) => ['    <button class="btn-icon btn-sm" type="button" data-bs-target="#' + id + '" data-bs-slide="' + dir + '">', '      <span class="carousel-icon-' + dir + '" aria-hidden="true"></span>',
-  '      <span class="visually-hidden">' + (dir === 'prev' ? 'Previous' : 'Next') + '</span>', '    </button>'];
-const p8Site = (id, cls, rounded) => ['<div id="' + id + '" class="' + cls + '">'].concat(p8SiteItems(rounded), ['  <div>'], p8SiteBtn(id, 'prev'), p8SiteBtn(id, 'next'), ['  </div>', '</div>']).join('\n');
-const P8_SITE_B = p8Site('carouselStackedBottom', 'carousel slide', true);
-const P8_SITE_F = p8Site('carouselExampleFade', 'carousel carousel-fade', false);
-const p8Mine = (txt, ind) => { let k = 0; return txt.split('\n').map((l) => ind + l.replace('src="..."', () => 'src="' + P8_PICS[k++ % 3] + '"')).join('\n'); };
-const P8_FILES_CHIPS = { k: 'files', title: L3("Sizning fayllaringiz", 'Твои файлы', 'Your files'), chips: P8_PICS, copy: false };
-const P8_DOCS_CAR = { page: L3("Components · Carousel", 'Components · Carousel', 'Components · Carousel'), items: [
-  { k: 'bottom', title: 'Bottom controls · HTML', code: P8_SITE_B }, P8_FILES_CHIPS, { k: 'fade', title: 'Crossfade · HTML', code: P8_SITE_F }
+const P7_PRE = (pk, h) => ['<head>', '  ' + BP_LINK, '</head>', '<body>', '  <h4>' + pk(h || P7.club) + '</h4>', '  <form>'];
+const P7_POST = ['  </form>', '</body>'];
+const p7L = (id, t, cls) => '    <label for="' + id + '"' + (cls == null ? ' class="form-label"' : cls === false ? '' : ' class="' + cls + '"') + '>' + t + '</label>';
+const p7I = (type, id, cls) => '    <input type="' + type + '" id="' + id + '"' + (cls == null ? ' class="form-control"' : cls === false ? '' : ' class="' + cls + '"') + '>';
+const p7Note = (cls) => '    <textarea id="izoh" rows="2"' + (cls == null ? ' class="form-control"' : cls === false ? '' : ' class="' + cls + '"') + '></textarea>';
+const p7Sel = (pk, cls) => '    <select id="guruh"' + (cls == null ? ' class="form-control"' : cls === false ? '' : ' class="' + cls + '"') + '>\n      <option>' + pk(P7.g1) + '</option>\n      <option>' + pk(P7.g2) + '</option>\n    </select>';
+const p7Chk = (t, o) => { const x = o || {}; return '    <div' + (x.f === false ? '' : ' class="' + (x.f || 'form-field') + '"') + '>\n      <input type="' + (x.type || 'checkbox') + '" id="' + (x.id || 'rozi') + '"' + (x.c === false ? '' : ' class="' + (x.c || 'check') + '"') + '>\n      <label for="' + (x.id || 'rozi') + '">' + t + '</label>\n    </div>'; };
+const p7Btn = (pk, cls) => '    <button type="submit"' + (cls === false ? '' : ' class="' + (cls || 'btn-solid theme-primary') + '"') + '>' + pk(P7.send) + '</button>';
+// Сайт: примеры Forms (как в уроке 7).
+const P7_SW = '<div class="form-field">\n  <div class="switch">\n    <input type="checkbox" value="" id="switchMdLabel" role="switch" switch>\n  </div>\n  <label for="switchMdLabel">Default switch</label>\n</div>';
+const P7_CHK = '<div class="form-field">\n  <input type="checkbox" id="checkLabel" class="check" />\n  <label for="checkLabel">Example new checkbox</label>\n</div>';
+const P7_FC = '<label for="exampleFormControlInput" class="form-label mb-2">Email address</label>\n<input type="email" class="form-control" id="exampleFormControlInput" placeholder="name@example.com">';
+const P7_DOCS_SW = { page: L3("Forms · Switch · Checkbox", 'Forms · Switch · Checkbox', 'Forms · Switch · Checkbox'), items: [
+  { k: 'sw', title: 'Switch · HTML', code: P7_SW }, { k: 'chk', title: 'Checkbox · HTML', code: P7_CHK }
 ] };
-const P8_DOCS_FIX = { page: L3("Components · Carousel", 'Components · Carousel', 'Components · Carousel'), items: [
-  { k: 'auto', title: 'Autoplay', chips: ['data-bs-autoplay="true"', 'data-bs-interval'], copy: false },
-  { k: 'btn', title: 'Bottom controls', chips: ['btn-icon btn-sm', 'data-bs-target="#…"', 'data-bs-slide'], copy: false }
+const P7_DOCS_FIX = { page: L3("Forms", 'Forms', 'Forms'), items: [
+  { k: 'w', title: 'Form control · Select', chips: ['form-label', 'form-control'], copy: false },
+  { k: 'c', title: 'Checkbox · Radio · Switch', chips: ['form-field', 'check', 'radio', 'switch'], copy: false }
 ] };
-const P8_DOCS_OWN = { page: L3("Install · Carousel", 'Install · Carousel', 'Install · Carousel'), items: [
-  { k: 'js', title: 'CDN · JS', code: BP_SCRIPT },
-  { k: 'car', title: 'Carousel', chips: ['carousel', 'slide', 'carousel-inner', 'carousel-item', 'active'], copy: false },
-  { k: 'btn', title: 'Bottom controls', chips: ['data-bs-target="#albom"', 'data-bs-slide'], copy: false }
+const P7_DOCS_OWN = { page: L3("Forms", 'Forms', 'Forms'), items: [
+  { k: 'fc', title: 'Form control · HTML', code: P7_FC }, { k: 'chk', title: 'Checkbox · HTML', code: P7_CHK }, { k: 'sw', title: 'Switch · HTML', code: P7_SW },
+  { k: 'btn', title: 'Button', chips: ['btn-solid', 'theme-primary', 'theme-success'], copy: false }
 ] };
-// Проверки страницы: карусель, кнопки ведут к ней, фото на месте.
-const p8Ok = (D) => !!D.q('.carousel > .carousel-inner > .carousel-item');
-const p8Btns2 = (D) => D.qa('[data-bs-slide]');
-const p8Tgt = (D) => { const car = D.q('.carousel'); const b = p8Btns2(D); return !!car && !!car.id && b.length >= 2 && b.every((x) => x.getAttribute('data-bs-target') === '#' + car.id); };
-const p8Imgs = (D, sel) => D.qa((sel || '.carousel') + ' .carousel-item img');
-const p8Dots3 = (src) => /src\s*=\s*["']\.\.\.["']/.test(src);
+const P7_SAMPLES = ['Default switch', 'Example new checkbox', 'Email address'];
+const p7Sample = (D) => P7_SAMPLES.some((t) => D.doc.body.textContent.indexOf(t) >= 0);
 
 const PR = {
-  next: L3("Menu va Dialog", 'Menu и Dialog', 'Menu and Dialog'),
-  files: P8_FILES,
+  next: L3("Karusel", 'Карусель', 'Carousel'),
   tabs: [
-    { ico: 'star', c: '#FA4F28', name: P8.t1, file: 'tugmalar.html' },
-    { ico: 'book', c: '#0FA38E', name: P8.t2, file: 'slaydlar.html' },
-    { ico: 'rocket', c: '#7C5CFA', name: P8.t3, file: 'korgazma.html' },
-    { ico: 'leaf', c: '#F59E0B', name: P8.t4, file: 'avtomat.html' },
-    { ico: 'heart', c: '#E44D8A', name: P8.mine, file: 'albom.html' }
+    { ico: 'star', c: '#FA4F28', name: P7.t1, file: 'ism.html' },
+    { ico: 'mail', c: '#0FA38E', name: P7.t2, file: 'izoh.html' },
+    { ico: 'book', c: '#7C5CFA', name: P7.t3, file: 'yangiliklar.html' },
+    { ico: 'leaf', c: '#F59E0B', name: P7.t4, file: 'guruh.html' },
+    { ico: 'heart', c: '#E44D8A', name: P7.mine, file: 'my.html' }
   ],
-  // Крючок: карусель листается кнопками и точками; после «Yangilash» слов карусели нет — фото столбиком, кнопки пустые.
+  // Крючок: красивая анкета; после «Yangilash» у полей нет слов форм — «каша» браузера.
   hook: {
     vw: 480,
-    doc: (pk, on) => P8_PRE(pk).concat(p8Car(on ? { dots: [0, 1, 2] } : { car: false, inner: false, items: [false, false, false], btnCls: false, icons: false, ctl: false, dots: [0, 1, 2], dotsCls: false, dotOn: false }), P8_POST).join('\n')
+    doc: (pk, on) => P7_PRE(pk).concat([p7L('ism', pk(P7.name), on ? null : false), p7I('text', 'ism', on ? null : false), p7L('guruh', pk(P7.group), on ? null : false),
+      p7Sel(pk, on ? null : false), p7Chk(pk(P7.agree), on ? {} : { f: false, c: false }), p7Btn(pk, on ? null : false)], P7_POST).join('\n')
   },
   ownVw: 480,
-  ownDefault: (pk) => P8_PRE(pk, P8.myH).concat(p8Car({ id: 'albom', tgt: '#albom' }), P8_POST).join('\n'),
+  ownDefault: (pk) => P7_PRE(pk, P7.myH).concat([p7L('jamoa', pk(P7.team)), p7I('text', 'jamoa'), p7Chk(pk(P7.agree)), p7Btn(pk, 'btn-solid theme-success')], P7_POST).join('\n'),
   tasks: [
-    // Т1 · значение data-bs-slide у правой кнопки: она листала назад (prev → next).
+    // Т1 · слово у подписи в готовом class: подпись выглядела полем (form-control → form-label).
     (pk) => bpTask(1, {
-      kind: 'change-word', vw: 480, pre: P8_PRE(pk, P8.h1).concat([p8Open()], p8Inner(), [p8CtlOpen()]), post: ['    </div>', '  </div>'].concat(P8_POST),
-      code0: p8Btns({ slides: ['prev', 'prev'] }).join('\n'), answer: p8Btns().join('\n'),
-      goal: (D) => { const b = D.q('.carousel-icon-next'); const btn = b && b.closest('button'); return btn && btn.getAttribute('data-bs-slide') === 'next' ? null : C.t1.no; },
-      sample: ['<button … data-bs-slide="next">'],
-      drill: { code0: p8Dots({ dots: [0, 1, 3] }).join('\n'), answer: p8Dots({ dots: [0, 1, 2] }).join('\n'),
-        goal: (D) => (D.qa('[data-bs-slide-to]').map((x) => x.getAttribute('data-bs-slide-to')).join(',') === '0,1,2' ? null : C.t1.drillNo) }
+      kind: 'change-word', vw: 480, pre: P7_PRE(pk), post: P7_POST,
+      code0: p7L('ism', pk(P7.name), 'form-control') + '\n' + p7I('text', 'ism'), answer: p7L('ism', pk(P7.name)) + '\n' + p7I('text', 'ism'),
+      goal: (D) => (D.has('label', 'form-label') ? null : C.t1.no),
+      sample: ['<label for="tel" class="form-label">…</label>'],
+      drill: { code0: p7L('tel', pk(P7.phone), 'form-control') + '\n' + p7I('tel', 'tel'), answer: p7L('tel', pk(P7.phone)) + '\n' + p7I('tel', 'tel'),
+        goal: (D) => (D.has('label', 'form-label') ? null : C.t1.drillNo) }
     }),
-    // Т2 · пустой class у обёртки слайдов: carousel-inner (слайды в ряд, виден один).
+    // Т2 · пустой class у textarea: одно слово для всех полей (form-control).
     (pk) => bpTask(2, {
-      kind: 'write-class', vw: 480, pre: P8_PRE(pk, P8.h1).concat([p8Open()]), post: [p8CtlOpen()].concat(p8Btns(), ['    </div>', '  </div>'], P8_POST),
-      code0: p8Inner({ inner: '' }).join('\n'), answer: p8Inner().join('\n'),
-      goal: (D) => {
-        if (p8Ok(D)) return null;
-        if (D.q('.carousel > .carousel-item')) return C.t2.item;
-        if (D.q('.carousel .carousel')) return C.t2.car;
-        return C.t2.no;
-      },
-      sample: ['<div class="carousel-inner">', '  <div class="carousel-item active">…</div>'],
-      drill: { code0: p8Inner({ items: ['carousel-item active', '', 'carousel-item'] }).join('\n'), answer: p8Inner().join('\n'),
-        goal: (D) => (D.qa('.carousel-inner > .carousel-item').length === 3 ? null : C.t2.drillNo) }
+      kind: 'write-class', vw: 480, pre: P7_PRE(pk), post: P7_POST,
+      code0: p7L('izoh', pk(P7.note)) + '\n' + p7Note(''), answer: p7L('izoh', pk(P7.note)) + '\n' + p7Note(),
+      goal: (D) => (D.has('textarea', 'form-control') ? null : D.has('textarea', 'form-label') ? C.t2.label : C.t2.no),
+      sample: ['<input type="text" id="ism" class="form-control">'],
+      drill: { code0: p7L('guruh', pk(P7.group)) + '\n' + p7Sel(pk, ''), answer: p7L('guruh', pk(P7.group)) + '\n' + p7Sel(pk),
+        goal: (D) => (D.has('select', 'form-control') ? null : C.t2.drillNo) }
     }),
-    // Т3 · карусель с сайта (Components → Carousel → Bottom controls): скопировать, вставить, свои файлы вместо «...».
+    // Т3 · переключатель с сайта (Forms → Switch): скопировать, вставить, своя подпись.
     (pk) => bpTask(3, {
-      kind: 'copy-adapt', vw: 480, pre: P8_PRE(pk, P8.h3), post: P8_POST, docs: () => P8_DOCS_CAR,
-      code0: '', answer: p8Mine(P8_SITE_B, '  '),
-      goal: (D, st) => {
-        if (!p8Ok(D)) return C.t3.noCar;
-        const im = p8Imgs(D);
-        if (im.length < 3) return C.t3.noCar;
-        if (p8Dots3(st.code)) return C.t3.dots;
-        return im.every((x) => x.naturalWidth > 0) ? null : C.t3.file;
-      },
-      sample: ['<div id="carouselStackedBottom" class="carousel slide">', '  …', '      <img src="slayd1.jpg" class="d-block w-100" alt="...">'],
-      drill: { code0: '', answer: p8Mine(P8_SITE_F, '  '),
-        goal: (D, st) => {
-          const im = p8Imgs(D, '.carousel-fade');
-          return im.length >= 3 && !p8Dots3(st.code) && im.every((x) => x.naturalWidth > 0) ? null : C.t3.drillNo;
-        } }
-    }),
-    // Т4 · имя версии 5 и пропущенная решётка: data-bs-ride → data-bs-autoplay="true", data-bs-target="korgazma" → "#korgazma".
-    (pk) => bpTask(4, {
-      kind: 'fix', vw: 480, pre: P8_PRE(pk, P8.h4), post: P8_POST, docs: () => P8_DOCS_FIX,
-      code0: p8Car({ ride: true, tgt: P8_ID }).join('\n'), answer: p8Car({ auto: 'true' }).join('\n'),
+      kind: 'copy-adapt', vw: 480, pre: P7_PRE(pk), post: P7_POST, docs: () => P7_DOCS_SW,
+      code0: '', answer: '    <div class="form-field">\n      <div class="switch">\n        <input type="checkbox" value="" id="yangi" role="switch" switch>\n      </div>\n      <label for="yangi">' + pk(P7.news) + '</label>\n    </div>',
       goal: (D) => {
-        if (D.q('[data-bs-ride]') || !D.q('.carousel[data-bs-autoplay="true"]')) return C.t4.auto;
-        return p8Tgt(D) ? null : C.t4.tgt;
+        const sw = D.q('.switch input[switch], .switch input[role="switch"]');
+        if (!sw) return D.q('.check') ? C.t3.check : C.t3.noSw;
+        if (!sw.closest('.form-field')) return C.t3.field;
+        if (p7Sample(D)) return C.t3.sample;
+        return D.text('.form-field label').length > 2 ? null : C.t3.noText;
       },
-      sample: ['<div id="korgazma" class="carousel slide" data-bs-autoplay="true">', '<button … data-bs-target="#korgazma" …>'],
-      drill: { code0: p8Car({ auto: 'true', btnCls: ['carousel-control-prev', 'carousel-control-next'] }).join('\n'), answer: p8Car({ auto: 'true' }).join('\n'),
-        goal: (D) => (p8Btns2(D).length >= 2 && p8Btns2(D).every((x) => x.classList.contains('btn-icon')) ? null : C.t4.drillNo) }
+      sample: ['<div class="form-field">', '  <div class="switch">…</div>', '  <label for="…">…</label>', '</div>'],
+      drill: { code0: '', answer: p7Chk(pk(P7.agree)),
+        goal: (D) => (D.q('.form-field > input.check') && !p7Sample(D) && D.text('.form-field label').length > 2 ? null : C.t3.drillNo) }
     }),
-    // Т5 · свой альбом: carousel, carousel-inner, active на одном слайде, data-bs-target кнопок, строка script с сайта.
+    // Т4 · имена версии 5: form-select → form-control, form-check → form-field, form-check-input → check.
+    (pk) => bpTask(4, {
+      kind: 'fix', vw: 480, pre: P7_PRE(pk), post: P7_POST, docs: () => P7_DOCS_FIX,
+      code0: [p7L('guruh', pk(P7.group)), p7Sel(pk, 'form-select'), p7Chk(pk(P7.agree), { f: 'form-check', c: 'form-check-input' })].join('\n'),
+      answer: [p7L('guruh', pk(P7.group)), p7Sel(pk), p7Chk(pk(P7.agree))].join('\n'),
+      goal: (D) => {
+        if (!D.has('select', 'form-control')) return C.t4.sel;
+        return D.q('.form-field > input.check') ? null : C.t4.chk;
+      },
+      sample: ['<select class="form-control">…</select>', '<div class="form-field">', '  <input type="checkbox" class="check">'],
+      drill: { code0: p7Chk(pk(P7.morning), { type: 'radio', id: 'v1', c: 'form-check-input' }), answer: p7Chk(pk(P7.morning), { type: 'radio', id: 'v1', c: 'radio' }),
+        goal: (D) => (D.q('input.radio') ? null : C.t4.drillNo) }
+    }),
+    // Т5 · своя анкета: подпись form-label, поле form-control, галочка или переключатель с сайта, кнопка с цветом.
     (pk, store) => bpTask(5, {
-      kind: 'own-page', big: true, vw: 480, pre: P8_PRE(pk, P8.myH), post: ['</body>'], docs: () => P8_DOCS_OWN,
-      code0: p8Car({ id: 'albom', car: '', inner: '', items: ['carousel-item', 'carousel-item', 'carousel-item'], tgt: '' }).concat(['  ']).join('\n'),
-      answer: p8Car({ id: 'albom', tgt: '#albom' }).concat(['  ' + BP_SCRIPT]).join('\n'),
+      kind: 'own-page', big: true, vw: 480, pre: P7_PRE(pk, P7.myH), post: P7_POST, docs: () => P7_DOCS_OWN,
+      code0: [p7L('jamoa', pk(P7.team), ''), p7I('text', 'jamoa', ''), '    ', '    <button type="submit" class="">' + pk(P7.send) + '</button>'].join('\n'),
+      answer: [p7L('jamoa', pk(P7.team)), p7I('text', 'jamoa'), p7Chk(pk(P7.agree)), p7Btn(pk, 'btn-solid theme-success')].join('\n'),
       list: [
-        { t: L3("carousel · carousel-inner", 'carousel · carousel-inner', 'carousel · carousel-inner'), ok: (D) => p8Ok(D) },
-        { t: L3("active: bitta rasmda", 'active: на одном фото', 'active: on one photo'), ok: (D) => D.qa('.carousel-item.active').length === 1 },
-        { t: L3("tugmalar: data-bs-target", 'кнопки: data-bs-target', 'buttons: data-bs-target'), ok: (D) => p8Tgt(D) },
-        { t: L3("script: body oxirida", 'script: в конце body', 'script: end of body'), ok: (D) => D.script.ok && D.script.atEnd }
+        { t: L3("label: form-label", 'label: form-label', 'label: form-label'), ok: (D) => D.has('label', 'form-label') },
+        { t: L3("input: form-control", 'input: form-control', 'input: form-control'), ok: (D) => D.has('input[type="text"]', 'form-control') },
+        { t: L3("check, radio yoki switch", 'check, radio или switch', 'check, radio or switch'), ok: (D) => !!D.q('.form-field input.check, .form-field input.radio, .form-field .switch input') && !p7Sample(D) },
+        { t: L3("tugma: btn-solid va theme-…", 'кнопка: btn-solid и theme-…', 'button: btn-solid and theme-…'), ok: (D) => D.has('button', 'btn-solid') && !!D.theme('button') }
       ],
       goal: (D) => {
-        if (!D.q('.carousel')) return C.t5.car;
-        if (!p8Ok(D)) return C.t5.inner;
-        const n = D.qa('.carousel-item.active').length;
-        if (!n) return C.t5.active;
-        if (n > 1) return C.t5.active2;
-        if (!p8Tgt(D)) return C.t5.tgt;
-        if (!D.script.tag) return FB.noScript;
-        if (!D.script.atEnd) return FB.scriptPlace;
+        if (!D.has('label', 'form-label')) return C.t5.label;
+        if (!D.has('input[type="text"]', 'form-control')) return C.t5.input;
+        if (!D.q('.form-field input.check, .form-field input.radio, .form-field .switch input')) return C.t5.choice;
+        if (p7Sample(D)) return C.t5.sample;
+        if (!(D.has('button', 'btn-solid') && D.theme('button'))) return C.t5.btn;
         return null;
       },
-      sample: ['<div id="albom" class="carousel slide">', '  <div class="carousel-inner">', '    <div class="carousel-item active">…</div>', '<button … data-bs-target="#albom" …>', BP_SCRIPT],
-      onSolved: (st) => store.set('myDoc', P8_PRE(pk, P8.myH).concat([st.code.replace(/\s+$/, '')], ['</body>']).join('\n'))
+      sample: ['<label for="ism" class="form-label">…</label>', '<input type="text" id="ism" class="form-control">', '<div class="form-field">…</div>', '<button type="submit" class="btn-solid theme-danger">…</button>'],
+      onSolved: (st) => store.set('myDoc', P7_PRE(pk, P7.myH).concat([st.code.replace(/\s+$/, '')], P7_POST).join('\n'))
     })
   ]
 };
@@ -195,122 +145,123 @@ const PR = {
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
   s1: {
-    eyebrow: L3("Robotlar ko'rgazmasi", 'Выставка роботов', 'The robot show'),
-    say: L3("Salom! Bu to'garakning ko'rgazma sahifasi. Suratlar karuselda turibdi. Karusel, ya'ni aylanadigan rasmlar degani: tugma yoki nuqtani bosing, keyingi surat chiqadi. Saytda beshta sahifa bor. Hozir saytni yangilayman, «Yangilash» tugmasini bosing.",
-      'Привет! Это страница выставки нашего кружка. Фото стоят в карусели, то есть в листающихся картинках: нажми кнопку или точку, появится следующее фото. На сайте пять страниц. Сейчас я обновлю сайт, нажми «Обновить».',
-      'Hi! This is our club’s show page. The photos sit in a carousel, a set of sliding pictures: tap a button or a dot and the next photo appears. The site has five pages. I’m about to update it, tap “Refresh”.'),
-    broke: L3("Voy! Yangilashda karusel so'zlari o'chib ketdi. Uchala surat ustma-ust tizilib qoldi, tugmalar bo'shab qoldi, varaqlar o'chdi.",
-      'Ой! При обновлении стёрлись слова карусели. Все три фото встали друг под другом, кнопки опустели, вкладки погасли.',
-      'Oh no! The update erased the carousel words. All three photos lined up one under another, the buttons went empty, and the tabs went dark.'),
-    done: L3("Kodga qarang: teglar joyida, lekin karusel so'zlari yo'q. Darsdagi topishmoq esingizdami? Karusel uchun uzun JavaScript yozish shart emas: class so'zlari, data-bs atributlari va script qatori yetadi. Beshta sahifani birma-bir tuzatamiz, oxirgisi sizniki bo'ladi.",
-      'Посмотри на код: теги на месте, а слов карусели нет. Помнишь загадку урока? Для карусели не нужно писать длинный JavaScript: хватит слов в class, атрибутов data-bs и строки script. Починим пять страниц по одной, а последняя будет твоей.',
-      'Look at the code: the tags are in place, but the carousel words are gone. Remember the lesson’s riddle? A carousel doesn’t need long JavaScript: class words, data-bs attributes and the script line are enough. Let’s fix five pages one by one, and the last one will be yours.'),
+    eyebrow: L3("Ro'yxat formasi", 'Анкета записи', 'Sign-up form'),
+    say: L3("Salom! Bu to'garakka yozilish formasi. Qarang: yozuvlar maydon ustida, maydonlar butun kenglikda, galochka chiroyli, tugma rangli. Saytda beshta sahifa bor. Hozir saytni yangilayman, «Yangilash» tugmasini bosing.",
+      'Привет! Это анкета записи в кружок. Смотри: подписи над полями, поля во всю ширину, красивая галочка, цветная кнопка. На сайте пять страниц. Сейчас я обновлю сайт, нажми «Обновить».',
+      'Hi! This is the club sign-up form. Look: labels above the fields, full-width fields, a neat checkbox, a colorful button. The site has five pages. I’m about to update it, tap “Refresh”.'),
+    broke: L3("Voy! Yangilashda formaning so'zlari o'chib ketdi. Maydonlar kichrayib, bir qatorga tiqilib qoldi, varaqlar o'chdi.",
+      'Ой! При обновлении стёрлись слова формы. Поля сжались и сбились в одну строку, вкладки погасли.',
+      'Oh no! The update erased the form words. The fields shrank and got crammed into one line, and the tabs went dark.'),
+    done: L3("Kodga qarang: label, input va select teglarida class yo'q. Darsdagi topishmoq esingizdami? Har bir maydon turiga alohida so'z kerak emas: hammasiga bitta form-control. Beshta sahifani birma-bir tuzatamiz, oxirgisi sizniki bo'ladi.",
+      'Посмотри на код: у тегов label, input и select нет class. Помнишь загадку урока? Каждому виду поля не нужно своё слово: всем — одно form-control. Починим пять страниц по одной, а последняя будет твоей.',
+      'Look at the code: the label, input and select tags have no class. Remember the lesson’s riddle? Each kind of field doesn’t need its own word: one form-control for all. Let’s fix five pages one by one, and the last one will be yours.'),
     ask: L3("«Yangilash» tugmasini bosing", 'Нажми «Обновить»', 'Tap “Refresh”'),
-    askDone: L3("Beshta sahifadagi karuselni tiklaymiz", 'Восстановим карусель на пяти страницах', 'Let’s restore the carousel on five pages')
+    askDone: L3("Beshta sahifadagi formani tiklaymiz", 'Восстановим анкету на пяти страницах', 'Let’s restore the form on five pages')
   },
   t1: {
-    eyebrow: L3("Tugmalar", 'Кнопки', 'Buttons'),
-    say: L3("Birinchi sahifa: tugmalar. O'ngdagi tugmani bosib ko'ring: u oldinga emas, orqaga suradi! Men ikkala tugmaga bir xil so'z yozib qo'yibman. O'ng tugmaning so'zini almashtiring.",
-      'Первая страница: кнопки. Нажми правую кнопку: она листает не вперёд, а назад! Я написал обеим кнопкам одно и то же слово. Замени слово у правой кнопки.',
-      'The first page is the buttons. Tap the right button: it slides back instead of forward! I gave both buttons the same word. Change the right button’s word.'),
-    ask: L3("O'ng tugma oldinga sursin", 'Пусть правая кнопка листает вперёд', 'Make the right button slide forward'),
-    ok: L3("Zo'r! Endi o'ng tugma oldinga, chap tugma orqaga suradi. Bosib tekshiring!", 'Здорово! Теперь правая кнопка листает вперёд, а левая назад. Понажимай!', 'Great! Now the right button goes forward and the left one goes back. Give them a tap!'),
+    eyebrow: L3("Ism", 'Имя', 'Name'),
+    say: L3("Birinchi sahifa: ism. Bu yerda ikkita maydon chiqib qoldi, lekin ulardan biri aslida yozuv! Men yozuvga maydon so'zini berib qo'yibman. Yozuvning so'zini almashtiring.",
+      'Первая страница: имя. Тут видно два поля, но одно из них на самом деле подпись! Я дал подписи слово поля. Замени слово у подписи.',
+      'The first page is the name. There are two fields here, but one of them is actually a label! I gave the label a field word. Change the label’s word.'),
+    ask: L3("Yozuv maydonga o'xshamasin", 'Пусть подпись не выглядит полем', 'Stop the label from looking like a field'),
+    ok: L3("Zo'r! Endi yozuv yozuvdek, maydon esa maydondek!", 'Здорово! Теперь подпись — подпись, а поле — поле!', 'Great! Now the label looks like a label and the field like a field!'),
     hints: [
-      L3("Ikkinchi tugmaning data-bs-slide qiymatiga qarang. U qayoqqa surishni aytadi.", 'Посмотри на значение data-bs-slide у второй кнопки. Оно говорит, куда листать.', 'Look at the second button’s data-bs-slide value. It says which way to slide.'),
-      L3("prev oldingi degani, next esa keyingi degani. O'ng tugmaga next yozing.", 'prev — это предыдущий, а next — следующий. Правой кнопке напиши next.', 'prev means previous, and next means next. Write next on the right button.'),
-      L3("Namuna kod ostida. Xuddi shunday o'ng tugmaga yozing va Tekshirishni bosing.", 'Образец под кодом. Так же напиши правой кнопке и нажми «Проверить».', 'The example is under the code. Write it on the right button the same way and tap Check.')
+      L3("label tegining class qiymatiga qarang: unda maydon so'zi turibdi. Yozuv uchun boshqa so'z bor.", 'Посмотри на class тега label: там слово для поля. Для подписи есть другое слово.', 'Look at the label tag’s class: it has the field word. Labels have another word.'),
+      L3("Yozuv inglizcha label: form-label. form-control o'rniga form-label yozing.", 'Подпись по-английски — label: form-label. Вместо form-control напиши form-label.', 'A label is form-label. Write form-label instead of form-control.'),
+      L3("Namuna kod ostida. Xuddi shunday yozuv so'zini almashtiring va Tekshirishni bosing.", 'Образец под кодом. Так же замени слово подписи и нажми «Проверить».', 'The example is under the code. Change the label word the same way and tap Check.')
     ],
-    no: L3("O'ng tugma hali orqaga suradi. Uning data-bs-slide qiymati next bo'lsin.", 'Правая кнопка всё ещё листает назад. Пусть её data-bs-slide будет next.', 'The right button still slides back. Make its data-bs-slide next.'),
-    drill: L3("endi uchinchi nuqtani tuzating", 'теперь почини третью точку', 'now fix the third dot'),
-    drillNo: L3("Nuqtalar noldan sanaladi: birinchisi nol, ikkinchisi bir, uchinchisi ikki.", 'Точки считают с нуля: первая — ноль, вторая — один, третья — два.', 'The dots count from zero: the first is zero, the second is one, the third is two.')
+    no: L3("Yozuv hali maydonga o'xshaydi. label tegiga form-label kerak.", 'Подпись всё ещё похожа на поле. Тегу label нужно form-label.', 'The label still looks like a field. The label tag needs form-label.'),
+    drill: L3("endi telefon yozuvini ham tuzating", 'теперь почини и подпись телефона', 'now fix the phone label too'),
+    drillNo: L3("Telefon yozuviga ham form-label kerak.", 'Подписи телефона тоже нужно form-label.', 'The phone label needs form-label too.')
   },
   t2: {
-    eyebrow: L3("Slaydlar", 'Слайды', 'Slides'),
-    say: L3("Ikkinchi sahifa: slaydlar. Uchala surat yana ustma-ust turibdi. Suratlarni o'rab turgan quti class qiymati bo'sh. Darsda qaysi so'z ularni bir qatorga terib, faqat bittasini ko'rsatgan edi?",
-      'Вторая страница: слайды. Все три фото снова стоят друг под другом. У коробки, которая обнимает фото, пустой class. Какое слово на уроке ставило их в один ряд и показывало только одно?',
-      'The second page is the slides. All three photos stand one under another again. The box around the photos has an empty class. Which word in the lesson put them in one row and showed just one?'),
-    ask: L3("Suratlar bir qatorga tizilsin", 'Пусть фото встанут в один ряд', 'Put the photos in one row'),
-    ok: L3("Ajoyib! Suratlar qatorda, oynada bittasi ko'rinadi. Tugmalar bilan aylantirib ko'ring!", 'Отлично! Фото в ряд, в окне видно одно. Полистай кнопками!', 'Great! The photos are in a row and one shows in the window. Slide them with the buttons!'),
+    eyebrow: L3("Izoh", 'Комментарий', 'Comment'),
+    say: L3("Ikkinchi sahifa: izoh. Katta matn maydoni kichkina va kulrang bo'lib qolibdi. Uning class qiymati bo'sh. Darsdagi topishmoq esingizdami? Katta maydon uchun alohida so'z kerakmi?",
+      'Вторая страница: комментарий. Большое текстовое поле стало маленьким и серым. У него пустой class. Вспомни загадку урока: нужно ли большому полю своё слово?',
+      'The second page is the comment. The big text field turned small and grey. Its class is empty. Remember the lesson’s riddle: does a big field need its own word?'),
+    ask: L3("Izoh maydoni boshqalardek bo'lsin", 'Пусть поле комментария будет как остальные', 'Make the comment field like the others'),
+    ok: L3("Ajoyib! Bitta so'z, va katta maydon ham chiroyli!", 'Отлично! Одно слово — и большое поле тоже красивое!', 'Great! One word, and the big field looks nice too!'),
     hints: [
-      L3("carousel ichida yana bitta quti bor. U slaydlarni o'rab turadi.", 'Внутри carousel есть ещё одна коробка. Она обнимает слайды.', 'Inside carousel there’s one more box. It wraps the slides.'),
-      L3("Bu quti carousel-inner, ya'ni karuselning ichi degani. Shu so'zni bo'sh class ichiga yozing.", 'Эта коробка — carousel-inner, то есть внутренность карусели. Впиши это слово в пустой class.', 'That box is carousel-inner, the inside of the carousel. Write that word in the empty class.'),
-      L3("Namuna kod ostida. Xuddi shunday so'zni yozing va Tekshirishni bosing.", 'Образец под кодом. Напиши такое же слово и нажми «Проверить».', 'The example is under the code. Write the same word and tap Check.')
+      L3("textarea ham maydon. Oddiy maydonlarga qaysi so'z berilardi?", 'textarea — тоже поле. Какое слово давали обычным полям?', 'A textarea is a field too. Which word did ordinary fields get?'),
+      L3("Barcha maydonlarga bitta so'z: form-control. Uni bo'sh class ichiga yozing.", 'Одно слово для всех полей: form-control. Впиши его в пустой class.', 'One word for all fields: form-control. Write it in the empty class.'),
+      L3("Namuna kod ostida: oddiy maydon. Xuddi shunday so'zni textarea tegiga yozing va Tekshirishni bosing.", 'Образец под кодом — обычное поле. Так же напиши слово для textarea и нажми «Проверить».', 'The example under the code is an ordinary field. Write the same word on the textarea and tap Check.')
     ],
-    no: L3("Suratlar hali ustma-ust. Ularni o'rab turgan qutiga carousel-inner kerak.", 'Фото всё ещё друг под другом. Коробке, которая их обнимает, нужно carousel-inner.', 'The photos are still stacked. The box around them needs carousel-inner.'),
-    item: L3("carousel-item bitta slayd uchun. Slaydlarni o'rab turgan quti esa carousel-inner.", 'carousel-item — это один слайд. А коробка, которая обнимает слайды, — carousel-inner.', 'carousel-item is one slide. The box that wraps the slides is carousel-inner.'),
-    car: L3("carousel tashqi quti, u allaqachon bor. Ichki qutiga carousel-inner yozing.", 'carousel — внешняя коробка, она уже есть. Внутренней коробке напиши carousel-inner.', 'carousel is the outer box, and it’s already there. Write carousel-inner on the inner box.'),
-    drill: L3("endi ikkinchi slaydni tuzating", 'теперь почини второй слайд', 'now fix the second slide'),
-    drillNo: L3("Ikkinchi slaydning class qiymati bo'sh. Har bir slaydga carousel-item kerak.", 'У второго слайда пустой class. Каждому слайду нужно carousel-item.', 'The second slide’s class is empty. Every slide needs carousel-item.')
+    no: L3("Izoh maydoni hali oddiy. textarea tegiga form-control bering.", 'Поле комментария ещё обычное. Дай textarea слово form-control.', 'The comment field is still plain. Give the textarea form-control.'),
+    label: L3("form-label yozuv uchun. Maydonning o'zi form-control bilan bo'yaladi.", 'form-label — для подписи. Само поле оформляет form-control.', 'form-label is for labels. The field itself uses form-control.'),
+    drill: L3("endi guruh ro'yxatini ham chiroyli qiling", 'теперь сделай красивым и список групп', 'now make the group list nice too'),
+    drillNo: L3("Bootstrap 6 da select ham form-control bilan yoziladi.", 'В Bootstrap 6 и select оформляют словом form-control.', 'In Bootstrap 6 a select also uses form-control.')
   },
   t3: {
-    eyebrow: L3("Ko'rgazma", 'Выставка', 'Show'),
-    say: L3("Uchinchi sahifa: ko'rgazma kunlari. Bu yerda karusel umuman yo'q. Bootstrap saytidagi Bottom controls namunasini nusxalang va qo'ying. Saytdagi misolda rasm nomi o'rnida uch nuqta turadi: ularning o'rniga o'z fayllaringiz nomini yozing.",
-      'Третья страница: дни выставки. Здесь карусели совсем нет. Скопируй пример Bottom controls с сайта Bootstrap и вставь. В примере вместо имени картинки стоят три точки: напиши вместо них имена своих файлов.',
-      'The third page is the show days. There’s no carousel here at all. Copy the Bottom controls example from the Bootstrap site and paste it. In the example, three dots stand in place of the picture names: write your own file names instead.'),
-    ask: L3("Saytdan karusel oling", 'Возьми карусель с сайта', 'Take a carousel from the site'),
-    ok: L3("Qoyil! Saytdagi karusel endi sizning suratlaringiz bilan!", 'Вот это да! Карусель с сайта теперь с твоими фото!', 'Wow! The site’s carousel now has your photos!'),
+    eyebrow: L3("Yangiliklar", 'Новости', 'News'),
+    say: L3("Uchinchi sahifa: yangiliklar. Bu yerda yoqib-o'chirgich yo'q. Bootstrap saytining Switch sahifasidan namunani nusxalang va qo'ying. Keyin yozuvini moslang: Default switch o'rniga Yangiliklarni olish deb yozing.",
+      'Третья страница: новости. Здесь нет переключателя. Скопируй пример со страницы Switch сайта Bootstrap и вставь. Потом подгони подпись: вместо Default switch напиши «Получать новости».',
+      'The third page is the news. There’s no switch here. Copy the example from the Switch page of the Bootstrap site and paste it. Then change the label: write “Get the news” instead of Default switch.'),
+    ask: L3("Saytdan switch oling va yozuvini moslang", 'Возьми switch с сайта и подгони подпись', 'Take a switch from the site and change its label'),
+    ok: L3("Qoyil! Yoqib-o'chirgich tayyor, xuddi telefondagidek!", 'Вот это да! Переключатель готов, совсем как в телефоне!', 'Wow! The switch is ready, just like on a phone!'),
     hints: [
-      L3("Saytdagi Bottom controls kodi yonida nusxalash belgisi bor. Uni bosing, keyin Qo'yish tugmasini.", 'Рядом с кодом Bottom controls на сайте есть значок копирования. Нажми его, потом «Вставить».', 'Next to the Bottom controls code on the site there’s a copy icon. Tap it, then Paste.'),
-      L3("Qo'yilgan kodda uchta img tegi bor, src ichida uch nuqta. Ularning o'rniga slayd1.jpg, slayd2.jpg va slayd3.jpg deb yozing.", 'Во вставленном коде три тега img, в src — три точки. Напиши вместо них slayd1.jpg, slayd2.jpg и slayd3.jpg.', 'The pasted code has three img tags with three dots in src. Write slayd1.jpg, slayd2.jpg and slayd3.jpg instead.'),
-      L3("Namuna kod ostida. Xuddi shunday uchala rasmga fayl nomini yozing va Tekshirishni bosing.", 'Образец под кодом. Так же напиши имя файла всем трём картинкам и нажми «Проверить».', 'The example is under the code. Write a file name for all three pictures the same way and tap Check.')
+      L3("Saytdagi Switch kodi yonida nusxalash belgisi bor. Uni bosing, keyin Qo'yish tugmasini.", 'Рядом с кодом Switch на сайте есть значок копирования. Нажми его, потом «Вставить».', 'Next to the Switch code on the site there’s a copy icon. Tap it, then Paste.'),
+      L3("Qo'yilgan kodda label ichida Default switch yozuvi bor. Uning o'rniga Yangiliklarni olish deb yozing.", 'В вставленном коде внутри label написано Default switch. Напиши вместо этого «Получать новости».', 'In the pasted code, the label says Default switch. Write “Get the news” instead.'),
+      L3("Namuna kod ostida. Xuddi shunday tuzilish va o'z yozuvingiz bilan yozing va Tekshirishni bosing.", 'Образец под кодом. Сделай так же, со своей подписью, и нажми «Проверить».', 'The example is under the code. Do it the same way with your own label and tap Check.')
     ],
-    noCar: L3("Sahifada karusel hali yo'q. Saytdan Bottom controls namunasini nusxalang va qo'ying.", 'На странице пока нет карусели. Скопируй пример Bottom controls с сайта и вставь.', 'There’s no carousel on the page yet. Copy the Bottom controls example from the site and paste it.'),
-    dots: L3("Suratlar singan: src ichida hali uch nuqta turibdi. Fayllar ro'yxatidan nomlarni yozing.", 'Фото сломаны: в src ещё стоят три точки. Напиши имена из списка файлов.', 'The photos are broken: src still has three dots. Write the names from the file list.'),
-    file: L3("Bitta surat chiqmadi: fayl nomini tekshiring. Fayllar ro'yxatiga qarang, nom oxirigacha yoziladi.", 'Одно фото не появилось: проверь имя файла. Посмотри в список файлов, имя пишут до конца.', 'One photo didn’t show: check the file name. Look at the file list; the name is written in full.'),
-    drill: L3("endi saytdan Crossfade namunasini oling", 'теперь возьми с сайта пример Crossfade', 'now take the Crossfade example from the site'),
-    drillNo: L3("Crossfade namunasini nusxalang, qo'ying va uch nuqta o'rniga fayl nomlarini yozing.", 'Скопируй пример Crossfade, вставь и напиши имена файлов вместо трёх точек.', 'Copy the Crossfade example, paste it and write the file names instead of the three dots.')
+    noSw: L3("Sahifada yoqib-o'chirgich hali yo'q. Saytdan Switch namunasini nusxalang va qo'ying.", 'На странице пока нет переключателя. Скопируй пример Switch с сайта и вставь.', 'There’s no switch on the page yet. Copy the Switch example from the site and paste it.'),
+    check: L3("Bu galochka. Bu sahifaga yoqib-o'chirgich kerak: Switch namunasini oling.", 'Это галочка. А здесь нужен переключатель: возьми пример Switch.', 'That’s a checkbox. This page needs a switch: take the Switch example.'),
+    field: L3("Yoqib-o'chirgich yozuvdan alohida turibdi. Saytdagidek form-field ichida qoldiring.", 'Переключатель стоит отдельно от подписи. Оставь его внутри form-field, как на сайте.', 'The switch stands apart from its label. Keep it inside form-field, as on the site.'),
+    sample: L3("Yozuv hali saytdagidek inglizcha. Yangiliklarni olish deb yozing.", 'Подпись ещё английская, как на сайте. Напиши «Получать новости».', 'The label is still the site’s English text. Write “Get the news”.'),
+    noText: L3("Yoqib-o'chirgichning yozuvi yo'q. label ichiga yozing.", 'У переключателя нет подписи. Напиши её внутри label.', 'The switch has no label. Write it inside label.'),
+    drill: L3("endi saytdan galochka oling: «Qoidalarga roziman»", 'теперь возьми с сайта галочку: «Согласен с правилами»', 'now take a checkbox from the site: “I agree to the rules”'),
+    drillNo: L3("Checkbox namunasini nusxalang, qo'ying va yozuvini Qoidalarga roziman qiling.", 'Скопируй пример Checkbox, вставь и сделай подпись «Согласен с правилами».', 'Copy the Checkbox example, paste it and make the label “I agree to the rules”.')
   },
   t4: {
-    eyebrow: L3("Avtomat", 'Автомат', 'Autoplay'),
-    say: L3("To'rtinchi sahifa: bu karusel o'zi aylanishi kerak edi. Lekin men kodni eski darslikdan ko'chiribman: suratlar joyidan qimirlamaydi, tugmalar ham ishlamaydi. Kodda ikkita xato bor. Topib, tuzating.",
-      'Четвёртая страница: эта карусель должна листаться сама. Но я списал код из старого учебника: фото стоят на месте, и кнопки не работают. В коде две ошибки. Найди и почини.',
-      'The fourth page: this carousel was supposed to slide by itself. But I copied the code from an old tutorial: the photos don’t move and the buttons don’t work. There are two mistakes in the code. Find and fix them.'),
-    ask: L3("Avtomat va tugmalarni tuzating", 'Почини автопрокрутку и кнопки', 'Fix the autoplay and the buttons'),
-    ok: L3("Zo'r ish! Karusel o'zi aylanyapti, tugmalar ham ishlayapti!", 'Отличная работа! Карусель листается сама, и кнопки работают!', 'Nice work! The carousel slides by itself, and the buttons work too!'),
+    eyebrow: L3("Guruh", 'Группа', 'Group'),
+    say: L3("To'rtinchi sahifa: guruh tanlash. Bu yerni eski darslikdan ko'chiribman: ro'yxat ham, galochka ham oddiy bo'lib qolgan. Kodda beshinchi versiyaning uchta nomi bor. Ularni oltinchi versiya so'zlariga almashtiring.",
+      'Четвёртая страница: выбор группы. Её я списал из старого учебника: и список, и галочка стали обычными. В коде три имени пятой версии. Замени их на слова шестой версии.',
+      'The fourth page is choosing a group. I copied it from an old tutorial: both the list and the checkbox turned plain. The code has three version 5 names. Replace them with version six words.'),
+    ask: L3("Ro'yxat va galochka chiroyli bo'lsin", 'Сделай список и галочку красивыми', 'Make the list and the checkbox nice'),
+    ok: L3("Zo'r ish! Uchta eski nom ketdi, forma yana chiroyli!", 'Отличная работа! Три старых имени ушли, анкета снова красивая!', 'Nice work! Three old names gone, and the form looks great again!'),
     hints: [
-      L3("Karuselning birinchi qatoriga va tugmalardagi data-bs-target qiymatiga qarang.", 'Посмотри на первую строку карусели и на значение data-bs-target у кнопок.', 'Look at the carousel’s first line and at the buttons’ data-bs-target value.'),
-      L3("data-bs-ride eski nom: o'rniga data-bs-autoplay yozing, qiymati true, ya'ni yoqiq degani. Tugmalarda esa id oldiga panjara qo'ying.", 'data-bs-ride — старое имя: вместо него data-bs-autoplay со значением true. А кнопкам поставь решётку перед id.', 'data-bs-ride is an old name: use data-bs-autoplay with the value true instead. And put a hash before the id on the buttons.'),
-      L3("Namuna kod ostida. Xuddi shunday ikkala xatoni tuzating va Tekshirishni bosing.", 'Образец под кодом. Так же исправь обе ошибки и нажми «Проверить».', 'The example is under the code. Fix both mistakes the same way and tap Check.')
+      L3("Uchta so'zga qarang: form-select, form-check va form-check-input. Ularning hammasi eski.", 'Посмотри на три слова: form-select, form-check и form-check-input. Все они старые.', 'Look at three words: form-select, form-check and form-check-input. They’re all old.'),
+      L3("select ham form-control oladi. Galochka o'ramiga form-field, galochkaning o'ziga esa check.", 'select тоже получает form-control. Обёртке галочки — form-field, а самой галочке — check.', 'A select gets form-control too. The checkbox wrapper gets form-field, and the checkbox itself gets check.'),
+      L3("Namuna kod ostida. Xuddi shunday uchala so'zni almashtiring va Tekshirishni bosing.", 'Образец под кодом. Так же замени все три слова и нажми «Проверить».', 'The example is under the code. Replace all three words the same way and tap Check.')
     ],
-    auto: L3("Karusel hali o'zi aylanmayapti. Bootstrap 6 da buni data-bs-autoplay qiladi, qiymati true.", 'Карусель пока не листается сама. В Bootstrap 6 это делает data-bs-autoplay со значением true.', 'The carousel doesn’t slide by itself yet. In Bootstrap 6 that’s data-bs-autoplay with the value true.'),
-    tgt: L3("Tugmalar karuselni topmayapti. data-bs-target da panjara va karusel id si turishi kerak.", 'Кнопки не находят карусель. В data-bs-target должны стоять решётка и id карусели.', 'The buttons can’t find the carousel. data-bs-target needs a hash and the carousel’s id.'),
-    drill: L3("endi tugmalarning eski so'zini ham tuzating", 'теперь почини и старое слово у кнопок', 'now fix the buttons’ old word too'),
-    drillNo: L3("carousel-control-prev va carousel-control-next eski nomlar. Tugmalarga btn-icon va btn-sm yozing.", 'carousel-control-prev и carousel-control-next — старые имена. Напиши кнопкам btn-icon и btn-sm.', 'carousel-control-prev and carousel-control-next are old names. Give the buttons btn-icon and btn-sm.')
+    sel: L3("Ro'yxat hali oddiy. select tegiga form-control bering.", 'Список ещё обычный. Дай select слово form-control.', 'The list is still plain. Give the select form-control.'),
+    chk: L3("Galochka hali oddiy. O'ramiga form-field, galochkaga check bering.", 'Галочка ещё обычная. Дай обёртке form-field, а галочке — check.', 'The checkbox is still plain. Give the wrapper form-field and the checkbox check.'),
+    drill: L3("endi bu dumaloq tanlovni ham tuzating", 'теперь почини и этот круглый выбор', 'now fix this round choice too'),
+    drillNo: L3("form-check-input eski nom. Dumaloq tanlov uchun radio yozing.", 'form-check-input — старое имя. Для круглого выбора напиши radio.', 'form-check-input is an old name. For a round choice, write radio.')
   },
   t5: {
-    eyebrow: L3("Mening albomim", 'Мой альбом', 'My album'),
-    say: L3("Beshinchi sahifa sizniki: o'z albomingiz! Suratlar tayyor, lekin karusel hali yig'ilmagan: class qiymatlari bo'sh, tugmalar karuselni bilmaydi, script qatori ham yo'q. Ro'yxatdagi to'rtta shartni bajaring. Albom qaysi suratdan boshlanishini o'zingiz tanlang.",
-      'Пятая страница твоя: свой альбом! Фото готовы, но карусель ещё не собрана: class пустые, кнопки не знают карусель, и строки script нет. Выполни четыре условия из списка. С какого фото начнётся альбом, выбери сам.',
-      'The fifth page is yours: your own album! The photos are ready, but the carousel isn’t built yet: the classes are empty, the buttons don’t know the carousel, and there’s no script line. Meet the four conditions on the list. Choose for yourself which photo the album starts with.'),
-    ask: L3("O'z karuselingizni yig'ing", 'Собери свою карусель', 'Build your own carousel'),
-    ok: L3("Vau, haqiqiy karusel! Endi istalgan suratlarni Bootstrap bilan aylantira olasiz!", 'Вау, настоящая карусель! Теперь любые фото ты пролистаешь на Bootstrap!', 'Wow, a real carousel! Now you can slide any photos with Bootstrap!'),
+    eyebrow: L3("Mening formam", 'Моя анкета', 'My form'),
+    say: L3("Beshinchi sahifa sizniki: musobaqaga yozilish formasi! Unda yozuv, maydon va tugma bor, lekin class qiymatlari bo'sh. Ularni to'ldiring, bo'sh qatorga esa saytdan galochka yoki yoqib-o'chirgich qo'ying va yozuvini o'zingiz yozing.",
+      'Пятая страница твоя: анкета записи на соревнование! В ней есть подпись, поле и кнопка, но class пустые. Заполни их, а в пустую строку вставь с сайта галочку или переключатель и напиши свою подпись.',
+      'The fifth page is yours: a contest sign-up form! It has a label, a field and a button, but the classes are empty. Fill them in, and paste a checkbox or switch from the site into the empty line with your own label.'),
+    ask: L3("O'z formangizni yig'ing", 'Собери свою анкету', 'Build your own form'),
+    ok: L3("Vau, haqiqiy yozilish formasi! Endi har qanday formani Bootstrap bilan yasay olasiz!", 'Вау, настоящая анкета! Теперь любую форму ты соберёшь на Bootstrap!', 'Wow, a real sign-up form! Now you can build any form with Bootstrap!'),
     hints: [
-      L3("Ro'yxatga qarang: to'rtta shart. Oldin tashqi qutiga carousel slide, ichki qutiga carousel-inner yozing.", 'Посмотри на список: четыре условия. Сначала напиши внешней коробке carousel slide, а внутренней — carousel-inner.', 'Look at the list: four conditions. First write carousel slide on the outer box and carousel-inner on the inner one.'),
-      L3("Keyin bitta suratga active qo'shing. Tugmalarga data-bs-target: panjara va albom. Oxirida saytdan script qatorini nusxalab, bo'sh qatorga qo'ying.", 'Потом добавь active одному фото. Кнопкам — data-bs-target: решётка и albom. В конце скопируй с сайта строку script и вставь в пустую строку.', 'Then add active to one photo. Give the buttons data-bs-target: a hash and albom. Finally, copy the script line from the site and paste it into the empty line.'),
-      L3("Namuna kod ostida. Xuddi shunday tartibda o'z karuselingizni yig'ing va Tekshirishni bosing.", 'Образец под кодом. Собери свою карусель в таком же порядке и нажми «Проверить».', 'The example is under the code. Build your carousel in the same order and tap Check.')
+      L3("Ro'yxatga qarang: to'rtta shart. Oldin label tegiga form-label, input tegiga form-control bering.", 'Посмотри на список: четыре условия. Сначала дай label слово form-label, а input — form-control.', 'Look at the list: four conditions. First give label form-label and input form-control.'),
+      L3("Keyin saytdan Checkbox yoki Switch namunasini nusxalab, bo'sh qatorga qo'ying va yozuvini almashtiring. Tugmaga btn-solid va rang so'zi.", 'Потом скопируй с сайта пример Checkbox или Switch, вставь в пустую строку и замени подпись. Кнопке — btn-solid и слово цвета.', 'Then copy a Checkbox or Switch example from the site, paste it into the empty line and change its label. The button gets btn-solid and a color word.'),
+      L3("Namuna kod ostida. Xuddi shunday tartibda o'z formangizni yozing va Tekshirishni bosing.", 'Образец под кодом. Собери свою анкету в таком же порядке и нажми «Проверить».', 'The example is under the code. Build your form in the same order and tap Check.')
     ],
-    car: L3("Tashqi qutiga carousel so'zi kerak.", 'Внешней коробке нужно слово carousel.', 'The outer box needs the word carousel.'),
-    inner: L3("Suratlar hali qatorda emas. Ichki qutiga carousel-inner kerak.", 'Фото ещё не в ряд. Внутренней коробке нужно carousel-inner.', 'The photos aren’t in a row yet. The inner box needs carousel-inner.'),
-    active: L3("Albom qaysi suratdan boshlanadi? Bitta slaydga active qo'shing.", 'С какого фото начнётся альбом? Добавь active одному слайду.', 'Which photo does the album start with? Add active to one slide.'),
-    active2: L3("active bir nechta slaydda turibdi. Boshlanadigan surat bitta bo'ladi.", 'active стоит у нескольких слайдов. Начальное фото одно.', 'active is on several slides. There’s only one starting photo.'),
-    tgt: L3("Tugmalar karuselni topmayapti. data-bs-target ga panjara va albom deb yozing.", 'Кнопки не находят карусель. Напиши в data-bs-target решётку и albom.', 'The buttons can’t find the carousel. Write a hash and albom in data-bs-target.')
+    label: L3("Yozuvga form-label so'zi kerak.", 'Подписи нужно слово form-label.', 'The label needs the word form-label.'),
+    input: L3("Maydonga form-control so'zi kerak.", 'Полю нужно слово form-control.', 'The field needs the word form-control.'),
+    choice: L3("Formada galochka yoki yoqib-o'chirgich yo'q. Saytdan namunani nusxalab, bo'sh qatorga qo'ying.", 'В анкете нет галочки или переключателя. Скопируй пример с сайта и вставь в пустую строку.', 'The form has no checkbox or switch. Copy an example from the site and paste it into the empty line.'),
+    sample: L3("Yozuv hali saytdagidek inglizcha. O'z yozuvingizni yozing.", 'Подпись ещё английская, как на сайте. Напиши свою.', 'The label is still the site’s English text. Write your own.'),
+    btn: L3("Tugma hali oddiy. Unga btn-solid va rang so'zini bering.", 'Кнопка ещё обычная. Дай ей btn-solid и слово цвета.', 'The button is still plain. Give it btn-solid and a color word.')
   },
   fin: {
     eyebrow: L3("Xulosa", 'Вывод', 'Summary'),
     say: [
-      { k: null, text: L3("Hamma karusellar yana aylanyapti! Qarang, bu sizning albomingiz.", 'Все карусели снова листаются! Смотри, это твой альбом.', 'All the carousels slide again! Look, this is your album.') },
-      { k: 'a', text: L3("Karusel uchta qutidan iborat: carousel, ichida carousel-inner, unda har bir surat carousel-item.", 'Карусель — это три коробки: carousel, внутри carousel-inner, а в ней каждое фото — carousel-item.', 'A carousel is three boxes: carousel, inside it carousel-inner, and in that each photo is a carousel-item.') },
-      { k: 'b', text: L3("active boshlanadigan suratni ko'rsatadi, u bitta bo'ladi.", 'active показывает начальное фото, оно одно.', 'active marks the starting photo, and there’s only one.') },
-      { k: 'c', text: L3("Tugmaga data-bs-slide va data-bs-target kerak, data-bs-target da esa panjara va karusel id si turadi.", 'Кнопке нужны data-bs-slide и data-bs-target, а в data-bs-target стоят решётка и id карусели.', 'A button needs data-bs-slide and data-bs-target, and data-bs-target holds a hash and the carousel’s id.') },
-      { k: 'd', text: L3("Tugmalarni script qatori ishlatadi. data-bs-ride esa eski nom, o'zi aylanishi uchun data-bs-autoplay.", 'Кнопки оживляет строка script. А data-bs-ride — старое имя, чтобы листалась сама, нужно data-bs-autoplay.', 'The script line brings the buttons to life. And data-bs-ride is an old name: for autoplay use data-bs-autoplay.') },
-      { k: null, text: L3("Tabriklayman! Keyingi darsda menyu va oyna yasaymiz: ular ham tugma bosilganda ochiladi. Ko'rishguncha!", 'Поздравляю! На следующем уроке сделаем меню и окно: они тоже открываются по нажатию кнопки. До встречи!', 'Congratulations! Next lesson we’ll build a menu and a dialog: they also open when you tap a button. See you!') }
+      { k: null, text: L3("Hamma formalar yana chiroyli! Qarang, bu sizning formangiz.", 'Все анкеты снова красивые! Смотри, это твоя анкета.', 'All the forms look great again! Look, this is your form.') },
+      { k: 'a', text: L3("Barcha maydonlarga bitta so'z: form-control, hatto select tegiga ham.", 'Одно слово для всех полей: form-control, даже для select.', 'One word for all fields: form-control, even for a select.') },
+      { k: 'b', text: L3("Yozuvga esa form-label beriladi.", 'А подписи дают form-label.', 'And labels get form-label.') },
+      { k: 'c', text: L3("Galochka check, dumaloq tanlov radio, yoqib-o'chirgich switch, ularni form-field o'raydi.", 'Галочка — check, круглый выбор — radio, переключатель — switch, а обнимает их form-field.', 'A checkbox is check, a round choice is radio, a switch is switch, and form-field wraps them.') },
+      { k: 'd', text: L3("So'zlarni saytning Forms bo'limidan olamiz. form-select va form-check eski nomlar.", 'Слова берём в разделе Forms на сайте. form-select и form-check — старые имена.', 'We take the words from the Forms section of the site. form-select and form-check are old names.') },
+      { k: null, text: L3("Tabriklayman! Keyingi darsda karusel yasaymiz, ya'ni aylanuvchi rasmlar degani. Ko'rishguncha!", 'Поздравляю! На следующем уроке сделаем карусель, то есть листающиеся картинки. До встречи!', 'Congratulations! Next lesson we’ll build a carousel, a set of sliding pictures. See you!') }
     ],
     roles: {
-      a: L3("carousel · inner · item", 'carousel · inner · item', 'carousel · inner · item'),
-      b: L3("active: boshlanish", 'active: начало', 'active: the start'),
-      c: L3("data-bs-target: #id", 'data-bs-target: #id', 'data-bs-target: #id'),
-      d: L3("script va autoplay", 'script и autoplay', 'script and autoplay')
+      a: L3("form-control: maydonlar", 'form-control: поля', 'form-control: fields'),
+      b: L3("form-label: yozuv", 'form-label: подпись', 'form-label: label'),
+      c: L3("check · radio · switch", 'check · radio · switch', 'check · radio · switch'),
+      d: L3("So'zlar Forms da", 'Слова в Forms', 'Words are in Forms')
     },
-    ask: L3("Albomingizni aylantirib ko'ring", 'Полистай свой альбом', 'Slide through your album')
+    ask: L3("Formangizga qarang", 'Посмотри на свою анкету', 'Look at your form')
   }
 };

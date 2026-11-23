@@ -42,6 +42,22 @@ function clsIssue(raw, kind, want) {
   if (want && v !== want) return { k: 'other' };
   return null;
 }
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое — строка задания и подсказка называют ☰, только
+// когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
 const issueText = (c, is) => (is ? fillL(C.fill.msgs[is.k] || C.fill.msgs.other, { w: is.w || '' }) : null);
 
 // Ход заданий раундами: ступени подсказки с нуля на каждом раунде, похвала → следующий раунд, когда Коди договорил.
@@ -456,16 +472,20 @@ function T1({ p }) {
     sayNow(c.ok, 'cheer');
   };
   const onBtn = page === 'Button';
-  const lit = pasted ? null : !onBtn ? (lv >= 2 ? (open === 'comp' ? 'item:Button' : 'grp:comp') : null) : null;
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onBtn ? (burger && !menuView ? 'burger' : lv >= 2 ? (open === 'comp' ? 'item:Button' : 'grp:comp') : null) : null;
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const bodyL = [hl('h', 1, '<h1>' + pick(C.site.h1) + '</h1>')].concat(pasted ? [hl('b', 1, lineOf('variants', BTN_WANT_T1), { cls: 'is-new' })]
     : [slotLine('slot', 1, pick, paste, clip != null && (led || lv >= 3), !canTap)]);
-  const hintNow = pasted ? null : (msg || hintAt(lv, c.hints));
+  const hintNow = pasted ? null : (msg || hintAt(lv, hints));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onBtn ? c.ask : c.askFind} hint={hintNow} err={!!msg && msg !== c.copied} />
+        <KzAsk text={pasted ? c.ok : onBtn ? c.ask : burger ? c.askFind : c.askFindSide} hint={hintNow} err={!!msg && msg !== c.copied} />
         {!pasted ? <Goal pick={pick} html={btnHtml('btn-outline theme-success', 'Success')} /> : null}
-        <div className={docsPhoneCls({ clip: clip != null, nav: clip == null, done: pasted })}>
+        <div ref={scene} className={docsPhoneCls({ clip: clip != null, nav: clip == null, done: pasted })}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={page}><BsDocs page={page} open={open} onOpen={(x) => canTap && setOpen(x)} onNav={nav} navOff={!canTap} copyOff lit={lit} menuView={menuView} onMenu={() => setMenuView((x) => !x)} scrollTo={onBtn ? 'variants' : null} scrollKey={page}
             lines={{ variants: { onLine, sel: clip != null ? clip : tried, lineLed: lv >= 3 ? BTN_WANT_T1 : null, lineOff: !canTap } }} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, [linkL('lk', 1)], bodyL)} cls="kz-code-sm b1-nowrap" /></div>
@@ -768,6 +788,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T6. ПОЧЕМУ НЕ КРАСИТСЯ — btn-success (версия 5), btn-solid theme-green (нет цвета), theme-success (нет стиля).
@@ -794,7 +818,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -848,7 +872,12 @@ function W1({ p }) {
   const vs = normCls(sh), vc = normCls(co), vx = tx.trim();
   const ready = !!(vs && vc && vx);
   const confirm = () => {
-    if (!canTap || !ready || solved) return;
+    if (!canTap || solved) return;
+    if (!ready) {   // пустое поле — причина в панели, «Tayyor» не молчит (23.11.2026)
+      const m = !vs && !vc && !vx ? c.msgs.emptyAll : !vs ? c.msgs.emptyShape : !vc ? c.msgs.emptyColor : c.msgs.emptyText;
+      sfx('soft', true); setMsg(m); sayNow(m, 'think');
+      return;
+    }
     st.current.tries += 1;
     const issue = issueText(c, clsIssue(vs, 'shape', null)) || issueText(c, clsIssue(vc, 'theme', null))
       || (noTagsIn(vx) ? UI.noTags : vx.replace(/\s+/g, '').length < 3 ? c.msgs.text : normT(vx) === normT('Success') ? c.msgs.same : null);
@@ -871,9 +900,9 @@ function W1({ p }) {
         <div className={docsPhoneCls({ ref: true, done: solved })}>
           {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Button"><BsDocs page="Button" only="variants" copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 0, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }, { k: 'b', d: 1, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l2 }, hl('c', 0, '</button>')]} cls="kz-code-sm" /></div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} o={{ h1: false, btns: [{ cls: pageCls || null, text: vx || pick(C.site.btn) }] }} title={pick(UI.mySite)} /></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} o={{ h1: false, btns: [{ cls: pageCls || null, text: vx || '✎ …' }] }} title={pick(UI.mySite)} /></div>
         </div>
-        {!solved ? <ReadyBtn on={canTap && ready} glow={canTap && ready} onClick={confirm} /> : null}
+        {!solved ? <ReadyBtn on={canTap} glow={canTap && ready} onClick={confirm} /> : null}
       </Sheet>
     </StageB>
   );

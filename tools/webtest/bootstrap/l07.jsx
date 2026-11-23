@@ -1,51 +1,60 @@
 // =============================================================================
-// ТЕСТЫ К УРОКУ 7 МОДУЛЯ BOOTSTRAP «Формы» (20.11.2026) — 5 вопросов, по файлу на вопрос.
-// Проверяем: поле ввода — form-control; у select в Bootstrap 6 тоже form-control (form-select — имя версии 5);
-// подпись — form-label; выбор одного из нескольких — radio; галочка — check (form-check-input — имя версии 5).
-// Страница — честная (bs={BS_CSS}). Апостроф — ASCII «'».
+// ТЕСТЫ К УРОКУ 7 МОДУЛЯ BOOTSTRAP «Navbar и Pagination» (23.11.2026) — 5 вопросов, по файлу на вопрос.
+// Проверяем: navbar-brand — название сайта; md:navbar-expand — от 768 px ссылки в ряд (navbar-expand-lg — имя версии 5);
+// ☰ открывает ящик только со строкой script; active у page-item — открытая страница; тёмный Navbar — data-bs-theme="dark"
+// (navbar-dark, bg-dark — имена версии 5). Страница — честная (bs={BS_CSS}); скрипта нет — ящик закрыт. Апостроф — ASCII «'».
 // =============================================================================
-const SLUG = 'formy';
-const b7Name = (T) => T('Ismingiz', 'Ваше имя', 'Your name');
+const SLUG = 'navbar-i-pagination';
+const b7Nav = (T, o) => {
+  const O = o || {};
+  const links = [T('Asosiy', 'Главная', 'Home'), T('Kurslar', 'Курсы', 'Courses'), T('Aloqa', 'Контакты', 'Contacts')];
+  return `<nav class="${O.navCls || 'navbar md:navbar-expand bg-1'}"${O.theme === false ? '' : ' data-bs-theme="dark"'}>\n  <div class="container-fluid">\n    <a class="${O.brand || 'navbar-brand'}" href="#">${T("Robot to'garagi", 'Кружок роботов', 'Robot club')}</a>\n`
+    + `    <button class="btn-icon navbar-toggler" data-bs-toggle="drawer" data-bs-target="#menyu"><span class="navbar-toggler-icon"></span></button>\n`
+    + `    <dialog class="drawer drawer-end" id="menyu">\n      <div class="drawer-body">\n        <ul class="nav navbar-nav">\n`
+    + links.map((t, i) => `          <li class="nav-item"><a class="nav-link${i ? '' : ' active'}" href="#">${t}</a></li>`).join('\n')
+    + `\n        </ul>\n      </div>\n    </dialog>\n  </div>\n</nav>`;
+};
+const b7Short = (T, navCls, extra) => `<nav class="${navCls}"${extra || ''}>\n  <div class="container-fluid">\n    <a class="navbar-brand" href="#">${T("Robot to'garagi", 'Кружок роботов', 'Robot club')}</a>\n    <button class="btn-icon navbar-toggler">☰</button>\n    <dialog class="drawer">…</dialog>\n  </div>\n</nav>`;
+const b7Pag = (li2) => `<ul class="pagination justify-content-center">\n  <li class="page-item"><a class="page-link" href="#">1</a></li>\n  <li class="${li2}"><a class="page-link" href="#">2</a></li>\n  <li class="page-item"><a class="page-link" href="#">3</a></li>\n</ul>`;
 const QS = [
-  { id: 'bootstrap-07t1', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'form-control', correct: 2, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<input type="text" class="___"\n       placeholder="${b7Name(T)}">`} html={`<input type="text" class="form-control" placeholder="${b7Name(T)}">`} bs={BS_CSS} mark={[1]} />; },
-    uz: { ctx: "Ism maydoni o'ngdagidek bo'lishi kerak: butun kenglikda, yumaloq burchakli.", q: "Bo'sh joyga qaysi so'z yoziladi?", opts: ['form-input', 'input-control', 'form-control', 'form-label'],
-      ok: "To'ppa-to'g'ri! form-control maydonni chiroyli qiladi: butun kenglik, ramka, ichki bo'sh joy.", hint: "Darsda bitta so'z barcha maydonlarga yozilgan edi. U form bilan boshlanadi. form-label esa nima uchun edi?", alt: "Chiroyli ism maydoni" },
-    ru: { ctx: 'Поле имени должно стать как справа: во всю ширину, со скруглёнными углами.', q: 'Какое слово пишется на пустое место?', opts: ['form-input', 'input-control', 'form-control', 'form-label'],
-      ok: 'Верно! form-control делает поле красивым: вся ширина, рамка, отступы внутри.', hint: 'В уроке одно слово писали всем полям. Оно начинается с form. А для чего было form-label?', alt: 'Красивое поле имени' },
-    en: { ctx: 'The name field should look like the one on the right: full width, rounded corners.', q: 'Which word goes in the empty spot?', opts: ['form-input', 'input-control', 'form-control', 'form-label'],
-      ok: 'Right! form-control makes the field nice: full width, a border and space inside.', hint: 'In the lesson one word went on every field. It starts with form. And what was form-label for?', alt: 'A nice name field' } },
-  { id: 'bootstrap-07t2', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'select', correct: 0, mono: true,
-    vis: (L) => { const T = aqL(L); const opt = (t) => `<option>${t}</option>`; return <WqVis code={`<select class="___">\n  ${opt(T('Dushanba', 'Понедельник', 'Monday'))}\n  ${opt(T('Shanba', 'Суббота', 'Saturday'))}\n</select>`} html={`<select class="form-control">${opt(T('Dushanba', 'Понедельник', 'Monday'))}${opt(T('Shanba', 'Суббота', 'Saturday'))}</select>`} bs={BS_CSS} mark={[1]} />; },
-    uz: { ctx: "Kunni tanlash ro'yxati boshqa maydonlar bilan bir xil ko'rinishi kerak.", q: "select-ga qaysi so'z yoziladi?", opts: ['form-control', 'form-select', 'select-control', 'form-option'],
-      ok: "Qoyil! Bootstrap 6 da select ham form-control bilan yoziladi: barcha maydonlarga bitta so'z. form-select esa beshinchi versiyadan qolgan.", hint: "Darsdagi topishmoqni eslang: har bir maydon turiga o'z so'zi kerakmi yoki bitta so'z hammasiga yetadimi?", alt: "Chiroyli kun tanlash ro'yxati" },
-    ru: { ctx: 'Список выбора дня должен выглядеть так же, как другие поля.', q: 'Какое слово пишется у select?', opts: ['form-control', 'form-select', 'select-control', 'form-option'],
-      ok: 'Здорово! В Bootstrap 6 и у select пишут form-control: одно слово для всех полей. А form-select остался от пятой версии.', hint: 'Вспомните загадку урока: каждому виду поля своё слово или одно слово на всех?', alt: 'Красивый список выбора дня' },
-    en: { ctx: 'The day picker should look the same as the other fields.', q: 'Which word goes on the select?', opts: ['form-control', 'form-select', 'select-control', 'form-option'],
-      ok: 'Nice work! In Bootstrap 6 a select also gets form-control: one word for every field. form-select is left over from version 5.', hint: 'Remember the lesson’s riddle: does each kind of field need its own word, or does one word cover them all?', alt: 'A nice day picker' } },
-  { id: 'bootstrap-07t3', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'form-label', correct: 3, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<label for="ism" class="___">\n  ${b7Name(T)}\n</label>\n<input id="ism" class="form-control">`} html={`<label for="ism" class="form-label">${b7Name(T)}</label><input id="ism" class="form-control">`} bs={BS_CSS} mark={[1]} />; },
-    uz: { ctx: "Maydon ustidagi yozuv o'ngdagidek: ozgina pastida bo'sh joy bilan turishi kerak.", q: "label-ga qaysi so'z yoziladi?", opts: ['form-text', 'label-control', 'form-control', 'form-label'],
-      ok: "Xuddi shunday! form-label — maydon yozuvi uchun. form-control esa maydonning o'ziga yoziladi.", hint: "Maydonning o'ziga form-control yozilgan. Yozuv inglizcha label. Ikkalasini qo'shib ko'ring.", alt: "Yozuvli ism maydoni" },
-    ru: { ctx: 'Подпись над полем должна стоять как справа: с небольшим отступом снизу.', q: 'Какое слово пишется у label?', opts: ['form-text', 'label-control', 'form-control', 'form-label'],
-      ok: 'Именно! form-label — для подписи поля. А form-control пишут самому полю.', hint: 'У самого поля уже стоит form-control. Подпись по-английски — label. Соедините.', alt: 'Поле имени с подписью' },
-    en: { ctx: 'The label above the field should look like on the right: with a little space below.', q: 'Which word goes on the label?', opts: ['form-text', 'label-control', 'form-control', 'form-label'],
-      ok: 'Exactly! form-label is for a field’s label. form-control goes on the field itself.', hint: 'The field already has form-control. The caption is a label in English. Put them together.', alt: 'A name field with a label' } },
-  { id: 'bootstrap-07t4', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'radio', correct: 1,
-    vis: (L) => { const T = aqL(L); const f = (inp, t) => `<div class="form-field">${inp}<label>${t}</label></div>`;
-      return <WqVis html={[f('<input type="checkbox" class="check" checked>', 'check'), f('<input type="radio" class="radio" checked>', 'radio'), f('<div class="switch"><input type="checkbox" role="switch" switch checked></div>', 'switch'), `<input class="form-control" placeholder="form-control">`].join('')} bs={BS_CSS} />; },
-    uz: { ctx: "Ro'yxatdan o'tish formasida savol bor: «Qaysi kuni kelasiz?» Javob — faqat bitta kun.", q: 'Bunday tanlov uchun qaysi maydon kerak?', opts: ['check — kvadrat, galochka', 'radio — dumaloq tanlov', 'switch — yoqib-o\'chirgich', 'form-control — matn maydoni'],
-      ok: "Juda zo'r! radio bir guruhdan faqat bittasini tanlatadi: boshqasini bossangiz, oldingisi o'chadi. check esa bir nechtasini belgilashga ruxsat beradi.", hint: "Galochkalarni bir nechta qo'yish mumkin. Qaysi maydonda biri tanlansa, qolgani o'chadi?", alt: "Uch xil tanlov maydoni va matn maydoni" },
-    ru: { ctx: 'В анкете вопрос: «В какой день придёте?» Ответ — только один день.', q: 'Какое поле нужно для такого выбора?', opts: ['check — квадрат с галочкой', 'radio — круглый выбор', 'switch — переключатель', 'form-control — текстовое поле'],
-      ok: 'Отлично! radio даёт выбрать в группе только один: нажмёте другой — прежний снимется. А check разрешает отметить несколько.', hint: 'Галочек можно поставить несколько. В каком поле при выборе одного остальные снимаются?', alt: 'Три вида полей выбора и текстовое поле' },
-    en: { ctx: 'The sign-up form asks: “Which day will you come?” The answer is only one day.', q: 'Which field is needed for this choice?', opts: ['check — square with a tick', 'radio — round choice', 'switch — on/off toggle', 'form-control — text field'],
-      ok: 'Great! radio lets you pick only one in a group: click another and the first is cleared. check lets you tick several.', hint: 'You can tick several checkboxes. In which field does picking one clear the rest?', alt: 'Three kinds of choice fields and a text field' } },
-  { id: 'bootstrap-07t5', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'check', correct: 2,
-    vis: (L) => { const T = aqL(L); const src = `<div class="form-field">\n  <input type="checkbox" class="form-check-input">\n  <label>${T('Qoidalarga roziman', 'Согласен с правилами', 'I agree to the rules')}</label>\n</div>`; return <WqVis code={src} html={src} bs={BS_CSS} mark={[2]} />; },
-    uz: { ctx: "Eski darslikdan olingan galochka Bootstrap ko'rinishini olmadi: oddiy brauzer katakchasi qoldi.", q: 'Nega?', opts: ["checkbox-ga class yozilmaydi", "galochka faqat form ichida ishlaydi", "form-check-input — 5-versiya nomi", "type=\"check\" yozish kerak"],
-      ok: "To'ppa-to'g'ri! Bu nom eski. Bootstrap 6 da galochka shunchaki check, dumaloq tanlov — radio.", hint: "Bootstrap ulangan, demak gap class so'zida. Belgilangan so'z qaysi versiyadan?", alt: "Oddiy brauzer galochkasi va uning kodi" },
-    ru: { ctx: 'Галочка из старого учебника не получила вид Bootstrap: остался обычный квадратик браузера.', q: 'Почему?', opts: ['у checkbox не бывает class', 'галочка работает только в form', 'form-check-input — имя 5-й версии', 'нужно писать type="check"'],
-      ok: 'Верно! Это старое имя. В Bootstrap 6 галочка — просто check, круглый выбор — radio.', hint: 'Bootstrap подключён, значит, дело в слове в class. Из какой версии выделенное слово?', alt: 'Обычная галочка браузера и её код' },
-    en: { ctx: 'A checkbox from an old tutorial didn’t get the Bootstrap look: it stayed a plain browser box.', q: 'Why?', opts: ['a checkbox can’t have a class', 'it only works inside a form', 'form-check-input is a v5 name', 'it needs type="check"'],
-      ok: 'Right! That name is old. In Bootstrap 6 a checkbox is just check, and the round choice is radio.', hint: 'Bootstrap is connected, so the problem is the class word. Which version is the marked word from?', alt: 'A plain browser checkbox and its code' } }
+  { id: 'bootstrap-07t1', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'navbar-brand', correct: 2, mono: true,
+    vis: (L) => { const T = aqL(L); return <WqVis code={b7Short(T, 'navbar md:navbar-expand bg-1', ' data-bs-theme="dark"').replace('class="navbar-brand"', 'class="___"')} html={b7Nav(T)} bs={BS_CSS} vw={800} mark={[2]} />; },
+    uz: { ctx: "Sayt nomi menyu satrida logotipdek katta va qalin turibdi.", q: "Sayt nomidagi bo'sh joyga qaysi class yoziladi?", opts: ['nav-link', 'brand', 'navbar-brand', 'navbar-logo'],
+      ok: "Xuddi shunday! navbar-brand sayt nomini kattaroq va qalinroq qiladi. nav-link esa oddiy havolalar uchun.", hint: "So'z navbar bilan boshlanadi, keyin «brend», ya'ni nom degani.", alt: "Qora menyu satri: chapda sayt nomi, yonida havolalar" },
+    ru: { ctx: 'Название сайта в строке меню — крупное и жирное, как логотип.', q: 'Какой class пишется на пустое место у названия?', opts: ['nav-link', 'brand', 'navbar-brand', 'navbar-logo'],
+      ok: 'Именно! navbar-brand делает название сайта крупнее и жирнее. А nav-link — для обычных ссылок.', hint: 'Слово начинается с navbar, а потом «бренд», то есть название.', alt: 'Тёмная строка меню: слева название, рядом ссылки' },
+    en: { ctx: 'The site name in the menu bar is big and bold, like a logo.', q: 'Which class goes in the empty spot on the name?', opts: ['nav-link', 'brand', 'navbar-brand', 'navbar-logo'],
+      ok: 'Exactly! navbar-brand makes the site name bigger and bolder. nav-link is for the ordinary links.', hint: 'The word starts with navbar, then “brand”, meaning the name.', alt: 'A dark menu bar: the site name on the left, links next to it' } },
+  { id: 'bootstrap-07t2', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'md:navbar-expand', correct: 0, mono: true,
+    vis: (L) => { const T = aqL(L); return <WqVis code={b7Short(T, 'navbar ___ bg-1', ' data-bs-theme="dark"')} html={b7Nav(T, { navCls: 'navbar bg-1' })} bs={BS_CSS} vw={800} mark={[0]} />; },
+    uz: { ctx: "Planshetda havolalar o'rniga faqat ☰ tugmasi ko'rinyapti.", q: "Havolalar keng ekranda qatorga chiqishi uchun nima yoziladi?", opts: ['md:navbar-expand', 'navbar-expand-lg', 'md-navbar-expand', 'navbar-md'],
+      ok: "To'ppa-to'g'ri! md:navbar-expand 768 pikseldan keng ekranda havolalarni qatorga qo'yadi. navbar-expand-lg — beshinchi versiya nomi.", hint: "Oltinchi versiyada ekran o'lchami so'z oldidan, ikki nuqta bilan yoziladi.", alt: "Planshetda faqat ☰ tugmasi ko'rinayotgan menyu satri" },
+    ru: { ctx: 'На экране планшета вместо ссылок видна только кнопка ☰.', q: 'Что написать, чтобы на широком экране ссылки встали в ряд?', opts: ['md:navbar-expand', 'navbar-expand-lg', 'md-navbar-expand', 'navbar-md'],
+      ok: 'Верно! md:navbar-expand ставит ссылки в ряд на экране шире 768 пикселей, как md:col-4. А navbar-expand-lg — имя пятой версии.', hint: 'В шестой версии размер экрана пишется перед словом, через двоеточие.', alt: 'Строка меню на планшете: видна только кнопка ☰' },
+    en: { ctx: 'On a tablet screen only the ☰ button shows instead of the links.', q: 'What do you write so the links line up on a wide screen?', opts: ['md:navbar-expand', 'navbar-expand-lg', 'md-navbar-expand', 'navbar-md'],
+      ok: 'Right! md:navbar-expand puts the links in a row on screens wider than 768 pixels, like md:col-4. navbar-expand-lg is a version 5 name.', hint: 'In version six the screen size goes before the word, with a colon.', alt: 'A menu bar on a tablet showing only the ☰ button' } },
+  { id: 'bootstrap-07t3', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'script', correct: 3,
+    vis: (L) => { const T = aqL(L); return <WqVis code={'<link href="…bootstrap.min.css" rel="stylesheet">\n<body>\n  <nav class="navbar md:navbar-expand bg-1" data-bs-theme="dark">\n    <div class="container-fluid">\n      <a class="navbar-brand" href="#">…</a>\n      <button class="btn-icon navbar-toggler">☰</button>\n      <dialog class="drawer">…</dialog>\n  </div></nav>\n</body>'} html={b7Nav(T)} bs={BS_CSS} vw={360} mark={[8]} />; },
+    uz: { ctx: "Telefonda ☰ tugmasini bosishsa ham havolalar qutisi chiqmayapti. Sahifaning o'zi chiroyli.", q: "Nega ☰ ishlamayapti?", opts: ["head ichida link qatori yo'q", "☰ telefonda umuman ishlamaydi", "Havolalarda nav-link yo'q", "body oxirida script yo'q"],
+      ok: "Qoyil! Sahifa chiroyli, demak link bor. Qutini esa Bootstrap skripti ochadi, script qatori bo'lmasa, ☰ jim turadi.", hint: "Sahifa bezalganmi? Unda CSS bor. Qutini nima ochar edi?", alt: "Telefonda qora menyu satri va ☰ tugmasi" },
+    ru: { ctx: 'На телефоне при нажатии на ☰ ящик со ссылками не выезжает. Сама страница красивая.', q: 'Почему ☰ не работает?', opts: ['В head нет строки link', '☰ не работает на телефоне', 'У ссылок нет nav-link', 'В конце body нет script'],
+      ok: 'Здорово! Страница красивая — значит, link есть. А ящик открывает скрипт Bootstrap: без строки script кнопка ☰ молчит.', hint: 'Страница оформлена? Значит, CSS есть. А что открывает ящик?', alt: 'Телефон: тёмная строка меню и кнопка ☰' },
+    en: { ctx: 'On a phone, tapping ☰ doesn’t slide out the drawer with links. The page itself looks nice.', q: 'Why doesn’t ☰ work?', opts: ['No link line in head', '☰ never works on phones', 'The links lack nav-link', 'No script at the end of body'],
+      ok: 'Nice work! The page is styled, so link is there. The drawer is opened by Bootstrap’s script: without the script line, ☰ stays silent.', hint: 'Is the page styled? Then the CSS is there. What opens the drawer?', alt: 'A phone: a dark menu bar and the ☰ button' } },
+  { id: 'bootstrap-07t4', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'active', correct: 1, mono: true,
+    vis: () => <WqVis code={b7Pag('page-item ___')} html={b7Pag('page-item active')} bs={BS_CSS} vw={360} mark={[2]} />,
+    uz: { ctx: "Sahifa raqamlarida 2 ko'k: biz hozir 2-sahifadamiz.", q: "2-raqam bandidagi bo'sh joyga nima yoziladi?", opts: ['selected', 'active', 'page-active', 'current'],
+      ok: "Ajoyib! active ochiq sahifani bo'yaydi. U li tegidagi page-item yoniga yoziladi, xuddi menyudagi faol havola kabi.", hint: "Faol so'zi inglizchada qanday? Menyu satrida ham shu so'z bor edi.", alt: "1, 2, 3 raqamlari, 2 ko'k rangda" },
+    ru: { ctx: 'В номерах страниц 2 — синяя: мы сейчас на странице 2.', q: 'Что пишется на пустое место у пункта с номером 2?', opts: ['selected', 'active', 'page-active', 'current'],
+      ok: 'Отлично! active красит открытую страницу. Он пишется рядом с page-item у тега li — как у активной ссылки в меню.', hint: 'Как по-английски «активный»? Это слово было и в строке меню.', alt: 'Номера 1, 2, 3, номер 2 — синий' },
+    en: { ctx: 'In the page numbers, 2 is blue: we’re on page 2 now.', q: 'What goes in the empty spot on the item with number 2?', opts: ['selected', 'active', 'page-active', 'current'],
+      ok: 'Great! active colors the open page. It goes next to page-item on the li tag, just like the active link in the menu.', hint: 'What’s the English word for the current, active one? It was in the menu bar too.', alt: 'Numbers 1, 2, 3 with 2 in blue' } },
+  { id: 'bootstrap-07t5', target: 'bootstrap-07', ptype: 'Bootstrap', tag: 'data-bs-theme', correct: 2, mono: true,
+    vis: (L) => { const T = aqL(L); return <WqVis code={b7Short(T, 'navbar md:navbar-expand bg-1', ' ___')} html={b7Nav(T)} bs={BS_CSS} vw={800} mark={[0]} />; },
+    uz: { ctx: "Menyu satri qora, yozuvlari esa oq bo'lishi kerak.", q: "nav tegidagi bo'sh joyga nima yoziladi?", opts: ['class="navbar-dark"', 'class="bg-dark"', 'data-bs-theme="dark"', 'style="dark"'],
+      ok: "Xuddi shunday! Oltinchi versiyada qora satr data-bs-theme=\"dark\" bilan yoziladi. navbar-dark va bg-dark — beshinchi versiyaning nomlari.", hint: "Saytdagi Dark navbar bo'limini eslang: u class emas, data-bs bilan boshlanadi.", alt: "Qora menyu satri, oq yozuvlar" },
+    ru: { ctx: 'Строка меню должна быть тёмной, а надписи — светлыми.', q: 'Что пишется на пустое место у тега nav?', opts: ['class="navbar-dark"', 'class="bg-dark"', 'data-bs-theme="dark"', 'style="dark"'],
+      ok: 'Именно! В шестой версии тёмная строка — это data-bs-theme="dark". navbar-dark и bg-dark — имена пятой версии.', hint: 'Вспомните раздел Dark navbar на сайте: это не class, а атрибут, начинающийся с data-bs.', alt: 'Тёмная строка меню, светлые надписи' },
+    en: { ctx: 'The menu bar must be dark, with light labels.', q: 'What goes in the empty spot on the nav tag?', opts: ['class="navbar-dark"', 'class="bg-dark"', 'data-bs-theme="dark"', 'style="dark"'],
+      ok: 'Exactly! In version six a dark bar is data-bs-theme="dark". navbar-dark and bg-dark are version 5 names.', hint: 'Remember the Dark navbar section of the site: it isn’t a class but an attribute starting with data-bs.', alt: 'A dark menu bar with light labels' } }
 ];

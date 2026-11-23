@@ -70,3 +70,15 @@
 @media (max-width: 759px) {
   .r28 .b1-sheet .b10-end .kz-code { max-height: 20dvh; }
 }
+/* «Верно или нет» (23.11.2026, снимок заказчика: кнопки съехали влево — сетка b1-why на три колонки, всё прижато к верху):
+   утверждение и две кнопки — посередине свободного места, кнопки ровно под карточкой, крупнее. */
+.r28 .b1-sheet .b10-claim { margin-top: auto; width: min(100%, 680px); padding: 22px 24px; }
+.r28 .b1-sheet .b10-claim p { font-size: 20px; }
+.r28 .b1-sheet .kz-pick.b1-why.b10-tf { grid-template-columns: 1fr 1fr; width: min(100%, 680px); margin-bottom: auto; gap: 14px; }
+.r28 .b1-sheet .kz-pick.b1-why.b10-tf .kz-btn { min-height: 58px; font-size: 18px; }
+@media (max-width: 759px) {
+  .r28 .b1-sheet .b10-claim p { font-size: 17px; }
+  .r28 .b1-sheet .kz-pick.b1-why.b10-tf { grid-template-columns: 1fr 1fr; }
+  .r28 .b1-sheet .kz-pick.b1-why.b10-tf .kz-btn { min-height: 50px; font-size: 16px; }
+}
+

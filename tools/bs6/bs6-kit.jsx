@@ -196,11 +196,12 @@ const imgH = (file, cls, alt) => '<img src="' + file + '"' + clsA(cls) + ' alt="
 const spinH = (cls) => '<div' + clsA(cls) + ' role="status"><span class="visually-hidden">Loading…</span></div>';
 const quietSlot = (k, d, pick, on) => ({ k, d, cls: 'b1-line b1-slot' + (on ? ' is-on' : ''), parts: [<span key="p" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>] });
 // Образец «Kerak» — маленькая честная страница рядом с кодом (что должно получиться).
-function Goal({ pick, html, label, zoom }) {
+// vw — образец в окне заданной ширины (как страница рядом: @media по этой ширине; урок 6, t1, 23.11.2026).
+function Goal({ pick, html, label, zoom, vw }) {
   return (
     <div className="b2-goal">
       <span className="b2-goal-h">{pick(label || UI.need)}</span>
-      <div className="b2-goal-in"><BsFrame body={html} bs dep={html} zoom={zoom || 0.8} /></div>
+      <div className="b2-goal-in"><BsFrame body={html} bs dep={html + (vw || '')} zoom={vw ? undefined : (zoom || 0.8)} vw={vw} /></div>
     </div>
   );
 }

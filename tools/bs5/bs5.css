@@ -59,3 +59,19 @@
 }
 /* Задание «цвет карточки»: образец ниже (одна строка). */
 @media (max-width: 759px) { .b1-sheet .b2-goal { padding-top: 2px; padding-bottom: 2px; } }
+/* Урок 5, t2 (23.11.2026): полоса «Fayllar» в задании «впиши файл фото» — на узком телефоне картинки файлов не прячутся
+   (сверить с образцом): картинка над именем, класс l5-files только у этой полосы. */
+@media (max-width: 400px) {
+  .b5-files.l5-files { flex-wrap: wrap; overflow: visible; row-gap: 4px; }
+  .b5-files.l5-files .b5-file { flex-direction: column; gap: 2px; padding: 3px 6px; }
+  .b5-files.l5-files .b5-file img { display: block; width: 44px; height: 25px; border-radius: 4px; }
+}
+/* Урок 5, t2 на низком телефоне (360×640): картинка файла рядом с именем и меньше — иначе сцена наезжала на строку задания. */
+@media (max-width: 400px) and (max-height: 700px) {
+  .b5-files.l5-files { flex-wrap: nowrap; }
+  .b5-files.l5-files .b5-files-h { display: none; }
+  .b5-files.l5-files .b5-file { flex-direction: row; gap: 3px; padding: 2px 4px; font-size: 11px; }
+  .b5-files.l5-files .b5-file img { width: 24px; height: 14px; }
+  .r28 .kz-sheet.b1-sheet:has(.l5-files) .b2-goal { padding-top: 0; padding-bottom: 0; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet:has(.l5-files) .kz-code .kz-line { line-height: 15px; }
+}

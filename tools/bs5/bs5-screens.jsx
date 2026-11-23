@@ -288,7 +288,7 @@ function T2({ p }) {
   const base = Object.assign({}, FULL, { name: pick(C.site.name2), desc: pick(C.site.desc2) });
   const rounds = [
     { kind: 'file', want: 'robot2.jpg', ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('…', '…', '…'), line: srcLine({}), body: (v) => cardH(pick, Object.assign({}, base, { src: v || '...' })),
-      goal: '<img src="robot2.jpg" style="width:56px;border-radius:6px" alt="">', gz: 0.8, extra: <FilesBar pick={pick} /> },
+      goal: '<img src="robot2.jpg" style="width:56px;border-radius:6px" alt="">', gz: 0.8, extra: <FilesBar pick={pick} cls="l5-files" /> },   // l5-files: на узком телефоне картинки файлов видны (сверить с образцом)
     { kind: 'theme', want: 'theme-success', ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('theme-…', 'theme-…', 'theme-…'), line: btnLine5(pick), body: (v) => cardH(pick, Object.assign({}, base, { src: 'robot2.jpg', btn: v })),
       goal: '<a href="#" class="btn-solid theme-success">' + escH(pick(C.site.more)) + '</a>', gz: 0.9 }
   ];
@@ -389,7 +389,8 @@ function T5({ p }) {
   const cards = ROBOTS.map((r, j) => Object.assign({}, FULL, { src: r.src, name: pick(C.site['name' + (j + 1)]), desc: pick(C.site['desc' + (j + 1)]) }));
   const rowLine = (before) => (f) => [{ k: 'o', d: 0, cls: 'b1-line is-hl', parts: clsParts({ tag: 'div', attrs: [], before, field: f }) }].concat(ROBOTS.map((r, j) => hl('c' + j, 1, '<section class="card">…' + r.src + '…</section>', { cls: 'b2-cut' })), [hl('e', 0, '</div>')]);
   const rounds = [
-    { kind: 'flex', want: 'd-flex', ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('…', '…', '…'), vw: WIDE, line: rowLine(null), body: (v) => rowH(pick, v, cards), goal: miniRow('d-flex'), gz: 0.8 },
+    // 23.11.2026: в первом раунде (d-flex) справки Gap нет — она про второй раунд
+    { kind: 'flex', want: 'd-flex', ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('…', '…', '…'), vw: WIDE, line: rowLine(null), body: (v) => rowH(pick, v, cards), goal: miniRow('d-flex'), gz: 0.8, docs: null },
     { kind: 'gap', want: 'gap-7', ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('gap-…', 'gap-…', 'gap-…'), vw: WIDE, line: rowLine('d-flex'), body: (v) => rowH(pick, 'd-flex ' + v, cards),
       goal: '<div style="display:flex;align-items:center;gap:10px"><b style="font:600 13px system-ui;color:#BE123C">↔ 24 px</b>' + miniRow('d-flex gap-7') + '</div>', gz: 0.8 }
   ];
@@ -429,6 +430,8 @@ function T4({ p }) {
     }
   };
   const depth = { img: 1, body: 1, title: 2, text: 2, btn: 2, close: 1 };
+  // 23.11.2026: подписи кусочков одного вида — тег и его class (содержимое — «…»; закрытие — чей тег закрывает)
+  const label = { img: '<img class="card-img-top">', body: '<div class="card-body">', title: '<h4 class="card-title">…', text: '<p class="card-text">…', btn: '<a class="btn-solid">…', close: '</div> · card-body' };
   const lines = [hl('s', 0, '<section class="card" style="' + CARD_W + '">')].concat(done.map((k, j) => hl('d' + k, depth[k], src[k], { cls: (j === done.length - 1 ? 'is-new' : '') + (k === 'text' ? ' b2-cut' : '') })), fin ? [] : [quietSlot('slot', done.length && done[done.length - 1] !== 'close' && done.indexOf('body') >= 0 && done.indexOf('close') < 0 ? 2 : 1, pick, true)], [hl('sc', 0, '</section>')]);
   const html = '<section class="card" style="' + CARD_W + '">' + done.map((k) => src[k]).join('') + (done.indexOf('body') >= 0 && done.indexOf('close') < 0 ? '</div>' : '') + '</section>';
   return (
@@ -443,7 +446,7 @@ function T4({ p }) {
           <div className="b4-pieces b5-pieces">
             {T4_SHUFFLE.filter((k) => done.indexOf(k) < 0).map((k) => (
               <button key={k} type="button" className="b2-chip b4-piece b5-piece" onClick={() => tap(k)} disabled={!canTap} data-piece={k}>
-                <span translate="no">{k === 'close' ? '</div>' : k === 'text' ? '<p class="card-text">' : src[k].replace(/>[^<]*<\/[a-z0-9]+>$/, '>…').replace(/ alt="Robot"/, '')}</span>
+                <span translate="no">{label[k]}</span>
                 <Led on={(lad.lv >= 3 && k === T4_ORDER[done.length]) || (led && done.length === 0 && k === 'img')} />
               </button>
             ))}
@@ -456,7 +459,8 @@ function T4({ p }) {
 
 // Q1. КАКОЙ CLASS У ЧАСТИ (4 раунда): фото, рамка, отступ внутри, цвет. Образец и честный результат выбранного.
 const Q1_ROUNDS = [
-  { part: 'img', opts: ['card-img-bottom', 'card-img-top', 'card-image', 'img-fluid'], a: 1 },
+  // 23.11.2026: неверные — те, что видно глазом (card-img-bottom и img-fluid выглядели почти как card-img-top)
+  { part: 'img', opts: ['rounded-circle', 'card-img-top', 'card-body', 'img-thumbnail'], a: 1 },
   { part: 'card', opts: ['card-box', 'cards', 'card', 'border'], a: 2 },
   { part: 'body', opts: ['card-body', 'card-text', 'card-content', 'p-0'], a: 0 },
   { part: 'card', opts: ['card bg-green', 'card-success', 'card fg-success', 'card theme-success'], a: 3 }
@@ -520,6 +524,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ ТАК — нет card-body (текст прилип к рамке); src="..." (картинка сломана); card-success (такого нет).
 const T6_ROUNDS = [
@@ -548,7 +556,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -561,9 +569,10 @@ function T6({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
+        <KzAsk text={R.done ? c.ok : c.asks[R.ii]} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
         <div className="kz-scene b1-pair b1-wide-code" key={'r' + R.ii}>
-          <div className="kz-col"><KzCode lines={cardLines(pick, RR.o, R.ii === 0 ? { card: 'is-hl' } : R.ii === 1 ? { img: 'is-hl' } : { card: 'is-hl' })} cls="kz-code-sm b2-small" /></div>
+          {/* 23.11.2026: своя строка-симптом у раунда; подсвечены строки поломки (1 — текст прямо в section, без card-body) */}
+          <div className="kz-col"><KzCode lines={cardLines(pick, RR.o, R.ii === 0 ? { title: 'is-hl', text: 'is-hl', btn: 'is-hl' } : R.ii === 1 ? { img: 'is-hl' } : { card: 'is-hl' })} cls="kz-code-sm b2-small" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} body={cardH(pick, RR.o)} /></div>
         </div>
         <div className="kz-pick b1-why">

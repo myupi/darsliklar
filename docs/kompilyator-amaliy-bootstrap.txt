@@ -1,0 +1,251 @@
+Курс: Dasturlash kursi
+Модуль: Bootstrap
+Задания для компилятора (ученик пишет HTML с классами Bootstrap 6 сам, с пустого редактора). Составлено 23.11.2026
+(заказчик: «делай задания компилятора для бутстрапа»), в тот же день переделано по прежним заданиям заказчика («можешь
+прям если надо переделать все задания… если не вмещается результат, то можешь в 2 картинки вынести»): по одному на каждый
+урок 1–11 модуля, каждое — целый сайт, как на прежних слайдах (главный блок, карточки, формы, карусель, окно; Navbar с сайта
+и Pagination — с задания 7: урок 7 «Navbar и Pagination» вставлен после сетки 23.11.2026, прежние 7–10 стали 8–11). Слайдов два: «Amaliy vazifa» — тема и 5 условий (классы в тексте выделены `…`), «Amaliy ish ko'rinishi» —
+сайт целиком в ширину ноутбука (просмотрщик: TWO_SLIDES в src/viewer/CompilerPage.jsx). В каждом задании — только то, что
+ученик прошёл: классы своего урока и прошлых (заказчик, 23.11.2026: «там появились задания которых не было в уроках» —
+убраны badge, btn-lg, btn-subtle, card-header, list-group, g-3, mx-auto, w-100, fg-white, alert-heading, alert-link,
+двойные sm:col-6 lg:col-4, col-3 до урока сетки); отступы и ширина, которых нет в уроках, — обычным style (CSS ученик
+прошёл); строку `link` (и `script`, где нужен скрипт) ученик копирует с сайта целиком. Только Bootstrap 6
+(6.0.0-alpha.1): имена версии 5 (`btn-primary`, `bg-dark`, `navbar-dark`, `navbar-expand-lg`, `alert-success`, `col-md-4`,
+`form-select`, `dropdown`, `modal`, `data-bs-ride`) — ошибка. Промпт — короткие строки «Use …» по условиям; текст ученика,
+цвета `theme-*` и имена файлов картинок не проверяются. Фото в примерах — от заказчика (машины, игры, tools/bootstrap/foto/).
+Пример решения — public/kompilyator/bootstrap/<NN>/index.html (страницы собирает node tools/bootstrap/kompilyator.mjs).
+
+======================================================================
+
+1. НАЗВАНИЕ УРОКА: Amaliy ish. Bootstrapga kirish
+НАЗВАНИЕ (RU): Практика. Введение в Bootstrap
+НАЗВАНИЕ (EN): Practice. Getting started with Bootstrap
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Minecraft turniri» saytini yarating.
+- Saytdan `link` qatorini <head> ichiga, `script` qatorini <body> oxiriga qo'ying
+- Tepada katta rasm <img> va sarlavha <h1>
+- Uchta e'lon `alert`, role="alert", matni <p> ichida
+- Ranglari har xil: `theme-success`, `theme-info`, `theme-warning`
+- Uchinchisi yopiladi: tugma `btn-close`, `data-bs-dismiss="alert"`
+(RU: Сделай сайт «Турнир Minecraft»: строку `link` с сайта — в <head>, строку `script` — в конец <body>; сверху — большое фото <img> и заголовок <h1>; три объявления `alert`, role="alert", текст — внутри <p>; цвета разные — `theme-success`, `theme-info`, `theme-warning`; третье закрывается — кнопка `btn-close`, `data-bs-dismiss="alert"`.)
+(EN: Make a "Minecraft tournament" site: the `link` line from the site — into <head>, the `script` line — at the end of <body>; on top — a big photo <img> and an <h1> heading; three `alert` items, role="alert", the text inside <p>; different colors — `theme-success`, `theme-info`, `theme-warning`; the third one closes — a `btn-close` button, `data-bs-dismiss="alert"`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN (bootstrap@6.0.0-alpha.1, bootstrap.min.css) inside <head>.
+Use the Bootstrap 6 <script> from the CDN (bootstrap.bundle.min.js) at the end of <body>.
+Use an <img> and an <h1>.
+Use three elements with class alert and role="alert", each with a different theme-* class and its text in a <p>; one of them holds a <button> with btn-close and data-bs-dismiss="alert".
+Bootstrap 5 names (alert-success, alert-warning, alert-dismissible) are wrong. Text content and the exact colors do not matter.
+
+======================================================================
+
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Ranglar va tugmalar
+НАЗВАНИЕ (RU): Практика. Цвета и кнопки
+НАЗВАНИЕ (EN): Practice. Colors and buttons
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Avto ko'rgazma» saytini rangli qiling.
+- Saytdan `link` qatorini <head> ichiga qo'ying
+- Bosh blok `bg-warning`: sarlavha <h1> va e'lon `alert theme-info`
+- Uchta mashina bloki, sarlavhalari har xil rangda: `fg-success`, `fg-primary`, `fg-danger`
+- Har blokda ikki tugma: `btn-solid` va `btn-outline`, `theme-*` bilan
+- Pastda `bg-success` qism: manzil va telefon
+(RU: Сделай цветным сайт «Автовыставка»: строку `link` с сайта вставь в <head>; главный блок `bg-warning` — заголовок <h1> и объявление `alert theme-info`; три блока машин, заголовки разного цвета — `fg-success`, `fg-primary`, `fg-danger`; в каждом блоке две кнопки — `btn-solid` и `btn-outline` с `theme-*`; внизу часть `bg-success` — адрес и телефон.)
+(EN: Make the "Car show" site colorful: paste the `link` line from the site into <head>; the main block `bg-warning` — an <h1> heading and an alert `alert theme-info`; three car blocks with headings of different colors — `fg-success`, `fg-primary`, `fg-danger`; two buttons in each block — `btn-solid` and `btn-outline` with `theme-*`; at the bottom a `bg-success` part — the address and the phone.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Use a block with a bg-* class holding an <h1> and an element with alert and a theme-* class.
+Use three blocks whose headings have different fg-* classes; each block holds two buttons: one with btn-solid and one with btn-outline, each with a theme-* class.
+Use another element with a bg-* class at the bottom with the address and the phone.
+Bootstrap 5 names (btn-primary, btn-outline-primary, bg-dark, text-white, text-danger, text-bg-primary) are wrong. Text content and the exact colors do not matter.
+
+======================================================================
+
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Yuklanish va rasmlar
+НАЗВАНИЕ (RU): Практика. Загрузка и изображения
+НАЗВАНИЕ (EN): Practice. Loading and images
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«O'yinlar galereyasi» sahifasini yarating.
+- Saytdan `link` qatorini <head> ichiga qo'ying
+- Sarlavha <h1> `fg-primary`, ostida katta rasm `img-fluid rounded`
+- Uchta o'yin rasmi yonma-yon: `img-thumbnail`, width="300"
+- «Yuklanmoqda»: `spinner-border` va `spinner-grow`, role="status", har xil `fg-*`
+- Yozuv o'rnida: `placeholder-wave` ichida `placeholder` — `col-6`, `col-4`, `col-8`
+(RU: Сделай страницу «Галерея игр»: строку `link` с сайта вставь в <head>; заголовок <h1> — `fg-primary`, под ним большое фото `img-fluid rounded`; три фото игр рядом — `img-thumbnail`, width="300"; «Загружается» — `spinner-border` и `spinner-grow`, role="status", разные `fg-*`; на месте текста — внутри `placeholder-wave` `placeholder`: `col-6`, `col-4`, `col-8`.)
+(EN: Make the "Game gallery" page: paste the `link` line from the site into <head>; an <h1> heading — `fg-primary`, under it a big photo `img-fluid rounded`; three game photos side by side — `img-thumbnail`, width="300"; "Loading" — `spinner-border` and `spinner-grow`, role="status", different `fg-*`; in place of text — `placeholder` items inside `placeholder-wave`: `col-6`, `col-4`, `col-8`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Use an <h1> with an fg-* class and an <img> with img-fluid and rounded.
+Use three <img> with img-thumbnail (and a width).
+Use elements with spinner-border and spinner-grow and role="status", with different fg-* classes, and an element with placeholder-wave holding elements with placeholder and col-* classes.
+Bootstrap 3 and 5 names (img-responsive, img-circle, text-primary) are wrong. The images do not have to load; file names and text content do not matter.
+
+======================================================================
+
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Flex
+НАЗВАНИЕ (RU): Практика. Flex
+НАЗВАНИЕ (EN): Practice. Flex
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Grand Prix» poygasi sahifasini yasang.
+- Saytdan `link` qatorini <head> ichiga qo'ying
+- Shapka `bg-warning`: `d-flex`, `justify-content-between`, `align-items-center` — chapda nom, o'ngda tugma `btn-solid`
+- Uchta mashina bir qatorda: `d-flex`, `justify-content-center`, `gap-5`
+- Har mashinada rasm `img-fluid rounded` va nomi
+- Pastda ikki tugma o'rtada: `d-flex`, `justify-content-center`, `gap-3`
+(RU: Сделай страницу гонки «Гран-при»: строку `link` с сайта вставь в <head>; шапка `bg-warning` — `d-flex`, `justify-content-between`, `align-items-center`, слева название, справа кнопка `btn-solid`; три машины в ряд — `d-flex`, `justify-content-center`, `gap-5`; у каждой машины фото `img-fluid rounded` и название; внизу две кнопки по центру — `d-flex`, `justify-content-center`, `gap-3`.)
+(EN: Make a "Grand Prix" race page: paste the `link` line from the site into <head>; the header `bg-warning` — `d-flex`, `justify-content-between`, `align-items-center`, the name on the left, a `btn-solid` button on the right; three cars in a row — `d-flex`, `justify-content-center`, `gap-5`; each car has a photo `img-fluid rounded` and a name; at the bottom two buttons in the center — `d-flex`, `justify-content-center`, `gap-3`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Use d-flex, justify-content-between and align-items-center on the header, together with a bg-* class; it holds a name and a button with btn-solid.
+Use d-flex, justify-content-center and a gap-* class on an element holding three cars; each car has an <img> with img-fluid and a name (the car width may be set with style).
+Use d-flex, justify-content-center and a gap-* class on another element holding two buttons.
+CSS written in class (display: flex), justify-content-space-between, align-items-middle and gap numbers above 12 are wrong. The images do not have to load; text content and colors do not matter.
+
+======================================================================
+
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Kartochkalar
+НАЗВАНИЕ (RU): Практика. Карточки
+НАЗВАНИЕ (EN): Practice. Cards
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Avtosalon» saytini kartochkalar bilan yasang.
+- Saytdan `link` qatorini <head> ichiga qo'ying
+- Uchta `card` bir qatorda: `d-flex`, `justify-content-center`, `gap-5`
+- Har birida: rasm `card-img-top` va `card-body`
+- `card-body` ichida: nom `card-title`, tezlik `card-text fg-success`, tugma `btn-outline theme-*`
+- Bittasi ajralib tursin: `card-subtle theme-*`, tugmasi `btn-solid`
+(RU: Сделай сайт «Автосалон» с карточками: строку `link` с сайта вставь в <head>; три `card` в ряд — `d-flex`, `justify-content-center`, `gap-5`; в каждой — фото `card-img-top` и `card-body`; внутри `card-body` — название `card-title`, скорость `card-text fg-success`, кнопка `btn-outline theme-*`; одна выделяется — `card-subtle theme-*`, её кнопка `btn-solid`.)
+(EN: Make a "Car dealer" site with cards: paste the `link` line from the site into <head>; three `card` items in a row — `d-flex`, `justify-content-center`, `gap-5`; in each — a `card-img-top` photo and `card-body`; inside `card-body` — a name `card-title`, the speed `card-text fg-success`, a `btn-outline theme-*` button; one stands out — `card-subtle theme-*`, its button `btn-solid`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Put three elements with class card inside an element with d-flex, justify-content-center and a gap-* class; each card has an <img> with card-img-top and card-body holding a heading with card-title, a <p> with card-text and an fg-* class, and a link or button with btn-outline and a theme-* class.
+One card also has card-subtle and a theme-* class, and its button uses btn-solid.
+card-success, btn-outline-primary and src="..." left from the site example are wrong. The images do not have to load; text content does not matter.
+
+======================================================================
+
+6. НАЗВАНИЕ УРОКА: Amaliy ish. Konteyner va setka
+НАЗВАНИЕ (RU): Практика. Контейнер и сетка
+НАЗВАНИЕ (EN): Practice. Container and grid
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«O'yinlar do'koni» saytini to'rga joylang.
+- Saytdan `link` qatorini <head> ichiga qo'ying
+- Hammasi `container` ichida, birinchi `row`
+- Katta reklama rasmi `md:col-8` — `img-fluid rounded`, yonida «Kun taklifi» `md:col-4` — `card theme-warning`
+- Ikkinchi `row`: uchta o'yin `md:col-4` — `card`, `card-img-top`, `card-body`
+- O'yin nomi ostida narx `fg-success` va tugma `btn-solid theme-*`
+(RU: Разложи по сетке сайт «Магазин игр»: строку `link` с сайта вставь в <head>; всё — внутри `container`, первый `row`; большая реклама `md:col-8` — `img-fluid rounded`, рядом «Предложение дня» `md:col-4` — `card theme-warning`; второй `row` — три игры `md:col-4`: `card`, `card-img-top`, `card-body`; под названием игры — цена `fg-success` и кнопка `btn-solid theme-*`.)
+(EN: Lay out the "Game store" site on a grid: paste the `link` line from the site into <head>; everything inside `container`, the first `row`; a big ad `md:col-8` — `img-fluid rounded`, next to it "Deal of the day" `md:col-4` — `card theme-warning`; the second `row` — three games `md:col-4`: `card`, `card-img-top`, `card-body`; under each game name — the price `fg-success` and a `btn-solid theme-*` button.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Use an element with container holding two elements with row.
+In the first row use a column md:col-8 (or another size:col-8) holding an <img> with img-fluid, and a column md:col-4 holding a card with a theme-* class.
+In the second row use three columns md:col-4 (the colon form), each holding a card with card-img-top and card-body, a price with an fg-* class and a button with btn-solid.
+col-md-8, col-md-4 (Bootstrap 5), md-col-4, rows and col-13 are wrong. The images do not have to load; text content does not matter.
+
+======================================================================
+
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Navbar va Pagination
+НАЗВАНИЕ (RU): Практика. Navbar и Pagination
+НАЗВАНИЕ (EN): Practice. Navbar and Pagination
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«O'yin yangiliklari» saytiga menyu satri va sahifa raqamlarini qo'shing.
+- Saytdan `link`, `script` va Navbar oling; satr qora — `data-bs-theme="dark"`
+- Navbarda nom `navbar-brand`, 4 ta havola `nav-link`, birinchisi `active`
+- Yangiliklar: `container`, `row`, uchta `md:col-4` — `card`, rasm `card-img-top`
+- Pastda saytdan Pagination: `pagination`, `page-item`, `page-link`
+- Raqamlar o'rtada `justify-content-center`, 1-sahifa `active`
+(RU: Добавь сайту «Игровые новости» строку меню и номера страниц: возьми с сайта `link`, `script` и Navbar, строка тёмная — `data-bs-theme="dark"`; в Navbar — название `navbar-brand`, 4 ссылки `nav-link`, первая `active`; новости — `container`, `row`, три `md:col-4`: `card`, фото `card-img-top`; внизу Pagination с сайта — `pagination`, `page-item`, `page-link`; номера по центру — `justify-content-center`, страница 1 — `active`.)
+(EN: Add a menu bar and page numbers to the "Game news" site: take `link`, `script` and a Navbar from the site, a dark bar — `data-bs-theme="dark"`; in the Navbar — the name `navbar-brand`, 4 links `nav-link`, the first `active`; the news — `container`, `row`, three `md:col-4`: `card`, a `card-img-top` photo; at the bottom — Pagination from the site: `pagination`, `page-item`, `page-link`; the numbers centered — `justify-content-center`, page 1 — `active`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head> and the Bootstrap 6 <script> from the CDN at the end of <body>.
+Use a <nav> with class navbar, md:navbar-expand (or another size:navbar-expand) and data-bs-theme="dark"; inside it navbar-brand, a toggler button with data-bs-toggle="drawer" and data-bs-target "#" plus the drawer id, and links with nav-link, one of them also active.
+Use container, row and md:col-4 columns holding card elements with an <img> that has card-img-top.
+Use <ul class="pagination"> with <li class="page-item"> and <a class="page-link"> items; one li also has active.
+The pagination ul also has justify-content-center.
+Bootstrap 5 names (navbar-expand-lg, navbar-dark, bg-dark, col-md-4) and data-bs-target without "#" are wrong. Images do not have to load; text content does not matter.
+
+======================================================================
+
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar
+НАЗВАНИЕ (RU): Практика. Формы
+НАЗВАНИЕ (EN): Practice. Forms
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+O'yin klubiga yozilish sahifasini yasang.
+- Saytdan `link` va Navbar oling
+- `container`, `row`, `align-items-center`: chapda rasm `md:col-6`, o'ngda forma `md:col-6`
+- Ism, pochta (type="email") va o'yin <select>: `form-label` va `form-control`
+- Kun: ikkita `radio`, rozilik — `check`, har biri `form-field` ichida
+- «Yozilish» tugmasi: `btn-solid theme-success`
+(RU: Сделай страницу записи в игровой клуб: возьми с сайта `link` и Navbar; `container`, `row`, `align-items-center` — слева фото `md:col-6`, справа форма `md:col-6`; имя, почта (type="email") и игра <select> — `form-label` и `form-control`; день — два `radio`, согласие — `check`, каждый внутри `form-field`; кнопка «Записаться» — `btn-solid theme-success`.)
+(EN: Make a game club sign-up page: take `link` and a Navbar from the site; `container`, `row`, `align-items-center` — a photo `md:col-6` on the left, the form `md:col-6` on the right; the name, the email (type="email") and the game <select> — `form-label` and `form-control`; the day — two `radio` inputs, agreement — `check`, each inside `form-field`; a "Sign up" button — `btn-solid theme-success`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head>.
+Use a <nav> with class navbar, navbar-brand and nav-link items.
+Use container and row with align-items-center; inside row a column md:col-6 (or another size:col-6) with an <img> and a column md:col-6 with a <form>.
+In the form use <label> with form-label and form-control on <input type="text">, <input type="email"> and <select>; two <input type="radio" class="radio"> with the same name and an <input type="checkbox" class="check">, each inside form-field.
+Use a submit <button> with btn-solid and a theme-* class.
+Bootstrap 5 names (form-select, form-check, form-check-input, col-md-6, col-lg-6) are wrong. Text content does not matter.
+
+======================================================================
+
+9. НАЗВАНИЕ УРОКА: Amaliy ish. Karusel
+НАЗВАНИЕ (RU): Практика. Карусель
+НАЗВАНИЕ (EN): Practice. Carousel
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Superkarlar» sahifasini yasang — karusel o'zi aylansin.
+- Saytdan `link`, `script` va Navbar oling
+- `carousel slide`, id, `data-bs-autoplay="true"`; ichida uchta `carousel-item`, birinchisi `active`
+- Tugmalar `btn-icon btn-sm` (prev / next) va nuqtalar `carousel-indicators`
+- Hammasi `container` ichida, eni style="max-width: 760px"
+- Ostida uchta mashina: `row`, `md:col-4`, `card`, tezlik `fg-danger`
+(RU: Сделай страницу «Суперкары», чтобы карусель листалась сама: возьми с сайта `link`, `script` и Navbar; `carousel slide`, id, `data-bs-autoplay="true"`, внутри три `carousel-item`, первый `active`; кнопки `btn-icon btn-sm` (prev / next) и точки `carousel-indicators`; всё — внутри `container`, ширина style="max-width: 760px"; под каруселью три машины — `row`, `md:col-4`, `card`, скорость `fg-danger`.)
+(EN: Make a "Supercars" page with a carousel that slides by itself: take `link`, `script` and a Navbar from the site; `carousel slide`, an id, `data-bs-autoplay="true"`, inside three `carousel-item` items, the first `active`; `btn-icon btn-sm` buttons (prev / next) and `carousel-indicators` dots; everything inside `container`, width style="max-width: 760px"; under the carousel three cars — `row`, `md:col-4`, `card`, the speed `fg-danger`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head> and the Bootstrap 6 <script> from the CDN at the end of <body>.
+Use a <nav> with class navbar, navbar-brand and nav-link items.
+Use an element with container; inside it an element with carousel, an id and data-bs-autoplay="true"; inside carousel-inner three carousel-item elements with <img>, one with active; two buttons with btn-icon, data-bs-slide="prev" / "next" and data-bs-target "#" plus the id; an element with carousel-indicators holding buttons with data-bs-slide-to.
+Under the carousel use row with md:col-4 columns holding card elements with an fg-* class for the speed.
+Bootstrap 5 names (data-bs-ride, carousel-control-prev, carousel-caption) and data-bs-target without "#" are wrong. The images do not have to load; file names and text do not matter.
+
+======================================================================
+
+10. НАЗВАНИЕ УРОКА: Amaliy ish. Menu va Dialog
+НАЗВАНИЕ (RU): Практика. Menu и Dialog
+НАЗВАНИЕ (EN): Practice. Menu and Dialog
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Pitsa kafesi» saytiga menyu va buyurtma oynasini qo'shing.
+- Saytdan `link`, `script` va Navbar oling
+- Bosh blok `bg-warning`, ostida uchta pitsa: `row`, `md:col-4`, `card`, narx `fg-danger`
+- «Menyu» tugmasi va `menu`: `menu-header`, `menu-item`, `menu-divider`
+- «Buyurtma» `dialog` ochadi: `dialog-title`, `btn-close`, manzil `form-control`
+- Oyna fonda yopilmaydi: `data-bs-backdrop="static"`; tasdiqlash — `data-bs-dismiss="dialog"`
+(RU: Добавь сайту «Пиццерия» меню и окно заказа: возьми с сайта `link`, `script` и Navbar; главный блок `bg-warning`, под ним три пиццы — `row`, `md:col-4`, `card`, цена `fg-danger`; кнопка «Меню» и `menu` — `menu-header`, `menu-item`, `menu-divider`; «Заказать» открывает `dialog` — `dialog-title`, `btn-close`, адрес `form-control`; окно не закрывается по фону — `data-bs-backdrop="static"`, подтвердить — `data-bs-dismiss="dialog"`.)
+(EN: Add a menu and an order dialog to the "Pizzeria" site: take `link`, `script` and a Navbar from the site; the main block `bg-warning`, under it three pizzas — `row`, `md:col-4`, `card`, the price `fg-danger`; a "Menu" button and `menu` — `menu-header`, `menu-item`, `menu-divider`; "Order" opens a `dialog` — `dialog-title`, `btn-close`, an address `form-control`; the backdrop does not close it — `data-bs-backdrop="static"`, confirm — `data-bs-dismiss="dialog"`.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head> and the Bootstrap 6 <script> from the CDN at the end of <body>.
+Use a <nav> with class navbar, navbar-brand and nav-link items, a block with bg-warning (or another bg-*), and row with md:col-4 columns holding cards with the price in an element with an fg-* class.
+Use a button with data-bs-toggle="menu" followed by an element with menu that holds menu-header, links with menu-item and menu-divider.
+Use a button with data-bs-toggle="dialog" and data-bs-target "#" plus the id of a <dialog class="dialog"> that has data-bs-backdrop="static"; inside it dialog-title, a btn-close button and an <input> with form-control.
+Inside the dialog use buttons with data-bs-dismiss="dialog".
+Bootstrap 5 names (dropdown, dropdown-menu, dropdown-item, modal, data-bs-toggle="modal", col-md-4) are wrong. Text content does not matter.
+
+======================================================================
+
+11. НАЗВАНИЕ УРОКА: Yakuniy loyiha
+НАЗВАНИЕ (RU): Финальный проект
+НАЗВАНИЕ (EN): Final project
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+«Kiberfestival» saytini yarating.
+- Saytdan `link`, `script` va Navbar oling; Navbarda «O'yinlar» — `menu`
+- O'yinlar karuseli: `carousel-item`, birinchisi `active`, tugmalar prev / next
+- E'lon `alert theme-info`, ostida `container`, `row`, uchta `md:col-4` — `card`, sovrin `fg-success`
+- «Qatnashish» — qizil tugma: `btn-solid theme-danger`
+- U `dialog` ochadi: ism, <select> — `form-control`, tugma `btn-solid`
+(RU: Сделай сайт «Киберфестиваль»: возьми с сайта `link`, `script` и Navbar, в Navbar «Игры» — `menu`; карусель игр — `carousel-item`, первый `active`, кнопки prev / next; объявление `alert theme-info`, под ним `container`, `row`, три `md:col-4` — `card`, приз `fg-success`; «Участвовать» — красная кнопка `btn-solid theme-danger`; она открывает `dialog` — имя, <select> с `form-control`, кнопка `btn-solid`.)
+(EN: Make a "Cyber festival" site: take `link`, `script` and a Navbar from the site, with "Games" as a `menu` in the Navbar; a game carousel — `carousel-item`, the first `active`, prev / next buttons; an alert `alert theme-info`, under it `container`, `row`, three `md:col-4` — `card`, the prize `fg-success`; "Join" — a red button `btn-solid theme-danger`; it opens a `dialog` — a name, a <select> with `form-control`, a `btn-solid` button.)
+ПРОМПТ ДЛЯ ПРОВЕРКИ:
+Use the Bootstrap 6 CSS <link> from the CDN inside <head> and the Bootstrap 6 <script> from the CDN at the end of <body>.
+Use a <nav> with class navbar and nav-link items; inside it a button with data-bs-toggle="menu" and an element with menu holding menu-item links.
+Use an element with carousel and an id, carousel-inner and carousel-item elements with <img> (one has active), and two buttons with data-bs-slide="prev" / "next" and data-bs-target "#" plus the carousel id.
+Use an element with alert and a theme-* class; container, row and md:col-4 columns holding card elements with the prize in an element with an fg-* class.
+Use a button with btn-solid, a theme-* class, data-bs-toggle="dialog" and data-bs-target "#" plus the id of a <dialog class="dialog">; inside it an <input> and a <select> with form-control and a button with btn-solid.
+Bootstrap 5 names (btn-primary, col-md-4, form-select, dropdown, modal, data-bs-ride, navbar-dark) are wrong. Images do not have to load; text content and colors do not matter.
+

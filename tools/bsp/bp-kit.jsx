@@ -265,7 +265,7 @@ function bpDiagnose(full, code) {
     if (m && m[2].charAt(0) !== '#') return at(t.i + m.index + 1, fillL(FB.bsHash, { w: '#' + m[2] }));
     m = /\sdata-bs-(toggle|dismiss)\s*=\s*(["'])\s*([^"'\s]*)\s*\2/i.exec(t.raw);
     if (m && /^(dropdown|modal)$/i.test(m[3])) return at(t.i + m.index + 1, fillL(FB.v5, { w: m[3] }));
-    if (m && m[3] && !/^(menu|dialog|collapse|tooltip|popover|tab|offcanvas|button|alert|toast)$/.test(m[3])) return at(t.i + m.index + 1, FB.bsToggle);
+    if (m && m[3] && !/^(menu|dialog|drawer|collapse|tooltip|popover|tab|offcanvas|button|alert|toast)$/.test(m[3])) return at(t.i + m.index + 1, FB.bsToggle);
     m = /\sdata-bs-slide\s*=\s*(["'])\s*([^"'\s]*)\s*\1/i.exec(t.raw);
     if (m && m[2] && !/^(next|prev)$/.test(m[2])) return at(t.i + m.index + 1, FB.bsSlide);
   }
@@ -416,7 +416,7 @@ function bpOpenDialog(doc, dlg) {
   doc.body.style.minHeight = '';
   dlg.showModal();
   dlg.style.maxHeight = 'none';
-  const need = Math.ceil(dlg.getBoundingClientRect().height + 64);
+  const need = dlg.classList.contains('drawer') ? 440 : Math.ceil(dlg.getBoundingClientRect().height + 64);   // 07p: ящик Navbar — во всю высоту
   dlg.style.maxHeight = '';
   if (doc.body.getBoundingClientRect().height < need) doc.body.style.minHeight = need + 'px';
   if (!dlg.__bpClose) {
@@ -435,7 +435,9 @@ function bpUiClick(doc, e) {
     return true;
   }
   const dis = t.closest('[data-bs-dismiss]');
-  if (dis && dis.closest('dialog')) { if (dis.getAttribute('data-bs-dismiss') === 'dialog') dis.closest('dialog').close(); return true; }
+  if (dis && dis.closest('dialog')) { const dg = dis.closest('dialog'); if (dis.getAttribute('data-bs-dismiss') === (dg.classList.contains('drawer') ? 'drawer' : 'dialog')) dg.close(); return true; }
+  const navIn = t.closest('dialog.drawer[open] .nav-link');   // 07p: пункт в открытом ящике Navbar — ящик закрывается
+  if (navIn) { navIn.closest('dialog').close(); return false; }
   const tg = t.closest('[data-bs-toggle]');
   if (tg) {
     const kind = tg.getAttribute('data-bs-toggle');
@@ -453,7 +455,7 @@ function bpUiClick(doc, e) {
       } else { m.classList.remove('show'); tg.setAttribute('aria-expanded', 'false'); }
       return true;
     }
-    if (kind === 'dialog') {
+    if (kind === 'dialog' || kind === 'drawer') {   // 07p: ☰ Navbar открывает ящик <dialog class="drawer">
       const sel = (tg.getAttribute('data-bs-target') || '').trim();
       let dlg = null;
       try { dlg = /^#[\w-]+$/.test(sel) ? doc.querySelector(sel) : null; } catch (er) { dlg = null; }
@@ -471,7 +473,8 @@ function bpUiClick(doc, e) {
 
 // Документ рамки: свой каркас, CSS Bootstrap (bp-bs) — только при верной строке link, свои стили страницы (bp-b).
 // Картинки сами не сжимаются (как в Bootstrap 6: это делает img-fluid, урок 3).
-const BP_BASE_CSS = 'html,body{margin:0}body{padding:10px 12px}';
+// 07p: Navbar первым на странице — во всю ширину: md:navbar-expand в Bootstrap 6 — container query по ширине самого Navbar.
+const BP_BASE_CSS = 'html,body{margin:0}body{padding:10px 12px}body>nav.navbar:first-child{margin:-10px -12px 10px}';
 const BP_SRCDOC = '<!DOCTYPE html><html data-bs-theme="light" style="color-scheme:light"><head><meta charset="utf-8"><style id="bp-bs"></style><style id="bp-b">' + BP_BASE_CSS + '</style></head><body></body></html>';
 
 // Честный браузер: рамка без скриптов; body документа ученика — в body рамки, CSS Bootstrap — по строке link.
@@ -703,7 +706,7 @@ function BpDocs({ docs, clip, onCopy }) {
 // РЕДАКТОР — рамка .kz-code урока, свои строки с номерами; before / after — неизменяемые строки (<style>, готовые
 // правила), посередине — прозрачная textarea над подсветкой. single — одна строка, big — своя страница.
 // ─────────────────────────────────────────────────────────────────────────────
-const CP_MAX = 1600;
+const CP_MAX = 3200;   // 07p: код Navbar длинный — своя страница с Navbar и номерами ~2000 знаков (при 1600 обрезалась строка script)
 function CpEditor({ before, value, onChange, after, single, big, inputRef, led, label, onEnter, mark }) {
   const pick = usePick();
   const boxRef = useRef(null);

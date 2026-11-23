@@ -72,6 +72,22 @@ function navSteps(M, burger, set, grp, item, openNow, after) {
     { act: () => M.hide() }
   ]);
 }
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое — строка задания и подсказка называют ☰, только
+// когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
 function useDocsNav(page0, open0) {
   const [page, setPage] = useState(page0);
   const [open, setOpen] = useState(open0);
@@ -332,16 +348,20 @@ function T1({ p }) {
     sayNow(c.ok, 'cheer');
   };
   const onImg = D.page === 'Images';
-  const lit = pasted ? null : !onImg ? (lv >= 2 ? (D.open === 'content' ? 'item:Images' : 'grp:content') : null) : null;
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onImg ? (burger && !D.menuView ? 'burger' : lv >= 2 ? (D.open === 'content' ? 'item:Images' : 'grp:content') : null) : null;
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const imgLine = pasted ? imgSrcLine('i', 1, 'jamoa.jpg', 'img-fluid', 'Jamoa', { cls: 'is-new' })
     : { k: 'slot', d: 1, cls: 'b1-line b1-slot' + (clip ? ' is-on' : ''), onTap: paste, disabled: !canTap, led: clip && (led || lv >= 3),
       parts: hParts('<img src="jamoa.jpg" class="').concat([<span key="ps" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>], hParts('" alt="Jamoa">')) };
   const body = h1H(pick) + imgH('robot.jpg', 'img-fluid', 'Robot') + imgH('jamoa.jpg', pasted ? 'img-fluid' : null, 'Jamoa');
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onImg ? c.ask : c.askFind} hint={pasted ? null : (msg || hintAt(lv, c.hints))} err={!!msg && msg !== c.copied} />
-        <div className={docsPhoneCls({ clip, nav: !clip, done: pasted })}>
+        <KzAsk text={pasted ? c.ok : clip ? c.askPaste : onImg ? c.ask : burger ? c.askFind : c.askFindSide} hint={pasted ? null : (msg || hintAt(lv, hints))} err={!!msg && msg !== c.copied} />
+        <div ref={scene} className={docsPhoneCls({ clip, nav: !clip, done: pasted })}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={D.page}><BsDocs page={D.page} open={D.open} onOpen={(x) => canTap && D.set.setOpen(x)} onNav={nav} navOff={!canTap} copyOff lit={lit} menuView={D.menuView} onMenu={() => D.set.setMenuView((x) => !x)} scrollTo={onImg ? 'sec:responsive' : null} scrollKey={D.page}
             lines={{ responsive: { onLine: onResp, sel: tried === 'responsive' ? 0 : null, word: clip ? { i: 0, w: 'img-fluid' } : null, lineLed: lv >= 3 ? 0 : null, lineOff: !canTap }, thumb: { onLine: onThumb, sel: tried === 'thumb' ? 0 : null, lineOff: !canTap } }} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[hl('h', 1, '<h1>' + pick(C.site.h1) + '</h1>'), imgSrcLine('r', 1, 'robot.jpg', 'img-fluid', 'Robot'), imgLine]} cls="kz-code-sm" /></div>
@@ -424,7 +444,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       return;
     }
     sfx('ok', true); R.setOk(true); setMsg(null); setVal(normCls(val));
-    const line = joinL(C.fill.right, RR.why);
+    const line = joinL(C.fill.right, (RR.okWhy && RR.okWhy[normCls(val)]) || RR.why);   // своё пояснение для второго верного (rounded-pill на квадрате)
     if (R.last) {
       put({ done: true });
       log({ screenId: id, type: type, correct: true, firstTry: R.st.current.misses === 0, attempts: R.st.current.tries, hints: R.lad.asked.current, depth: R.lad.lv });
@@ -439,7 +459,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
         <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
-          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
+          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={RR.only || docs.only} copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
             {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm" />
@@ -469,8 +489,9 @@ function T2({ p }) {
   const c = C.t2;
   const mk = (file, alt, want, gw) => ({ kind: 'round', want, line: imgField(file, alt, 'img-fluid'), body: (v) => imgH(file, 'img-fluid ' + v, alt), vw: PHONE, goal: goalImg(file, [].concat(want)[0], gw), gz: 0.6, ph: L3('rounded…', 'rounded…', 'rounded…') });
   const rounds = [
-    Object.assign(mk('murabbiy.jpg', 'Murabbiy', 'rounded-circle', 90), { ask: c.ask1, hints: c.hints1, why: c.why1, no: { 'rounded-pill': C.q1.no['rounded-pill'] } }),
-    Object.assign(mk('jamoa.jpg', 'Jamoa', ['rounded', 'rounded-5'], 200), { ask: c.ask2, hints: c.hints2, why: c.why2 }),
+    // 23.11.2026: на квадратном фото rounded-pill рисует тот же круг — тоже верно, со своим пояснением; углы — rounded и rounded-1…9.
+    Object.assign(mk('murabbiy.jpg', 'Murabbiy', ['rounded-circle', 'rounded-pill'], 90), { ask: c.ask1, hints: c.hints1, why: c.why1, okWhy: { 'rounded-pill': c.why1pill } }),
+    Object.assign(mk('jamoa.jpg', 'Jamoa', ['rounded', 'rounded-1', 'rounded-2', 'rounded-3', 'rounded-4', 'rounded-5', 'rounded-6', 'rounded-7', 'rounded-8', 'rounded-9'], 200), { ask: c.ask2, hints: c.hints2, why: c.why2 }),
     Object.assign(mk('jamoa.jpg', 'Jamoa', 'rounded-pill', 200), { ask: c.ask3, hints: c.hints3, why: c.why3 })
   ];
   return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Border radius', only: 'sizes' }} type="rounded-by-sample" />;
@@ -578,11 +599,11 @@ function T3({ p }) {
   const spinLine = (before) => (f) => [{ k: 's', d: 0, cls: 'b1-line is-hl', parts: clsLineA({ tag: 'div', attrs: [], before, field: f }, [['role', 'status']]) }, hl('s1', 1, '<span class="visually-hidden">Loading…</span>'), hl('s2', 0, '</div>')];
   const body = (cls) => spinH(cls);   // только спиннер: на маленьком телефоне окно страницы низкое, результат должен быть виден
   const rounds = [
-    { kind: 'spin', want: 'spinner-border', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-border'), gz: 1, ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
-    { kind: 'spin', want: 'spinner-grow', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-grow'), gz: 1, ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
-    { kind: 'fg', want: 'fg-danger', line: spinLine('spinner-border'), body: (v) => body('spinner-border ' + v), goal: spinH('spinner-border fg-danger'), gz: 1, ask: c.ask3, hints: c.hints3, why: c.why3, ph: L3('fg-…', 'fg-…', 'fg-…') }
+    { kind: 'spin', want: 'spinner-border', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-border'), gz: 1, only: 'border', ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
+    { kind: 'spin', want: 'spinner-grow', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-grow'), gz: 1, only: 'grow', ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
+    { kind: 'fg', want: 'fg-danger', line: spinLine('spinner-border'), body: (v) => body('spinner-border ' + v), goal: spinH('spinner-border fg-danger'), gz: 1, only: 'svariants', ask: c.ask3, hints: c.hints3, why: c.why3, ph: L3('fg-…', 'fg-…', 'fg-…') }
   ];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Spinner', only: 'grow' }} type="spinner" />;
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Spinner', only: 'grow' }} type="spinner" />;   // справка по раунду — only у раунда (23.11.2026)
 }
 
 // =============================================================================
@@ -657,8 +678,9 @@ function T4({ p }) {
 // Q1. КАРТИНКА → КОД (4 раунда): круглое фото, фото в экране телефона, кольцо загрузки, серая полоса. Окно справа —
 // честный результат выбранного варианта; у неверного варианта своя причина.
 // =============================================================================
+// Раунд 1: вместо rounded-pill (на квадратном фото — тот же круг, второй верный) — rounded-top (23.11.2026).
 const Q1_ROUNDS = [
-  { opts: ['img-circle', 'rounded', 'rounded-circle', 'rounded-pill'], a: 2, html: (cls) => imgH('murabbiy.jpg', 'img-fluid ' + cls, 'Murabbiy').replace('>', ' style="width:110px">') },
+  { opts: ['img-circle', 'rounded', 'rounded-circle', 'rounded-top'], a: 2, html: (cls) => imgH('murabbiy.jpg', 'img-fluid ' + cls, 'Murabbiy').replace('>', ' style="width:110px">') },
   { opts: ['img-responsive', 'img-fluid', 'img-thumbnail', 'fluid'], a: 1, html: (cls) => imgH('robot.jpg', cls, 'Robot'), vw: PHONE },
   { opts: ['spinner-grow', 'spinner', 'loading', 'spinner-border'], a: 3, html: (cls) => spinH(cls) },
   { opts: ['placeholder col-6', 'placeholder', 'bg-secondary', 'skeleton col-6'], a: 0, html: (cls) => '<p style="margin:0"><span class="' + cls + '"></span></p>' }
@@ -723,6 +745,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ — img-responsive (старое имя: фото вылезает), class="spinner" (такого нет: пусто), заглушка
@@ -755,7 +781,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {

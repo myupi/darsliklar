@@ -117,3 +117,6 @@
 @media (min-width: 600px) and (orientation: portrait) {
   .r28 .cp-work.has-phone:not(.has-docs) .cp-ed:not(.is-big):not(.cp-static) { max-height: 36dvh; }
 }
+/* Открытая клавиатура на маленьком телефоне (360×640, видно 330 px; 23.11.2026, прогон по состояниям): ряд «< > / = "»
+   уходил за край на 2–4 px в заданиях с примером с сайта — кнопки чуть ниже. */
+.is-kbd .r28 .cp-keys .key-b, .is-kbd .r28 .cp-keys .key-go { height: 32px; min-height: 32px; }

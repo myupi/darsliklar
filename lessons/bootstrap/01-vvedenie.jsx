@@ -7052,6 +7052,8 @@ const C = {
     ],
     ok: L3("Ajoyib! link head ichida, script body oxirida. Bootstrap to'liq ulandi.", 'Отлично! link — в head, script — в конце body. Bootstrap подключён полностью.', 'Great! link is in head, script is at the end of body. Bootstrap is fully connected.'),
     ask: L3("CDN ni nusxalab, head ichiga qo'ying", 'Скопируй CDN и вставь в head', 'Copy the CDN and paste it into head'),
+    // На телефоне заголовок «CDN» уезжает вверх, блок подписан «HTML» — строка задания называет значок (23.11.2026).
+    askPhone: L3("Saytdagi kodni nusxalang (burchakdagi belgi) va head ichiga qo'ying", 'Скопируй код с сайта (значок в углу) и вставь в head', 'Copy the code from the site (the icon in the corner) and paste it into head'),
     askMove: L3("script qatorini body oxiriga olib boring", 'Перенеси строку script в конец body', 'Move the script line to the end of body')
   },
   t2: {
@@ -7071,7 +7073,10 @@ const C = {
     ],
     ok: L3("To'ppa-to'g'ri! E'lon sahifaga tushdi. Endi uni o'zingizga moslaysiz.", 'Точно! Объявление на странице. Теперь настроишь его под себя.', 'Spot on! The notice is on the page. Now you’ll make it your own.'),
     ask: L3("Alert misolini nusxalab, body ichiga qo'ying", 'Скопируй пример Alert и вставь в body', 'Copy the Alert example and paste it into body'),
-    askFind: L3('Menyudan Alert sahifasini toping', 'Найди в меню страницу Alert', 'Find the Alert page in the menu')
+    // Меню сайта в узком окне спрятано за ☰ — строка задания и первая подсказка называют её (23.11.2026); меню слева — askFindSide.
+    askFind: L3("☰ tugmasini bosing va Components → Alert sahifasini toping", 'Нажми ☰ и найди Components → Alert', 'Tap ☰ and find Components → Alert'),
+    askFindSide: L3("Chapdagi menyudan Components → Alert sahifasini toping", 'Найди в меню слева Components → Alert', 'Find Components → Alert in the menu on the left'),
+    hintMenu: L3("Menyu yashiringan. Sayt oynasining yuqori o'ng burchagidagi uch chiziqli tugmani bosing.", 'Меню спрятано. Нажми кнопку с тремя полосками в правом верхнем углу окна сайта.', 'The menu is hidden. Tap the three-line button in the top right corner of the site window.')
   },
   w1: {
     eyebrow: L3("O'z e'loningiz", 'Своё объявление', 'Your own notice'),
@@ -7083,7 +7088,10 @@ const C = {
       native: L3("Bootstrap o'zbekcha so'zlarni bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает таких слов. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know such words. Take a word from the Variants section on the site.'),
       noTheme: L3("Oz qoldi! Saytdagi so'z theme va chiziqcha bilan boshlanadi.", 'Почти! Слово на сайте начинается с theme и дефиса.', 'Close! The word on the site starts with theme and a dash.'),
       notTheme: L3("Bootstrap {w} so'zini bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает слова {w}. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know the word {w}. Take a word from the Variants section on the site.'),
-      same: L3("Bu hali saytdagi inglizcha matn. O'z e'loningizni yozing.", 'Это ещё английский текст с сайта. Напиши своё объявление.', 'That’s still the English text from the site. Write your own notice.')
+      same: L3("Bu hali saytdagi inglizcha matn. O'z e'loningizni yozing.", 'Это ещё английский текст с сайта. Напиши своё объявление.', 'That’s still the English text from the site. Write your own notice.'),
+      // «Tayyor» с одним пустым полем — причина, а не молча (23.11.2026).
+      noText: L3("E'loningiz matnini 2-qatorga yozing", 'Впиши текст своего объявления — строка 2', 'Type your notice text — line 2'),
+      noColor: L3("E'lon rangining so'zini 1-qatorga yozing", 'Впиши слово цвета объявления — строка 1', 'Type the notice color word — line 1')
     },
     hints: [
       L3("E'londa ikkita bo'sh joy bor: rang so'zi va matn.", 'В объявлении два пустых места: слово цвета и текст.', 'The notice has two empty spots: the color word and the text.'),
@@ -7106,9 +7114,9 @@ const C = {
     },
     // why звучит и при промахе (причина), и после верного ответа (за «Barakalla!») — без «To'g'ri / Ha» в начале (20.11.2026).
     rounds: [
-      { k: 'noLink', why: L3("Kodda head ichida link qatori yo'q. Fayl ulanmagan, demak qoidalar ham yo'q.", 'В head нет строки link. Файл не подключён, значит, и правил нет.', 'There’s no link line in head. The file isn’t connected, so there are no rules.') },
-      { k: 'typo', why: L3("Havolada bootstrap so'zi buzilgan. Brauzer bunday faylni topa olmadi.", 'В ссылке испорчено слово bootstrap. Браузер не нашёл такой файл.', 'The word bootstrap is broken in the link. The browser couldn’t find that file.') },
-      { k: 'oldClass', why: L3("alert-success eski nom, beshinchi versiyadan. Oltinchi versiyada theme-success.", 'alert-success — старое имя из пятой версии. В шестой — theme-success.', 'alert-success is an old name from version five. In version six it’s theme-success.') }
+      { k: 'noLink', ask: L3("E'lon yashil kartochka bo'lishi kerak edi, lekin oddiy matn chiqdi. Nega?", 'Объявление должно было стать зелёной карточкой, а вышел простой текст. Почему?', 'The notice should have been a green card, but it came out as plain text. Why?'), why: L3("Kodda head ichida link qatori yo'q. Fayl ulanmagan, demak qoidalar ham yo'q.", 'В head нет строки link. Файл не подключён, значит, и правил нет.', 'There’s no link line in head. The file isn’t connected, so there are no rules.') },
+      { k: 'typo', ask: L3("link qatori bor, lekin e'lon baribir oddiy matn. Nega?", 'Строка link есть, а объявление всё равно простой текст. Почему?', 'The link line is there, but the notice is still plain text. Why?'), why: L3("Havolada bootstrap so'zi buzilgan. Brauzer bunday faylni topa olmadi.", 'В ссылке испорчено слово bootstrap. Браузер не нашёл такой файл.', 'The word bootstrap is broken in the link. The browser couldn’t find that file.') },
+      { k: 'oldClass', ask: L3("E'lon yashil bo'lishi kerak edi. Nega bo'lmadi?", 'Объявление должно было стать зелёным. Почему не стало?', 'The notice should have turned green. Why didn’t it?'), why: L3("alert-success eski nom, beshinchi versiyadan. Oltinchi versiyada theme-success.", 'alert-success — старое имя из пятой версии. В шестой — theme-success.', 'alert-success is an old name from version five. In version six it’s theme-success.') }
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Oldin head ichiga qarang: link qatori bormi?", 'Сначала посмотри в head: есть ли строка link?', 'First look in head: is there a link line?'),
@@ -7845,8 +7853,8 @@ function GoalCard({ goal, n, total, done, doneText }) {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hints: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayFile: 1, sayClass: 1, sayMenu: 1, sayExample: 1,
-  sayCode: 1, sayCopy: 1, linkOnly: 1, classOnly: 1, none: 1, sayOld: 1, picked: 1, rounds: 1, sayType: 1, sayResults: 1, sayHome: 1, sayDocs: 1, sayAlert: 1, sayMove: 1, sayClose: 1, sayLink: 1, sayParts: 1, sayScript: 1, sayText: 1, sayColor: 1, sayPaste: 1, sayDead: 1, sayClosed: 1, pasted: 1, fine: 1, found: 1, items: 1, right: 1 });
-Object.assign(NOT_SPOKEN_IN, { items: { k: 1 }, rounds: { k: 1 } });
+  sayCode: 1, sayCopy: 1, linkOnly: 1, classOnly: 1, none: 1, sayOld: 1, picked: 1, rounds: 1, sayType: 1, sayResults: 1, sayHome: 1, sayDocs: 1, sayAlert: 1, sayMove: 1, sayClose: 1, sayLink: 1, sayParts: 1, sayScript: 1, hintMenu: 1, sayText: 1, sayColor: 1, sayPaste: 1, sayDead: 1, sayClosed: 1, pasted: 1, fine: 1, found: 1, items: 1, right: 1 });
+Object.assign(NOT_SPOKEN_IN, { items: { k: 1 }, rounds: { k: 1, ask: 1 } });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // РАМКА «B · O'YIN» (тестовый урок 16, 28.10.2026; заказчик: «оставив стилистику
@@ -9427,6 +9435,36 @@ const SAMPLE = 'A simple alert—check it out!';
 
 // ── СТРОКИ КОДА: подсветка HTML как в VS Code; значение integrity свёрнуто, как в редакторе (sha384-B/GM…CrCe).
 const sp = () => <span className="b1-sp">{' '}</span>;
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое (useNarrow в bs1-site.jsx) — строка задания и
+// подсказка называют ☰, только когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
+// Телефон (раскладка сцены по шагам — та же граница, что в bs1.css).
+function useL1Phone() {
+  const q = '(max-width: 759px)';
+  const [on, setOn] = useState(() => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(q).matches);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const m = window.matchMedia(q);
+    const upd = () => setOn(m.matches);
+    upd();
+    if (m.addEventListener) { m.addEventListener('change', upd); return () => m.removeEventListener('change', upd); }
+    m.addListener(upd); return () => m.removeListener(upd);
+  }, []);
+  return on;
+}
 function foldVal(v, mark, fold) {
   if (fold === 'pkg' && /cdn\.jsdelivr/.test(v)) { const m = /npm\/([^/]+)\//.exec(v); return <span title={v}>{'…/npm/'}<b className="b1-pkg">{m ? m[1] : ''}</b>{'/…/' + v.slice(v.lastIndexOf('/') + 1)}</span>; }   // видна буква в имени пакета (t4)
   if (fold && /cdn\.jsdelivr/.test(v)) return <span className="b1-fold" title={v}>{'…/' + v.slice(v.lastIndexOf('/') + 1)}</span>;
@@ -9699,7 +9737,7 @@ function X1({ p }) {
           </div>
           <div className="kz-col"><SitePage pick={pick} a={{ cls: cl ? 'alert theme-success' : null, text: pick(C.site.mine) }} bs={lk} /></div>
         </div>
-        <div className="kz-row b1-sws">{sw('lk', lk, pick(c.linkL))}{sw('cl', cl, 'class="alert"')}</div>
+        <div className="kz-row b1-sws">{sw('lk', lk, pick(c.linkL))}{sw('cl', cl, 'class="alert theme-success"')}</div>
       </Sheet>
     </StageB>
   );
@@ -9952,10 +9990,11 @@ function T1({ p }) {
   const body = alertCode('a', 1, 'alert theme-success', pick(C.site.mine), true)
     .concat(pasted && !moved ? [{ k: 'drop', d: 1, cls: 'b1-line b1-slot' + (picked ? ' is-on' : ''), onTap: drop, disabled: !canTap, led: picked && (led || lv >= 3), parts: [<span key="p" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>] }] : moved ? [scriptL('sc2', 1, { cls: 'is-new' })] : []);
   const hintNow = moved ? null : (cp.msg || msg2 || (cp.clip && !pasted ? c.copied : null) || hintAt(lv, c.hints));
+  const phone = useL1Phone();
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={moved ? c.ok : pasted ? c.askMove : c.ask} hint={hintNow} err={!!cp.msg || msg2 === c.msgs.needPick} />
+        <KzAsk text={moved ? c.ok : pasted ? c.askMove : phone ? c.askPhone : c.ask} hint={hintNow} err={!!cp.msg || msg2 === c.msgs.needPick} />
         <div className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : '') + (moved ? ' is-done' : '')}>
           {!moved ? <div className="kz-col b1-tri-docs"><DocsBr page="Install"><BsDocs page="Install" only="cdn" onCopy={(k) => cp.copy(k)} copied={cp.clip} lit={!cp.clip && (led || lv >= 2) ? 'cdn' : null} copyOff={!canTap || pasted} scrollTo="cdn" /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, head, body)} cls="kz-code-sm b1-nowrap" /></div>
@@ -9999,14 +10038,18 @@ function T2({ p }) {
   };
   const onAlert = page === 'Alert';
   const g = 'comp';
-  const lit = pasted ? null : !onAlert ? (lv >= 2 ? (open === g ? 'item:Alert' : 'grp:' + g) : null) : (!cp.clip && (led || lv >= 2) ? 'alert' : null);
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onAlert ? (burger && !menuView ? 'burger' : lv >= 2 ? (open === g ? 'item:Alert' : 'grp:' + g) : null) : (!cp.clip && (led || lv >= 2) ? 'alert' : null);
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const body = pasted ? alertCode('a', 1, 'alert', SAMPLE, false, { cls: 'is-new' }) : [slotLine('slot', 1, pick, () => cp.paste(sayNow), !!cp.clip && (led || lv >= 3), !canTap)];
-  const hintNow = pasted ? null : (cp.msg || msg || (cp.clip ? c.copied : null) || hintAt(lv, c.hints));
+  const hintNow = pasted ? null : (cp.msg || msg || (cp.clip ? c.copied : null) || hintAt(lv, hints));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onAlert ? c.ask : c.askFind} hint={hintNow} err={!!cp.msg || !!msg} />
-        <div className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : ' is-nav') + (pasted ? ' is-done' : '')}>
+        <KzAsk text={pasted ? c.ok : onAlert ? c.ask : burger ? c.askFind : c.askFindSide} hint={hintNow} err={!!cp.msg || !!msg} />
+        <div ref={scene} className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : ' is-nav') + (pasted ? ' is-done' : '')}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={page}><BsDocs page={page} open={open} onOpen={(x) => canTap && setOpen(x)} onNav={nav} navOff={!canTap} onCopy={(k) => { if (onAlert) cp.copy(k); }} copied={cp.clip} copyOff={!canTap || !onAlert} lit={lit} menuView={menuView} onMenu={() => setMenuView((x) => !x)} scrollTo={onAlert ? 'alert' : null} scrollKey={page} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, [linkL('lk', 1)], body)} cls="kz-code-sm" /></div>
           <div className="kz-col b1-tri-page"><SitePage pick={pick} a={pasted ? { cls: 'alert', text: SAMPLE } : null} bs /></div>
@@ -10054,7 +10097,12 @@ function W1({ p }) {
   const vt = th.trim().toLowerCase(), vx = tx.trim();
   const ready = !!(vt && vx);
   const confirm = () => {
-    if (!canTap || !ready || solved) return;
+    if (!canTap || solved) return;
+    if (!ready) {   // пустое поле — причина в панели, «Tayyor» не молчит (23.11.2026)
+      const m = !vt && !vx ? c.msgs.empty : !vx ? c.msgs.noText : c.msgs.noColor;
+      sfx('soft', true); setMsg(m); sayNow(m, 'think');
+      return;
+    }
     st.current.tries += 1;
     const nt = fillL(c.msgs.notTheme, { w: th.trim() });
     const tIssue = themeIssue(vt, { msgs: { empty: c.msgs.empty, native: c.msgs.native, noTheme: c.msgs.noTheme, green: nt, typo: nt, other: null } }, null);
@@ -10076,13 +10124,17 @@ function W1({ p }) {
         <div className={'kz-scene b1-tri is-ref' + (solved ? ' is-done' : '')}>
           {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Alert"><BsDocs page="Alert" only="variants" copyOff scrollTo="variants" /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 1, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }, { k: 'b', d: 2, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l2 }, hl('c', 1, '</div>')]} cls="kz-code-sm" /></div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} a={{ cls: 'alert' + (valid ? ' ' + vt : ''), text: vx || SAMPLE }} bs title={pick(UI.mySite)} /></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} a={{ cls: 'alert' + (valid ? ' ' + vt : ''), text: vx || '✎ …' }} bs title={pick(UI.mySite)} /></div>
         </div>
-        {!solved ? <ReadyBtn on={canTap && ready} glow={canTap && ready} onClick={confirm} /> : null}
+        {!solved ? <ReadyBtn on={canTap} glow={canTap && ready} onClick={confirm} /> : null}
       </Sheet>
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T4. ПОЧЕМУ НЕ РАБОТАЕТ — три поломки по очереди: нет строки link; в ссылке изменена буква; класс старый (alert-success).
@@ -10116,7 +10168,7 @@ function T4({ p }) {
   const choose = (k) => {
     if (!canTap || ok || off.indexOf(k) >= 0) return;
     st.current.tries += 1;
-    if (k !== R.k) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== R.k) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (ii === T4_ROUNDS.length - 1) {
@@ -10130,13 +10182,13 @@ function T4({ p }) {
     const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff([]); }, reduceMotion() ? 300 : 1100);
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lines = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(R.head.length ? R.head.map((h, j) => hl('h' + j, 1, h, {}, { fold: 'pkg' })) : [{ k: 'none', d: 1, cls: 'b1-line b1-off', parts: [<span key="t" className="b1-cm">{'  '}</span>] }],
+  const lines = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(R.head.length ? R.head.map((h, j) => hl('h' + j, 1, h, {}, { fold: 'pkg' })) : [{ k: 'none', d: 1, cls: 'b1-line b1-off', parts: [<span key="t" className="b1-cm">{'\u00a0'}</span>] }],
     [hl('hc', 0, '</head>', { cls: 'b1-edge' }), hl('d', 0, '<div class="' + R.cls + '" role="alert">'), hl('p', 1, '<p>' + pick(C.site.mine) + '</p>'), hl('dc', 0, '</div>')]);
   const keys = ['noLink', 'typo', 'oldClass'];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + T4_ROUNDS.length} />
+        <KzAsk text={done ? c.ok : (c.rounds[ii].ask || c.ask)} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + T4_ROUNDS.length} />
         <div className="kz-scene b1-pair b1-wide-code" key={'r' + ii}>
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm b1-nowrap" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} a={{ cls: R.cls, text: pick(C.site.mine) }} bs={R.bs} /></div>
@@ -13956,5 +14008,42 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
      (итог: код, умения, «Следующий урок») — дотягивается до её низа */
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+  /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
+  .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
+}
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
 }
 `;

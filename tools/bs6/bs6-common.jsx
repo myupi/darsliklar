@@ -102,6 +102,9 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
   const [val, setVal] = useState(solved ? want0 : '');
   const [msg, setMsg] = useState(null);
   const [wide, setWide] = useState(false);
+  // ширина окна страницы: у раунда с widths — переключатель (t3, 23.11.2026: видно обе ширины), сначала RR.vw
+  const [wsel, setWsel] = useState({ ii: -1, w: null });   // выбор помнит свой раунд — в новом раунде снова RR.vw
+  const vwNow = RR.widths && wsel.ii === R.ii && wsel.w ? wsel.w : RR.vw;
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || R.done, spoken);
@@ -135,14 +138,15 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, R.lad.lv + 1), RR.hints) || RR.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
-        <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
+        <div className={(docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair') + (docs && docs.cls ? ' ' + docs.cls : '')} key={'r' + R.ii}>
           {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
-            {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
+            {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} vw={RR.gvw} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm b2-small" />
             {RR.extra || null}
+            {RR.widths ? <WidthChips pick={pick} vw={vwNow} ws={RR.widths} onPick={(w) => { sfx('tap', true); setWsel({ ii: R.ii, w }); }} /> : null}
           </div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} body={RR.body(R.ok ? (v || want0) : v)} vw={RR.vw} onWide={setWide} title={vwTitle(pick, RR.vw)}>{RR.vw && RR.badge ? <WideBadge pick={pick} wide={wide} /> : null}</SitePage></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} body={RR.body(R.ok ? (v || want0) : v)} vw={vwNow} onWide={setWide} title={vwTitle(pick, vwNow)}>{RR.vw && RR.badge ? <WideBadge pick={pick} wide={wide} /> : null}</SitePage></div>
         </div>
         {!R.done ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap || R.ok || !v} onClick={check}>{pick(UI.check)}<Led on={canTap && !R.ok && !!v && led} /></button></div> : null}
       </Sheet>

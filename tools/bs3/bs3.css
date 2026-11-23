@@ -38,3 +38,23 @@
 @media (max-width: 759px) and (max-height: 700px) {
   .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 10dvh; }
 }
+
+/* «Картинка → код» (Q1) на телефоне — во всех уроках 3–11 (23.11.2026, проверка непонятных заданий: окна «Kerak» и
+   «Sizning kodingiz» рядом были полоской, образец не виден, под ними пусто): окна друг под другом во всю ширину и делят
+   высоту сцены; на низком телефоне — без адресной строки. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 { display: grid !important; grid-template-columns: 1fr !important; grid-template-rows: 1fr 1fr !important; gap: 6px !important; align-items: stretch !important; flex: 1 1 auto; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col { display: flex !important; flex-direction: column; justify-content: flex-start !important; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col > .kz-br { flex: 1 1 auto !important; height: auto !important; aspect-ratio: auto !important; min-height: 100px !important; max-height: 30dvh !important; }
+}
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 .kz-br-tool { display: none; }
+}
+
+/* Низкий телефон (360×640): задание с образцом «Kerak» — справка сайта, образец, код и окно страницы не помещались, сцена
+   наезжала на строку задания (23.11.2026, прогон снимков: уроки 3 · 13, 4 · 8, 5 · 7). Только при высоте до 700 px: справку
+   сайта прячем, если есть образец (подсказки называют слова), у окна страницы — без адресной строки. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene.b1-tri.is-ref > .b1-tri-docs { display: none; }
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene > .kz-col > .kz-br:not(.b1-docs) .kz-br-tool { display: none; }
+}

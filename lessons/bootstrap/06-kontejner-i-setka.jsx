@@ -6831,7 +6831,7 @@ const fillL = (node, vars) => {
 const UI = {
   check: L3('Tekshirish', 'Проверить', 'Check'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Formalar', 'Формы', 'Forms'),
+  next: L3('Navbar va Pagination', 'Navbar и Pagination', 'Navbar and Pagination'),
   withBs: L3('Bootstrap bilan', 'С Bootstrap', 'With Bootstrap'),
   ready: L3('Tayyor', 'Готово', 'Done'),
   paste: L3("Shu yerga qo'ying", 'Вставь сюда', 'Paste here'),
@@ -6842,6 +6842,7 @@ const UI = {
   phone: L3('Telefon · 360 px', 'Телефон · 360 px', 'Phone · 360 px'),
   tablet: L3('Planshet · 768 px', 'Планшет · 768 px', 'Tablet · 768 px'),
   laptop: L3('Noutbuk · 1024 px', 'Ноутбук · 1024 px', 'Laptop · 1024 px'),
+  laptopW: L3('Noutbuk · 1200 px', 'Ноутбук · 1200 px', 'Laptop · 1200 px'),
   wide: L3("Ekranga sig'madi", 'Не помещается', 'Doesn’t fit'),
   fit: L3("Sig'di ✓", 'Помещается ✓', 'Fits ✓'),
   inside: L3('Bootstrap ichida', 'Внутри Bootstrap', 'Inside Bootstrap'),
@@ -6969,7 +6970,7 @@ const C = {
   t1: {
     eyebrow: L3("Setkani yig'ing", 'Собери сетку', 'Build the grid'),
     say: L3("Endi o'zingiz. Namunaga qarang va bo'sh joyga yetishmayotgan so'zni yozing.", 'Теперь сам. Посмотри на образец и впиши в пустое место недостающее слово.', 'Now you. Look at the goal and type the missing word into the empty spot.'),
-    ask1: L3("Sahifa o'rtada bo'lsin", 'Страница — посередине', 'Center the page'),
+    ask1: L3("Chetlarda bo'sh joy bo'lsin, bloklar o'rtada", 'По краям — поля, блоки посередине', 'Margins at the edges, blocks in the middle'),
     ask2: L3("Bloklar qatorga tizilsin", 'Блоки — в ряд', 'Put the blocks in a row'),
     ask3: L3("Uchinchi blok ham ustun bo'lsin", 'Третий блок — тоже колонка', 'Make the third block a column too'),
     hints1: [
@@ -7066,9 +7067,9 @@ const C = {
   },
   t3: {
     eyebrow: L3('Ekranga moslang', 'Подгони под экран', 'Fit the screen'),
-    say: L3("Namunaga qarang: ustunlar qaysi ekranda paydo bo'ladi? Uchinchi blokka kerakli so'zni yozing. O'lchamlar jadvali saytda.", 'Посмотри на образец: на каком экране появляются колонки? Впиши третьему блоку нужное слово. Таблица размеров — на сайте.', 'Look at the goal: on which screen do the columns appear? Give the third block the right word. The size table is on the site.'),
-    ask1: L3("Telefonda ostma-ost, planshetdan qatorda", 'На телефоне столбиком, с планшета в ряд', 'Stacked on a phone, a row from a tablet'),
-    ask2: L3("Planshetda ham ostma-ost, 1024 dan qatorda", 'И на планшете столбиком, в ряд с 1024', 'Stacked on a tablet too, a row from 1024'),
+    say: L3("Pastdagi tugmalar bilan ekran kengligini almashtirib ko'ring: ustunlar qaysi ekranda qatorga turishi kerak? Uchinchi blokka kerakli so'zni yozing. O'lchamlar jadvali saytda.", 'Переключай ширину экрана кнопками под кодом: на каком экране колонки должны встать в ряд? Впиши третьему блоку нужное слово. Таблица размеров — на сайте.', 'Switch the screen width with the buttons under the code: on which screen should the columns line up? Give the third block the right word. The size table is on the site.'),
+    ask1: L3("360 da ostma-ost, 768 da qatorda", 'На 360 — столбиком, на 768 — в ряд', 'Stacked at 360, a row at 768'),
+    ask2: L3("768 da ostma-ost, 1024 da qatorda", 'На 768 — столбиком, на 1024 — в ряд', 'Stacked at 768, a row at 1024'),
     hints1: [
       L3("Qolgan ikkita blokda qaysi so'z bor?", 'Какое слово у двух других блоков?', 'Which word do the other two blocks have?'),
       L3("Planshet bu md, 768 piksel.", 'Планшет — md, 768 пикселей.', 'A tablet is md, 768 pixels.'),
@@ -7101,7 +7102,7 @@ const C = {
   t4: {
     eyebrow: L3("Tartib bilan yig'ing", 'Собери по порядку', 'Build in order'),
     say: L3("Setka kodini tartib bilan yig'ing: tashqaridan ichkariga, keyin ichkaridan tashqariga yopamiz.", 'Собери код сетки по порядку: снаружи внутрь, а потом закрываем изнутри наружу.', 'Build the grid code in order: from outside in, then close from inside out.'),
-    ask: L3("Bo'laklarni tartib bilan bosing", 'Нажимай кусочки по порядку', 'Tap the pieces in order'),
+    ask: L3("Tashqaridan ichkariga oching, keyin teskarisiga yoping", 'Открывай снаружи внутрь, закрывай в обратном порядке', 'Open from outside in, then close in reverse order'),
     msgs: {
       cont: L3("Oldin eng tashqi quti: container.", 'Сначала самая внешняя коробка: container.', 'First the outermost box: container.'),
       row: L3("container ichida qator, row.", 'Внутри container — ряд, row.', 'Inside container comes the row.'),
@@ -7172,7 +7173,7 @@ const C = {
     say: L3("Endi ustunlarni o'zingiz tanlang: oddiy col, col-4 yoki md:col-4. Pastdagi tugmalar bilan har xil ekranda tekshiring va «Tayyor»ni bosing.",
       'Теперь выбери колонки сам: простой col, col-4 или md:col-4. Проверь кнопками внизу на разных экранах и нажми «Готово».',
       'Now pick the columns yourself: plain col, col-4 or md:col-4. Check on different screens with the buttons below and tap “Done”.'),
-    ask: L3("Ustun class ini yozing", 'Впиши class колонки', 'Type the column class'),
+    ask: L3("Uchala ustun uchun class yozing", 'Впиши class для всех трёх колонок', 'Type a class for all three columns'),
     hints: [
       L3("Bitta so'z, u col bilan bog'liq.", 'Одно слово, связанное с col.', 'One word, related to col.'),
       L3("Telefonda ostma-ost bo'lsin desangiz, oldiga ekran o'lchamini qo'ying.", 'Если хочешь столбиком на телефоне, поставь впереди размер экрана.', 'If you want them stacked on a phone, put a screen size in front.'),
@@ -7191,7 +7192,7 @@ const C = {
       { text: L3("row — qator, col — ustun. Raqam — 12 dan nechta bo'lak.", 'row — ряд, col — колонка. Число — сколько частей из 12.', 'row is a row, col a column. The number is how many parts of 12.'), k: 'grid' },
       { text: L3("md, lg kabi so'zlar ekran o'lchami: md:col-4 — planshetdan boshlab ustun.", 'Слова md, lg — размер экрана: md:col-4 — колонка с планшета.', 'Words like md and lg are screen sizes: md:col-4 is a column from a tablet up.'), k: 'resp' },
       { text: L3("Hammasi saytda, Layout bo'limida.", 'Всё это — на сайте, в разделе Layout.', 'It’s all on the site, in Layout.'), k: 'site' },
-      { text: L3("Tabriklayman! Siz oltinchi darsni tugatdingiz. Keyingi darsda formalar bilan ishlaymiz. Ko'rishguncha!", 'Ура! Ты прошёл шестой урок. На следующем уроке поработаем с формами. До встречи!', 'Hooray! You finished the sixth lesson. Next time we’ll work with forms. See you!'), k: null }
+      { text: L3("Tabriklayman! Siz oltinchi darsni tugatdingiz. Keyingi darsda sayt menyusini, ya'ni Navbarni, va sahifa tugmalarini, ya'ni Paginationni yasaymiz. Ko'rishguncha!", 'Ура! Ты прошёл шестой урок. На следующем уроке сделаем меню сайта — Navbar — и кнопки страниц — Pagination. До встречи!', 'Hooray! You finished the sixth lesson. Next time we’ll make the site menu, Navbar, and the page buttons, Pagination. See you!'), k: null }
     ],
     roles: {
       cont: L3("container — o'rtada", 'container — посередине', 'container — centered'),
@@ -9662,11 +9663,12 @@ const imgH = (file, cls, alt) => '<img src="' + file + '"' + clsA(cls) + ' alt="
 const spinH = (cls) => '<div' + clsA(cls) + ' role="status"><span class="visually-hidden">Loading…</span></div>';
 const quietSlot = (k, d, pick, on) => ({ k, d, cls: 'b1-line b1-slot' + (on ? ' is-on' : ''), parts: [<span key="p" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>] });
 // Образец «Kerak» — маленькая честная страница рядом с кодом (что должно получиться).
-function Goal({ pick, html, label, zoom }) {
+// vw — образец в окне заданной ширины (как страница рядом: @media по этой ширине; урок 6, t1, 23.11.2026).
+function Goal({ pick, html, label, zoom, vw }) {
   return (
     <div className="b2-goal">
       <span className="b2-goal-h">{pick(label || UI.need)}</span>
-      <div className="b2-goal-in"><BsFrame body={html} bs dep={html} zoom={zoom || 0.8} /></div>
+      <div className="b2-goal-in"><BsFrame body={html} bs dep={html + (vw || '')} zoom={vw ? undefined : (zoom || 0.8)} vw={vw} /></div>
     </div>
   );
 }
@@ -10258,7 +10260,8 @@ const DocsBr = ({ page, children, cls }) => <PaperBrowser title={bdTitle(page)} 
 // Bootstrap 6 в окне заданной ширины (vw) — @media (width>=768px) срабатывают по ширине окна, как в браузере.
 // =============================================================================
 const PHONE = 360, TABLET = 768, LAPTOP = 1024;   // ноутбук 1024 px: на телефоне страница крупнее (container — 960 px)
-const vwTitle = (pick, vw) => (vw === PHONE ? pick(UI.phone) : vw === TABLET ? pick(UI.tablet) : vw === LAPTOP ? pick(UI.laptop) : vw ? vw + ' px' : pick(C.site.title));
+const WIDE6 = 1200;   // широкий ноутбук (t1, раунд 1): container 960 px, поля по краям видны
+const vwTitle = (pick, vw) => (vw === PHONE ? pick(UI.phone) : vw === TABLET ? pick(UI.tablet) : vw === LAPTOP ? pick(UI.laptop) : vw === WIDE6 ? pick(UI.laptopW) : vw ? vw + ' px' : pick(C.site.title));
 const docsPhoneCls = (o) => 'kz-scene b1-tri ms-root' + (o.clip ? ' has-clip' : '') + (o.nav ? ' is-nav' : '') + (o.done ? ' is-done' : '') + (o.ref ? ' is-ref' : '') + (o.show ? ' is-show' : '');
 // Блоки страницы кружка (карточки из урока 5).
 const BLOCK_KEYS = ['b1', 'b2', 'b3', 'b4'];
@@ -10300,10 +10303,11 @@ const colRule = (c) => {
 };
 const BP_PX = { sm: 576, md: 768, lg: 1024, xl: 1280, '2xl': 1536 };
 // Переключатель ширины экрана (телефон / планшет / ноутбук).
-function WidthChips({ pick, vw, onPick, seen, disabled, led }) {
+// ws — только эти ширины (t3: две ширины раунда, 23.11.2026).
+function WidthChips({ pick, vw, onPick, seen, disabled, led, ws }) {
   return (
     <div className="b6-widths">
-      {[['phone', PHONE], ['tablet', TABLET], ['laptop', LAPTOP]].map(([k, w]) => (
+      {[['phone', PHONE], ['tablet', TABLET], ['laptop', LAPTOP]].filter(([, w]) => !ws || ws.indexOf(w) >= 0).map(([k, w]) => (
         <button key={k} type="button" className={'b2-chip is-shape' + (vw === w ? ' is-on' : '') + (seen && seen[w] ? ' is-seen' : '')} onClick={() => onPick(w)} disabled={disabled} data-w={w}>
           <span>{pick(UI[k])}</span><Led on={!!led && !(seen && seen[w])} />
         </button>
@@ -10453,6 +10457,9 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
   const [val, setVal] = useState(solved ? want0 : '');
   const [msg, setMsg] = useState(null);
   const [wide, setWide] = useState(false);
+  // ширина окна страницы: у раунда с widths — переключатель (t3, 23.11.2026: видно обе ширины), сначала RR.vw
+  const [wsel, setWsel] = useState({ ii: -1, w: null });   // выбор помнит свой раунд — в новом раунде снова RR.vw
+  const vwNow = RR.widths && wsel.ii === R.ii && wsel.w ? wsel.w : RR.vw;
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || R.done, spoken);
@@ -10486,14 +10493,15 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, R.lad.lv + 1), RR.hints) || RR.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
-        <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
+        <div className={(docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair') + (docs && docs.cls ? ' ' + docs.cls : '')} key={'r' + R.ii}>
           {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
-            {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
+            {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} vw={RR.gvw} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm b2-small" />
             {RR.extra || null}
+            {RR.widths ? <WidthChips pick={pick} vw={vwNow} ws={RR.widths} onPick={(w) => { sfx('tap', true); setWsel({ ii: R.ii, w }); }} /> : null}
           </div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} body={RR.body(R.ok ? (v || want0) : v)} vw={RR.vw} onWide={setWide} title={vwTitle(pick, RR.vw)}>{RR.vw && RR.badge ? <WideBadge pick={pick} wide={wide} /> : null}</SitePage></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} body={RR.body(R.ok ? (v || want0) : v)} vw={vwNow} onWide={setWide} title={vwTitle(pick, vwNow)}>{RR.vw && RR.badge ? <WideBadge pick={pick} wide={wide} /> : null}</SitePage></div>
         </div>
         {!R.done ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap || R.ok || !v} onClick={check}>{pick(UI.check)}<Led on={canTap && !R.ok && !!v && led} /></button></div> : null}
       </Sheet>
@@ -10719,8 +10727,12 @@ function T1({ p }) {
   const mk = (kind, want, where, o, ask, hints, why) => ({ kind, want, ask, hints, why, vw: LAPTOP, gz: 0.3, ph: L3('…', '…', '…'),
     line: fieldLines(pick, o, where), goal: goalGrid(pick, full),
     body: (v) => gridH(pick, Object.assign({}, o, where === 'cont' ? { cont: v } : where === 'row' ? { row: v } : { cols: o.cols.map((x, j) => (j === where ? v : x)) })) });
+  // 23.11.2026: раунд 1 — окно 1200 px (container 960 px), фон страницы серый, container белый: поля по краям видны
+  // серыми полосами и на странице, и в образце (без container блоки во всю ширину)
+  const r1 = mk('cont', 'container', 'cont', { cont: null, row: 'row', cols: COLS3('col') }, c.ask1, c.hints1, c.why1);
+  const BG1 = '<style>body{background:#E9ECEF}.container{background:#fff;padding-block:10px}</style>';
   const rounds = [
-    mk('cont', 'container', 'cont', { cont: null, row: 'row', cols: COLS3('col') }, c.ask1, c.hints1, c.why1),
+    Object.assign({}, r1, { vw: WIDE6, gvw: WIDE6, goal: BG1 + r1.goal, body: (v) => BG1 + r1.body(v) }),
     mk('row', 'row', 'row', { cont: 'container', row: null, cols: COLS3('col') }, c.ask2, c.hints2, c.why2),
     mk('col', 'col', 2, { cont: 'container', row: 'row', cols: ['col', 'col', null] }, c.ask3, c.hints3, c.why3)
   ];
@@ -10814,8 +10826,10 @@ function T3({ p }) {
     line: fieldLines(pick, { cont: 'container', row: 'row', cols: [others, others, null] }, 2),   // образца нет: два соседних блока уже показывают, как надо
 
     body: (v) => gridH(pick, { cont: 'container', row: 'row', cols: [others, others, v] }) });
-  const rounds = [mk('md:col-4', PHONE, 'md:col-4', c.ask1, c.hints1, c.why1), mk('lg:col-4', TABLET, 'lg:col-4', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Breakpoints', only: 'bptable' }} type="responsive-col" />;
+  // 23.11.2026: на узкой ширине все блоки и так столбиком — сначала окно той ширины, где разница видна; переключатель — обе ширины
+  const rounds = [Object.assign(mk('md:col-4', TABLET, 'md:col-4', c.ask1, c.hints1, c.why1), { widths: [PHONE, TABLET] }),
+    Object.assign(mk('lg:col-4', LAPTOP, 'lg:col-4', c.ask2, c.hints2, c.why2), { widths: [TABLET, LAPTOP] })];
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Breakpoints', only: 'bptable', cls: 'l6-t3' }} type="responsive-col" />;
 }
 
 // S12. ВСЁ ВМЕСТЕ (показ): шапка (урок 4) + контейнер + ряд карточек (урок 5) с md:col-4; ширина 360 → 1024.
@@ -10850,7 +10864,8 @@ function T4({ p }) {
   const led = useIdleLed(canTap && !fin, done.length);
   const src = { cont: '<div class="container">', row: '<div class="row">', col: '<div class="md:col-6">', card: '<div class="card card-body">' + pick(C.site.b1) + '</div>', colc: '</div>', rowc: '</div>', contc: '</div>' };
   const depth = { cont: 0, row: 1, col: 2, card: 3, colc: 2, rowc: 1, contc: 0 };
-  const label = { cont: 'container', row: 'row', col: 'md:col-6', card: 'card', colc: '</div> · col', rowc: '</div> · row', contc: '</div> · container' };
+  // 23.11.2026: подписи одного вида — тегами
+  const label = { cont: '<div class="container">', row: '<div class="row">', col: '<div class="md:col-6">', card: '<div class="card card-body">…', colc: '</div> · col', rowc: '</div> · row', contc: '</div> · container' };
   const tap = (k) => {
     if (!canTap || fin || done.indexOf(k) >= 0) return;
     st.current.tries += 1;
@@ -10953,6 +10968,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ ТАК: нет row (колонки столбиком); col-md-4 (версия 5); col-8 + col-8 (больше 12 — перенос).
 const T6_ROUNDS = [
@@ -10981,7 +11000,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -14613,6 +14632,43 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
      (итог: код, умения, «Следующий урок») — дотягивается до её низа */
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+  /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
+  .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
+}
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
 }
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.
@@ -14760,6 +14816,26 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) and (max-height: 700px) {
   .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 10dvh; }
 }
+
+/* «Картинка → код» (Q1) на телефоне — во всех уроках 3–11 (23.11.2026, проверка непонятных заданий: окна «Kerak» и
+   «Sizning kodingiz» рядом были полоской, образец не виден, под ними пусто): окна друг под другом во всю ширину и делят
+   высоту сцены; на низком телефоне — без адресной строки. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 { display: grid !important; grid-template-columns: 1fr !important; grid-template-rows: 1fr 1fr !important; gap: 6px !important; align-items: stretch !important; flex: 1 1 auto; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col { display: flex !important; flex-direction: column; justify-content: flex-start !important; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col > .kz-br { flex: 1 1 auto !important; height: auto !important; aspect-ratio: auto !important; min-height: 100px !important; max-height: 30dvh !important; }
+}
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 .kz-br-tool { display: none; }
+}
+
+/* Низкий телефон (360×640): задание с образцом «Kerak» — справка сайта, образец, код и окно страницы не помещались, сцена
+   наезжала на строку задания (23.11.2026, прогон снимков: уроки 3 · 13, 4 · 8, 5 · 7). Только при высоте до 700 px: справку
+   сайта прячем, если есть образец (подсказки называют слова), у окна страницы — без адресной строки. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene.b1-tri.is-ref > .b1-tri-docs { display: none; }
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene > .kz-col > .kz-br:not(.b1-docs) .kz-br-tool { display: none; }
+}
 /* =============================================================================
    УРОК 4 МОДУЛЯ BOOTSTRAP «Flex» — свои стили поверх bs1.css, bs2.css, bs3.css. Префикс b4-.
    ============================================================================= */
@@ -14811,6 +14887,10 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) {
   .r28 .b1-sheet .b4-t4 .kz-code .kz-line.b2-cut { display: none; }
 }
+/* Урок 4, t2 (23.11.2026): строка с полем после длинной основы «d-flex justify-content-between» переносится перед полем —
+   поле видно целиком на телефоне и ноутбуке (класс l4-fl только у этой строки). */
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st { white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+.r28 .b1-sheet .kz-code > .kz-line.b1-line.l4-fl .b1-st.l4-w { white-space: nowrap; }   /* слово class целиком, перенос — только между словами */
 /* =============================================================================
    УРОК 5 МОДУЛЯ BOOTSTRAP «Карточки» — свои стили поверх bs1…bs4. Префикс b5-.
    ============================================================================= */
@@ -14872,6 +14952,22 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 /* Задание «цвет карточки»: образец ниже (одна строка). */
 @media (max-width: 759px) { .b1-sheet .b2-goal { padding-top: 2px; padding-bottom: 2px; } }
+/* Урок 5, t2 (23.11.2026): полоса «Fayllar» в задании «впиши файл фото» — на узком телефоне картинки файлов не прячутся
+   (сверить с образцом): картинка над именем, класс l5-files только у этой полосы. */
+@media (max-width: 400px) {
+  .b5-files.l5-files { flex-wrap: wrap; overflow: visible; row-gap: 4px; }
+  .b5-files.l5-files .b5-file { flex-direction: column; gap: 2px; padding: 3px 6px; }
+  .b5-files.l5-files .b5-file img { display: block; width: 44px; height: 25px; border-radius: 4px; }
+}
+/* Урок 5, t2 на низком телефоне (360×640): картинка файла рядом с именем и меньше — иначе сцена наезжала на строку задания. */
+@media (max-width: 400px) and (max-height: 700px) {
+  .b5-files.l5-files { flex-wrap: nowrap; }
+  .b5-files.l5-files .b5-files-h { display: none; }
+  .b5-files.l5-files .b5-file { flex-direction: row; gap: 3px; padding: 2px 4px; font-size: 11px; }
+  .b5-files.l5-files .b5-file img { width: 24px; height: 14px; }
+  .r28 .kz-sheet.b1-sheet:has(.l5-files) .b2-goal { padding-top: 0; padding-bottom: 0; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet:has(.l5-files) .kz-code .kz-line { line-height: 15px; }
+}
 /* =============================================================================
    УРОК 6 МОДУЛЯ BOOTSTRAP «Контейнер и сетка» — свои стили поверх bs1…bs5. Префикс b6-.
    ============================================================================= */
@@ -14883,5 +14979,16 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .b1-sheet .b6-x1 > .kz-col > .kz-br, .r28 .b1-sheet .b6-t4 > .kz-col > .kz-br, .r28 .b1-sheet .b6-w1 > .kz-col > .kz-br { --brh: 18dvh; }
   .b6-widths { margin-top: 4px; }
   .r28 .b6-widths .b2-chip { min-height: 32px; font-size: 11.5px; }
+}
+/* Урок 6, t3 (23.11.2026): под кодом — переключатель двух ширин раунда; на ноутбуке окно страницы чуть ниже, чтобы
+   код, переключатель и окно поместились рядом с сайтом (класс l6-t3 только у сцены этого задания). */
+@media (min-width: 760px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.l6-t3:not(.is-done) > .b1-tri-page > .kz-br { --brh: 17dvh; }
+  .r28 .b1-sheet .kz-scene.l6-t3 .b6-widths { margin-top: 4px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .b1-sheet .kz-scene.l6-t3 .b6-widths { margin-top: 2px; }
+  .r28 .b1-sheet .kz-scene.l6-t3 .b6-widths .b2-chip { min-height: 28px; padding-top: 2px; padding-bottom: 2px; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-tri.l6-t3:not(.is-done) > .kz-col > .kz-br.b1-docs.is-short { --brh: 11dvh; }
 }
 `;

@@ -1,5 +1,5 @@
 // Сборка урока 9 модуля Bootstrap «Menu и Dialog» в облике «Редактор» (20.11.2026).
-//   node tools/bs9/build.mjs   → lessons/bootstrap/09-menu-i-dialog.jsx
+//   node tools/bs9/build.mjs   → lessons/bootstrap/10-menu-i-dialog.jsx
 // Исходник — bs9.src.jsx (тексты по /uzbekcha), набор — bs9-kit.jsx (копия набора урока 8; вместо карусели — меню и окно bsUi),
 // похожий сайт Bootstrap — bs9-site.jsx (Install, Alert и Components → Menu, Dialog),
 // экраны — bs9-screens.jsx, CSS — ../bs1/bs1.css … ../bs6/bs6.css + bs9.css. Облик эталона — общий набор naborRedaktor в gen/.
@@ -38,4 +38,4 @@ naborRedaktor(gen);
 }
 
 mkdirSync(join(root, 'lessons/bootstrap'), { recursive: true });
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs9.src.jsx'), join(root, 'lessons/bootstrap/09-menu-i-dialog.jsx'), 'bootstrap'], { stdio: 'inherit' });
+execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs9.src.jsx'), join(root, 'lessons/bootstrap/10-menu-i-dialog.jsx'), 'bootstrap'], { stdio: 'inherit' });

@@ -62,8 +62,8 @@ function fLine(k, d, tag, attrs, node, before, tail) {
 const normCls = (raw) => String(raw || '').trim().toLowerCase().replace(/[“”«»"`‘’ʻʼ;]/g, '').replace(/\s+/g, ' ').replace(/\.$/, '');
 const KNOWN10 = ['container', 'row', 'col', 'md:col-4', 'col-4', 'd-flex', 'justify-content-between', 'justify-content-center', 'justify-content-end', 'justify-content-start', 'align-items-center', 'gap-3',
   'card', 'card-body', 'card-img-top', 'img-fluid', 'img-thumbnail', 'rounded', 'form-control', 'form-label', 'check', 'carousel', 'carousel-inner', 'carousel-item', 'active', 'menu', 'menu-item', 'dialog', 'alert',
-  'btn-solid', 'btn-outline'].concat(BS_THEMES.map((t) => 'theme-' + t));
-const OLD10 = /^(btn-(primary|success|danger|warning|info|secondary)|text-(primary|success|danger)|col-(sm|md|lg)-\d+|form-select|form-check|dropdown(-.*)?|modal|img-responsive|card-block|navbar-toggler)$/;
+  'btn-solid', 'btn-outline', 'pagination', 'page-item', 'page-link', 'navbar', 'navbar-brand', 'nav-link'].concat(BS_THEMES.map((t) => 'theme-' + t));   // урок 7: Navbar и Pagination
+const OLD10 = /^(btn-(primary|success|danger|warning|info|secondary)|text-(primary|success|danger)|col-(sm|md|lg)-\d+|form-select|form-check|dropdown(-.*)?|modal|img-responsive|card-block)$/;
 const COLOR10 = /^(yashil|qizil|ko'k|kok|sariq|green|red|blue|yellow|зел[её]ный|красный|синий)$/;
 function lev(a, b) {
   const m = a.length, n = b.length, d = [];

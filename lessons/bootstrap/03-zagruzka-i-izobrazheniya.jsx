@@ -6985,7 +6985,12 @@ const C = {
       'Фото команды тоже не помещается на телефон. Найди на сайте страницу Images, нажми строку с img-fluid, потом нажми строку фото в коде.',
       'The team photo doesn’t fit the phone either. Find the Images page on the site, tap the line with img-fluid, then tap the photo line in the code.'),
     ask: L3('img-fluid qatorini bosing', 'Нажми строку с img-fluid', 'Tap the img-fluid line'),
-    askFind: L3('Menyudan Images sahifasini toping', 'Найди в меню страницу Images', 'Find the Images page in the menu'),
+    // Меню сайта в узком окне спрятано за ☰ — строка задания и первая подсказка называют её (23.11.2026); меню слева — askFindSide.
+    askFind: L3("☰ tugmasini bosing va Content → Images sahifasini toping", 'Нажми ☰ и найди Content → Images', 'Tap ☰ and find Content → Images'),
+    askFindSide: L3("Chapdagi menyudan Content → Images sahifasini toping", 'Найди в меню слева Content → Images', 'Find Content → Images in the menu on the left'),
+    hintMenu: L3("Menyu yashiringan. Sayt oynasining yuqori o'ng burchagidagi uch chiziqli tugmani bosing.", 'Меню спрятано. Нажми кнопку с тремя полосками в правом верхнем углу окна сайта.', 'The menu is hidden. Tap the three-line button in the top right corner of the site window.'),
+    // После копирования строка задания говорит, куда вставить (23.11.2026, как askPaste урока 1).
+    askPaste: L3("Endi kodda jamoa rasmi qatoridagi bo'sh joyni bosing", 'Теперь нажми пустое место в строке фото команды', 'Now tap the empty spot in the team photo line'),
     copied: L3("Nusxalandi! Endi kodda jamoa rasmi qatorini bosing.", 'Скопировано! Теперь нажми в коде строку фото команды.', 'Copied! Now tap the team photo line in the code.'),
     msgs: {
       wrongPage: L3("Bu {w} sahifasi. Rasmlar Content bo'limida, Images sahifasida.", 'Это страница {w}. Картинки — в разделе Content, на странице Images.', 'This is the {w} page. Images are in Content, on the Images page.'),
@@ -7061,9 +7066,9 @@ const C = {
       L3("Yozing: rounded-circle", 'Впиши: rounded-circle', 'Type: rounded-circle')
     ],
     hints2: [
-      L3("Burchaklarni ozgina yumaloq qiladigan so'z eng qisqasi.", 'Слово, которое чуть скругляет углы, — самое короткое.', 'The word that rounds corners a little is the shortest one.'),
-      L3("Qo'shimchasiz, bitta so'z.", 'Без добавок, одно слово.', 'No additions, just one word.'),
-      L3("Yozing: rounded", 'Впиши: rounded', 'Type: rounded')
+      L3("Burchaklarni rounded so'zi yumaloq qiladi. Uning yonida raqam ham bo'lishi mumkin.", 'Углы скругляет слово rounded. После него может стоять и число.', 'The word rounded rounds the corners. It can have a number after it too.'),
+      L3("Saytda rounded-0 dan rounded-9 gacha bor. Nolda burchak o'tkir, raqam qancha katta bo'lsa, shuncha yumaloq.", 'На сайте есть от rounded-0 до rounded-9. При нуле углы острые, чем больше число, тем круглее.', 'The site has rounded-0 to rounded-9. Zero means sharp corners; the bigger the number, the rounder.'),
+      L3("Yozing: rounded yoki, masalan, rounded-5", 'Впиши: rounded или, например, rounded-5', 'Type: rounded or, for example, rounded-5')
     ],
     hints3: [
       L3("Tabletka inglizcha pill bo'ladi.", 'Таблетка по-английски — pill.', 'A pill in English is pill.'),
@@ -7071,7 +7076,9 @@ const C = {
       L3("Yozing: rounded-pill", 'Впиши: rounded-pill', 'Type: rounded-pill')
     ],
     why1: L3("rounded-circle kvadrat rasmni doira qiladi.", 'rounded-circle делает квадратное фото кругом.', 'rounded-circle turns a square photo into a circle.'),
-    why2: L3("rounded burchaklarni ozgina yumshatadi.", 'rounded чуть смягчает углы.', 'rounded softens the corners a little.'),
+    // Квадратное фото: rounded-pill рисует тот же круг — тоже верно (23.11.2026).
+    why1pill: L3("Kvadrat rasmda rounded-pill ham doira chizadi, bu ham to'g'ri. Lekin doira uchun alohida so'z bor: rounded-circle.", 'На квадратном фото rounded-pill тоже рисует круг, так тоже верно. Но для круга есть своё слово: rounded-circle.', 'On a square photo rounded-pill draws a circle too, so that’s also right. But a circle has its own word: rounded-circle.'),
+    why2: L3("Burchaklar yumaloq bo'ldi. rounded va raqamli rounded so'zlari burchaklarni yumshatadi.", 'Углы скруглились. rounded и rounded с числом смягчают углы.', 'The corners got rounded. rounded and rounded with a number soften the corners.'),
     why3: L3("rounded-pill uzun rasmni tabletka qiladi.", 'rounded-pill делает длинное фото таблеткой.', 'rounded-pill turns a long photo into a pill.'),
     done: L3("Qoyil! Endi har qanday rasmga kerakli burchakni bera olasiz.", 'Класс! Теперь любому фото дашь нужные углы.', 'Nice! Now you can give any photo the corners it needs.')
   },
@@ -7132,7 +7139,7 @@ const C = {
       L3("Yozing: spinner-border", 'Впиши: spinner-border', 'Type: spinner-border')
     ],
     hints2: [
-      L3("Saytda ikkinchi qism Growing spinner.", 'На сайте вторая часть — Growing spinner.', 'On the site the second part is Growing spinner.'),
+      L3("Saytdagi Growing spinner misoliga qarang: class ichida qaysi so'z?", 'Посмотри на пример Growing spinner на сайте: какое слово в class?', 'Look at the Growing spinner example on the site: which word is in class?'),
       L3("O'sish inglizcha grow bo'ladi.", 'Расти по-английски — grow.', 'To grow in English is grow.'),
       L3("Yozing: spinner-grow", 'Впиши: spinner-grow', 'Type: spinner-grow')
     ],
@@ -7176,7 +7183,7 @@ const C = {
     say: L3("Endi kulrang chiziqni o'zingiz yasaysiz. Namunaga qarang va bo'sh joyga kerakli so'zni yozing. So'zlar saytdagi Animation qismida.",
       'Теперь серую полосу делаешь ты. Посмотри на образец и впиши в пустое место нужное слово. Слова — в части Animation на сайте.',
       'Now you make the gray bar. Look at the goal and type the right word into the empty spot. The words are in the Animation part on the site.'),
-    ask1: L3("Matn o'rnida kulrang chiziq bo'lsin", 'На месте текста — серая полоса', 'Put a gray bar where the text goes'),
+    ask1: L3("Namunadagidek kulrang chiziq chizing", 'Нарисуй серую полосу, как в образце', 'Draw a gray bar like in the goal'),
     ask2: L3("Chiziq ustida to'lqin yursin", 'По полосе пусть бежит волна', 'Make a wave run over the bar'),
     hints1: [
       L3("Chiziqning so'zi sahifa nomi bilan bir xil.", 'Слово полосы — как название страницы.', 'The bar’s word is the same as the page name.'),
@@ -7208,7 +7215,8 @@ const C = {
     no: {
       'img-circle': L3("Bu eski nom, uchinchi versiyadan. Oltinchisida u ishlamaydi.", 'Это старое имя из третьей версии. В шестой оно не работает.', 'That’s an old name from version three. It doesn’t work in version six.'),
       'rounded': L3("rounded faqat burchaklarni yumshatadi, doira qilmaydi.", 'rounded только смягчает углы, круга не делает.', 'rounded only softens the corners, it doesn’t make a circle.'),
-      'rounded-pill': L3("Kvadrat rasmda rounded-pill ham doiraga o'xshaydi, lekin doira uchun so'z boshqa.", 'На квадратном фото rounded-pill тоже похож на круг, но для круга есть своё слово.', 'On a square photo rounded-pill also looks round, but a circle has its own word.'),
+      // Было rounded-pill: на квадратном фото он рисует тот же круг — второй верный вариант (23.11.2026).
+      'rounded-top': L3("rounded-top faqat tepadagi ikki burchakni yumshatadi, doira qilmaydi.", 'rounded-top скругляет только два верхних угла, круга не делает.', 'rounded-top rounds only the two top corners; it doesn’t make a circle.'),
       'img-responsive': L3("Bu eski nom, uchinchi versiyadan. Rasm sig'madi.", 'Это старое имя из третьей версии. Фото не поместилось.', 'That’s an old name from version three. The photo doesn’t fit.'),
       'img-thumbnail': L3("img-thumbnail ham sig'diradi, lekin ramka qo'shadi. Namunada ramka yo'q.", 'img-thumbnail тоже вписывает, но добавляет рамку. В образце рамки нет.', 'img-thumbnail fits too, but it adds a frame. The goal has no frame.'),
       'fluid': L3("Bunday so'z yo'q. To'liq so'z img bilan boshlanadi.", 'Такого слова нет. Полное слово начинается с img.', 'There’s no such word. The full word starts with img.'),
@@ -7232,7 +7240,7 @@ const C = {
     ask: L3('Nega ishlamayapti? Sababini tanlang', 'Почему не работает? Выбери причину', 'Why isn’t it working? Pick the reason'),
     opts: {
       old: L3('Eski nom, oldingi versiyadan', 'Старое имя из прошлой версии', 'An old name from an earlier version'),
-      noClass: L3("Bunday class yo'q", 'Такого class нет', 'There’s no such class'),
+      noClass: L3("O'ylab topilgan so'z (hech qachon bo'lmagan)", 'Выдуманное слово — такого никогда не было', 'A made-up word: it never existed'),
       noWidth: L3('Kenglik berilmagan', 'Не задана ширина', 'No width is set')
     },
     rounds: [
@@ -7987,7 +7995,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, msgs: 1, magic: 1,
+Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, hintMenu: 1, why1pill: 1, msgs: 1, magic: 1,
   sayNo: 1, sayFluid: 1, sayBig: 1, cut: 1, bigOk: 1, fits: 1, on: 1, off: 1, sayPage: 1, sayApply: 1, copied: 1, sayRounded: 1, sayCircle: 1, sayPill: 1,
   saySpin: 1, sayLoaded: 1, sayRole: 1, sayPaste: 1, sayColor: 1, sayCode: 1, sayOurs: 1, right: 1, no: 1, rounds: 1 });
 
@@ -10248,6 +10256,22 @@ function navSteps(M, burger, set, grp, item, openNow, after) {
     { act: () => M.hide() }
   ]);
 }
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое — строка задания и подсказка называют ☰, только
+// когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
 function useDocsNav(page0, open0) {
   const [page, setPage] = useState(page0);
   const [open, setOpen] = useState(open0);
@@ -10508,16 +10532,20 @@ function T1({ p }) {
     sayNow(c.ok, 'cheer');
   };
   const onImg = D.page === 'Images';
-  const lit = pasted ? null : !onImg ? (lv >= 2 ? (D.open === 'content' ? 'item:Images' : 'grp:content') : null) : null;
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onImg ? (burger && !D.menuView ? 'burger' : lv >= 2 ? (D.open === 'content' ? 'item:Images' : 'grp:content') : null) : null;
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const imgLine = pasted ? imgSrcLine('i', 1, 'jamoa.jpg', 'img-fluid', 'Jamoa', { cls: 'is-new' })
     : { k: 'slot', d: 1, cls: 'b1-line b1-slot' + (clip ? ' is-on' : ''), onTap: paste, disabled: !canTap, led: clip && (led || lv >= 3),
       parts: hParts('<img src="jamoa.jpg" class="').concat([<span key="ps" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>], hParts('" alt="Jamoa">')) };
   const body = h1H(pick) + imgH('robot.jpg', 'img-fluid', 'Robot') + imgH('jamoa.jpg', pasted ? 'img-fluid' : null, 'Jamoa');
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onImg ? c.ask : c.askFind} hint={pasted ? null : (msg || hintAt(lv, c.hints))} err={!!msg && msg !== c.copied} />
-        <div className={docsPhoneCls({ clip, nav: !clip, done: pasted })}>
+        <KzAsk text={pasted ? c.ok : clip ? c.askPaste : onImg ? c.ask : burger ? c.askFind : c.askFindSide} hint={pasted ? null : (msg || hintAt(lv, hints))} err={!!msg && msg !== c.copied} />
+        <div ref={scene} className={docsPhoneCls({ clip, nav: !clip, done: pasted })}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={D.page}><BsDocs page={D.page} open={D.open} onOpen={(x) => canTap && D.set.setOpen(x)} onNav={nav} navOff={!canTap} copyOff lit={lit} menuView={D.menuView} onMenu={() => D.set.setMenuView((x) => !x)} scrollTo={onImg ? 'sec:responsive' : null} scrollKey={D.page}
             lines={{ responsive: { onLine: onResp, sel: tried === 'responsive' ? 0 : null, word: clip ? { i: 0, w: 'img-fluid' } : null, lineLed: lv >= 3 ? 0 : null, lineOff: !canTap }, thumb: { onLine: onThumb, sel: tried === 'thumb' ? 0 : null, lineOff: !canTap } }} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[hl('h', 1, '<h1>' + pick(C.site.h1) + '</h1>'), imgSrcLine('r', 1, 'robot.jpg', 'img-fluid', 'Robot'), imgLine]} cls="kz-code-sm" /></div>
@@ -10600,7 +10628,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       return;
     }
     sfx('ok', true); R.setOk(true); setMsg(null); setVal(normCls(val));
-    const line = joinL(C.fill.right, RR.why);
+    const line = joinL(C.fill.right, (RR.okWhy && RR.okWhy[normCls(val)]) || RR.why);   // своё пояснение для второго верного (rounded-pill на квадрате)
     if (R.last) {
       put({ done: true });
       log({ screenId: id, type: type, correct: true, firstTry: R.st.current.misses === 0, attempts: R.st.current.tries, hints: R.lad.asked.current, depth: R.lad.lv });
@@ -10615,7 +10643,7 @@ function FillRounds({ p, id, c, rounds, docs, type }) {
       <Sheet cls="b1-sheet kz-typed">
         <KzAsk text={R.done ? c.done : RR.ask} hint={R.ok ? null : (msg || hintAt(R.lad.lv, RR.hints))} err={!!msg} n={rounds.length > 1 ? (R.ii + 1) + '/' + rounds.length : null} />
         <div className={docs ? docsPhoneCls({ ref: true, done: R.done }) : 'kz-scene b1-pair'} key={'r' + R.ii}>
-          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={docs.only} copyOff /></DocsBr></div> : null}
+          {docs && !R.done ? <div className="kz-col b1-tri-docs"><DocsBr page={docs.page}><BsDocs page={docs.page} only={RR.only || docs.only} copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code">
             {RR.goal ? <Goal pick={pick} html={RR.goal} zoom={RR.gz} /> : null}
             <KzCode lines={RR.line(field)} cls="kz-code-sm" />
@@ -10645,8 +10673,9 @@ function T2({ p }) {
   const c = C.t2;
   const mk = (file, alt, want, gw) => ({ kind: 'round', want, line: imgField(file, alt, 'img-fluid'), body: (v) => imgH(file, 'img-fluid ' + v, alt), vw: PHONE, goal: goalImg(file, [].concat(want)[0], gw), gz: 0.6, ph: L3('rounded…', 'rounded…', 'rounded…') });
   const rounds = [
-    Object.assign(mk('murabbiy.jpg', 'Murabbiy', 'rounded-circle', 90), { ask: c.ask1, hints: c.hints1, why: c.why1, no: { 'rounded-pill': C.q1.no['rounded-pill'] } }),
-    Object.assign(mk('jamoa.jpg', 'Jamoa', ['rounded', 'rounded-5'], 200), { ask: c.ask2, hints: c.hints2, why: c.why2 }),
+    // 23.11.2026: на квадратном фото rounded-pill рисует тот же круг — тоже верно, со своим пояснением; углы — rounded и rounded-1…9.
+    Object.assign(mk('murabbiy.jpg', 'Murabbiy', ['rounded-circle', 'rounded-pill'], 90), { ask: c.ask1, hints: c.hints1, why: c.why1, okWhy: { 'rounded-pill': c.why1pill } }),
+    Object.assign(mk('jamoa.jpg', 'Jamoa', ['rounded', 'rounded-1', 'rounded-2', 'rounded-3', 'rounded-4', 'rounded-5', 'rounded-6', 'rounded-7', 'rounded-8', 'rounded-9'], 200), { ask: c.ask2, hints: c.hints2, why: c.why2 }),
     Object.assign(mk('jamoa.jpg', 'Jamoa', 'rounded-pill', 200), { ask: c.ask3, hints: c.hints3, why: c.why3 })
   ];
   return <FillRounds p={p} id="t2" c={c} rounds={rounds} docs={{ page: 'Border radius', only: 'sizes' }} type="rounded-by-sample" />;
@@ -10754,11 +10783,11 @@ function T3({ p }) {
   const spinLine = (before) => (f) => [{ k: 's', d: 0, cls: 'b1-line is-hl', parts: clsLineA({ tag: 'div', attrs: [], before, field: f }, [['role', 'status']]) }, hl('s1', 1, '<span class="visually-hidden">Loading…</span>'), hl('s2', 0, '</div>')];
   const body = (cls) => spinH(cls);   // только спиннер: на маленьком телефоне окно страницы низкое, результат должен быть виден
   const rounds = [
-    { kind: 'spin', want: 'spinner-border', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-border'), gz: 1, ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
-    { kind: 'spin', want: 'spinner-grow', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-grow'), gz: 1, ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
-    { kind: 'fg', want: 'fg-danger', line: spinLine('spinner-border'), body: (v) => body('spinner-border ' + v), goal: spinH('spinner-border fg-danger'), gz: 1, ask: c.ask3, hints: c.hints3, why: c.why3, ph: L3('fg-…', 'fg-…', 'fg-…') }
+    { kind: 'spin', want: 'spinner-border', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-border'), gz: 1, only: 'border', ask: c.ask1, hints: c.hints1, why: c.why1, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
+    { kind: 'spin', want: 'spinner-grow', line: spinLine(null), body: (v) => body(v), goal: spinH('spinner-grow'), gz: 1, only: 'grow', ask: c.ask2, hints: c.hints2, why: c.why2, ph: L3('spinner-…', 'spinner-…', 'spinner-…') },
+    { kind: 'fg', want: 'fg-danger', line: spinLine('spinner-border'), body: (v) => body('spinner-border ' + v), goal: spinH('spinner-border fg-danger'), gz: 1, only: 'svariants', ask: c.ask3, hints: c.hints3, why: c.why3, ph: L3('fg-…', 'fg-…', 'fg-…') }
   ];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Spinner', only: 'grow' }} type="spinner" />;
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Spinner', only: 'grow' }} type="spinner" />;   // справка по раунду — only у раунда (23.11.2026)
 }
 
 // =============================================================================
@@ -10833,8 +10862,9 @@ function T4({ p }) {
 // Q1. КАРТИНКА → КОД (4 раунда): круглое фото, фото в экране телефона, кольцо загрузки, серая полоса. Окно справа —
 // честный результат выбранного варианта; у неверного варианта своя причина.
 // =============================================================================
+// Раунд 1: вместо rounded-pill (на квадратном фото — тот же круг, второй верный) — rounded-top (23.11.2026).
 const Q1_ROUNDS = [
-  { opts: ['img-circle', 'rounded', 'rounded-circle', 'rounded-pill'], a: 2, html: (cls) => imgH('murabbiy.jpg', 'img-fluid ' + cls, 'Murabbiy').replace('>', ' style="width:110px">') },
+  { opts: ['img-circle', 'rounded', 'rounded-circle', 'rounded-top'], a: 2, html: (cls) => imgH('murabbiy.jpg', 'img-fluid ' + cls, 'Murabbiy').replace('>', ' style="width:110px">') },
   { opts: ['img-responsive', 'img-fluid', 'img-thumbnail', 'fluid'], a: 1, html: (cls) => imgH('robot.jpg', cls, 'Robot'), vw: PHONE },
   { opts: ['spinner-grow', 'spinner', 'loading', 'spinner-border'], a: 3, html: (cls) => spinH(cls) },
   { opts: ['placeholder col-6', 'placeholder', 'bg-secondary', 'skeleton col-6'], a: 0, html: (cls) => '<p style="margin:0"><span class="' + cls + '"></span></p>' }
@@ -10899,6 +10929,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ — img-responsive (старое имя: фото вылезает), class="spinner" (такого нет: пусто), заглушка
@@ -10931,7 +10965,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -14569,6 +14603,43 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
      (итог: код, умения, «Следующий урок») — дотягивается до её низа */
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+  /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
+  .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
+}
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
 }
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.
@@ -14715,5 +14786,25 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 @media (max-width: 759px) and (max-height: 700px) {
   .r28 .b1-sheet .kz-scene.b1-tri.is-ref:not(.is-done) > .b1-tri-page > .kz-br { --brh: 10dvh; }
+}
+
+/* «Картинка → код» (Q1) на телефоне — во всех уроках 3–11 (23.11.2026, проверка непонятных заданий: окна «Kerak» и
+   «Sizning kodingiz» рядом были полоской, образец не виден, под ними пусто): окна друг под другом во всю ширину и делят
+   высоту сцены; на низком телефоне — без адресной строки. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 { display: grid !important; grid-template-columns: 1fr !important; grid-template-rows: 1fr 1fr !important; gap: 6px !important; align-items: stretch !important; flex: 1 1 auto; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col { display: flex !important; flex-direction: column; justify-content: flex-start !important; min-height: 0; }
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 > .kz-col > .kz-br { flex: 1 1 auto !important; height: auto !important; aspect-ratio: auto !important; min-height: 100px !important; max-height: 30dvh !important; }
+}
+@media (max-width: 759px) and (max-height: 720px) {
+  .r28 .kz-sheet.b1-sheet .kz-scene.b1-pair.b2-q1.b3-q1 .kz-br-tool { display: none; }
+}
+
+/* Низкий телефон (360×640): задание с образцом «Kerak» — справка сайта, образец, код и окно страницы не помещались, сцена
+   наезжала на строку задания (23.11.2026, прогон снимков: уроки 3 · 13, 4 · 8, 5 · 7). Только при высоте до 700 px: справку
+   сайта прячем, если есть образец (подсказки называют слова), у окна страницы — без адресной строки. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene.b1-tri.is-ref > .b1-tri-docs { display: none; }
+  .r28 .kz-sheet.b1-sheet:has(.b2-goal) .kz-scene > .kz-col > .kz-br:not(.b1-docs) .kz-br-tool { display: none; }
 }
 `;

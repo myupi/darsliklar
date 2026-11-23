@@ -339,3 +339,38 @@
   /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
   .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
 }
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
+}

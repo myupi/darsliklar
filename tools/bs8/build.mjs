@@ -1,5 +1,5 @@
 // Сборка урока 8 модуля Bootstrap «Карусель» в облике «Редактор» (20.11.2026).
-//   node tools/bs8/build.mjs   → lessons/bootstrap/08-karusel.jsx
+//   node tools/bs8/build.mjs   → lessons/bootstrap/09-karusel.jsx
 // Исходник — bs8.src.jsx (тексты по /uzbekcha), набор — bs8-kit.jsx (копия набора урока 7 + карусель в окне страницы bsCarousel),
 // похожий сайт Bootstrap — bs8-site.jsx (Install, Alert и Components → Carousel; прочие страницы прежних уроков убраны ради веса),
 // экраны — bs8-screens.jsx, CSS — ../bs1/bs1.css … ../bs6/bs6.css + bs8.css. Облик эталона — общий набор naborRedaktor в gen/.
@@ -38,4 +38,4 @@ naborRedaktor(gen);
 }
 
 mkdirSync(join(root, 'lessons/bootstrap'), { recursive: true });
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs8.src.jsx'), join(root, 'lessons/bootstrap/08-karusel.jsx'), 'bootstrap'], { stdio: 'inherit' });
+execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs8.src.jsx'), join(root, 'lessons/bootstrap/09-karusel.jsx'), 'bootstrap'], { stdio: 'inherit' });

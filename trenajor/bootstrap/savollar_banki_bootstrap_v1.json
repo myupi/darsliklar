@@ -6359,6 +6359,1014 @@
   "block_id": "bootstrap",
   "lesson": 7,
   "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Kafe saytiga tepada menyu satri kerak. Namunasini Bootstrap saytidan olasiz.",
+   "ru": "Сайту кафе нужна строка меню сверху. Пример берёшь с сайта Bootstrap.",
+   "en": "The cafe site needs a menu bar on top. You take the example from the Bootstrap site."
+  },
+  "question_text": {
+   "uz": "Navbar sahifasi qaysi bo'limda?",
+   "ru": "В каком разделе страница Navbar?",
+   "en": "Which section has the Navbar page?"
+  },
+  "vis": null,
+  "options": [
+   {
+    "id": "a",
+    "text": "Utilities"
+   },
+   {
+    "id": "b",
+    "text": "Components"
+   },
+   {
+    "id": "c",
+    "text": "Layout"
+   },
+   {
+    "id": "d",
+    "text": "Forms"
+   }
+  ],
+  "correct_answer": "b",
+  "solution_explanation": {
+   "uz": "Navbar tayyor qism, shuning uchun u Components bo'limida, Menu, Dialog va Pagination yonida. Layout bo'limida esa to'r: Containers va Grid.",
+   "ru": "Navbar — готовый компонент, поэтому он в разделе Components, рядом с Menu, Dialog и Pagination. А в Layout — сетка: Containers и Grid.",
+   "en": "Navbar is a ready-made component, so it’s in Components, next to Menu, Dialog and Pagination. Layout holds the grid: Containers and Grid."
+  },
+  "tags": [
+   "dars07",
+   "site",
+   "navbar"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q02",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Menyu satrida chapda kafe nomi katta va qalin turibdi.",
+   "ru": "В строке меню слева — название кафе, крупное и жирное.",
+   "en": "On the left of the menu bar, the cafe’s name is big and bold."
+  },
+  "question_text": {
+   "uz": "Nomni shunday qilgan class qaysi?",
+   "ru": "Какой class так сделал название?",
+   "en": "Which class made the name look like that?"
+  },
+  "vis": "@htmlvis:{\"page\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Asosiy</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Taomlar</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Manzil</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Главная</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Блюда</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Адрес</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Home</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Dishes</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Address</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\"},\"vw\":800,\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": "nav-link"
+   },
+   {
+    "id": "b",
+    "text": "navbar-nav"
+   },
+   {
+    "id": "c",
+    "text": "navbar-brand"
+   },
+   {
+    "id": "d",
+    "text": "nav-item"
+   }
+  ],
+  "correct_answer": "c",
+  "solution_explanation": {
+   "uz": "navbar-brand sayt nomini logotipdek katta va qalin qiladi. nav-link oddiy havolalar uchun, navbar-nav havolalar ro'yxati uchun, nav-item esa ro'yxat bandi.",
+   "ru": "navbar-brand делает название сайта крупным и жирным, как логотип. nav-link — для обычных ссылок, navbar-nav — для списка ссылок, nav-item — пункт списка.",
+   "en": "navbar-brand makes the site name big and bold, like a logo. nav-link is for ordinary links, navbar-nav for the list of links, nav-item for a list item."
+  },
+  "tags": [
+   "dars07",
+   "navbar-brand"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q03",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "nav tegida md:navbar-expand yozilgan.",
+   "ru": "У тега nav написано md:navbar-expand.",
+   "en": "The nav tag has md:navbar-expand."
+  },
+  "question_text": {
+   "uz": "Bu so'z nima qiladi?",
+   "ru": "Что делает это слово?",
+   "en": "What does this word do?"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\"},\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": {
+     "uz": "Keng ekranda havolalarni qatorga qo'yadi",
+     "ru": "На широком экране ставит ссылки в ряд",
+     "en": "Lines the links up on a wide screen"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
+     "uz": "Havolalarni sahifa o'rtasiga qo'yadi",
+     "ru": "Ставит ссылки посередине страницы",
+     "en": "Puts the links in the page’s middle"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "Faqat telefonda menyuni ko'rsatadi",
+     "ru": "Показывает меню только на телефоне",
+     "en": "Shows the menu only on a phone"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "Menyu satrini qora rangga bo'yaydi",
+     "ru": "Красит строку меню в тёмный цвет",
+     "en": "Paints the menu bar a dark color"
+    }
+   }
+  ],
+  "correct_answer": "a",
+  "solution_explanation": {
+   "uz": "md:navbar-expand menyu satri 768 pikseldan keng bo'lsa, havolalarni qatorga qo'yadi. Torroq ekranda ular ☰ tugmasi ortidagi qutiga yashirinadi. md esa xuddi md:col-4 kabi.",
+   "ru": "md:navbar-expand ставит ссылки в ряд, если строка меню шире 768 пикселей. На экране уже они прячутся в ящик за кнопкой ☰. md — как в md:col-4.",
+   "en": "md:navbar-expand lines the links up when the menu bar is wider than 768 pixels. On a narrower screen they hide in the drawer behind ☰. md is the same as in md:col-4."
+  },
+  "tags": [
+   "dars07",
+   "md:navbar-expand"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q04",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Telefonda ☰ ni bosishsa, havolalar qutisi chiqmayapti. Sahifa chiroyli, link qatori bor.",
+   "ru": "На телефоне при нажатии ☰ ящик со ссылками не выезжает. Страница красивая, строка link есть.",
+   "en": "On a phone, tapping ☰ doesn’t slide out the links drawer. The page looks nice and has the link line."
+  },
+  "question_text": {
+   "uz": "Nimasi yetishmayapti?",
+   "ru": "Чего не хватает?",
+   "en": "What’s missing?"
+  },
+  "vis": "@htmlvis:{\"page\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Asosiy</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Taomlar</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Manzil</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Главная</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Блюда</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Адрес</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Home</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Dishes</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Address</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\"},\"vw\":360,\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": {
+     "uz": "Havolalardagi nav-link",
+     "ru": "nav-link у ссылок",
+     "en": "nav-link on the links"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
+     "uz": "md:navbar-expand so'zi",
+     "ru": "Слова md:navbar-expand",
+     "en": "The word md:navbar-expand"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "head-dagi ikkinchi link qatori",
+     "ru": "Второй строки link в head",
+     "en": "A second link line in head"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "body oxirida script qatori",
+     "ru": "Строки script в конце body",
+     "en": "The script line at the end of body"
+    }
+   }
+  ],
+  "correct_answer": "d",
+  "solution_explanation": {
+   "uz": "Qutini Bootstrap skripti ochadi, uni body oxiridagi script qatori ulaydi. Sahifa chiroyli bo'lsa, CSS ulangan. md:navbar-expand esa keng ekranga oid.",
+   "ru": "Ящик открывает скрипт Bootstrap, а подключает его строка script в конце body. Раз страница красивая, CSS подключён. А md:navbar-expand — про широкий экран.",
+   "en": "Bootstrap’s script opens the drawer, and the script line at the end of body connects it. If the page looks nice, the CSS is in. md:navbar-expand is about wide screens."
+  },
+  "tags": [
+   "dars07",
+   "script",
+   "drawer"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q05",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Menyu satri qora, yozuvlari oq.",
+   "ru": "Строка меню тёмная, надписи светлые.",
+   "en": "The menu bar is dark with light labels."
+  },
+  "question_text": {
+   "uz": "nav tegida nima yozilgan?",
+   "ru": "Что написано у тега nav?",
+   "en": "What is written on the nav tag?"
+  },
+  "vis": "@htmlvis:{\"page\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Asosiy</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Taomlar</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Manzil</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Главная</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Блюда</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Адрес</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\">Home</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Dishes</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\">Address</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\"},\"vw\":800,\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": "style=\"dark\""
+   },
+   {
+    "id": "b",
+    "text": "class=\"bg-dark\""
+   },
+   {
+    "id": "c",
+    "text": "data-bs-theme=\"dark\""
+   },
+   {
+    "id": "d",
+    "text": "class=\"navbar-dark\""
+   }
+  ],
+  "correct_answer": "c",
+  "solution_explanation": {
+   "uz": "Oltinchi versiyada qora satr data-bs-theme=\"dark\" bilan yoziladi, bu saytdagi Dark navbar bo'limida. navbar-dark va bg-dark beshinchi versiyaning eski nomlari, oltinchisida ishlamaydi.",
+   "ru": "В шестой версии тёмная строка — это data-bs-theme=\"dark\", раздел Dark navbar на сайте. navbar-dark и bg-dark — старые имена из 5-й версии, в 6-й не работают.",
+   "en": "In version six a dark bar is data-bs-theme=\"dark\", the Dark navbar section of the site. navbar-dark and bg-dark are old version 5 names; they don’t work in version 6."
+  },
+  "tags": [
+   "dars07",
+   "dark",
+   "theme"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q06",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "hard",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Eski darslikda: class=\"navbar navbar-expand-lg\". Havolalar 1024 pikseldan qatorga chiqishi kerak.",
+   "ru": "В старом учебнике: class=\"navbar navbar-expand-lg\". Ссылки должны вставать в ряд с 1024 пикселей.",
+   "en": "An old tutorial says class=\"navbar navbar-expand-lg\". The links should line up from 1024 pixels."
+  },
+  "question_text": {
+   "uz": "Oltinchi versiyada qanday yoziladi?",
+   "ru": "Как это пишется в шестой версии?",
+   "en": "How is it written in version six?"
+  },
+  "vis": null,
+  "options": [
+   {
+    "id": "a",
+    "text": "navbar-lg"
+   },
+   {
+    "id": "b",
+    "text": "lg:navbar-expand"
+   },
+   {
+    "id": "c",
+    "text": "lg-navbar-expand"
+   },
+   {
+    "id": "d",
+    "text": "navbar-expand:lg"
+   }
+  ],
+  "correct_answer": "b",
+  "solution_explanation": {
+   "uz": "Oltinchi versiyada ekran o'lchami oldinda, ikki nuqta bilan: lg:navbar-expand. Xuddi lg:col-4 kabi. lg — 1024 piksel, md — 768 piksel.",
+   "ru": "В шестой версии размер экрана впереди, через двоеточие: lg:navbar-expand. Как в lg:col-4. lg — 1024 пикселя, md — 768.",
+   "en": "In version six the screen size comes first, with a colon: lg:navbar-expand. Just like lg:col-4. lg is 1024 pixels, md is 768."
+  },
+  "tags": [
+   "dars07",
+   "old-name",
+   "expand"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q07",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Mehmon hozir Asosiy sahifada. Bu havola boshqalardan yorqinroq turishi kerak.",
+   "ru": "Гость сейчас на странице «Главная». Эта ссылка должна быть ярче остальных.",
+   "en": "The visitor is on the Home page now. That link should stand out brighter than the others."
+  },
+  "question_text": {
+   "uz": "Bo'sh joyga nima yoziladi?",
+   "ru": "Что пишется на пустое место?",
+   "en": "What goes in the empty spot?"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link ___\\\" href=\\\"#\\\">Asosiy</a>\\n  </li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Taomlar</a>\\n  </li>\\n</ul>\",\"ru\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link ___\\\" href=\\\"#\\\">Главная</a>\\n  </li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Блюда</a>\\n  </li>\\n</ul>\",\"en\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link ___\\\" href=\\\"#\\\">Home</a>\\n  </li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Dishes</a>\\n  </li>\\n</ul>\"},\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": "active"
+   },
+   {
+    "id": "b",
+    "text": "current"
+   },
+   {
+    "id": "c",
+    "text": "open"
+   },
+   {
+    "id": "d",
+    "text": "selected"
+   }
+  ],
+  "correct_answer": "a",
+  "solution_explanation": {
+   "uz": "active ochiq sahifa havolasini ajratadi, xuddi xaritadagi «siz shu yerdasiz» belgisi. U nav-link yoniga yoziladi. current, selected va open so'zlarini Bootstrap bilmaydi.",
+   "ru": "active выделяет ссылку открытой страницы, как метка «ты здесь» на карте. Пишется рядом с nav-link. Слов current, selected и open Bootstrap не знает.",
+   "en": "active marks the open page’s link, like a “you are here” map pin. It goes next to nav-link. Bootstrap doesn’t know current, selected or open."
+  },
+  "tags": [
+   "dars07",
+   "active",
+   "nav-link"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q08",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Kafe taomlari uch sahifaga bo'lingan. Raqamlar bir qatorda, tugmachalardek turishi kerak.",
+   "ru": "Блюда кафе разбиты на три страницы. Номера должны стоять в один ряд, как кнопочки.",
+   "en": "The cafe’s dishes are split into three pages. The numbers should sit in one row like little buttons."
+  },
+  "question_text": {
+   "uz": "ul tegiga qaysi so'z kerak? (yonida justify-content-center ham bor)",
+   "ru": "Какое слово нужно тегу ul? (рядом уже есть justify-content-center)",
+   "en": "Which word does the ul tag need? (justify-content-center is already there)"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<ul class=\\\"___ justify-content-center\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"___ justify-content-center\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"___ justify-content-center\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\"},\"page\":{\"uz\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Oldingi</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Keyingi</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Назад</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Вперёд</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Previous</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Next</a></li>\\n</ul>\"},\"vw\":360,\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": "navbar-nav"
+   },
+   {
+    "id": "b",
+    "text": "page-item"
+   },
+   {
+    "id": "c",
+    "text": "page-link"
+   },
+   {
+    "id": "d",
+    "text": "pagination"
+   }
+  ],
+  "correct_answer": "d",
+  "solution_explanation": {
+   "uz": "pagination raqamlarni bir qatorga, yopishgan tugmachalarga aylantiradi. page-item li tegiga, page-link a tegiga yoziladi. navbar-nav esa menyu satri havolalari uchun.",
+   "ru": "pagination ставит номера в один ряд сомкнутыми кнопочками. page-item пишут тегу li, page-link — тегу a. А navbar-nav — для ссылок строки меню.",
+   "en": "pagination puts the numbers in one row of joined buttons. page-item goes on the li tag, page-link on the a tag. navbar-nav is for the menu bar’s links."
+  },
+  "tags": [
+   "dars07",
+   "pagination"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q09",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Raqamlarda 2 ko'k: mehmon 2-sahifada. Saytdagi Active misolida active so'zi bitta tegda turibdi.",
+   "ru": "В номерах 2 — синяя: гость на странице 2. В примере Active на сайте слово active стоит у одного тега.",
+   "en": "Number 2 is blue: the visitor is on page 2. In the site’s Active example the word active sits on one tag."
+  },
+  "question_text": {
+   "uz": "active qaysi tegga yoziladi?",
+   "ru": "Какому тегу пишут active?",
+   "en": "Which tag gets active?"
+  },
+  "vis": "@htmlvis:{\"page\":{\"uz\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Oldingi</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Keyingi</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Назад</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Вперёд</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"pagination justify-content-center\\\">\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Previous</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item active\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n  <li class=\\\"page-item\\\"><a class=\\\"page-link\\\" href=\\\"#\\\">Next</a></li>\\n</ul>\"},\"vw\":360,\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": {
+     "uz": "ul tegiga, pagination yoniga",
+     "ru": "Тегу ul, рядом с pagination",
+     "en": "The ul tag, next to pagination"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
+     "uz": "a tegiga, page-link o'rniga",
+     "ru": "Тегу a вместо page-link",
+     "en": "The a tag, instead of page-link"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "2-raqamning li tegiga, page-item yoniga",
+     "ru": "Тегу li номера 2, рядом с page-item",
+     "en": "The li of number 2, next to page-item"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "Hamma li teglariga birdaniga",
+     "ru": "Всем тегам li сразу",
+     "en": "All the li tags at once"
+    }
+   }
+  ],
+  "correct_answer": "c",
+  "solution_explanation": {
+   "uz": "Saytdagi misolda active ochiq sahifaning li tegida: page-item active. ul-ga yozilsa, hech bir raqam ajralmaydi, page-link-ni o'chirsa esa raqam tugmachaligini yo'qotadi.",
+   "ru": "В примере сайта active стоит у тега li открытой страницы: page-item active. У ul ни один номер не выделится, а без page-link номер перестанет быть кнопочкой.",
+   "en": "In the site example active sits on the open page’s li tag: page-item active. On the ul no number stands out, and without page-link the number stops being a button."
+  },
+  "tags": [
+   "dars07",
+   "pagination",
+   "active"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q10",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "hard",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "☰ tugmasi bosilganda id si menyu bo'lgan quti chiqishi kerak.",
+   "ru": "По нажатию ☰ должен выезжать ящик с id menyu.",
+   "en": "Tapping ☰ should slide out the drawer whose id is menyu."
+  },
+  "question_text": {
+   "uz": "data-bs-target-ga nima yoziladi?",
+   "ru": "Что пишется в data-bs-target?",
+   "en": "What goes in data-bs-target?"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"___\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"___\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"___\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\"},\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": ".menyu"
+   },
+   {
+    "id": "b",
+    "text": "#menyu"
+   },
+   {
+    "id": "c",
+    "text": "menyu"
+   },
+   {
+    "id": "d",
+    "text": "drawer"
+   }
+  ],
+  "correct_answer": "b",
+  "solution_explanation": {
+   "uz": "id-ga ishora qilganda oldiga panjara qo'yiladi: #menyu, xuddi CSS-dagidek. Panjarasiz yoki nuqta bilan tugma qutini topmaydi, drawer esa qutining class-i.",
+   "ru": "Когда указываешь на id, впереди ставится решётка: #menyu, как в CSS. Без решётки или с точкой кнопка не найдёт ящик, а drawer — это class ящика.",
+   "en": "Pointing to an id needs a hash in front: #menyu, as in CSS. Without the hash or with a dot the button won’t find the drawer, and drawer is the drawer’s class."
+  },
+  "tags": [
+   "dars07",
+   "data-bs-target",
+   "drawer"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q11",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "single_choice",
+  "context": {
+   "uz": "Saytdan Navbar namunasini nusxalab qo'ydingiz. Unda Navbar, Home va Link so'zlari bor.",
+   "ru": "Ты вставил пример Navbar с сайта. В нём слова Navbar, Home и Link.",
+   "en": "You pasted the Navbar example from the site. It has the words Navbar, Home and Link."
+  },
+  "question_text": {
+   "uz": "Endi nima qilasiz?",
+   "ru": "Что делаешь дальше?",
+   "en": "What do you do next?"
+  },
+  "vis": null,
+  "options": [
+   {
+    "id": "a",
+    "text": {
+     "uz": "Yozuvlarni o'z nom va bo'limlarimga almashtiraman",
+     "ru": "Меняю надписи на название и разделы",
+     "en": "Swap the labels for the name and sections"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
+     "uz": "drawer qatorlarini butunlay o'chiraman",
+     "ru": "Полностью удаляю строки с drawer",
+     "en": "Remove the drawer lines completely"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "class lardagi navbar so'zlarini o'chiraman",
+     "ru": "Удаляю слова navbar из всех class",
+     "en": "Delete the navbar words from every class"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "Hech narsani o'zgartirmayman",
+     "ru": "Ничего не меняю, оставляю как есть",
+     "en": "Change nothing and leave it as is"
+    }
+   }
+  ],
+  "correct_answer": "a",
+  "solution_explanation": {
+   "uz": "Namunadagi yozuvlar faqat misol: ularni o'zingizniki bilan almashtirasiz. class-lar va drawer esa menyu satrini ishlatadi, ularni o'chirsangiz, satr buziladi.",
+   "ru": "Надписи в примере — только образец: их меняют на свои. А class и drawer заставляют строку меню работать; если их удалить, строка сломается.",
+   "en": "The labels in the example are only samples: you replace them with your own. The classes and drawer make the menu bar work; delete them and the bar breaks."
+  },
+  "tags": [
+   "dars07",
+   "site",
+   "copy-adapt"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q12",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "text_input",
+  "context": {
+   "uz": "Kafe nomi menyu satrida oddiy havoladek kichik. U logotipdek katta va qalin bo'lsin.",
+   "ru": "Название кафе в строке меню мелкое, как обычная ссылка. Пусть будет крупным и жирным, как логотип.",
+   "en": "The cafe name in the menu bar is small like an ordinary link. Make it big and bold like a logo."
+  },
+  "question_text": {
+   "uz": "Nomning class-iga bitta so'z yozing.",
+   "ru": "Впиши одно слово в class названия.",
+   "en": "Type one word in the name’s class."
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"___\\\" href=\\\"#\\\">Kodi kafesi</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"___\\\" href=\\\"#\\\">Кафе Коди</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"___\\\" href=\\\"#\\\">Kodi cafe</a>\\n  <button class=\\\"navbar-toggler\\\"\\n    data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"#menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\"},\"bs\":true}",
+  "options": [],
+  "correct_answer": "navbar-brand",
+  "accepted_answers": [
+   "navbar-brand"
+  ],
+  "solution_explanation": {
+   "uz": "navbar-brand sayt nomini menyu satrida katta va qalin qiladi. Havolalarga esa nav-link yoziladi.",
+   "ru": "navbar-brand делает название сайта в строке меню крупным и жирным. А ссылкам пишут nav-link.",
+   "en": "navbar-brand makes the site name in the menu bar big and bold. The links get nav-link."
+  },
+  "tags": [
+   "dars07",
+   "navbar-brand"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q13",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "text_input",
+  "context": {
+   "uz": "Ikkinchi havola ko'k va tagiga chizilgan, boshqalariga o'xshamaydi.",
+   "ru": "Вторая ссылка синяя и подчёркнутая, не похожа на остальные.",
+   "en": "The second link is blue and underlined, unlike the others."
+  },
+  "question_text": {
+   "uz": "Uning class-iga bitta so'z yozing.",
+   "ru": "Впиши одно слово в её class.",
+   "en": "Type one word in its class."
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Asosiy</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">Taomlar</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Manzil</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Главная</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">Блюда</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Адрес</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"nav navbar-nav\\\">\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Home</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">Dishes</a></li>\\n  <li class=\\\"nav-item\\\">\\n    <a class=\\\"nav-link\\\" href=\\\"#\\\">Address</a></li>\\n</ul>\"},\"bs\":true}",
+  "options": [],
+  "correct_answer": "nav-link",
+  "accepted_answers": [
+   "nav-link"
+  ],
+  "solution_explanation": {
+   "uz": "Menyu satrining har bir havolasiga nav-link yoziladi: u chiziqni olib tashlaydi va havolaga menyu rangini beradi. nav-item esa li tegida.",
+   "ru": "Каждой ссылке строки меню пишут nav-link: он убирает подчёркивание и даёт цвет меню. А nav-item — у тега li.",
+   "en": "Every menu bar link gets nav-link: it removes the underline and gives it the menu color. nav-item is on the li tag."
+  },
+  "tags": [
+   "dars07",
+   "nav-link"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q14",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "text_input",
+  "context": {
+   "uz": "2 raqami tugmacha emas, oddiy ko'k havola bo'lib qoldi.",
+   "ru": "Номер 2 не кнопочка, а простая синяя ссылка.",
+   "en": "Number 2 isn’t a little button, just a plain blue link."
+  },
+  "question_text": {
+   "uz": "Uning a tegiga bitta so'z yozing.",
+   "ru": "Впиши одно слово для его тега a.",
+   "en": "Type one word for its a tag."
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"___\\\" href=\\\"#\\\">2</a></li>\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">3</a></li>\\n</ul>\"},\"bs\":true}",
+  "options": [],
+  "correct_answer": "page-link",
+  "accepted_answers": [
+   "page-link"
+  ],
+  "solution_explanation": {
+   "uz": "Raqamlar a tegiga page-link yoziladi: u raqamni ramkali tugmachaga aylantiradi. page-item li tegiga, pagination esa ul tegiga.",
+   "ru": "Тегу a номера пишут page-link: он делает номер кнопочкой в рамке. page-item — тегу li, а pagination — тегу ul.",
+   "en": "The number’s a tag gets page-link: it turns the number into a framed button. page-item goes on li, and pagination on ul."
+  },
+  "tags": [
+   "dars07",
+   "page-link"
+  ],
+  "status": "Approved",
+  "source_provenance": "original",
+  "mono": true
+ },
+ {
+  "question_id": "bootstrap_l07_q15",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "assemble",
+  "context": {
+   "uz": "Havolalar 768 pikseldan keng ekranda qatorga chiqsin, torroqda ☰ ortiga yashirinsin.",
+   "ru": "Ссылки встают в ряд на экране шире 768 пикселей, а на более узком прячутся за ☰.",
+   "en": "The links line up on screens wider than 768 pixels and hide behind ☰ on narrower ones."
+  },
+  "question_text": {
+   "uz": "Bo'laklarni bosib, so'zni yig'ing",
+   "ru": "Нажимай кусочки и собери слово",
+   "en": "Tap the pieces to build the word"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<nav class=\\\"navbar ___ bg-1\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n    …\\n  </div>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar ___ bg-1\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n    …\\n  </div>\\n</nav>\",\"en\":\"<nav class=\\\"navbar ___ bg-1\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n    …\\n  </div>\\n</nav>\"},\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": "-"
+   },
+   {
+    "id": "b",
+    "text": ":"
+   },
+   {
+    "id": "c",
+    "text": "md"
+   },
+   {
+    "id": "d",
+    "text": "navbar-dark"
+   },
+   {
+    "id": "e",
+    "text": "navbar-expand-md"
+   },
+   {
+    "id": "f",
+    "text": "navbar-expand"
+   }
+  ],
+  "correct_answer": "c,b,f",
+  "accepted_answers": [
+   "c,b,f"
+  ],
+  "solution_explanation": {
+   "uz": "Oldin ekran o'lchami md, keyin ikki nuqta, keyin navbar-expand. navbar-expand-md va navbar-dark beshinchi versiyaning eski nomlari.",
+   "ru": "Сначала размер экрана md, потом двоеточие, потом navbar-expand. navbar-expand-md и navbar-dark — старые имена из 5-й версии.",
+   "en": "First the screen size md, then a colon, then navbar-expand. navbar-expand-md and navbar-dark are old version 5 names."
+  },
+  "tags": [
+   "dars07",
+   "md:navbar-expand"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q16",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "assemble",
+  "context": {
+   "uz": "Mehmon 2-sahifada. Saytdagi Active misolidagidek, 2 raqami ko'k bo'lsin.",
+   "ru": "Гость на странице 2. Как в примере Active на сайте, номер 2 должен быть синим.",
+   "en": "The visitor is on page 2. Like the site’s Active example, number 2 should be blue."
+  },
+  "question_text": {
+   "uz": "Bo'laklarni bosib, 2 raqamining li tegini yig'ing",
+   "ru": "Нажимай кусочки и собери тег li номера 2",
+   "en": "Tap the pieces to build the li tag for number 2"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  ___\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n</ul>\",\"ru\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  ___\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n</ul>\",\"en\":\"<ul class=\\\"pagination\\\">\\n  <li class=\\\"page-item\\\">\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">1</a></li>\\n  ___\\n    <a class=\\\"page-link\\\" href=\\\"#\\\">2</a></li>\\n</ul>\"},\"bs\":true}",
+  "options": [
+   {
+    "id": "a",
+    "text": " class=\"pagination\""
+   },
+   {
+    "id": "b",
+    "text": " class=\"page-item"
+   },
+   {
+    "id": "c",
+    "text": "<li"
+   },
+   {
+    "id": "d",
+    "text": " page-link\""
+   },
+   {
+    "id": "e",
+    "text": ">"
+   },
+   {
+    "id": "f",
+    "text": " active\""
+   }
+  ],
+  "correct_answer": "c,b,f,e",
+  "accepted_answers": [
+   "c,b,f,e"
+  ],
+  "solution_explanation": {
+   "uz": "Saytdagi misolda active ochiq sahifaning li tegida, page-item yonida turadi. pagination esa ul uchun.",
+   "ru": "В примере сайта active стоит у тега li открытой страницы, рядом с page-item. А pagination — для ul.",
+   "en": "In the site example active sits on the open page’s li tag, next to page-item. pagination is for the ul."
+  },
+  "tags": [
+   "dars07",
+   "pagination",
+   "active"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q17",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "medium",
+  "question_type": "find_error",
+  "context": {
+   "uz": "Telefonda ☰ bosilganda quti chiqmayapti. script qatori joyida.",
+   "ru": "На телефоне по нажатию ☰ ящик не выезжает. Строка script на месте.",
+   "en": "On a phone tapping ☰ doesn’t slide out the drawer. The script line is in place."
+  },
+  "question_text": {
+   "uz": "Qaysi qatorda xato bor? Shu qatorni bosing",
+   "ru": "В какой строке ошибка? Нажми на эту строку",
+   "en": "Which line has the mistake? Tap that line"
+  },
+  "vis": "@htmlvis:{\"code\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi kafesi</a>\\n  <button class=\\\"navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Кафе Коди</a>\\n  <button class=\\\"navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\"\\n  data-bs-theme=\\\"dark\\\">\\n  <a class=\\\"navbar-brand\\\" href=\\\"#\\\">Kodi cafe</a>\\n  <button class=\\\"navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\"\\n    data-bs-target=\\\"menyu\\\">☰</button>\\n  <dialog class=\\\"drawer\\\" id=\\\"menyu\\\">…</dialog>\\n</nav>\"},\"bs\":true}",
+  "options": [],
+  "correct_answer": "5",
+  "accepted_answers": [
+   "5"
+  ],
+  "solution_explanation": {
+   "uz": "5-qatorda data-bs-target=\"menyu\" panjarasiz yozilgan, shuning uchun tugma qutini topmaydi. To'g'risi: #menyu.",
+   "ru": "В строке 5 data-bs-target=\"menyu\" написан без решётки, поэтому кнопка не находит ящик. Правильно: #menyu.",
+   "en": "Line 5 has data-bs-target=\"menyu\" without a hash, so the button can’t find the drawer. Correct: #menyu."
+  },
+  "tags": [
+   "dars07",
+   "data-bs-target",
+   "hash"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l07_q18",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 7,
+  "topic": {
+   "uz": "Navbar va Pagination",
+   "ru": "Navbar и Pagination",
+   "en": "Navbar and Pagination"
+  },
+  "difficulty": "easy",
+  "question_type": "tap_page",
+  "context": {
+   "uz": "Menyu satrida kafe nomi va uchta havola.",
+   "ru": "В строке меню — название кафе и три ссылки.",
+   "en": "The menu bar has the cafe name and three links."
+  },
+  "question_text": {
+   "uz": "Qaysi havolada active bor? Ustiga bosing",
+   "ru": "У какой ссылки active? Нажми на неё",
+   "en": "Which link has active? Tap it"
+  },
+  "vis": "@htmlvis:{\"page\":{\"uz\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\" data-t=\\\"a\\\">Kodi kafesi</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"c\\\">Asosiy</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\" data-t=\\\"b\\\">Taomlar</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"d\\\">Manzil</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"ru\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\" data-t=\\\"a\\\">Кафе Коди</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"c\\\">Главная</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\" data-t=\\\"b\\\">Блюда</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"d\\\">Адрес</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\",\"en\":\"<nav class=\\\"navbar md:navbar-expand bg-1\\\" data-bs-theme=\\\"dark\\\">\\n  <div class=\\\"container-fluid\\\">\\n    <a class=\\\"navbar-brand\\\" href=\\\"#\\\" data-t=\\\"a\\\">Kodi cafe</a>\\n    <button class=\\\"btn-icon navbar-toggler\\\" data-bs-toggle=\\\"drawer\\\" data-bs-target=\\\"#menyu\\\"><span class=\\\"navbar-toggler-icon\\\"></span></button>\\n    <dialog class=\\\"drawer drawer-end\\\" id=\\\"menyu\\\"><div class=\\\"drawer-body\\\">\\n      <ul class=\\\"nav navbar-nav\\\">\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"c\\\">Home</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link active\\\" href=\\\"#\\\" data-t=\\\"b\\\">Dishes</a></li>\\n        <li class=\\\"nav-item\\\"><a class=\\\"nav-link\\\" href=\\\"#\\\" data-t=\\\"d\\\">Address</a></li>\\n      </ul>\\n    </div></dialog>\\n  </div>\\n</nav>\"},\"vw\":800,\"bs\":true}",
+  "options": [],
+  "correct_answer": "b",
+  "accepted_answers": [
+   "b"
+  ],
+  "solution_explanation": {
+   "uz": "active havolani yorqinroq qiladi: mehmon hozir shu sahifada. Qolgan havolalar xiraroq, kafe nomi esa navbar-brand.",
+   "ru": "active делает ссылку ярче: гость сейчас на этой странице. Остальные ссылки бледнее, а название кафе — navbar-brand.",
+   "en": "active makes a link brighter: the visitor is on that page now. The other links are dimmer, and the cafe name is navbar-brand."
+  },
+  "tags": [
+   "dars07",
+   "active",
+   "nav-link"
+  ],
+  "status": "Approved",
+  "source_provenance": "original"
+ },
+ {
+  "question_id": "bootstrap_l08_q01",
+  "module": "bootstrap",
+  "block_id": "bootstrap",
+  "lesson": 8,
+  "topic": {
    "uz": "Formalar",
    "ru": "Формы",
    "en": "Forms"
@@ -6379,29 +7387,29 @@
   "options": [
    {
     "id": "a",
-    "text": "date-control"
+    "text": "form-label"
    },
    {
     "id": "b",
-    "text": "form-control"
-   },
-   {
-    "id": "c",
     "text": "form-date"
    },
    {
+    "id": "c",
+    "text": "form-control"
+   },
+   {
     "id": "d",
-    "text": "form-label"
+    "text": "date-control"
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "type date bo'lsa ham, bu baribir input, demak form-control. Bootstrap 6 da har bir maydon turiga alohida so'z yo'q, form-label esa yozuv uchun.",
    "ru": "Даже с type date это всё равно input, значит — form-control. Отдельных слов для каждого вида поля в Bootstrap 6 нет, а form-label — для подписи.",
    "en": "Even with type date it is still an input, so it gets form-control. Bootstrap 6 has no separate word for each kind of field, and form-label is for the caption."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "date"
   ],
@@ -6410,10 +7418,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q02",
+  "question_id": "bootstrap_l08_q02",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6439,25 +7447,25 @@
    },
    {
     "id": "b",
-    "text": "form-check"
+    "text": "check"
    },
    {
     "id": "c",
-    "text": "check"
+    "text": "form-check"
    },
    {
     "id": "d",
     "text": "form-checkbox"
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Galochkaning so'zi qisqa: check. checkbox — type qiymati, class emas. form-check esa beshinchi versiyaning nomi, oltinchisida ishlamaydi.",
    "ru": "Слово галочки короткое: check. checkbox — это значение type, а не class. А form-check — старое имя из 5-й версии, в 6-й не работает.",
    "en": "The checkbox word is short: check. checkbox is the type value, not a class. form-check is an old name from version 5; it does not work in version 6."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "check"
   ],
   "status": "Approved",
@@ -6465,10 +7473,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q03",
+  "question_id": "bootstrap_l08_q03",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6490,29 +7498,29 @@
   "options": [
    {
     "id": "a",
-    "text": "Forms → Switch"
-   },
-   {
-    "id": "b",
-    "text": "Forms → Form control"
-   },
-   {
-    "id": "c",
     "text": "Utilities → Colors"
    },
    {
-    "id": "d",
+    "id": "b",
     "text": "Components → Button"
+   },
+   {
+    "id": "c",
+    "text": "Forms → Form control"
+   },
+   {
+    "id": "d",
+    "text": "Forms → Switch"
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "Formaning hamma qismi Forms bo'limida: maydonlar Form control sahifasida, o'tkazgich esa o'z sahifasida — Switch. Components → Button tugmalar uchun.",
    "ru": "Всё для форм — в разделе Forms: поля на странице Form control, а у переключателя своя страница — Switch. Components → Button — для кнопок.",
    "en": "Everything for forms is in the Forms section: fields are on the Form control page, and the switch has its own page, Switch. Components → Button is for buttons."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "sayt",
    "switch"
   ],
@@ -6520,10 +7528,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q04",
+  "question_id": "bootstrap_l08_q04",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6545,29 +7553,29 @@
   "options": [
    {
     "id": "a",
-    "text": "form-control"
+    "text": "btn-solid theme-primary"
    },
    {
     "id": "b",
-    "text": "btn btn-primary"
-   },
-   {
-    "id": "c",
     "text": "theme-primary"
    },
    {
+    "id": "c",
+    "text": "btn btn-primary"
+   },
+   {
     "id": "d",
-    "text": "btn-solid theme-primary"
+    "text": "form-control"
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "Formadagi tugma ham oddiy Bootstrap tugmasi: ikki so'z, uslub btn-solid va rang theme-primary. btn-primary — beshinchi versiyaning nomi, form-control esa maydonlar uchun.",
    "ru": "Кнопка формы — обычная кнопка Bootstrap: два слова, стиль btn-solid и цвет theme-primary. btn-primary — старое имя из 5-й версии, а form-control — для полей.",
    "en": "A form button is a normal Bootstrap button: two words, the style btn-solid and the color theme-primary. btn-primary is a version 5 name, and form-control is for fields."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "btn-solid",
    "theme-primary"
   ],
@@ -6576,10 +7584,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q05",
+  "question_id": "bootstrap_l08_q05",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6618,28 +7626,28 @@
    {
     "id": "c",
     "text": {
-     "uz": "form-control maydonga emas, yozuvga yozilgan",
-     "ru": "form-control стоит у подписи, а не у поля",
-     "en": "form-control is on the caption, not the field"
+     "uz": "label tegiga class yozib bo'lmaydi",
+     "ru": "у тега label не бывает class",
+     "en": "a label tag can’t have a class"
     }
    },
    {
     "id": "d",
     "text": {
-     "uz": "label tegiga class yozib bo'lmaydi",
-     "ru": "у тега label не бывает class",
-     "en": "a label tag can’t have a class"
+     "uz": "form-control maydonga emas, yozuvga yozilgan",
+     "ru": "form-control стоит у подписи, а не у поля",
+     "en": "form-control is on the caption, not the field"
     }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "class qaysi tegda tursa, o'sha narsa o'zgaradi. form-control label tegida, shuning uchun yozuv ramkali bo'ldi. Uning joyi input tegida, yozuvga esa form-label kerak.",
    "ru": "Меняется то, у какого тега стоит class. form-control у label — вот подпись и получила рамку. Его место — у input, а подписи нужен form-label.",
    "en": "The tag with the class is the one that changes. form-control is on the label, so the caption got the border. It belongs on the input, and the caption needs form-label."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "label"
   ],
@@ -6647,10 +7655,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q06",
+  "question_id": "bootstrap_l08_q06",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6673,9 +7681,9 @@
    {
     "id": "a",
     "text": {
-     "uz": "Hech narsa: hammasi o'zgaradi",
-     "ru": "ничего: меняется всё",
-     "en": "nothing: everything changes"
+     "uz": "Email address degan yozuv",
+     "ru": "подпись Email address",
+     "en": "the caption Email address"
     }
    },
    {
@@ -6689,17 +7697,17 @@
    {
     "id": "c",
     "text": {
-     "uz": "name@example.com namunasi",
-     "ru": "образец name@example.com",
-     "en": "the sample name@example.com"
+     "uz": "Hech narsa: hammasi o'zgaradi",
+     "ru": "ничего: меняется всё",
+     "en": "nothing: everything changes"
     }
    },
    {
     "id": "d",
     "text": {
-     "uz": "Email address degan yozuv",
-     "ru": "подпись Email address",
-     "en": "the caption Email address"
+     "uz": "name@example.com namunasi",
+     "ru": "образец name@example.com",
+     "en": "the sample name@example.com"
     }
    }
   ],
@@ -6710,7 +7718,7 @@
    "en": "The Bootstrap words stay: they make the field look nice. The English caption and the sample in placeholder are replaced with our own."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "sayt",
    "moslash"
   ],
@@ -6718,10 +7726,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q07",
+  "question_id": "bootstrap_l08_q07",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6744,44 +7752,44 @@
    {
     "id": "a",
     "text": {
-     "uz": "Bitta: form-control uchalasiga",
-     "ru": "одно: form-control для всех трёх",
-     "en": "one: form-control for all three"
-    }
-   },
-   {
-    "id": "b",
-    "text": {
-     "uz": "Uchta: har bir maydonga o'z so'zi",
-     "ru": "три: каждому полю своё слово",
-     "en": "three: each field has its own word"
-    }
-   },
-   {
-    "id": "c",
-    "text": {
      "uz": "Bitta: form tegiga form-control",
      "ru": "одно: form-control у тега form",
      "en": "one: form-control on the form tag"
     }
    },
    {
-    "id": "d",
+    "id": "b",
     "text": {
      "uz": "Ikkita: select uchun form-select",
      "ru": "два: для select отдельно form-select",
      "en": "two: form-select just for select"
     }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "Bitta: form-control uchalasiga",
+     "ru": "одно: form-control для всех трёх",
+     "en": "one: form-control for all three"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "Uchta: har bir maydonga o'z so'zi",
+     "ru": "три: каждому полю своё слово",
+     "en": "three: each field has its own word"
+    }
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "Oltinchi versiyada input, select va textarea — uchalasi ham form-control bilan bezaladi. form-select — eski nom. form tegiga yozilsa, faqat formaning o'zi ramkaga tushadi.",
    "ru": "В 6-й версии input, select и textarea украшает одно слово form-control. form-select — старое имя. А у тега form оно дало бы рамку только самой форме.",
    "en": "In version 6, input, select and textarea all get one word: form-control. form-select is an old name. On the form tag it would only put a border around the form itself."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "select"
   ],
@@ -6789,10 +7797,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q08",
+  "question_id": "bootstrap_l08_q08",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6815,9 +7823,9 @@
    {
     "id": "a",
     "text": {
-     "uz": "Ikki maydonga bitta so'z yozib bo'lmaydi",
-     "ru": "одно слово нельзя дать двум полям",
-     "en": "two fields can’t share one word"
+     "uz": "form-contol so'zida r harfi tushib qolgan",
+     "ru": "в слове form-contol пропала буква r",
+     "en": "form-contol is missing the letter r"
     }
    },
    {
@@ -6839,20 +7847,20 @@
    {
     "id": "d",
     "text": {
-     "uz": "form-contol so'zida r harfi tushib qolgan",
-     "ru": "в слове form-contol пропала буква r",
-     "en": "form-contol is missing the letter r"
+     "uz": "Ikki maydonga bitta so'z yozib bo'lmaydi",
+     "ru": "одно слово нельзя дать двум полям",
+     "en": "two fields can’t share one word"
     }
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "Bootstrap so'zni harfma-harf taniydi: form-contol unga notanish, shuning uchun maydon o'zgarmadi. To'g'risi — form-control. Shubha bo'lsa, so'zni saytdan nusxalang.",
    "ru": "Bootstrap узнаёт слово буква в букву: form-contol ему незнакомо, поэтому поле не изменилось. Правильно — form-control. Если сомневаешься, скопируй слово с сайта.",
    "en": "Bootstrap knows a word letter by letter: form-contol is unknown to it, so the field did not change. The right word is form-control. If unsure, copy the word from the site."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "xato"
   ],
@@ -6860,10 +7868,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q09",
+  "question_id": "bootstrap_l08_q09",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6894,46 +7902,46 @@
    {
     "id": "b",
     "text": {
+     "uz": "Yozuvni galochka bilan bir qatorga qo'yadi",
+     "ru": "ставит подпись в одну строку с галочкой",
+     "en": "puts the caption in one row with a checkbox"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
      "uz": "Yozuvni qizil rangli va katta harfli qiladi",
      "ru": "делает подпись красной и с крупными буквами",
      "en": "makes the caption red with big letters"
     }
    },
    {
-    "id": "c",
+    "id": "d",
     "text": {
      "uz": "Yozuv va maydon o'rtasiga ozgina joy qo'yadi",
      "ru": "оставляет немного места между подписью и полем",
      "en": "leaves a little space between caption and field"
     }
-   },
-   {
-    "id": "d",
-    "text": {
-     "uz": "Yozuvni galochka bilan bir qatorga qo'yadi",
-     "ru": "ставит подпись в одну строку с галочкой",
-     "en": "puts the caption in one row with a checkbox"
-    }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "form-label — yozuv uchun: uni maydon ustida chiroyli qiladi va pastidan ozgina joy qoldiradi. Ramka va kenglikni form-control beradi, galochka bilan bir qatorni esa form-field.",
    "ru": "form-label — для подписи: делает её аккуратной над полем и оставляет немного места снизу. Рамку и ширину даёт form-control, а строку с галочкой — form-field.",
    "en": "form-label is for captions: it makes the caption neat above the field and leaves a little space below. The border and width come from form-control, the row with a checkbox from form-field."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-label"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q10",
+  "question_id": "bootstrap_l08_q10",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -6956,13 +7964,21 @@
    {
     "id": "a",
     "text": {
-     "uz": "Maydonlar form-field ichida bo'lishi kerak",
-     "ru": "поля должны быть внутри form-field",
-     "en": "the fields must be inside form-field"
+     "uz": "form tegiga form-label yozish kerak edi",
+     "ru": "у тега form должен быть form-label",
+     "en": "the form tag needs form-label instead"
     }
    },
    {
     "id": "b",
+    "text": {
+     "uz": "form-control faqat textarea uchun ishlaydi",
+     "ru": "form-control работает только у textarea",
+     "en": "form-control works only on textarea"
+    }
+   },
+   {
+    "id": "c",
     "text": {
      "uz": "form-control har bir maydonning o'ziga yoziladi",
      "ru": "form-control пишут каждому полю отдельно",
@@ -6970,30 +7986,22 @@
     }
    },
    {
-    "id": "c",
-    "text": {
-     "uz": "form tegiga form-label yozish kerak edi",
-     "ru": "у тега form должен быть form-label",
-     "en": "the form tag needs form-label instead"
-    }
-   },
-   {
     "id": "d",
     "text": {
-     "uz": "form-control faqat textarea uchun ishlaydi",
-     "ru": "form-control работает только у textarea",
-     "en": "form-control works only on textarea"
+     "uz": "Maydonlar form-field ichida bo'lishi kerak",
+     "ru": "поля должны быть внутри form-field",
+     "en": "the fields must be inside form-field"
     }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "form-control faqat o'zi turgan tegni bezaydi, ichkariga o'tmaydi. Shuning uchun ramka butun formaga tushdi. Har bir input, select va textarea tegiga u alohida yoziladi.",
    "ru": "form-control украшает только свой тег и не переходит внутрь. Поэтому рамку получила вся форма. Каждому input, select и textarea его пишут отдельно.",
    "en": "form-control styles only its own tag and does not pass inside. So the whole form got the border. Each input, select and textarea gets it separately."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "form"
   ],
@@ -7001,10 +8009,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q11",
+  "question_id": "bootstrap_l08_q11",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7027,25 +8035,25 @@
    {
     "id": "a",
     "text": {
+     "uz": "Galochkaga form-check so'zi kerak edi",
+     "ru": "галочке нужно слово form-check",
+     "en": "the checkbox needs the word form-check"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
      "uz": "Ikkala galochkada bir xil id: rozi",
      "ru": "у обеих галочек одинаковый id: rozi",
      "en": "both checkboxes have the same id: rozi"
     }
    },
    {
-    "id": "b",
+    "id": "c",
     "text": {
      "uz": "label galochkadan oldin turishi kerak",
      "ru": "label должен стоять перед галочкой",
      "en": "the label must come before the checkbox"
-    }
-   },
-   {
-    "id": "c",
-    "text": {
-     "uz": "Galochkaga form-check so'zi kerak edi",
-     "ru": "галочке нужно слово form-check",
-     "en": "the checkbox needs the word form-check"
     }
    },
    {
@@ -7057,14 +8065,14 @@
     }
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "label o'z galochkasini id bo'yicha topadi. id bir xil bo'lsa, ikkala yozuv birinchisini bosadi. Nusxalangan kodda id va for atributlarini ham moslang: masalan, yangilik.",
    "ru": "label находит свою галочку по id. Если id одинаковый, обе подписи отмечают первую. В скопированном коде настраивай и id с for: например, yangilik.",
    "en": "A label finds its checkbox by id. If the ids are the same, both captions tick the first one. In copied code, adapt id and for too: for example, yangilik."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "moslash",
    "id"
   ],
@@ -7072,10 +8080,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q12",
+  "question_id": "bootstrap_l08_q12",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7105,7 +8113,7 @@
    "en": "A big field is still a field: textarea also gets form-control. In Bootstrap 6, input, select and textarea share one word."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "textarea"
   ],
@@ -7114,10 +8122,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q13",
+  "question_id": "bootstrap_l08_q13",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7147,7 +8155,7 @@
    "en": "The switch word is switch. It goes not on the input but on the div around it: that div draws the switch."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "switch"
   ],
   "status": "Approved",
@@ -7155,10 +8163,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q14",
+  "question_id": "bootstrap_l08_q14",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7188,7 +8196,7 @@
    "en": "form-field puts a checkbox, radio or switch next to its caption. form-check from old tutorials is a version 5 name."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-field",
    "radio"
   ],
@@ -7197,10 +8205,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l07_q15",
+  "question_id": "bootstrap_l08_q15",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7222,15 +8230,15 @@
   "options": [
    {
     "id": "a",
-    "text": "\">"
+    "text": "<select"
    },
    {
     "id": "b",
-    "text": " class=\""
+    "text": "form-select"
    },
    {
     "id": "c",
-    "text": "<select"
+    "text": " class=\""
    },
    {
     "id": "d",
@@ -7238,16 +8246,16 @@
    },
    {
     "id": "e",
-    "text": "form-select"
+    "text": "form-control"
    },
    {
     "id": "f",
-    "text": "form-control"
+    "text": "\">"
    }
   ],
-  "correct_answer": "c,b,f,a",
+  "correct_answer": "a,c,e,f",
   "accepted_answers": [
-   "c,b,f,a"
+   "a,c,e,f"
   ],
   "solution_explanation": {
    "uz": "Ro'yxat — select tegi, Bootstrap 6 da u ham form-control bilan bezaladi. form-select — beshinchi versiyadan qolgan nom, input esa ro'yxat emas.",
@@ -7255,7 +8263,7 @@
    "en": "A list is the select tag, and in Bootstrap 6 it also gets form-control. form-select is a version 5 name, and input is not a list."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "select"
   ],
@@ -7263,10 +8271,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q16",
+  "question_id": "bootstrap_l08_q16",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7288,44 +8296,44 @@
   "options": [
    {
     "id": "a",
-    "text": "</label>"
+    "text": "<label>"
    },
    {
     "id": "b",
-    "text": "</input>"
-   },
-   {
-    "id": "c",
     "text": " type=\"checkbox\""
    },
    {
-    "id": "d",
-    "text": " class=\"check\">"
-   },
-   {
-    "id": "e",
+    "id": "c",
     "text": "<input"
    },
    {
-    "id": "f",
+    "id": "d",
+    "text": "</input>"
+   },
+   {
+    "id": "e",
     "text": " class=\"form-check\">"
    },
    {
+    "id": "f",
+    "text": " class=\"check\">"
+   },
+   {
     "id": "g",
+    "text": "</label>"
+   },
+   {
+    "id": "h",
     "text": {
      "uz": "Qoidalarga roziman",
      "ru": "Принимаю правила",
      "en": "I accept the rules"
     }
-   },
-   {
-    "id": "h",
-    "text": "<label>"
    }
   ],
-  "correct_answer": "e,c,d,h,g,a",
+  "correct_answer": "c,b,f,a,h,g",
   "accepted_answers": [
-   "e,c,d,h,g,a"
+   "c,b,f,a,h,g"
   ],
   "solution_explanation": {
    "uz": "Galochka — type checkbox bo'lgan input, uning so'zi check. Keyin label tegidagi yozuv. form-check — eski nom, input tegining esa yopuvchi tegi yo'q.",
@@ -7333,7 +8341,7 @@
    "en": "A checkbox is an input with type checkbox and the word check. Then comes the caption in a label tag. form-check is an old name, and input has no closing tag."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "check",
    "form-field"
   ],
@@ -7341,10 +8349,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q17",
+  "question_id": "bootstrap_l08_q17",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7374,7 +8382,7 @@
    "en": "Line 4 has form-select, a version 5 name; version 6 has no such word. In Bootstrap 6 a list also gets form-control."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-select",
    "eski nom"
   ],
@@ -7382,10 +8390,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l07_q18",
+  "question_id": "bootstrap_l08_q18",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 7,
+  "lesson": 8,
   "topic": {
    "uz": "Formalar",
    "ru": "Формы",
@@ -7415,7 +8423,7 @@
    "en": "For fields, Bootstrap 6 knows only the word form-control, and it is on the Comment field. There is no form-input, and form-select is a version 5 name."
   },
   "tags": [
-   "dars07",
+   "dars08",
    "form-control",
    "eski nom"
   ],
@@ -7423,10 +8431,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q01",
+  "question_id": "bootstrap_l09_q01",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7448,29 +8456,29 @@
   "options": [
    {
     "id": "a",
-    "text": "Forms → Overview"
-   },
-   {
-    "id": "b",
-    "text": "Content → Images"
-   },
-   {
-    "id": "c",
     "text": "Utilities → Flex"
    },
    {
-    "id": "d",
+    "id": "b",
     "text": "Components → Carousel"
+   },
+   {
+    "id": "c",
+    "text": "Forms → Overview"
+   },
+   {
+    "id": "d",
+    "text": "Content → Images"
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Karusel — saytning tayyor qismi, ya'ni komponent degani. U Components bo'limida, Carousel sahifasida. Content → Images esa faqat rasmning o'zi uchun.",
    "ru": "Карусель — готовая часть сайта, то есть компонент. Она в разделе Components, на странице Carousel. А Content → Images — только про саму картинку.",
    "en": "A carousel is a ready part of a site, a component. It is in the Components section, on the Carousel page. Content → Images is only about the picture itself."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "sayt",
    "carousel"
   ],
@@ -7478,10 +8486,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q02",
+  "question_id": "bootstrap_l09_q02",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7503,29 +8511,29 @@
   "options": [
    {
     "id": "a",
-    "text": "carousel-inner"
-   },
-   {
-    "id": "b",
     "text": "carousel-item"
    },
    {
+    "id": "b",
+    "text": "carousel-inner"
+   },
+   {
     "id": "c",
-    "text": "carousel-slide"
+    "text": "img-fluid"
    },
    {
     "id": "d",
-    "text": "img-fluid"
+    "text": "carousel-slide"
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "carousel-item — bitta slayd: rasmni butun kenglikka cho'zadi, shuning uchun oynada bittasi ko'rinadi. carousel-inner esa hamma slaydlarni o'rab turadi.",
    "ru": "carousel-item — один слайд: растягивает фото во всю ширину, поэтому в окне видно одно. А carousel-inner обнимает все слайды.",
    "en": "carousel-item is one slide: it stretches the photo to full width, so one shows in the window. carousel-inner wraps all the slides."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "carousel-item"
   ],
   "status": "Approved",
@@ -7533,10 +8541,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q03",
+  "question_id": "bootstrap_l09_q03",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7567,9 +8575,9 @@
    {
     "id": "b",
     "text": {
-     "uz": "Birinchi slaydga qaytadi",
-     "ru": "вернётся первый слайд",
-     "en": "it goes back to the first slide"
+     "uz": "Keyingi slayd chiqadi",
+     "ru": "покажется следующий слайд",
+     "en": "the next slide shows"
     }
    },
    {
@@ -7583,9 +8591,9 @@
    {
     "id": "d",
     "text": {
-     "uz": "Keyingi slayd chiqadi",
-     "ru": "покажется следующий слайд",
-     "en": "the next slide shows"
+     "uz": "Birinchi slaydga qaytadi",
+     "ru": "вернётся первый слайд",
+     "en": "it goes back to the first slide"
     }
    }
   ],
@@ -7596,7 +8604,7 @@
    "en": "data-bs-slide says where to move: prev is back, next is forward. data-bs-target says which carousel: #sport."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-slide",
    "prev"
   ],
@@ -7604,10 +8612,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q04",
+  "question_id": "bootstrap_l09_q04",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7629,11 +8637,11 @@
   "options": [
    {
     "id": "a",
-    "text": "carousel-fade"
+    "text": "carousel-blur"
    },
    {
     "id": "b",
-    "text": "carousel-blur"
+    "text": "fade-in"
    },
    {
     "id": "c",
@@ -7641,17 +8649,17 @@
    },
    {
     "id": "d",
-    "text": "fade-in"
+    "text": "carousel-fade"
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "carousel-fade rasmni joyida xiralashtirib almashtiradi. Saytda bu Crossfade bo'limida. Oddiy karuselda esa rasmlar yonga surilib almashadi.",
    "ru": "carousel-fade меняет фото растворением на месте. На сайте это раздел Crossfade. В обычной карусели фото уезжают вбок.",
    "en": "carousel-fade swaps photos by fading them in place. On the site it is the Crossfade section. In a normal carousel, photos slide sideways."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "carousel-fade"
   ],
   "status": "Approved",
@@ -7659,10 +8667,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q05",
+  "question_id": "bootstrap_l09_q05",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7685,21 +8693,13 @@
    {
     "id": "a",
     "text": {
-     "uz": "Ikkinchi slaydda active so'zi",
-     "ru": "слова active у второго слайда",
-     "en": "the word active on the second slide"
+     "uz": "Tugmada btn-solid so'zi",
+     "ru": "слова btn-solid у кнопки",
+     "en": "the word btn-solid on the button"
     }
    },
    {
     "id": "b",
-    "text": {
-     "uz": "head ichida link qatori",
-     "ru": "строки link внутри head",
-     "en": "the link line inside head"
-    }
-   },
-   {
-    "id": "c",
     "text": {
      "uz": "body oxirida script qatori",
      "ru": "строки script в конце body",
@@ -7707,32 +8707,40 @@
     }
    },
    {
+    "id": "c",
+    "text": {
+     "uz": "head ichida link qatori",
+     "ru": "строки link внутри head",
+     "en": "the link line inside head"
+    }
+   },
+   {
     "id": "d",
     "text": {
-     "uz": "Tugmada btn-solid so'zi",
-     "ru": "слова btn-solid у кнопки",
-     "en": "the word btn-solid on the button"
+     "uz": "Ikkinchi slaydda active so'zi",
+     "ru": "слова active у второго слайда",
+     "en": "the word active on the second slide"
     }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Tugmalarni Bootstrap skripti ishlatadi, u esa birinchi darsdagi script qatori bilan ulanadi — body oxirida. link qatori bor: aks holda karusel chiroyli ko'rinmasdi.",
    "ru": "Кнопки работают благодаря скрипту Bootstrap, а он подключается строкой script из первого урока — в конце body. Строка link есть: иначе карусель не была бы красивой.",
    "en": "The buttons are run by the Bootstrap script, which is connected by the script line from lesson 1, at the end of body. The link line is there, or the carousel would not look nice."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "script"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q06",
+  "question_id": "bootstrap_l09_q06",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7755,13 +8763,21 @@
    {
     "id": "a",
     "text": {
-     "uz": "d-block w-100 so'zlarini o'chirish",
-     "ru": "удалить слова d-block w-100",
-     "en": "delete the words d-block w-100"
+     "uz": "Namunani saytdan qaytadan nusxalash",
+     "ru": "скопировать пример с сайта заново",
+     "en": "copy the example from the site again"
     }
    },
    {
     "id": "b",
+    "text": {
+     "uz": "img tegiga active so'zini qo'shish",
+     "ru": "добавить тегу img слово active",
+     "en": "add the word active to the img tag"
+    }
+   },
+   {
+    "id": "c",
     "text": {
      "uz": "... o'rniga o'z faylingiz nomini yozish",
      "ru": "вписать вместо ... имя своего файла",
@@ -7769,30 +8785,22 @@
     }
    },
    {
-    "id": "c",
-    "text": {
-     "uz": "Namunani saytdan qaytadan nusxalash",
-     "ru": "скопировать пример с сайта заново",
-     "en": "copy the example from the site again"
-    }
-   },
-   {
     "id": "d",
     "text": {
-     "uz": "img tegiga active so'zini qo'shish",
-     "ru": "добавить тегу img слово active",
-     "en": "add the word active to the img tag"
+     "uz": "d-block w-100 so'zlarini o'chirish",
+     "ru": "удалить слова d-block w-100",
+     "en": "delete the words d-block w-100"
     }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "Saytdagi namunada rasm nomi o'rnida uch nuqta turadi: bu «o'z rasmingizni qo'ying» degani. src ichiga faylingiz nomini yozasiz, masalan banner.png.",
    "ru": "В примере сайта на месте имени файла стоят три точки: это значит «поставь своё фото». В src пишут имя своего файла, например banner.png.",
    "en": "In the site example, three dots stand where the file name goes: it means “put your own photo here”. Write your file name in src, for example banner.png."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "sayt",
    "src"
   ],
@@ -7800,10 +8808,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q07",
+  "question_id": "bootstrap_l09_q07",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7825,15 +8833,15 @@
   "options": [
    {
     "id": "a",
-    "text": "data-bs-play=\"carousel\""
+    "text": "data-bs-interval=\"true\""
    },
    {
     "id": "b",
-    "text": "data-bs-ride=\"true\""
+    "text": "data-bs-play=\"carousel\""
    },
    {
     "id": "c",
-    "text": "data-bs-interval=\"true\""
+    "text": "data-bs-ride=\"true\""
    },
    {
     "id": "d",
@@ -7847,7 +8855,7 @@
    "en": "data-bs-ride is a version 5 name; it does not work in version 6. In Bootstrap 6 a carousel moves by itself with data-bs-autoplay set to true. On the site: the Autoplay section."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-autoplay",
    "eski nom"
   ],
@@ -7856,10 +8864,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q08",
+  "question_id": "bootstrap_l09_q08",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7890,9 +8898,9 @@
    {
     "id": "b",
     "text": {
-     "uz": "2 soniya",
-     "ru": "2 секунды",
-     "en": "2 seconds"
+     "uz": "0 soniya",
+     "ru": "0 секунд",
+     "en": "0 seconds"
     }
    },
    {
@@ -7906,9 +8914,9 @@
    {
     "id": "d",
     "text": {
-     "uz": "0 soniya",
-     "ru": "0 секунд",
-     "en": "0 seconds"
+     "uz": "2 soniya",
+     "ru": "2 секунды",
+     "en": "2 seconds"
     }
    }
   ],
@@ -7919,17 +8927,17 @@
    "en": "A slide without data-bs-interval stays the usual time: 5000 milliseconds, that is 5 seconds. The 2000 milliseconds belong only to the first slide."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-interval"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q09",
+  "question_id": "bootstrap_l09_q09",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -7951,29 +8959,29 @@
   "options": [
    {
     "id": "a",
-    "text": "carousel-next"
-   },
-   {
-    "id": "b",
-    "text": "btn-icon btn-sm"
-   },
-   {
-    "id": "c",
     "text": "carousel-control"
    },
    {
-    "id": "d",
+    "id": "b",
     "text": "btn-carousel-next"
+   },
+   {
+    "id": "c",
+    "text": "carousel-next"
+   },
+   {
+    "id": "d",
+    "text": "btn-icon btn-sm"
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "carousel-control-next — beshinchi versiyaning nomi. Oltinchi versiyada karusel tugmasi kichik belgili tugma: btn-icon btn-sm. Saytdagi Bottom controls namunasida shunday yozilgan.",
    "ru": "carousel-control-next — имя из 5-й версии. В 6-й кнопка карусели — маленькая кнопка со значком: btn-icon btn-sm. Так написано в примере Bottom controls на сайте.",
    "en": "carousel-control-next is a version 5 name. In version 6 a carousel button is a small icon button: btn-icon btn-sm. That is how the Bottom controls example on the site writes it."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "btn-icon",
    "eski nom"
   ],
@@ -7982,10 +8990,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q10",
+  "question_id": "bootstrap_l09_q10",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8008,17 +9016,17 @@
    {
     "id": "a",
     "text": {
-     "uz": "Ikkinchi karuselda active slayd yo'q",
-     "ru": "у второй карусели нет слайда active",
-     "en": "the second carousel has no active slide"
+     "uz": "script qatori ikki marta yozilishi kerak",
+     "ru": "строку script нужно написать дважды",
+     "en": "the script line must be written twice"
     }
    },
    {
     "id": "b",
     "text": {
-     "uz": "Sahifada ikkita karusel bo'lishi mumkin emas",
-     "ru": "на странице не бывает двух каруселей",
-     "en": "a page can’t have two carousels"
+     "uz": "Ikkinchi karuselda active slayd yo'q",
+     "ru": "у второй карусели нет слайда active",
+     "en": "the second carousel has no active slide"
     }
    },
    {
@@ -8032,9 +9040,9 @@
    {
     "id": "d",
     "text": {
-     "uz": "script qatori ikki marta yozilishi kerak",
-     "ru": "строку script нужно написать дважды",
-     "en": "the script line must be written twice"
+     "uz": "Sahifada ikkita karusel bo'lishi mumkin emas",
+     "ru": "на странице не бывает двух каруселей",
+     "en": "a page can’t have two carousels"
     }
    }
   ],
@@ -8045,7 +9053,7 @@
    "en": "data-bs-target says which carousel to move. The button was copied from the first carousel, and #sport stayed in it. In copied code, adapt the target too: #maktab."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-target",
    "moslash"
   ],
@@ -8053,10 +9061,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q11",
+  "question_id": "bootstrap_l09_q11",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8079,17 +9087,17 @@
    {
     "id": "a",
     "text": {
-     "uz": "Yo'q: rasmlar bir-birining ostida turadi",
-     "ru": "нет: фото встанут друг под другом",
-     "en": "no: the photos stack under each other"
+     "uz": "Yo'q: skriptsiz karusel umuman ishlamaydi",
+     "ru": "нет: без скрипта карусель не работает совсем",
+     "en": "no: without the script nothing works"
     }
    },
    {
     "id": "b",
     "text": {
-     "uz": "Yo'q: skriptsiz karusel umuman ishlamaydi",
-     "ru": "нет: без скрипта карусель не работает совсем",
-     "en": "no: without the script nothing works"
+     "uz": "Ha: surish ishlaydi, tugmalar esa ishlamaydi",
+     "ru": "да: пальцем листается, а кнопки не работают",
+     "en": "yes: swiping works, but the buttons don’t"
     }
    },
    {
@@ -8103,20 +9111,20 @@
    {
     "id": "d",
     "text": {
-     "uz": "Ha: surish ishlaydi, tugmalar esa ishlamaydi",
-     "ru": "да: пальцем листается, а кнопки не работают",
-     "en": "yes: swiping works, but the buttons don’t"
+     "uz": "Yo'q: rasmlar bir-birining ostida turadi",
+     "ru": "нет: фото встанут друг под другом",
+     "en": "no: the photos stack under each other"
     }
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Bootstrap 6 karuseli brauzerning surilishiga qurilgan: barmoq bilan surishni brauzerning o'zi qiladi. Tugmalar, nuqtalar va o'zi aylanishni esa Bootstrap skripti boshqaradi.",
    "ru": "Карусель Bootstrap 6 построена на прокрутке браузера: пальцем листает сам браузер. А кнопками, точками и автопрокруткой управляет скрипт Bootstrap.",
    "en": "The Bootstrap 6 carousel is built on the browser’s own scrolling, so the browser handles swiping. The buttons, dots and autoplay are run by the Bootstrap script."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "script",
    "surish"
   ],
@@ -8124,10 +9132,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q12",
+  "question_id": "bootstrap_l09_q12",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8157,7 +9165,7 @@
    "en": "When data-bs-autoplay is true, the carousel moves by itself: true means on, false means off. On the site it is the Autoplay section."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-autoplay"
   ],
   "status": "Approved",
@@ -8165,10 +9173,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q13",
+  "question_id": "bootstrap_l09_q13",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8198,7 +9206,7 @@
    "en": "The row of dots is called carousel-indicators. Each button inside goes to its slide by the data-bs-slide-to number, counting from zero."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "carousel-indicators"
   ],
   "status": "Approved",
@@ -8206,10 +9214,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q14",
+  "question_id": "bootstrap_l09_q14",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8239,7 +9247,7 @@
    "en": "data-bs-target finds the carousel by id, with a # in front: #kubok. With just kubok, the button can’t find the carousel."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-target"
   ],
   "status": "Approved",
@@ -8247,10 +9255,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l08_q15",
+  "question_id": "bootstrap_l09_q15",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8272,7 +9280,7 @@
   "options": [
    {
     "id": "a",
-    "text": "carousel-item active"
+    "text": "\">"
    },
    {
     "id": "b",
@@ -8280,28 +9288,28 @@
    },
    {
     "id": "c",
-    "text": "</div>"
-   },
-   {
-    "id": "d",
-    "text": "\">"
-   },
-   {
-    "id": "e",
     "text": "carousel-items"
    },
    {
+    "id": "d",
+    "text": "</img>"
+   },
+   {
+    "id": "e",
+    "text": "</div>"
+   },
+   {
     "id": "f",
-    "text": "<img src=\"tog.png\">"
+    "text": "carousel-item active"
    },
    {
     "id": "g",
-    "text": "</img>"
+    "text": "<img src=\"tog.png\">"
    }
   ],
-  "correct_answer": "b,a,d,f,c",
+  "correct_answer": "b,f,a,g,e",
   "accepted_answers": [
-   "b,a,d,f,c"
+   "b,f,a,g,e"
   ],
   "solution_explanation": {
    "uz": "Slayd — carousel-item so'zli div, active esa karusel shu slayddan boshlanishini bildiradi. Ichida rasm, oxirida yopuvchi div. img tegining yopuvchi tegi yo'q.",
@@ -8309,7 +9317,7 @@
    "en": "A slide is a div with the word carousel-item, and active means the carousel starts there. Inside is the photo, then the closing div. img has no closing tag."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "carousel-item",
    "active"
   ],
@@ -8317,10 +9325,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q16",
+  "question_id": "bootstrap_l09_q16",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8342,7 +9350,7 @@
   "options": [
    {
     "id": "a",
-    "text": "\"prev\""
+    "text": "#next"
    },
    {
     "id": "b",
@@ -8350,24 +9358,24 @@
    },
    {
     "id": "c",
-    "text": "#next"
-   },
-   {
-    "id": "d",
     "text": "data-bs-slide"
    },
    {
-    "id": "e",
+    "id": "d",
     "text": "data-bs-ride"
+   },
+   {
+    "id": "e",
+    "text": "\"prev\""
    },
    {
     "id": "f",
     "text": "\"next\""
    }
   ],
-  "correct_answer": "d,b,f",
+  "correct_answer": "c,b,f",
   "accepted_answers": [
-   "d,b,f"
+   "c,b,f"
   ],
   "solution_explanation": {
    "uz": "Qayoqqa surishni data-bs-slide aytadi: next — keyingi, prev — oldingi. Qiymat qo'shtirnoq ichida, panjarasiz. data-bs-ride — beshinchi versiyadan qolgan nom.",
@@ -8375,7 +9383,7 @@
    "en": "data-bs-slide says where to move: next is forward, prev is back. The value goes in quotes, with no #. data-bs-ride is a version 5 name."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-slide",
    "next"
   ],
@@ -8383,10 +9391,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q17",
+  "question_id": "bootstrap_l09_q17",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8416,7 +9424,7 @@
    "en": "Line 4 gives the time in seconds: 3. But data-bs-interval reads milliseconds, and 3 milliseconds is tiny. 3 seconds is 3000."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-interval",
    "millisekund"
   ],
@@ -8424,10 +9432,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l08_q18",
+  "question_id": "bootstrap_l09_q18",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 8,
+  "lesson": 9,
   "topic": {
    "uz": "Karusel",
    "ru": "Карусель",
@@ -8457,7 +9465,7 @@
    "en": "next is the next slide, and its icon points right. prev is the previous one, pointing left. The dots in the middle are carousel-indicators."
   },
   "tags": [
-   "dars08",
+   "dars09",
    "data-bs-slide",
    "next"
   ],
@@ -8465,10 +9473,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q01",
+  "question_id": "bootstrap_l10_q01",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8494,7 +9502,7 @@
    },
    {
     "id": "b",
-    "text": "menu-divider"
+    "text": "dialog-title"
    },
    {
     "id": "c",
@@ -8502,7 +9510,7 @@
    },
    {
     "id": "d",
-    "text": "dialog-title"
+    "text": "menu-divider"
    }
   ],
   "correct_answer": "a",
@@ -8512,7 +9520,7 @@
    "en": "menu-header is the menu’s title: grey and not clickable. menu-item is an item you tap, and menu-divider is the line between items."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-header"
   ],
   "status": "Approved",
@@ -8520,10 +9528,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q02",
+  "question_id": "bootstrap_l10_q02",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8545,29 +9553,29 @@
   "options": [
    {
     "id": "a",
-    "text": "Getting started → Install"
-   },
-   {
-    "id": "b",
-    "text": "Components → Menu"
-   },
-   {
-    "id": "c",
     "text": "Utilities → Display"
    },
    {
-    "id": "d",
+    "id": "b",
+    "text": "Getting started → Install"
+   },
+   {
+    "id": "c",
     "text": "Forms → Select"
+   },
+   {
+    "id": "d",
+    "text": "Components → Menu"
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "Menyu, oyna, e'lon kabi tayyor qismlar Components bo'limida turadi. Menyu — Menu sahifasida, tugma va bandlar bilan birga.",
    "ru": "Готовые части — меню, окно, объявление — лежат в разделе Components. Меню — на странице Menu, вместе с кнопкой и пунктами.",
    "en": "Ready-made parts like the menu, dialog and alert are in Components. The menu is on the Menu page, with its button and items."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu",
    "docs"
   ],
@@ -8575,10 +9583,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q03",
+  "question_id": "bootstrap_l10_q03",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8600,11 +9608,11 @@
   "options": [
    {
     "id": "a",
-    "text": "class=\"menu-header\""
+    "text": "class=\"dropdown-item\""
    },
    {
     "id": "b",
-    "text": "class=\"dropdown-item\""
+    "text": "class=\"menu-header\""
    },
    {
     "id": "c",
@@ -8622,17 +9630,17 @@
    "en": "Each item gets its own menu-item class, and then it looks like a menu item. Without it, the a tag stays a plain link."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-item"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q04",
+  "question_id": "bootstrap_l10_q04",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8654,29 +9662,29 @@
   "options": [
    {
     "id": "a",
-    "text": "<a class=\"menu-divider\">"
-   },
-   {
-    "id": "b",
-    "text": "<hr class=\"menu-header\">"
-   },
-   {
-    "id": "c",
     "text": "<br class=\"menu-line\">"
    },
    {
-    "id": "d",
+    "id": "b",
     "text": "<hr class=\"menu-divider\">"
+   },
+   {
+    "id": "c",
+    "text": "<a class=\"menu-divider\">"
+   },
+   {
+    "id": "d",
+    "text": "<hr class=\"menu-header\">"
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Chiziqni hr tegi chizadi, menu-divider esa uni menyuga moslaydi. menu-header — chiziq emas, kulrang sarlavha.",
    "ru": "Черту рисует тег hr, а menu-divider подгоняет её под меню. menu-header — не черта, а серый заголовок.",
    "en": "The hr tag draws the line, and menu-divider fits it to the menu. menu-header is not a line but a grey title."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-divider"
   ],
   "status": "Approved",
@@ -8684,10 +9692,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q05",
+  "question_id": "bootstrap_l10_q05",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8713,15 +9721,15 @@
    },
    {
     "id": "b",
-    "text": "dialog-top"
-   },
-   {
-    "id": "c",
     "text": "modal-header"
    },
    {
-    "id": "d",
+    "id": "c",
     "text": "dialog-title"
+   },
+   {
+    "id": "d",
+    "text": "dialog-top"
    }
   ],
   "correct_answer": "a",
@@ -8731,7 +9739,7 @@
    "en": "A dialog has three parts: the top is dialog-header, the middle dialog-body, the bottom dialog-footer. dialog-title is the title itself."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dialog-header"
   ],
   "status": "Approved",
@@ -8739,10 +9747,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q06",
+  "question_id": "bootstrap_l10_q06",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8764,29 +9772,29 @@
   "options": [
    {
     "id": "a",
-    "text": "data-bs-dismiss=\"static\""
-   },
-   {
-    "id": "b",
-    "text": "data-bs-backdrop=\"dialog\""
-   },
-   {
-    "id": "c",
     "text": "class=\"position-static\""
    },
    {
-    "id": "d",
+    "id": "b",
     "text": "data-bs-backdrop=\"static\""
+   },
+   {
+    "id": "c",
+    "text": "data-bs-dismiss=\"static\""
+   },
+   {
+    "id": "d",
+    "text": "data-bs-backdrop=\"dialog\""
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Odatda fon bosilsa, oyna yopiladi. data-bs-backdrop static bo'lsa, fon yopmaydi: faqat krestik yoki dismiss tugmasi.",
    "ru": "Обычно нажатие на фон закрывает окно. Если data-bs-backdrop равен static, фон не закрывает: только крестик или кнопка с dismiss.",
    "en": "Usually tapping the backdrop closes the dialog. With data-bs-backdrop set to static it doesn’t: only the cross or a dismiss button."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "data-bs-backdrop"
   ],
   "status": "Approved",
@@ -8794,10 +9802,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q07",
+  "question_id": "bootstrap_l10_q07",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8820,13 +9828,21 @@
    {
     "id": "a",
     "text": {
+     "uz": "Alohida qoidalar.html sahifasida",
+     "ru": "На отдельной странице qoidalar.html",
+     "en": "On a separate page, qoidalar.html"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
      "uz": "Brauzerning yangi yorlig'ida ochiladi",
      "ru": "Открывается в новой вкладке браузера",
      "en": "It opens in a new browser tab"
     }
    },
    {
-    "id": "b",
+    "id": "c",
     "text": {
      "uz": "Bootstrap saytida, script uni olib keladi",
      "ru": "На сайте Bootstrap, script его приносит",
@@ -8834,40 +9850,32 @@
     }
    },
    {
-    "id": "c",
+    "id": "d",
     "text": {
      "uz": "Shu sahifaning o'zida, dialog tegida yashirin",
      "ru": "На этой же странице, спрятано в теге dialog",
      "en": "On this same page, hidden in a dialog tag"
     }
-   },
-   {
-    "id": "d",
-    "text": {
-     "uz": "Alohida qoidalar.html sahifasida",
-     "ru": "На отдельной странице qoidalar.html",
-     "en": "On a separate page, qoidalar.html"
-    }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "Oyna kodi shu sahifada, dialog tegi ichida yozilgan va bosilguncha yashirin turadi. Tugma uni ko'rsatadi, yangi sahifa kerak emas.",
    "ru": "Код окна написан на этой же странице, в теге dialog, и спрятан до нажатия. Кнопка его показывает — новая страница не нужна.",
    "en": "The dialog code is written on this same page, inside a dialog tag, and stays hidden until the tap. The button shows it; no new page is needed."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dialog"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q08",
+  "question_id": "bootstrap_l10_q08",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8898,36 +9906,36 @@
    {
     "id": "b",
     "text": {
+     "uz": "menyu faqat ul va li teglarida ishlaydi",
+     "ru": "меню работает только в тегах ul и li",
+     "en": "a menu works only with ul and li tags"
+    }
+   },
+   {
+    "id": "c",
+    "text": {
      "uz": "dropdown so'zlari — 5-versiya nomlari, 6 da menu",
      "ru": "dropdown — имена 5-й версии, в 6-й это menu",
      "en": "dropdown is a version 5 name; in 6 it’s menu"
     }
    },
    {
-    "id": "c",
+    "id": "d",
     "text": {
      "uz": "a teglarida href bo'lsa, bezak berilmaydi",
      "ru": "если у тегов a есть href, оформления нет",
      "en": "a tags with href get no styling"
     }
-   },
-   {
-    "id": "d",
-    "text": {
-     "uz": "menyu faqat ul va li teglarida ishlaydi",
-     "ru": "меню работает только в тегах ul и li",
-     "en": "a menu works only with ul and li tags"
-    }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "dropdown-menu va dropdown-item — eski nomlar, beshinchi versiyadan. Oltinchisida ro'yxat — menu, bandlar — menu-item.",
    "ru": "dropdown-menu и dropdown-item — старые имена из пятой версии. В шестой список — menu, пункты — menu-item.",
    "en": "dropdown-menu and dropdown-item are old names from version five. In version six the list is menu and the items are menu-item."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dropdown",
    "menu"
   ],
@@ -8935,10 +9943,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q09",
+  "question_id": "bootstrap_l10_q09",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -8961,44 +9969,44 @@
    {
     "id": "a",
     "text": {
-     "uz": "Hech narsa: Bootstrap oynani o'zi topadi",
-     "ru": "Ничего: Bootstrap сам найдёт окно",
-     "en": "Nothing: Bootstrap finds the dialog itself"
-    }
-   },
-   {
-    "id": "b",
-    "text": {
-     "uz": "data-bs-toggle o'rniga qoidalar yozish",
-     "ru": "Вместо data-bs-toggle написать qoidalar",
-     "en": "Write qoidalar instead of data-bs-toggle"
-    }
-   },
-   {
-    "id": "c",
-    "text": {
      "uz": "data-bs-target atributiga #qoidalar yozish",
      "ru": "В data-bs-target кнопки написать #qoidalar",
      "en": "Put #qoidalar in the button’s data-bs-target"
     }
    },
    {
-    "id": "d",
+    "id": "b",
+    "text": {
+     "uz": "Hech narsa: Bootstrap oynani o'zi topadi",
+     "ru": "Ничего: Bootstrap сам найдёт окно",
+     "en": "Nothing: Bootstrap finds the dialog itself"
+    }
+   },
+   {
+    "id": "c",
     "text": {
      "uz": "dialog-title o'rniga qoidalar yozish",
      "ru": "Вместо dialog-title написать qoidalar",
      "en": "Write qoidalar instead of dialog-title"
     }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "data-bs-toggle o'rniga qoidalar yozish",
+     "ru": "Вместо data-bs-toggle написать qoidalar",
+     "en": "Write qoidalar instead of data-bs-toggle"
+    }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "Tugma oynani data-bs-target dagi id bo'yicha qidiradi. id o'zgarsa, tugmada ham o'sha id panjara bilan yoziladi: #qoidalar.",
    "ru": "Кнопка ищет окно по id в data-bs-target. Сменился id — у кнопки пишется тот же id с решёткой: #qoidalar.",
    "en": "The button looks for the dialog by the id in data-bs-target. If the id changes, the button gets the same id with a hash: #qoidalar."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "id",
    "data-bs-target"
   ],
@@ -9006,10 +10014,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q10",
+  "question_id": "bootstrap_l10_q10",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9032,21 +10040,13 @@
    {
     "id": "a",
     "text": {
-     "uz": "dialog-title class-ini o'zgartiraman",
-     "ru": "Поменять class dialog-title",
-     "en": "Change the class dialog-title"
+     "uz": "Hech narsa: sarlavha o'zi tarjima bo'ladi",
+     "ru": "Ничего: заголовок переведётся сам",
+     "en": "Nothing: the title translates itself"
     }
    },
    {
     "id": "b",
-    "text": {
-     "uz": "Dialog title yozuvini o'zgartiraman",
-     "ru": "Поменять надпись Dialog title",
-     "en": "Change the text Dialog title"
-    }
-   },
-   {
-    "id": "c",
     "text": {
      "uz": "h1 tegini title tegiga almashtiraman",
      "ru": "Заменить тег h1 на тег title",
@@ -9054,22 +10054,30 @@
     }
    },
    {
+    "id": "c",
+    "text": {
+     "uz": "Dialog title yozuvini o'zgartiraman",
+     "ru": "Поменять надпись Dialog title",
+     "en": "Change the text Dialog title"
+    }
+   },
+   {
     "id": "d",
     "text": {
-     "uz": "Hech narsa: sarlavha o'zi tarjima bo'ladi",
-     "ru": "Ничего: заголовок переведётся сам",
-     "en": "Nothing: the title translates itself"
+     "uz": "dialog-title class-ini o'zgartiraman",
+     "ru": "Поменять class dialog-title",
+     "en": "Change the class dialog-title"
     }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "Moslashda faqat yozuv almashadi: teglar orasidagi Dialog title. dialog-title class-i qoladi, aks holda sarlavha bezagi yo'qoladi.",
    "ru": "При настройке меняется только надпись — Dialog title между тегами. class dialog-title остаётся, иначе заголовок потеряет оформление.",
    "en": "When you adapt it, only the text changes: Dialog title between the tags. The dialog-title class stays, or the title loses its styling."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dialog-title",
    "docs"
   ],
@@ -9077,10 +10085,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q11",
+  "question_id": "bootstrap_l10_q11",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9103,17 +10111,17 @@
    {
     "id": "a",
     "text": {
-     "uz": "«Dars vaqti» oynasi",
-     "ru": "Окно «Время занятий»",
-     "en": "The “Class times” dialog"
+     "uz": "Hech biri: id tugma yozuviga mos emas",
+     "ru": "Никакое: id не совпадает с надписью",
+     "en": "None: the id doesn’t match the label"
     }
    },
    {
     "id": "b",
     "text": {
-     "uz": "Hech biri: id tugma yozuviga mos emas",
-     "ru": "Никакое: id не совпадает с надписью",
-     "en": "None: the id doesn’t match the label"
+     "uz": "«Dars vaqti» oynasi",
+     "ru": "Окно «Время занятий»",
+     "en": "The “Class times” dialog"
     }
    },
    {
@@ -9133,14 +10141,14 @@
     }
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "Tugma yozuviga emas, data-bs-target ga qaraydi: #vaqt. Bu id «Dars vaqti» oynasida, shuning uchun o'sha ochiladi.",
    "ru": "Кнопка смотрит не на надпись, а на data-bs-target: #vaqt. Этот id у окна «Время занятий», поэтому откроется оно.",
    "en": "The button doesn’t look at its label but at data-bs-target: #vaqt. That id belongs to the “Class times” dialog, so that one opens."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "data-bs-target",
    "id"
   ],
@@ -9148,10 +10156,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q12",
+  "question_id": "bootstrap_l10_q12",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9181,7 +10189,7 @@
    "en": "Every menu item gets the menu-item class. The other two items have the same word."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-item"
   ],
   "status": "Approved",
@@ -9189,10 +10197,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q13",
+  "question_id": "bootstrap_l10_q13",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9222,7 +10230,7 @@
    "en": "The middle part of a dialog is dialog-body: it gives the text room and neat padding. The top is dialog-header, the bottom dialog-footer."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dialog-body"
   ],
   "status": "Approved",
@@ -9230,10 +10238,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q14",
+  "question_id": "bootstrap_l10_q14",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9264,7 +10272,7 @@
    "en": "With data-bs-backdrop set to static, the backdrop doesn’t close the dialog. Only the cross or a data-bs-dismiss button does."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "data-bs-backdrop"
   ],
   "status": "Approved",
@@ -9272,10 +10280,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l09_q15",
+  "question_id": "bootstrap_l10_q15",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9305,11 +10313,11 @@
    },
    {
     "id": "b",
-    "text": "<a href=\"#\""
+    "text": " class=\"dropdown\""
    },
    {
     "id": "c",
-    "text": " class=\"menu-item\""
+    "text": "<a href=\"#\""
    },
    {
     "id": "d",
@@ -9317,20 +10325,20 @@
    },
    {
     "id": "e",
-    "text": "</a>"
+    "text": ">"
    },
    {
     "id": "f",
-    "text": " class=\"dropdown\""
+    "text": "</a>"
    },
    {
     "id": "g",
-    "text": ">"
+    "text": " class=\"menu-item\""
    }
   ],
-  "correct_answer": "b,c,g,a,e",
+  "correct_answer": "c,g,e,a,f",
   "accepted_answers": [
-   "b,c,g,a,e"
+   "c,g,e,a,f"
   ],
   "solution_explanation": {
    "uz": "Menyu bandi — a tegi va menu-item class-i, xuddi qolgan ikkitasidek. dropdown — beshinchi versiyaning nomi, li esa menyu bandi emas.",
@@ -9338,17 +10346,17 @@
    "en": "A menu item is an a tag with the menu-item class, just like the other two. dropdown is a version 5 name, and li is not a menu item."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-item"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q16",
+  "question_id": "bootstrap_l10_q16",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9370,23 +10378,23 @@
   "options": [
    {
     "id": "a",
-    "text": " data-bs-toggle="
+    "text": "<button"
    },
    {
     "id": "b",
-    "text": "\"dialog\">"
-   },
-   {
-    "id": "c",
-    "text": " class=\"btn-close\""
-   },
-   {
-    "id": "d",
     "text": " data-bs-dismiss="
    },
    {
+    "id": "c",
+    "text": "\"dialog\">"
+   },
+   {
+    "id": "d",
+    "text": " class=\"btn-close\""
+   },
+   {
     "id": "e",
-    "text": "<button"
+    "text": " data-bs-toggle="
    },
    {
     "id": "f",
@@ -9397,9 +10405,9 @@
     "text": "\"modal\">"
    }
   ],
-  "correct_answer": "e,c,d,b,f",
+  "correct_answer": "a,d,b,c,f",
   "accepted_answers": [
-   "e,c,d,b,f"
+   "a,d,b,c,f"
   ],
   "solution_explanation": {
    "uz": "btn-close tugmani krestik qiladi, data-bs-dismiss dialog esa bosilganda oynani yopadi. toggle oynani ochadi, modal — eski nom.",
@@ -9407,7 +10415,7 @@
    "en": "btn-close turns the button into a cross, and data-bs-dismiss=\"dialog\" closes the dialog on tap. toggle opens it, and modal is an old name."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "btn-close",
    "data-bs-dismiss"
   ],
@@ -9415,10 +10423,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q17",
+  "question_id": "bootstrap_l10_q17",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9448,7 +10456,7 @@
    "en": "Line 5 says dropdown-item, which is a version 5 name. In version six a menu item is menu-item."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "menu-item",
    "dropdown"
   ],
@@ -9456,10 +10464,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l09_q18",
+  "question_id": "bootstrap_l10_q18",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 9,
+  "lesson": 10,
   "topic": {
    "uz": "Menu va Dialog",
    "ru": "Menu и Dialog",
@@ -9489,17 +10497,17 @@
    "en": "dialog-footer is the bottom part of the dialog, where the buttons are. On top is dialog-header with the title, in the middle dialog-body with the text."
   },
   "tags": [
-   "dars09",
+   "dars10",
    "dialog-footer"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q01",
+  "question_id": "bootstrap_l11_q01",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9522,9 +10530,9 @@
    {
     "id": "a",
     "text": {
-     "uz": "link — body oxirida, script — head ichida",
-     "ru": "link — в конце body, script — в head",
-     "en": "link at the end of body, script in head"
+     "uz": "ikkalasi ham head ichida, title ostida",
+     "ru": "обе в head, под title",
+     "en": "both in head, under title"
     }
    },
    {
@@ -9538,9 +10546,9 @@
    {
     "id": "c",
     "text": {
-     "uz": "ikkalasi ham head ichida, title ostida",
-     "ru": "обе в head, под title",
-     "en": "both in head, under title"
+     "uz": "link — body oxirida, script — head ichida",
+     "ru": "link — в конце body, script — в head",
+     "en": "link at the end of body, script in head"
     }
    },
    {
@@ -9559,7 +10567,7 @@
    "en": "link connects Bootstrap’s styles, so it goes in head. script makes menus, dialogs and the carousel work; it goes at the end of body."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "link",
    "script"
   ],
@@ -9567,10 +10575,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q02",
+  "question_id": "bootstrap_l11_q02",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9592,29 +10600,29 @@
   "options": [
    {
     "id": "a",
-    "text": "theme-purple"
-   },
-   {
-    "id": "b",
     "text": "theme-accent"
    },
    {
-    "id": "c",
+    "id": "b",
     "text": "alert-accent"
    },
    {
-    "id": "d",
+    "id": "c",
     "text": "btn-accent"
+   },
+   {
+    "id": "d",
+    "text": "theme-purple"
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "Bootstrap 6 da rang bitta oila: theme- va rang nomi. Binafsha — accent. Bitta so'z tugmaga ham, e'longa ham tushadi.",
    "ru": "В Bootstrap 6 цвета — одна семья: theme- и имя цвета. Фиолетовый — accent. Одно слово подходит и кнопке, и объявлению.",
    "en": "In Bootstrap 6 colors are one family: theme- plus the color name. Purple is accent. One word works for both the button and the alert."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "theme"
   ],
   "status": "Approved",
@@ -9622,10 +10630,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q03",
+  "question_id": "bootstrap_l11_q03",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9647,7 +10655,7 @@
   "options": [
    {
     "id": "a",
-    "text": "img-fluid rounded"
+    "text": "img-fluid.rounded"
    },
    {
     "id": "b",
@@ -9655,21 +10663,21 @@
    },
    {
     "id": "c",
-    "text": "img-fluid-rounded"
+    "text": "img-fluid rounded"
    },
    {
     "id": "d",
-    "text": "img-fluid.rounded"
+    "text": "img-fluid-rounded"
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "class ichida so'zlar bo'sh joy bilan ajratiladi: img-fluid rasmni ekranga moslaydi, rounded burchaklarni yumaloqlaydi. Vergul va nuqta kerak emas.",
    "ru": "В class слова разделяются пробелом: img-fluid подгоняет фото под экран, rounded скругляет углы. Запятая и точка не нужны.",
    "en": "Words in class are separated by a space: img-fluid fits the photo to the screen, rounded rounds the corners. No comma or dot."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "img-fluid",
    "rounded"
   ],
@@ -9678,10 +10686,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q04",
+  "question_id": "bootstrap_l11_q04",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9703,29 +10711,29 @@
   "options": [
    {
     "id": "a",
-    "text": "align-items-wrap"
+    "text": "justify-content-wrap"
    },
    {
     "id": "b",
-    "text": "flex-wrap-row"
-   },
-   {
-    "id": "c",
     "text": "flex-wrap"
    },
    {
+    "id": "c",
+    "text": "align-items-wrap"
+   },
+   {
     "id": "d",
-    "text": "justify-content-wrap"
+    "text": "flex-wrap-row"
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "flex-wrap qatorga sig'magan bo'laklarni keyingi qatorga tushiradi. Busiz d-flex hammasini bitta qatorda ushlab turadi.",
    "ru": "flex-wrap переносит на следующую строку то, что не поместилось. Без него d-flex держит всё в одном ряду.",
    "en": "flex-wrap moves whatever doesn’t fit onto the next line. Without it, d-flex keeps everything in one row."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "flex-wrap"
   ],
   "status": "Approved",
@@ -9733,10 +10741,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q05",
+  "question_id": "bootstrap_l11_q05",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9758,11 +10766,11 @@
   "options": [
    {
     "id": "a",
-    "text": "card-header"
+    "text": "card-img-top"
    },
    {
     "id": "b",
-    "text": "img-top"
+    "text": "card-header"
    },
    {
     "id": "c",
@@ -9770,17 +10778,17 @@
    },
    {
     "id": "d",
-    "text": "card-img-top"
+    "text": "img-top"
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "card-img-top — kartochka tepasidagi rasm: u kartochka kengligini oladi va yuqori burchaklari kartochkaga mos yumaloqlanadi.",
    "ru": "card-img-top — картинка наверху карточки: она берёт ширину карточки, а верхние углы скругляются вместе с ней.",
    "en": "card-img-top is the image at the top of a card: it takes the card’s width, and its top corners round with the card."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "card-img-top"
   ],
   "status": "Approved",
@@ -9788,10 +10796,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q06",
+  "question_id": "bootstrap_l11_q06",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9814,54 +10822,54 @@
    {
     "id": "a",
     "text": {
-     "uz": "Yonma-yon, lekin ekrandan chiqib ketadi",
-     "ru": "Рядом, но вылезут за край экрана",
-     "en": "Side by side, but off the edge of the screen"
-    }
-   },
-   {
-    "id": "b",
-    "text": {
-     "uz": "Ostma-ost, har biri butun kenglikda",
-     "ru": "Друг под другом, каждый во всю ширину",
-     "en": "One under the other, each full width"
-    }
-   },
-   {
-    "id": "c",
-    "text": {
      "uz": "Yonma-yon, har biri yarim kenglikda",
      "ru": "Рядом, каждый на половину ширины",
      "en": "Side by side, each half the width"
     }
    },
    {
-    "id": "d",
+    "id": "b",
     "text": {
      "uz": "Faqat birinchisi ko'rinadi, ikkinchisi yo'q",
      "ru": "Виден только первый, второго нет",
      "en": "Only the first shows, the second is gone"
     }
+   },
+   {
+    "id": "c",
+    "text": {
+     "uz": "Yonma-yon, lekin ekrandan chiqib ketadi",
+     "ru": "Рядом, но вылезут за край экрана",
+     "en": "Side by side, but off the edge of the screen"
+    }
+   },
+   {
+    "id": "d",
+    "text": {
+     "uz": "Ostma-ost, har biri butun kenglikda",
+     "ru": "Друг под другом, каждый во всю ширину",
+     "en": "One under the other, each full width"
+    }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "md:col-6 faqat md dan boshlab ishlaydi, md esa 768 px va undan keng ekran. Telefon torroq, shuning uchun bloklar ostma-ost, har biri butun qatorda.",
    "ru": "md:col-6 работает только с md, то есть от 768 px. Телефон уже, поэтому блоки стоят друг под другом, каждый во всю строку.",
    "en": "md:col-6 works only from md, that is from 768 px. A phone is narrower, so the blocks stack, each taking the whole row."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "md:col-6"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q07",
+  "question_id": "bootstrap_l11_q07",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9883,7 +10891,7 @@
   "options": [
    {
     "id": "a",
-    "text": "<div class=\"form-check\">"
+    "text": "<div class=\"form-switch\">"
    },
    {
     "id": "b",
@@ -9895,7 +10903,7 @@
    },
    {
     "id": "d",
-    "text": "<div class=\"form-switch\">"
+    "text": "<div class=\"form-check\">"
    }
   ],
   "correct_answer": "c",
@@ -9905,7 +10913,7 @@
    "en": "In version six a switch is a div with class switch and a checkbox with role switch inside. form-switch and form-check are old names."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "switch"
   ],
   "status": "Approved",
@@ -9913,10 +10921,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q08",
+  "question_id": "bootstrap_l11_q08",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9938,11 +10946,11 @@
   "options": [
    {
     "id": "a",
-    "text": "carousel-fade"
+    "text": "carousel-blur"
    },
    {
     "id": "b",
-    "text": "carousel-blur"
+    "text": "carousel-fade"
    },
    {
     "id": "c",
@@ -9953,14 +10961,14 @@
     "text": "fade-in"
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "carousel-fade slaydlarni surmasdan, xiralashtirib almashtiradi. Bu so'z tashqi div-dagi carousel yonida yoziladi.",
    "ru": "carousel-fade меняет слайды не сдвигом, а плавным угасанием. Слово пишется во внешнем div рядом с carousel.",
    "en": "carousel-fade swaps slides by fading instead of sliding. The word goes in the outer div, next to carousel."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "carousel-fade"
   ],
   "status": "Approved",
@@ -9968,10 +10976,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q09",
+  "question_id": "bootstrap_l11_q09",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -9994,21 +11002,13 @@
    {
     "id": "a",
     "text": {
-     "uz": "Yozilish — Menu, Bo'limlar — Dialog",
-     "ru": "Записаться — Menu, Разделы — Dialog",
-     "en": "Sign up — Menu, Sections — Dialog"
+     "uz": "Yozilish — Dialog, Bo'limlar — Menu",
+     "ru": "Записаться — Dialog, Разделы — Menu",
+     "en": "Sign up — Dialog, Sections — Menu"
     }
    },
    {
     "id": "b",
-    "text": {
-     "uz": "Yozilish — Alert, Bo'limlar — Card",
-     "ru": "Записаться — Alert, Разделы — Card",
-     "en": "Sign up — Alert, Sections — Card"
-    }
-   },
-   {
-    "id": "c",
     "text": {
      "uz": "Ikkalasi uchun ham Carousel",
      "ru": "Для обоих — Carousel",
@@ -10016,22 +11016,30 @@
     }
    },
    {
+    "id": "c",
+    "text": {
+     "uz": "Yozilish — Menu, Bo'limlar — Dialog",
+     "ru": "Записаться — Menu, Разделы — Dialog",
+     "en": "Sign up — Menu, Sections — Dialog"
+    }
+   },
+   {
     "id": "d",
     "text": {
-     "uz": "Yozilish — Dialog, Bo'limlar — Menu",
-     "ru": "Записаться — Dialog, Разделы — Menu",
-     "en": "Sign up — Dialog, Sections — Menu"
+     "uz": "Yozilish — Alert, Bo'limlar — Card",
+     "ru": "Записаться — Alert, Разделы — Card",
+     "en": "Sign up — Alert, Sections — Card"
     }
    }
   ],
-  "correct_answer": "d",
+  "correct_answer": "a",
   "solution_explanation": {
    "uz": "Sahifa ustida ochiladigan oyna — Dialog. Tugma ostida ochiladigan ro'yxat — Menu. Ikkalasi Components bo'limida turadi.",
    "ru": "Окно поверх страницы — Dialog. Список, который открывается под кнопкой, — Menu. Оба лежат в разделе Components.",
    "en": "A window over the page is a Dialog. A list that opens under a button is a Menu. Both are in the Components section."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "menu",
    "dialog"
   ],
@@ -10039,10 +11047,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q10",
+  "question_id": "bootstrap_l11_q10",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10065,9 +11073,9 @@
    {
     "id": "a",
     "text": {
-     "uz": "tugmaga btn-primary so'zi",
-     "ru": "слова btn-primary у кнопки",
-     "en": "the word btn-primary on the button"
+     "uz": "script qatorini head ichiga ko'chirish",
+     "ru": "перенести строку script в head",
+     "en": "moving the script line into head"
     }
    },
    {
@@ -10081,38 +11089,38 @@
    {
     "id": "c",
     "text": {
-     "uz": "head ichida Bootstrapning link qatori",
-     "ru": "строки link Bootstrap в head",
-     "en": "Bootstrap’s link line in head"
+     "uz": "tugmaga btn-primary so'zi",
+     "ru": "слова btn-primary у кнопки",
+     "en": "the word btn-primary on the button"
     }
    },
    {
     "id": "d",
     "text": {
-     "uz": "script qatorini head ichiga ko'chirish",
-     "ru": "перенести строку script в head",
-     "en": "moving the script line into head"
+     "uz": "head ichida Bootstrapning link qatori",
+     "ru": "строки link Bootstrap в head",
+     "en": "Bootstrap’s link line in head"
     }
    }
   ],
-  "correct_answer": "c",
+  "correct_answer": "d",
   "solution_explanation": {
    "uz": "Bezakni link qatori ulaydi, u head ichida turishi kerak. script faqat menyu va oynalarni ishlatadi, bezak bermaydi.",
    "ru": "Оформление подключает строка link, она должна стоять в head. script только оживляет меню и окна, оформления он не даёт.",
    "en": "The link line connects the styles, and it belongs in head. script only makes menus and dialogs work; it gives no styling."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "link"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q11",
+  "question_id": "bootstrap_l11_q11",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10134,29 +11142,29 @@
   "options": [
    {
     "id": "a",
-    "text": "<div class=\"md:col-6\">"
+    "text": "<div class=\"col-md-6\">"
    },
    {
     "id": "b",
-    "text": "<select class=\"form-select\">"
+    "text": "<div class=\"md:col-6\">"
    },
    {
     "id": "c",
-    "text": "<a class=\"dropdown-item\">"
+    "text": "<select class=\"form-select\">"
    },
    {
     "id": "d",
-    "text": "<div class=\"col-md-6\">"
+    "text": "<a class=\"dropdown-item\">"
    }
   ],
-  "correct_answer": "a",
+  "correct_answer": "b",
   "solution_explanation": {
    "uz": "md:col-6 — oltinchi versiyaning yozuvi, ikki nuqta bilan. col-md-6, dropdown-item va form-select — beshinchi versiyaning eski nomlari.",
    "ru": "md:col-6 — запись шестой версии, через двоеточие. col-md-6, dropdown-item и form-select — старые имена пятой версии.",
    "en": "md:col-6 is how version six writes it, with a colon. col-md-6, dropdown-item and form-select are old version 5 names."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "version 5"
   ],
   "status": "Approved",
@@ -10164,10 +11172,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q12",
+  "question_id": "bootstrap_l11_q12",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10190,25 +11198,25 @@
    {
     "id": "a",
     "text": {
+     "uz": "Card title yozuvini",
+     "ru": "надпись Card title",
+     "en": "the text Card title"
+    }
+   },
+   {
+    "id": "b",
+    "text": {
      "uz": "src ichidagi uch nuqtani",
      "ru": "три точки в src",
      "en": "the three dots in src"
     }
    },
    {
-    "id": "b",
+    "id": "c",
     "text": {
      "uz": "card va card-body class-larini",
      "ru": "class card и card-body",
      "en": "the card and card-body classes"
-    }
-   },
-   {
-    "id": "c",
-    "text": {
-     "uz": "Card title yozuvini",
-     "ru": "надпись Card title",
-     "en": "the text Card title"
     }
    },
    {
@@ -10220,14 +11228,14 @@
     }
    }
   ],
-  "correct_answer": "b",
+  "correct_answer": "c",
   "solution_explanation": {
    "uz": "card va card-body kartochkani yasaydi, ular qoladi. src ichiga rasm fayli nomi, sarlavha va tugmaga o'z yozuvingiz yoziladi.",
    "ru": "card и card-body делают карточку — они остаются. В src пишется имя файла картинки, а в заголовок и кнопку — свои надписи.",
    "en": "card and card-body build the card, so they stay. src gets your image file name, and the title and button get your own text."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "card",
    "docs"
   ],
@@ -10235,10 +11243,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q13",
+  "question_id": "bootstrap_l11_q13",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10268,7 +11276,7 @@
    "en": "container centers the content and limits its width, leaving space at the sides. Inside it are the row and the columns."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "container"
   ],
   "status": "Approved",
@@ -10276,10 +11284,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q14",
+  "question_id": "bootstrap_l11_q14",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10310,7 +11318,7 @@
    "en": "A button takes two words: the style btn-solid makes it filled, and the color theme-success makes it green. Without one of them it looks unfinished."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "btn-solid",
    "theme-success"
   ],
@@ -10319,10 +11327,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q15",
+  "question_id": "bootstrap_l11_q15",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10352,7 +11360,7 @@
    "en": "justify-content works only inside flex. d-flex makes the header flex, and then between pushes the logo left and the link right."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "d-flex"
   ],
   "status": "Approved",
@@ -10360,10 +11368,10 @@
   "mono": true
  },
  {
-  "question_id": "bootstrap_l10_q16",
+  "question_id": "bootstrap_l11_q16",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10393,17 +11401,17 @@
    "en": "A row has 12 parts. 3 and 5 together take 8, and 12 minus 8 leaves 4: col-4."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "col"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q17",
+  "question_id": "bootstrap_l11_q17",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10425,11 +11433,7 @@
   "options": [
    {
     "id": "a",
-    "text": {
-     "uz": "Ertaga dars yo'q",
-     "ru": "Завтра занятий нет",
-     "en": "No class tomorrow"
-    }
+    "text": "</div>"
    },
    {
     "id": "b",
@@ -10441,28 +11445,32 @@
    },
    {
     "id": "d",
-    "text": " class=\"alert"
-   },
-   {
-    "id": "e",
-    "text": "</div>"
-   },
-   {
-    "id": "f",
     "text": " role=\"alert\">"
    },
    {
-    "id": "g",
+    "id": "e",
     "text": " theme-warning\""
+   },
+   {
+    "id": "f",
+    "text": " class=\"alert"
+   },
+   {
+    "id": "g",
+    "text": {
+     "uz": "Ertaga dars yo'q",
+     "ru": "Завтра занятий нет",
+     "en": "No class tomorrow"
+    }
    },
    {
     "id": "h",
     "text": "<span"
    }
   ],
-  "correct_answer": "b,d,g,f,a,e",
+  "correct_answer": "b,f,e,d,g,a",
   "accepted_answers": [
-   "b,d,g,f,a,e"
+   "b,f,e,d,g,a"
   ],
   "solution_explanation": {
    "uz": "E'lon — alert class-li div, sariq rangni theme-warning beradi. alert-warning esa beshinchi versiyaning eski nomi.",
@@ -10470,7 +11478,7 @@
    "en": "An alert is a div with class alert, and theme-warning makes it yellow. alert-warning is an old version 5 name."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "alert",
    "theme-warning"
   ],
@@ -10478,10 +11486,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q18",
+  "question_id": "bootstrap_l11_q18",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10507,36 +11515,36 @@
    },
    {
     "id": "b",
-    "text": "<button"
-   },
-   {
-    "id": "c",
-    "text": "\"next\">"
-   },
-   {
-    "id": "d",
     "text": "\"#galereya\""
    },
    {
-    "id": "e",
-    "text": "</button>"
-   },
-   {
-    "id": "f",
+    "id": "c",
     "text": "›"
    },
    {
-    "id": "g",
+    "id": "d",
     "text": " data-bs-slide="
+   },
+   {
+    "id": "e",
+    "text": "<button"
+   },
+   {
+    "id": "f",
+    "text": "\"next\">"
+   },
+   {
+    "id": "g",
+    "text": "</button>"
    },
    {
     "id": "h",
     "text": " data-bs-target="
    }
   ],
-  "correct_answer": "b,h,d,g,c,f,e",
+  "correct_answer": "e,h,b,d,f,c,g",
   "accepted_answers": [
-   "b,h,d,g,c,f,e"
+   "e,h,b,d,f,c,g"
   ],
   "solution_explanation": {
    "uz": "data-bs-target karuselni id bo'yicha topadi, id oldida panjara turadi: #galereya. data-bs-slide next esa keyingi slaydga o'tkazadi.",
@@ -10544,7 +11552,7 @@
    "en": "data-bs-target finds the carousel by its id, with a hash in front: #galereya. data-bs-slide=\"next\" moves to the next slide."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "data-bs-slide",
    "data-bs-target"
   ],
@@ -10552,10 +11560,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q19",
+  "question_id": "bootstrap_l11_q19",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10585,17 +11593,17 @@
    "en": "Line 3 says md-col-4: after md you need a colon, not a dash, so md:col-4. Bootstrap doesn’t know the dashed word."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "md:col-4"
   ],
   "status": "Approved",
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q20",
+  "question_id": "bootstrap_l11_q20",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10625,7 +11633,7 @@
    "en": "Line 4 says form-select, a version 5 name. In version six a select gets form-control, just like an input."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "form-control",
    "select"
   ],
@@ -10633,10 +11641,10 @@
   "source_provenance": "original"
  },
  {
-  "question_id": "bootstrap_l10_q21",
+  "question_id": "bootstrap_l11_q21",
   "module": "bootstrap",
   "block_id": "bootstrap",
-  "lesson": 10,
+  "lesson": 11,
   "topic": {
    "uz": "Yakuniy loyiha",
    "ru": "Финальный проект",
@@ -10666,7 +11674,7 @@
    "en": "card is a box with a border and rounded corners, with card-body inside holding the title and text. The yellow box is the alert: alert theme-warning."
   },
   "tags": [
-   "dars10",
+   "dars11",
    "card"
   ],
   "status": "Approved",

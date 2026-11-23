@@ -460,6 +460,12 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .cmp-slide-view { position: relative; height: 12cqw; min-height: 9cqw; overflow: hidden; }
 /* Страница-результат — как картинка: целиком, уменьшенная, без прокрутки (масштаб и высоту ставит StudentView). */
 .cmp-slide-view iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; background: #fff; transform-origin: 0 0; }
+/* Слайд «Amaliy ish ko'rinishi» (Bootstrap, 23.11.2026): светлый кадр, заголовок красным, сайт целиком по центру. */
+.cmp-slide.is-res { background: #F7F7F7; }
+.cmp-slide.is-res .cmp-slide-title { color: #E8141B; }
+.cmp-slide-res.is-big { position: absolute; top: 13.5cqw; left: 50%; transform: translateX(-50%); width: 92cqw; border: .12cqw solid #D6DCE5;
+  border-radius: .6cqw; box-shadow: 0 .4cqw 1.6cqw rgba(27, 31, 46, .1); }
+.cmp-slide-res.is-big .cmp-slide-view { height: 30cqw; min-height: 0; }
 /* Кнопки под слайдом: скачать PNG / PDF. */
 .cmp-slide-dl { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .cmp-dl-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 1px solid var(--line, #2A2F3A); border-radius: 9px; background: var(--panel, #1B1F27); color: inherit; font: 600 13px Inter, system-ui, sans-serif; cursor: pointer; }

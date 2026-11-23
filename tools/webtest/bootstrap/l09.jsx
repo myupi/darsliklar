@@ -1,59 +1,53 @@
 // =============================================================================
-// ТЕСТЫ К УРОКУ 9 МОДУЛЯ BOOTSTRAP «Menu и Dialog» (20.11.2026) — 5 вопросов, по файлу на вопрос.
-// Проверяем: кнопка меню — data-bs-toggle="menu" (dropdown — имя версии 5); окно — тег dialog с class="dialog"
-// (modal — версия 5); кнопка открывает окно по id с «#»; закрывает — data-bs-dismiss="dialog"; без строки script кнопки мёртвые.
-// Страница — честная (bs={BS_CSS}): меню показано открытым (menu show position-static), окно — открытым (open).
+// ТЕСТЫ К УРОКУ 9 МОДУЛЯ BOOTSTRAP «Карусель» (20.11.2026) — 5 вопросов, по файлу на вопрос.
+// Проверяем: слайды обнимает carousel-inner; начальный слайд — active; data-bs-target с «#»; точки считаются с нуля
+// (data-bs-slide-to); data-bs-interval — в миллисекундах.
+// Страница — честная (bs={BS_CSS}): карусель Bootstrap 6 на прокрутке браузера, без скрипта видна первая картинка.
 // Апостроф — ASCII «'».
 // =============================================================================
-const SLUG = 'menu-i-dialog';
-const b9Menu = (T, toggle) => [
-  `<button class="btn-solid theme-primary" data-bs-toggle="${toggle}">`,
-  `  ${T("Guruhlar", 'Группы', 'Groups')}`,
-  '</button>',
-  '<div class="menu">',
-  `  <a class="menu-item" href="#">${T('Boshlovchilar', 'Новички', 'Beginners')}</a>`,
-  `  <a class="menu-item" href="#">${T('Ustalar', 'Мастера', 'Masters')}</a>`,
-  '</div>'].join('\n');
-const b9MenuPage = (T) => `<button class="btn-solid theme-primary">${T("Guruhlar", 'Группы', 'Groups')}</button><div class="menu show position-static mt-3"><a class="menu-item" href="#">${T('Boshlovchilar', 'Новички', 'Beginners')}</a><a class="menu-item" href="#">${T('Ustalar', 'Мастера', 'Masters')}</a></div>`;
+const SLUG = 'karusel';
+const b8Car = (inner, item1) => `<div id="robotlar" class="carousel">\n  <div class="${inner}">\n    <div class="${item1}"><img src="slayd1.jpg" alt=""></div>\n    <div class="carousel-item"><img src="slayd2.jpg" alt=""></div>\n  </div>\n</div>`;
+const B8_PAGE = b8Car('carousel-inner', 'carousel-item active');
+const b8Code = (inner, item1) => `<div id="robotlar" class="carousel">\n  <div class="${inner}">\n    <div class="${item1}">…</div>\n    <div class="carousel-item">…</div>\n  </div>\n</div>`;
 const QS = [
-  { id: 'bootstrap-09t1', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'menu', correct: 2, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={b9Menu(T, '___')} html={b9MenuPage(T)} bs={BS_CSS} mark={[1]} />; },
-    uz: { ctx: "«Guruhlar» tugmasi bosilganda o'ngdagidek menyu ochilishi kerak.", q: "Bo'sh joyga nima yoziladi?", opts: ['dropdown', 'dialog', 'menu', 'modal'],
-      ok: "Qoyil! data-bs-toggle=\"menu\" — «bosilganda menyuni och». Menyu tugmaning yonidagi menu div-i. dropdown esa beshinchi versiyaning nomi.", hint: "Bootstrap 6 da ochiladigan ro'yxat qanday ataladi? Kodda tugmaning ostidagi div-ga qarang.", alt: "Ochilgan menyu va uning kodi" },
-    ru: { ctx: 'При нажатии «Группы» должно открываться меню, как справа.', q: 'Что пишется на пустое место?', opts: ['dropdown', 'dialog', 'menu', 'modal'],
-      ok: 'Здорово! data-bs-toggle="menu" значит «по нажатию открой меню». Меню — соседний div с class menu. А dropdown — имя пятой версии.', hint: 'Как в Bootstrap 6 называется выпадающий список? Посмотрите на div под кнопкой в коде.', alt: 'Открытое меню и его код' },
-    en: { ctx: 'Clicking “Groups” should open a menu, like on the right.', q: 'What goes in the empty spot?', opts: ['dropdown', 'dialog', 'menu', 'modal'],
-      ok: 'Nice work! data-bs-toggle="menu" means “open the menu on click”. The menu is the next div with class menu. dropdown is a version 5 name.', hint: 'What is a drop-down list called in Bootstrap 6? Look at the div below the button in the code.', alt: 'An open menu and its code' } },
-  { id: 'bootstrap-09t2', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'dialog', correct: 0, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis html={`<dialog open class="dialog position-static"><div class="dialog-header"><h5 class="dialog-title">${T("Yozilish", 'Запись', 'Sign up')}</h5></div><div class="dialog-body">${T("Joylar soni cheklangan!", 'Мест мало!', 'Places are limited!')}</div></dialog>`} bs={BS_CSS} />; },
-    uz: { ctx: "Sahifa ustida shunday oyna ochilishi kerak.", q: 'Bootstrap 6 da oyna qaysi teg bilan boshlanadi?', opts: ['<dialog class="dialog">', '<div class="modal">', '<window class="dialog">', '<div class="popup-window">'],
-      ok: "To'ppa-to'g'ri! Bootstrap 6 oyna uchun brauzerning o'z dialog tegini oladi. modal esa beshinchi versiyadan qolgan.", hint: "Dars nomini eslang: Menu va ... . Bu so'z ham teg, ham class bo'lib yozilgan edi.", alt: "Sahifadagi ochiq oyna" },
-    ru: { ctx: 'Над страницей должно открываться такое окно.', q: 'С какого тега начинается окно в Bootstrap 6?', opts: ['<dialog class="dialog">', '<div class="modal">', '<window class="dialog">', '<div class="popup-window">'],
-      ok: 'Верно! Для окна Bootstrap 6 берёт родной тег браузера dialog. А modal остался от пятой версии.', hint: 'Вспомните название урока: Menu и ... . Это слово было и тегом, и class.', alt: 'Открытое окно на странице' },
-    en: { ctx: 'A window like this should open over the page.', q: 'Which tag starts a window in Bootstrap 6?', opts: ['<dialog class="dialog">', '<div class="modal">', '<window class="dialog">', '<div class="popup-window">'],
-      ok: 'Right! For a window Bootstrap 6 uses the browser’s own dialog tag. modal is left over from version 5.', hint: 'Remember the lesson title: Menu and ... . That word was both the tag and the class.', alt: 'An open window on the page' } },
-  { id: 'bootstrap-09t3', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'target', correct: 3, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<button class="btn-solid theme-primary"\n        data-bs-toggle="dialog"\n        data-bs-target="___">\n  ${T("Yozilish", 'Записаться', 'Sign up')}\n</button>\n<dialog class="dialog" id="yozilish">\n  …\n</dialog>`} mark={[3, 6]} />; },
-    uz: { ctx: "Tugma bosilganda aynan shu oyna ochilishi kerak.", q: "Bo'sh joyga nima yoziladi?", opts: ['yozilish', '.yozilish', 'dialog', '#yozilish'],
-      ok: "Xuddi shunday! data-bs-target oynani id bo'yicha topadi, id oldida esa # turadi: #yozilish. Karuseldagi tugmalar ham xuddi shunday edi.", hint: "Oynaning id-si nima? 8-darsdagi karusel tugmalarida id oldiga qanday belgi qo'yilardi?", alt: "Oyna tugmasi va oyna kodi" },
-    ru: { ctx: 'По нажатию кнопки должно открываться именно это окно.', q: 'Что пишется на пустое место?', opts: ['yozilish', '.yozilish', 'dialog', '#yozilish'],
-      ok: 'Именно! data-bs-target находит окно по id, а перед id стоит #: #yozilish. Так же было у кнопок карусели.', hint: 'Какой id у окна? Какой знак ставили перед id у кнопок карусели в уроке 8?', alt: 'Кнопка окна и код окна' },
-    en: { ctx: 'Clicking the button should open exactly this window.', q: 'What goes in the empty spot?', opts: ['yozilish', '.yozilish', 'dialog', '#yozilish'],
-      ok: 'Exactly! data-bs-target finds the window by its id, with # in front: #yozilish. The carousel buttons worked the same way.', hint: 'What is the window’s id? Which sign went before the id on the carousel buttons in lesson 8?', alt: 'A window button and the window code' } },
-  { id: 'bootstrap-09t4', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'dismiss', correct: 1, mono: true,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<dialog class="dialog" id="yozilish">\n  <div class="dialog-body">\n    ${T("Joylar soni cheklangan!", 'Мест мало!', 'Places are limited!')}\n  </div>\n  <div class="dialog-footer">\n    <button class="btn-solid theme-secondary"\n            ___>${T('Yopish', 'Закрыть', 'Close')}</button>\n  </div>\n</dialog>`} mark={[7]} />; },
-    uz: { ctx: "«Yopish» tugmasi oynani yopishi kerak.", q: "Bo'sh joyga nima yoziladi?", opts: ['data-bs-toggle="dialog"', 'data-bs-dismiss="dialog"', 'data-bs-close="dialog"', 'data-bs-target="#close"'],
-      ok: "Juda zo'r! data-bs-dismiss — «yop, olib tashla». toggle oynani ochadi, dismiss esa yopadi.", hint: "Ochish uchun toggle bor edi. Yopish uchun-chi? Bu so'z 1-darsdagi e'lonning yopish tugmasida ham bor edi.", alt: "Oynaning Yopish tugmasi kodi" },
-    ru: { ctx: 'Кнопка «Закрыть» должна закрывать окно.', q: 'Что пишется на пустое место?', opts: ['data-bs-toggle="dialog"', 'data-bs-dismiss="dialog"', 'data-bs-close="dialog"', 'data-bs-target="#close"'],
-      ok: 'Отлично! data-bs-dismiss значит «закрой, убери». toggle окно открывает, а dismiss закрывает.', hint: 'Для открытия было toggle. А для закрытия? Это слово было и у крестика объявления в уроке 1.', alt: 'Код кнопки «Закрыть» в окне' },
-    en: { ctx: 'The “Close” button should close the window.', q: 'What goes in the empty spot?', opts: ['data-bs-toggle="dialog"', 'data-bs-dismiss="dialog"', 'data-bs-close="dialog"', 'data-bs-target="#close"'],
-      ok: 'Great! data-bs-dismiss means “close, remove”. toggle opens the window, and dismiss closes it.', hint: 'Opening used toggle. What about closing? That word was also on the alert’s close button in lesson 1.', alt: 'The code of the window’s Close button' } },
-  { id: 'bootstrap-09t5', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'script', correct: 2,
-    vis: (L) => { const T = aqL(L); return <WqVis code={`<head>\n  <link href="…/bootstrap.min.css" rel="stylesheet">\n</head>\n<body>\n${b9Menu(T, 'menu').split('\n').filter((l, i) => i !== 5).map((l) => '  ' + l).join('\n')}\n</body>`} mark={[11]} />; },
-    uz: { ctx: "Tugma chiroyli, lekin bosilganda menyu ochilmayapti.", q: 'Nima yetishmayapti?', opts: ["menu o'rniga dropdown yozilishi kerak edi", "menyu bandlarining hech biriga menu-item yozilmagan", "body oxirida Bootstrapning script qatori", "tugmaning class-iga btn-solid yozilmagan"],
-      ok: "To'ppa-to'g'ri! CSS menyuni chiroyli qiladi, lekin ochib-yopishni script qiladi. Usiz tugma bosilsa ham hech narsa bo'lmaydi.", hint: "1-darsni eslang: saytdan ikkita qator olingan edi. link nima qiladi, ikkinchisi-chi? Kodning oxiriga qarang.", alt: "script qatorisiz menyu kodi" },
-    ru: { ctx: 'Кнопка красивая, но по нажатию меню не открывается.', q: 'Чего не хватает?', opts: ['вместо menu нужно было написать dropdown', 'у пунктов меню не написано menu-item', 'строки script Bootstrap в конце body', 'у кнопки в class не написано btn-solid'],
-      ok: 'Верно! CSS делает меню красивым, а открывает и закрывает его script. Без него кнопка жмётся, но ничего не происходит.', hint: 'Вспомните урок 1: с сайта брали две строки. Что делает link, а что вторая? Посмотрите на конец кода.', alt: 'Код меню без строки script' },
-    en: { ctx: 'The button looks nice, but clicking it doesn’t open the menu.', q: 'What is missing?', opts: ['it should say dropdown instead of menu', 'the menu items don’t have menu-item', 'the script line at the end of body', 'the button’s class doesn’t have btn-solid'],
-      ok: 'Right! CSS makes the menu look nice, but script opens and closes it. Without it the button clicks, but nothing happens.', hint: 'Remember lesson 1: two lines were taken from the site. What does link do, and the other one? Look at the end of the code.', alt: 'Menu code without the script line' } }
+  { id: 'bootstrap-09t1', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'carousel-inner', correct: 1, mono: true,
+    vis: () => <WqVis code={b8Code('___', 'carousel-item active')} html={B8_PAGE} bs={BS_CSS} mark={[2]} />,
+    uz: { ctx: "Karusel uch qavatdan iborat: tashqi div, slaydlarni o'rab turgan div va slaydlar.", q: "Bo'sh joyga qaysi so'z yoziladi?", opts: ['carousel-list', 'carousel-inner', 'carousel-items', 'carousel-box'],
+      ok: "Qoyil! Tartib: carousel, ichida carousel-inner, uning ichida carousel-item slaydlari. inner — ichki degani.", hint: "Darsdagi uch qavatni eslang. O'rtadagisining nomi «ichki» degan inglizcha so'z bilan tugaydi.", alt: "O'rta qavati bo'sh karusel kodi va karusel" },
+    ru: { ctx: 'Карусель — три слоя: внешний div, обёртка слайдов и слайды.', q: 'Какое слово пишется на пустое место?', opts: ['carousel-list', 'carousel-inner', 'carousel-items', 'carousel-box'],
+      ok: 'Здорово! Порядок: carousel, в нём carousel-inner, в нём слайды carousel-item. inner значит «внутренний».', hint: 'Вспомните три слоя из урока. Имя среднего кончается английским словом «внутренний».', alt: 'Код карусели с пустым средним слоем и карусель' },
+    en: { ctx: 'A carousel has three layers: the outer div, the div around the slides, and the slides.', q: 'Which word goes in the empty spot?', opts: ['carousel-list', 'carousel-inner', 'carousel-items', 'carousel-box'],
+      ok: 'Nice work! The order: carousel, carousel-inner inside it, carousel-item slides inside that. inner means “inside”.', hint: 'Remember the three layers from the lesson. The middle one ends with the English word for “inside”.', alt: 'Carousel code with an empty middle layer and the carousel' } },
+  { id: 'bootstrap-09t2', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'active', correct: 3, mono: true,
+    vis: () => <WqVis code={b8Code('carousel-inner', 'carousel-item ___')} html={B8_PAGE} bs={BS_CSS} mark={[3]} />,
+    uz: { ctx: "Sahifa ochilganda karusel birinchi slayddan boshlanishi kerak.", q: "Birinchi slaydning class-iga qaysi so'z qo'shiladi?", opts: ['first', 'start', 'show', 'active'],
+      ok: "To'ppa-to'g'ri! active — hozir ko'rinib turgan slayd. Sahifa ochilganda karusel shundan boshlanadi.", hint: "Darsda boshlang'ich slaydga «faol» degan so'z qo'yilgan edi. U inglizcha qanday?", alt: "Birinchi slaydi belgilangan karusel kodi" },
+    ru: { ctx: 'Когда страница открывается, карусель должна начинаться с первого слайда.', q: 'Какое слово добавляют в class первого слайда?', opts: ['first', 'start', 'show', 'active'],
+      ok: 'Верно! active — слайд, который виден сейчас. С него карусель и начинается.', hint: 'В уроке начальному слайду ставили слово «активный». Как оно по-английски?', alt: 'Код карусели с выделенным первым слайдом' },
+    en: { ctx: 'When the page opens, the carousel should start on the first slide.', q: 'Which word is added to the first slide’s class?', opts: ['first', 'start', 'show', 'active'],
+      ok: 'Right! active is the slide that’s visible now. The carousel starts there.', hint: 'In the lesson the starting slide got a word meaning “currently on”. What is it?', alt: 'Carousel code with the first slide marked' } },
+  { id: 'bootstrap-09t3', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'data-bs-target', correct: 0,
+    vis: () => <WqVis code={`<div id="robotlar" class="carousel">\n  …\n</div>\n<button class="btn-icon btn-sm"\n        data-bs-slide="next"\n        data-bs-target="robotlar">›</button>`} mark={[6]} />,
+    uz: { ctx: "«›» tugmasi bosilganda karusel keyingi slaydga o'tmayapti. script qatori bor.", q: 'Nima xato?', opts: ["target-da # yo'q, #robotlar kerak", "next o'rniga right yozish kerak edi", "Tugmaga btn-solid so'zi yozilmagan", "Karuselda id bo'lmasligi kerak edi"],
+      ok: "Xuddi shunday! data-bs-target id bo'yicha qidiradi va oldida # turishi shart: #robotlar. Usiz tugma qaysi karuselni surishni bilmaydi.", hint: "Tugma karuselni id bo'yicha topadi. Darsda id oldiga qanday belgi qo'yilgan edi?", alt: "Karusel tugmasining kodi" },
+    ru: { ctx: 'При нажатии «›» карусель не переходит дальше. Строка script есть.', q: 'Что не так?', opts: ['В target нет #: нужно #robotlar', 'Вместо next нужно было написать right', 'У кнопки нет слова btn-solid в class', 'У карусели вообще не должно быть id'],
+      ok: 'Именно! data-bs-target ищет по id, и перед ним обязательно #: #robotlar. Без него кнопка не знает, какую карусель листать.', hint: 'Кнопка находит карусель по id. Какой знак в уроке ставили перед id?', alt: 'Код кнопки карусели' },
+    en: { ctx: 'Clicking “›” doesn’t move the carousel on. The script line is there.', q: 'What is wrong?', opts: ['target has no #, it needs #robotlar', 'It should say right instead of next', 'The button has no btn-solid class word', 'The carousel must not have any id at all'],
+      ok: 'Exactly! data-bs-target looks things up by id, and it needs # in front: #robotlar. Without it the button doesn’t know which carousel to move.', hint: 'The button finds the carousel by its id. Which sign went before the id in the lesson?', alt: 'The code of a carousel button' } },
+  { id: 'bootstrap-09t4', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'slide-to', correct: 2, mono: true,
+    vis: () => <WqVis code={`<div class="carousel-indicators">\n  <button data-bs-target="#robotlar" data-bs-slide-to="0"></button>\n  <button data-bs-target="#robotlar" data-bs-slide-to="1"></button>\n  <button data-bs-target="#robotlar" data-bs-slide-to="___"></button>\n</div>`} mark={[4]} />,
+    uz: { ctx: "Karusel ostidagi nuqtalar. Uchinchi nuqta uchinchi slaydga o'tkazishi kerak.", q: "Bo'sh joyga qaysi son yoziladi?", opts: ['3', '1', '2', '0'],
+      ok: "Juda zo'r! Nuqtalar noldan sanaladi: 0 — birinchi slayd, 1 — ikkinchi, 2 — uchinchi.", hint: "Birinchi nuqtaga qarang: unda qaysi son turibdi? Sanoq qaysi sondan boshlanadi?", alt: "Karusel nuqtalarining kodi" },
+    ru: { ctx: 'Точки под каруселью. Третья точка должна переключать на третий слайд.', q: 'Какое число пишется на пустое место?', opts: ['3', '1', '2', '0'],
+      ok: 'Отлично! Точки считаются с нуля: 0 — первый слайд, 1 — второй, 2 — третий.', hint: 'Посмотрите на первую точку: какое там число? С какого числа начинается счёт?', alt: 'Код точек карусели' },
+    en: { ctx: 'The dots under the carousel. The third dot should switch to the third slide.', q: 'Which number goes in the empty spot?', opts: ['3', '1', '2', '0'],
+      ok: 'Great! The dots count from zero: 0 is the first slide, 1 the second, 2 the third.', hint: 'Look at the first dot: which number does it have? Where does the count start?', alt: 'The code of the carousel dots' } },
+  { id: 'bootstrap-09t5', target: 'bootstrap-09', ptype: 'Bootstrap', tag: 'interval', correct: 1, mono: true,
+    vis: () => <WqVis code={`<div class="carousel-item active"\n     data-bs-interval="___">\n  <img src="slayd1.jpg" alt="">\n</div>`} mark={[2]} />,
+    uz: { ctx: "Karusel o'zi aylanadi. Birinchi slayd 3 soniya turishi kerak.", q: "Bo'sh joyga nima yoziladi?", opts: ['3', '3000', '3s', '300'],
+      ok: "To'ppa-to'g'ri! Vaqt millisoniyada yoziladi: 1 soniya — 1000, demak 3 soniya — 3000.", hint: "data-bs-interval vaqtni qaysi birlikda o'qiydi? Odatiy qiymat 5000 edi — bu necha soniya?", alt: "data-bs-interval qiymati bo'sh slayd kodi" },
+    ru: { ctx: 'Карусель листается сама. Первый слайд должен стоять 3 секунды.', q: 'Что пишется на пустое место?', opts: ['3', '3000', '3s', '300'],
+      ok: 'Верно! Время пишут в миллисекундах: 1 секунда — 1000, значит 3 секунды — 3000.', hint: 'В каких единицах data-bs-interval читает время? Обычное значение было 5000 — это сколько секунд?', alt: 'Код слайда с пустым data-bs-interval' },
+    en: { ctx: 'The carousel moves on its own. The first slide should stay for 3 seconds.', q: 'What goes in the empty spot?', opts: ['3', '3000', '3s', '300'],
+      ok: 'Right! Time is written in milliseconds: 1 second is 1000, so 3 seconds is 3000.', hint: 'Which unit does data-bs-interval read time in? The default was 5000: how many seconds is that?', alt: 'Slide code with an empty data-bs-interval' } }
 ];

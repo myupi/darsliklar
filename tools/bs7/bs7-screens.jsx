@@ -1,6 +1,6 @@
 // =============================================================================
 // ЭКРАНЫ УРОКА 7 «Формы» (20.11.2026). Помощники — bs7-head.jsx, общие куски — bs7-common.jsx.
-// Сценарий — docs/scenarij-bootstrap-07-formy.md.
+// Сценарий — docs/scenarij-bootstrap-08-formy.md.
 // =============================================================================
 const HOOK_PARTS = ['name', 'group', 'agree', 'send'];   // без textarea: на телефоне код и форма помещаются
 const NEWL = 'is-new is-read';
@@ -103,7 +103,8 @@ const S2 = ({ p }) => <FormShow p={p} id="s2" c={C.s2} states={S2_STATES} />;
 
 // X1. ОПЫТ — переключатели: form-label, form-control, check, btn-solid. Готово — каждый выключен хотя бы раз.
 const X1_PARTS = ['name', 'agree', 'send'];
-const X1_SW = [{ k: 'form-label', keys: ['name.l'] }, { k: 'form-control', keys: ['name.c'] }, { k: 'check', keys: ['agree.c'] }, { k: 'btn-solid', keys: ['send.c'] }];
+// off — что остаётся в class, когда слово выключено (у кнопки остаётся theme-primary: выключается только btn-solid).
+const X1_SW = [{ k: 'form-label', keys: ['name.l'] }, { k: 'form-control', keys: ['name.c'] }, { k: 'check', keys: ['agree.c'] }, { k: 'btn-solid', keys: ['send.c'], off: 'theme-primary' }];
 function X1({ p }) {
   const pick = usePick();
   const log = useLog();
@@ -138,7 +139,7 @@ function X1({ p }) {
     if (st.current.tries >= 8 && !ok) lad.bump();
   };
   const o = {};
-  X1_SW.forEach((s) => s.keys.forEach((key) => { o[key] = off.indexOf(s.k) >= 0 ? null : FORM_FULL[key]; }));
+  X1_SW.forEach((s) => s.keys.forEach((key) => { o[key] = off.indexOf(s.k) >= 0 ? (s.off || null) : FORM_FULL[key]; }));
   o['agree.f'] = 'form-field';
   const sw = X1_SW.find((s) => s.k === last);
   const hlk = {};
@@ -242,10 +243,14 @@ const fillRound = (pick, { parts, o, key, want, kind, ask, hints, why, ph, no, g
 function T1({ p }) {
   const pick = usePick();
   const c = C.t1;
+  // Образец «Kerak» крупнее (0.65); на телефоне ниже 800 px — мельче (0.5, ниже 720 px — прежний 0.4), иначе окно страницы
+  // уходит под кнопку «Tekshirish».
+  const wh = typeof window !== 'undefined' ? [window.innerWidth, window.innerHeight] : [1280, 800];
+  const GZ = wh[0] >= 760 || wh[1] >= 800 ? 0.65 : wh[1] >= 720 ? 0.5 : 0.4;
   const rounds = [
-    fillRound(pick, { parts: ['name', 'phone'], o: without(FORM_FULL, ['phone.c']), key: 'phone.c', want: 'form-control', kind: 'control', ask: c.ask1, hints: c.hints1, why: c.why1, gz: 0.4 }),
-    fillRound(pick, { parts: ['name', 'phone'], o: without(FORM_FULL, ['phone.l']), key: 'phone.l', want: 'form-label', kind: 'label', ask: c.ask2, hints: c.hints2, why: c.why2, gz: 0.4 }),
-    fillRound(pick, { parts: ['name', 'note'], o: without(FORM_FULL, ['note.c']), key: 'note.c', want: 'form-control', kind: 'control', ask: c.ask3, hints: c.hints3, why: c.why3, gz: 0.4 })
+    fillRound(pick, { parts: ['name', 'phone'], o: without(FORM_FULL, ['phone.c']), key: 'phone.c', want: 'form-control', kind: 'control', ask: c.ask1, hints: c.hints1, why: c.why1, gz: GZ }),
+    fillRound(pick, { parts: ['name', 'phone'], o: without(FORM_FULL, ['phone.l']), key: 'phone.l', want: 'form-label', kind: 'label', ask: c.ask2, hints: c.hints2, why: c.why2, gz: GZ }),
+    fillRound(pick, { parts: ['name', 'note'], o: without(FORM_FULL, ['note.c']), key: 'note.c', want: 'form-control', kind: 'control', ask: c.ask3, hints: c.hints3, why: c.why3, gz: GZ })
   ];
   return <FillRounds p={p} id="t1" c={c} rounds={rounds} type="form-control" />;
 }
@@ -615,6 +620,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ: form-select (версия 5); class на подписи, а не на поле; опечатка form-contol.
 const T6_ROUNDS = [
@@ -643,7 +652,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -720,7 +729,7 @@ function W1({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet kz-typed">
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
+        <KzAsk text={solved ? c.ok : t ? c.askClass : c.askName} hint={solved ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className="kz-scene b1-pair b7-pair b7-w1">
           <div className="kz-col">
             <KzCode lines={lines} cls="kz-code-sm b2-small" />

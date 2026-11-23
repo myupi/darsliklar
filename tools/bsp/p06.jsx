@@ -58,7 +58,7 @@ const p6Cols = (D) => D.qa('.row > div');
 const p6Side = (D) => { const c = p6Cols(D); return c.length >= 2 && Math.abs(c[0].getBoundingClientRect().top - c[1].getBoundingClientRect().top) < 2; };
 
 const PR = {
-  next: L3("Formalar", 'Формы', 'Forms'),
+  next: L3("Navbar va Pagination", 'Navbar и Pagination', 'Navbar and Pagination'),
   tabs: [
     { ico: 'book', c: '#FA4F28', name: P6.colT, file: 'ustunlar.html' },
     { ico: 'star', c: '#0FA38E', name: P6.rowT, file: 'qator.html' },
@@ -259,7 +259,7 @@ const C = {
       { k: 'b', text: L3("row qator yasaydi, ustunlar esa uning o'n ikki bo'lagini bo'lishadi.", 'row делает ряд, а колонки делят его двенадцать частей.', 'row makes a row, and the columns share its twelve parts.') },
       { k: 'c', text: L3("md:col-4 kabi so'z ekranga qarab ishlaydi: telefonda ustma-ust, kompyuterda yonma-yon.", 'Слово вроде md:col-4 работает по экрану: на телефоне столбиком, на компьютере рядом.', 'A word like md:col-4 depends on the screen: stacked on a phone, side by side on a computer.') },
       { k: 'd', text: L3("So'zlar saytning Layout bo'limida, eski col-md nomlari esa ishlamaydi.", 'Слова — в разделе Layout на сайте, а старые имена col-md не работают.', 'The words are in the Layout section of the site, and old col-md names don’t work.') },
-      { k: null, text: L3("Tabriklayman! Keyingi darsda Bootstrap formalarini yasaymiz. Ko'rishguncha!", 'Поздравляю! На следующем уроке соберём формы Bootstrap. До встречи!', 'Congratulations! Next lesson we’ll build Bootstrap forms. See you!') }
+      { k: null, text: L3("Tabriklayman! Keyingi darsda saytga Navbar, ya'ni menyu satrini qo'shamiz. Ko'rishguncha!", 'Поздравляю! На следующем уроке добавим сайту Navbar — строку меню. До встречи!', 'Congratulations! Next lesson we’ll add a Navbar, the site’s menu bar. See you!') }
     ],
     roles: {
       a: L3("container: o'rtada", 'container: посередине', 'container: centered'),

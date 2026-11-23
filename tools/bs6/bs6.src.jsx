@@ -48,7 +48,7 @@ const fillL = (node, vars) => {
 const UI = {
   check: L3('Tekshirish', 'Проверить', 'Check'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Formalar', 'Формы', 'Forms'),
+  next: L3('Navbar va Pagination', 'Navbar и Pagination', 'Navbar and Pagination'),
   withBs: L3('Bootstrap bilan', 'С Bootstrap', 'With Bootstrap'),
   ready: L3('Tayyor', 'Готово', 'Done'),
   paste: L3("Shu yerga qo'ying", 'Вставь сюда', 'Paste here'),
@@ -59,6 +59,7 @@ const UI = {
   phone: L3('Telefon · 360 px', 'Телефон · 360 px', 'Phone · 360 px'),
   tablet: L3('Planshet · 768 px', 'Планшет · 768 px', 'Tablet · 768 px'),
   laptop: L3('Noutbuk · 1024 px', 'Ноутбук · 1024 px', 'Laptop · 1024 px'),
+  laptopW: L3('Noutbuk · 1200 px', 'Ноутбук · 1200 px', 'Laptop · 1200 px'),
   wide: L3("Ekranga sig'madi", 'Не помещается', 'Doesn’t fit'),
   fit: L3("Sig'di ✓", 'Помещается ✓', 'Fits ✓'),
   inside: L3('Bootstrap ichida', 'Внутри Bootstrap', 'Inside Bootstrap'),
@@ -186,7 +187,7 @@ const C = {
   t1: {
     eyebrow: L3("Setkani yig'ing", 'Собери сетку', 'Build the grid'),
     say: L3("Endi o'zingiz. Namunaga qarang va bo'sh joyga yetishmayotgan so'zni yozing.", 'Теперь сам. Посмотри на образец и впиши в пустое место недостающее слово.', 'Now you. Look at the goal and type the missing word into the empty spot.'),
-    ask1: L3("Sahifa o'rtada bo'lsin", 'Страница — посередине', 'Center the page'),
+    ask1: L3("Chetlarda bo'sh joy bo'lsin, bloklar o'rtada", 'По краям — поля, блоки посередине', 'Margins at the edges, blocks in the middle'),
     ask2: L3("Bloklar qatorga tizilsin", 'Блоки — в ряд', 'Put the blocks in a row'),
     ask3: L3("Uchinchi blok ham ustun bo'lsin", 'Третий блок — тоже колонка', 'Make the third block a column too'),
     hints1: [
@@ -283,9 +284,9 @@ const C = {
   },
   t3: {
     eyebrow: L3('Ekranga moslang', 'Подгони под экран', 'Fit the screen'),
-    say: L3("Namunaga qarang: ustunlar qaysi ekranda paydo bo'ladi? Uchinchi blokka kerakli so'zni yozing. O'lchamlar jadvali saytda.", 'Посмотри на образец: на каком экране появляются колонки? Впиши третьему блоку нужное слово. Таблица размеров — на сайте.', 'Look at the goal: on which screen do the columns appear? Give the third block the right word. The size table is on the site.'),
-    ask1: L3("Telefonda ostma-ost, planshetdan qatorda", 'На телефоне столбиком, с планшета в ряд', 'Stacked on a phone, a row from a tablet'),
-    ask2: L3("Planshetda ham ostma-ost, 1024 dan qatorda", 'И на планшете столбиком, в ряд с 1024', 'Stacked on a tablet too, a row from 1024'),
+    say: L3("Pastdagi tugmalar bilan ekran kengligini almashtirib ko'ring: ustunlar qaysi ekranda qatorga turishi kerak? Uchinchi blokka kerakli so'zni yozing. O'lchamlar jadvali saytda.", 'Переключай ширину экрана кнопками под кодом: на каком экране колонки должны встать в ряд? Впиши третьему блоку нужное слово. Таблица размеров — на сайте.', 'Switch the screen width with the buttons under the code: on which screen should the columns line up? Give the third block the right word. The size table is on the site.'),
+    ask1: L3("360 da ostma-ost, 768 da qatorda", 'На 360 — столбиком, на 768 — в ряд', 'Stacked at 360, a row at 768'),
+    ask2: L3("768 da ostma-ost, 1024 da qatorda", 'На 768 — столбиком, на 1024 — в ряд', 'Stacked at 768, a row at 1024'),
     hints1: [
       L3("Qolgan ikkita blokda qaysi so'z bor?", 'Какое слово у двух других блоков?', 'Which word do the other two blocks have?'),
       L3("Planshet bu md, 768 piksel.", 'Планшет — md, 768 пикселей.', 'A tablet is md, 768 pixels.'),
@@ -318,7 +319,7 @@ const C = {
   t4: {
     eyebrow: L3("Tartib bilan yig'ing", 'Собери по порядку', 'Build in order'),
     say: L3("Setka kodini tartib bilan yig'ing: tashqaridan ichkariga, keyin ichkaridan tashqariga yopamiz.", 'Собери код сетки по порядку: снаружи внутрь, а потом закрываем изнутри наружу.', 'Build the grid code in order: from outside in, then close from inside out.'),
-    ask: L3("Bo'laklarni tartib bilan bosing", 'Нажимай кусочки по порядку', 'Tap the pieces in order'),
+    ask: L3("Tashqaridan ichkariga oching, keyin teskarisiga yoping", 'Открывай снаружи внутрь, закрывай в обратном порядке', 'Open from outside in, then close in reverse order'),
     msgs: {
       cont: L3("Oldin eng tashqi quti: container.", 'Сначала самая внешняя коробка: container.', 'First the outermost box: container.'),
       row: L3("container ichida qator, row.", 'Внутри container — ряд, row.', 'Inside container comes the row.'),
@@ -389,7 +390,7 @@ const C = {
     say: L3("Endi ustunlarni o'zingiz tanlang: oddiy col, col-4 yoki md:col-4. Pastdagi tugmalar bilan har xil ekranda tekshiring va «Tayyor»ni bosing.",
       'Теперь выбери колонки сам: простой col, col-4 или md:col-4. Проверь кнопками внизу на разных экранах и нажми «Готово».',
       'Now pick the columns yourself: plain col, col-4 or md:col-4. Check on different screens with the buttons below and tap “Done”.'),
-    ask: L3("Ustun class ini yozing", 'Впиши class колонки', 'Type the column class'),
+    ask: L3("Uchala ustun uchun class yozing", 'Впиши class для всех трёх колонок', 'Type a class for all three columns'),
     hints: [
       L3("Bitta so'z, u col bilan bog'liq.", 'Одно слово, связанное с col.', 'One word, related to col.'),
       L3("Telefonda ostma-ost bo'lsin desangiz, oldiga ekran o'lchamini qo'ying.", 'Если хочешь столбиком на телефоне, поставь впереди размер экрана.', 'If you want them stacked on a phone, put a screen size in front.'),
@@ -408,7 +409,7 @@ const C = {
       { text: L3("row — qator, col — ustun. Raqam — 12 dan nechta bo'lak.", 'row — ряд, col — колонка. Число — сколько частей из 12.', 'row is a row, col a column. The number is how many parts of 12.'), k: 'grid' },
       { text: L3("md, lg kabi so'zlar ekran o'lchami: md:col-4 — planshetdan boshlab ustun.", 'Слова md, lg — размер экрана: md:col-4 — колонка с планшета.', 'Words like md and lg are screen sizes: md:col-4 is a column from a tablet up.'), k: 'resp' },
       { text: L3("Hammasi saytda, Layout bo'limida.", 'Всё это — на сайте, в разделе Layout.', 'It’s all on the site, in Layout.'), k: 'site' },
-      { text: L3("Tabriklayman! Siz oltinchi darsni tugatdingiz. Keyingi darsda formalar bilan ishlaymiz. Ko'rishguncha!", 'Ура! Ты прошёл шестой урок. На следующем уроке поработаем с формами. До встречи!', 'Hooray! You finished the sixth lesson. Next time we’ll work with forms. See you!'), k: null }
+      { text: L3("Tabriklayman! Siz oltinchi darsni tugatdingiz. Keyingi darsda sayt menyusini, ya'ni Navbarni, va sahifa tugmalarini, ya'ni Paginationni yasaymiz. Ko'rishguncha!", 'Ура! Ты прошёл шестой урок. На следующем уроке сделаем меню сайта — Navbar — и кнопки страниц — Pagination. До встречи!', 'Hooray! You finished the sixth lesson. Next time we’ll make the site menu, Navbar, and the page buttons, Pagination. See you!'), k: null }
     ],
     roles: {
       cont: L3("container — o'rtada", 'container — посередине', 'container — centered'),

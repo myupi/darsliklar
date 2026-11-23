@@ -276,7 +276,10 @@ const C = {
       'Теперь сам. Наверху образец: зелёная кнопка с рамкой. Найди на сайте страницу Button, нажми строку этой кнопки, потом вставь её в body.',
       'Now it’s your turn. The goal is at the top: a green outlined button. Find the Button page on the site, tap this button’s line, then paste it into body.'),
     ask: L3("Namunadagi tugmaning qatorini bosing", 'Нажми строку кнопки из образца', 'Tap the line of the goal button'),
-    askFind: L3('Menyudan Button sahifasini toping', 'Найди в меню страницу Button', 'Find the Button page in the menu'),
+    // Меню сайта в узком окне спрятано за ☰ — строка задания и первая подсказка называют её (23.11.2026); меню слева — askFindSide.
+    askFind: L3("☰ tugmasini bosing va Components → Button sahifasini toping", 'Нажми ☰ и найди Components → Button', 'Tap ☰ and find Components → Button'),
+    askFindSide: L3("Chapdagi menyudan Components → Button sahifasini toping", 'Найди в меню слева Components → Button', 'Find Components → Button in the menu on the left'),
+    hintMenu: L3("Menyu yashiringan. Sayt oynasining yuqori o'ng burchagidagi uch chiziqli tugmani bosing.", 'Меню спрятано. Нажми кнопку с тремя полосками в правом верхнем углу окна сайта.', 'The menu is hidden. Tap the three-line button in the top right corner of the site window.'),
     copied: L3("Nusxalandi! Endi body ichidagi bo'sh joyni bosing.", 'Скопировано! Теперь нажми пустое место в body.', 'Copied! Now tap the empty spot in body.'),
     msgs: {
       wrongPage: L3("Bu {w} sahifasi. Tugmalar Button sahifasida turadi.", 'Это страница {w}. Кнопки — на странице Button.', 'This is the {w} page. Buttons are on the Button page.'),
@@ -297,7 +300,7 @@ const C = {
     say: L3("Nusxalangan tugmani o'zimizga moslaymiz. Har safar namuna boshqa bo'ladi. Bo'sh joyga kerakli so'zni yozing, so'zlar saytda turibdi.",
       'Подгоним скопированную кнопку под себя. Каждый раз образец другой. Впиши в пустое место нужное слово, слова есть на сайте.',
       'Let’s adapt the copied button. Each time the goal is different. Type the right word into the empty spot; the words are on the site.'),
-    ask1: L3('Tugma qizil, chegarali bo\'lsin', 'Кнопка — красная, с рамкой', 'Make the button red and outlined'),
+    ask1: L3("Tugma qizil bo'lsin", 'Сделай кнопку красной', 'Make the button red'),
     ask2: L3("Endi tugmaning ichi to'la bo'lsin", 'Теперь кнопка — залитая', 'Now make the button filled'),
     ask3: L3("Endi tugma ko'k bo'lsin", 'Теперь кнопка — синяя', 'Now make the button blue'),
     hints1: [
@@ -497,7 +500,7 @@ const C = {
     opts: {
       old: L3('Eski nom, 5-versiyadan', 'Старое имя из версии 5', 'An old name from version 5'),
       noColor: L3("Bunday rang so'zi yo'q", 'Такого слова цвета нет', 'There’s no such color word'),
-      noShape: L3("Uslub so'zi yo'q", 'Нет слова стиля', 'The style word is missing')
+      noShape: L3("Rang bor, uslub so'zi yo'q", 'Цвет есть, а слова стиля нет', 'There’s a color, but no style word')
     },
     rounds: [
       L3("btn-success eski nom, beshinchi versiyadan. Oltinchisida btn-solid va theme-success.", 'btn-success — старое имя из пятой версии. В шестой — btn-solid и theme-success.', 'btn-success is an old name from version five. In version six it’s btn-solid and theme-success.'),
@@ -517,7 +520,12 @@ const C = {
     ask: L3("Uslub, rang va yozuvni yozing", 'Впиши стиль, цвет и надпись', 'Type the style, color and label'),
     msgs: {
       text: L3("Tugmaga yozuv yozing, kamida bitta so'z.", 'Напиши на кнопке надпись, хотя бы одно слово.', 'Write a label on the button, at least one word.'),
-      same: L3("Bu hali saytdagi inglizcha yozuv. O'z yozuvingizni yozing.", 'Это ещё английская надпись с сайта. Напиши свою.', 'That’s still the English label from the site. Write your own.')
+      same: L3("Bu hali saytdagi inglizcha yozuv. O'z yozuvingizni yozing.", 'Это ещё английская надпись с сайта. Напиши свою.', 'That’s still the English label from the site. Write your own.'),
+      // «Tayyor» с пустым полем — причина, а не молча (23.11.2026).
+      emptyAll: L3("Kodda uchta bo'sh joy bor: uslub, rang va yozuv. Hammasini yozing.", 'В коде три пустых места: стиль, цвет и надпись. Заполни все.', 'The code has three empty spots: style, color and label. Fill them all.'),
+      emptyText: L3("Tugmaga o'z yozuvingizni 2-qatorga yozing", 'Впиши свою надпись — строка 2', 'Type your own label — line 2'),
+      emptyShape: L3("Uslub so'zini 1-qatorga yozing", 'Впиши слово стиля — строка 1', 'Type the style word — line 1'),
+      emptyColor: L3("Rang so'zini 1-qatorga yozing", 'Впиши слово цвета — строка 1', 'Type the color word — line 1')
     },
     hints: [
       L3("Kodda uchta bo'sh joy bor: uslub, rang va yozuv.", 'В коде три пустых места: стиль, цвет и надпись.', 'The code has three empty spots: style, color and label.'),
@@ -551,7 +559,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, msgs: 1, magic: 1,
+Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, hintMenu: 1, msgs: 1, magic: 1,
   sayShape: 1, sayColor: 1, sayMore: 1, solid: 1, outline: 1, mean: 1, both: 1, shape: 1, color: 1, right: 1, sayPage: 1, sayVariants: 1, sayLine: 1, sayOutline: 1,
   sayCopy: 1, sayPaste: 1, sayText: 1, sayOld: 1, copied: 1, sayBoth: 1, sayAlert: 1, sayButton: 1, sayApply: 1, no: 1, rounds: 1 });
 

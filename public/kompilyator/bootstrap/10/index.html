@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uz" data-bs-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <title>Pitsa kafesi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+  </head>
+  <body>
+    <nav class="navbar md:navbar-expand bg-1" data-bs-theme="dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Pitsa kafesi</a>
+        <button class="btn-icon navbar-toggler" type="button" data-bs-toggle="drawer" data-bs-target="#menyu" aria-label="Menu">
+          <span class="navbar-toggler-icon" aria-hidden="true"></span>
+        </button>
+        <dialog class="drawer drawer-end" id="menyu">
+          <div class="drawer-header">
+            <h5 class="drawer-title">Menyu</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="Close"></button>
+          </div>
+          <div class="drawer-body">
+            <ul class="nav navbar-nav">
+              <li class="nav-item"><a class="nav-link active" href="#">Asosiy</a></li>
+              <li class="nav-item"><a class="nav-link" href="#">Menyu</a></li>
+              <li class="nav-item"><a class="nav-link" href="#">Aloqa</a></li>
+            </ul>
+          </div>
+        </dialog>
+      </div>
+    </nav>
+    <main style="padding: 24px">
+      <div class="bg-warning" style="padding: 24px; border-radius: 16px; margin-bottom: 16px; text-align: center">
+        <h1>Issiq pitsa 30 daqiqada!</h1>
+        <button class="btn-solid theme-primary" type="button" data-bs-toggle="menu">Menyu</button>
+        <div class="menu">
+          <h6 class="menu-header">Pitsalar</h6>
+          <a class="menu-item" href="#">Margarita</a>
+          <a class="menu-item" href="#">Pepperoni</a>
+          <a class="menu-item" href="#">Sabzavotli</a>
+          <hr class="menu-divider">
+          <a class="menu-item" href="#">Ichimliklar</a>
+        </div>
+        <button class="btn-solid theme-success" type="button" data-bs-toggle="dialog" data-bs-target="#buyurtma">Buyurtma</button>
+      </div>
+      <div class="container">
+        <div class="row">
+          <div class="md:col-4">
+            <div class="card">
+              <div class="card-body">
+                <h4>Margarita</h4>
+                <p class="fg-danger"><b>45 000 so'm</b></p>
+              </div>
+            </div>
+          </div>
+          <div class="md:col-4">
+            <div class="card">
+              <div class="card-body">
+                <h4>Pepperoni</h4>
+                <p class="fg-danger"><b>55 000 so'm</b></p>
+              </div>
+            </div>
+          </div>
+          <div class="md:col-4">
+            <div class="card">
+              <div class="card-body">
+                <h4>Sabzavotli</h4>
+                <p class="fg-danger"><b>50 000 so'm</b></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <dialog class="dialog" id="buyurtma" data-bs-backdrop="static">
+        <div class="dialog-header">
+          <h4 class="dialog-title">Buyurtma</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+        </div>
+        <div class="dialog-body">
+          <label for="manzil" class="form-label">Manzil</label>
+          <input type="text" id="manzil" class="form-control" placeholder="Ko'cha, uy">
+        </div>
+        <div class="dialog-footer">
+          <button type="button" class="btn-solid theme-success" data-bs-dismiss="dialog">Tasdiqlash</button>
+        </div>
+      </dialog>
+    </main>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+  </body>
+</html>

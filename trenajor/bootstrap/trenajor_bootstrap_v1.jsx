@@ -1,5 +1,5 @@
 // @junior-trainer bootstrap v1 — СОБРАН node tools/trenajor/build.mjs bootstrap из tools/trenajor/trenajor.jsx. Править исходник, не этот файл.
-// LMS: этот JSX + savollar_banki_bootstrap_v1.json (183 вопросов: single_choice, text_input, assemble, find_error, tap_page; block_id "bootstrap", у каждого — lesson).
+// LMS: этот JSX + savollar_banki_bootstrap_v1.json (201 вопросов: single_choice, text_input, assemble, find_error, tap_page; block_id "bootstrap", у каждого — lesson).
 // =============================================================================
 // ТРЕНАЖЁР МОДУЛЯ (HTML; заказчик, 18.11.2026) — один JSX для LMS Junior + банк вопросов JSON рядом.
 // Контракт — как у тренажёра математики LMS (образец: lessons/test/trenajor/):

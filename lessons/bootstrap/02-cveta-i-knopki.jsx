@@ -7059,7 +7059,10 @@ const C = {
       'Теперь сам. Наверху образец: зелёная кнопка с рамкой. Найди на сайте страницу Button, нажми строку этой кнопки, потом вставь её в body.',
       'Now it’s your turn. The goal is at the top: a green outlined button. Find the Button page on the site, tap this button’s line, then paste it into body.'),
     ask: L3("Namunadagi tugmaning qatorini bosing", 'Нажми строку кнопки из образца', 'Tap the line of the goal button'),
-    askFind: L3('Menyudan Button sahifasini toping', 'Найди в меню страницу Button', 'Find the Button page in the menu'),
+    // Меню сайта в узком окне спрятано за ☰ — строка задания и первая подсказка называют её (23.11.2026); меню слева — askFindSide.
+    askFind: L3("☰ tugmasini bosing va Components → Button sahifasini toping", 'Нажми ☰ и найди Components → Button', 'Tap ☰ and find Components → Button'),
+    askFindSide: L3("Chapdagi menyudan Components → Button sahifasini toping", 'Найди в меню слева Components → Button', 'Find Components → Button in the menu on the left'),
+    hintMenu: L3("Menyu yashiringan. Sayt oynasining yuqori o'ng burchagidagi uch chiziqli tugmani bosing.", 'Меню спрятано. Нажми кнопку с тремя полосками в правом верхнем углу окна сайта.', 'The menu is hidden. Tap the three-line button in the top right corner of the site window.'),
     copied: L3("Nusxalandi! Endi body ichidagi bo'sh joyni bosing.", 'Скопировано! Теперь нажми пустое место в body.', 'Copied! Now tap the empty spot in body.'),
     msgs: {
       wrongPage: L3("Bu {w} sahifasi. Tugmalar Button sahifasida turadi.", 'Это страница {w}. Кнопки — на странице Button.', 'This is the {w} page. Buttons are on the Button page.'),
@@ -7080,7 +7083,7 @@ const C = {
     say: L3("Nusxalangan tugmani o'zimizga moslaymiz. Har safar namuna boshqa bo'ladi. Bo'sh joyga kerakli so'zni yozing, so'zlar saytda turibdi.",
       'Подгоним скопированную кнопку под себя. Каждый раз образец другой. Впиши в пустое место нужное слово, слова есть на сайте.',
       'Let’s adapt the copied button. Each time the goal is different. Type the right word into the empty spot; the words are on the site.'),
-    ask1: L3('Tugma qizil, chegarali bo\'lsin', 'Кнопка — красная, с рамкой', 'Make the button red and outlined'),
+    ask1: L3("Tugma qizil bo'lsin", 'Сделай кнопку красной', 'Make the button red'),
     ask2: L3("Endi tugmaning ichi to'la bo'lsin", 'Теперь кнопка — залитая', 'Now make the button filled'),
     ask3: L3("Endi tugma ko'k bo'lsin", 'Теперь кнопка — синяя', 'Now make the button blue'),
     hints1: [
@@ -7280,7 +7283,7 @@ const C = {
     opts: {
       old: L3('Eski nom, 5-versiyadan', 'Старое имя из версии 5', 'An old name from version 5'),
       noColor: L3("Bunday rang so'zi yo'q", 'Такого слова цвета нет', 'There’s no such color word'),
-      noShape: L3("Uslub so'zi yo'q", 'Нет слова стиля', 'The style word is missing')
+      noShape: L3("Rang bor, uslub so'zi yo'q", 'Цвет есть, а слова стиля нет', 'There’s a color, but no style word')
     },
     rounds: [
       L3("btn-success eski nom, beshinchi versiyadan. Oltinchisida btn-solid va theme-success.", 'btn-success — старое имя из пятой версии. В шестой — btn-solid и theme-success.', 'btn-success is an old name from version five. In version six it’s btn-solid and theme-success.'),
@@ -7300,7 +7303,12 @@ const C = {
     ask: L3("Uslub, rang va yozuvni yozing", 'Впиши стиль, цвет и надпись', 'Type the style, color and label'),
     msgs: {
       text: L3("Tugmaga yozuv yozing, kamida bitta so'z.", 'Напиши на кнопке надпись, хотя бы одно слово.', 'Write a label on the button, at least one word.'),
-      same: L3("Bu hali saytdagi inglizcha yozuv. O'z yozuvingizni yozing.", 'Это ещё английская надпись с сайта. Напиши свою.', 'That’s still the English label from the site. Write your own.')
+      same: L3("Bu hali saytdagi inglizcha yozuv. O'z yozuvingizni yozing.", 'Это ещё английская надпись с сайта. Напиши свою.', 'That’s still the English label from the site. Write your own.'),
+      // «Tayyor» с пустым полем — причина, а не молча (23.11.2026).
+      emptyAll: L3("Kodda uchta bo'sh joy bor: uslub, rang va yozuv. Hammasini yozing.", 'В коде три пустых места: стиль, цвет и надпись. Заполни все.', 'The code has three empty spots: style, color and label. Fill them all.'),
+      emptyText: L3("Tugmaga o'z yozuvingizni 2-qatorga yozing", 'Впиши свою надпись — строка 2', 'Type your own label — line 2'),
+      emptyShape: L3("Uslub so'zini 1-qatorga yozing", 'Впиши слово стиля — строка 1', 'Type the style word — line 1'),
+      emptyColor: L3("Rang so'zini 1-qatorga yozing", 'Впиши слово цвета — строка 1', 'Type the color word — line 1')
     },
     hints: [
       L3("Kodda uchta bo'sh joy bor: uslub, rang va yozuv.", 'В коде три пустых места: стиль, цвет и надпись.', 'The code has three empty spots: style, color and label.'),
@@ -8037,7 +8045,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, msgs: 1, magic: 1,
+Object.assign(SPOKEN, { help: 1, hints: 1, hints1: 1, hints2: 1, hints3: 1, why: 1, why1: 1, why2: 1, why3: 1, hint1: 1, hint2: 1, hintMenu: 1, msgs: 1, magic: 1,
   sayShape: 1, sayColor: 1, sayMore: 1, solid: 1, outline: 1, mean: 1, both: 1, shape: 1, color: 1, right: 1, sayPage: 1, sayVariants: 1, sayLine: 1, sayOutline: 1,
   sayCopy: 1, sayPaste: 1, sayText: 1, sayOld: 1, copied: 1, sayBoth: 1, sayAlert: 1, sayButton: 1, sayApply: 1, no: 1, rounds: 1 });
 
@@ -10144,6 +10152,22 @@ function clsIssue(raw, kind, want) {
   if (want && v !== want) return { k: 'other' };
   return null;
 }
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое — строка задания и подсказка называют ☰, только
+// когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
 const issueText = (c, is) => (is ? fillL(C.fill.msgs[is.k] || C.fill.msgs.other, { w: is.w || '' }) : null);
 
 // Ход заданий раундами: ступени подсказки с нуля на каждом раунде, похвала → следующий раунд, когда Коди договорил.
@@ -10558,16 +10582,20 @@ function T1({ p }) {
     sayNow(c.ok, 'cheer');
   };
   const onBtn = page === 'Button';
-  const lit = pasted ? null : !onBtn ? (lv >= 2 ? (open === 'comp' ? 'item:Button' : 'grp:comp') : null) : null;
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onBtn ? (burger && !menuView ? 'burger' : lv >= 2 ? (open === 'comp' ? 'item:Button' : 'grp:comp') : null) : null;
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const bodyL = [hl('h', 1, '<h1>' + pick(C.site.h1) + '</h1>')].concat(pasted ? [hl('b', 1, lineOf('variants', BTN_WANT_T1), { cls: 'is-new' })]
     : [slotLine('slot', 1, pick, paste, clip != null && (led || lv >= 3), !canTap)]);
-  const hintNow = pasted ? null : (msg || hintAt(lv, c.hints));
+  const hintNow = pasted ? null : (msg || hintAt(lv, hints));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onBtn ? c.ask : c.askFind} hint={hintNow} err={!!msg && msg !== c.copied} />
+        <KzAsk text={pasted ? c.ok : onBtn ? c.ask : burger ? c.askFind : c.askFindSide} hint={hintNow} err={!!msg && msg !== c.copied} />
         {!pasted ? <Goal pick={pick} html={btnHtml('btn-outline theme-success', 'Success')} /> : null}
-        <div className={docsPhoneCls({ clip: clip != null, nav: clip == null, done: pasted })}>
+        <div ref={scene} className={docsPhoneCls({ clip: clip != null, nav: clip == null, done: pasted })}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={page}><BsDocs page={page} open={open} onOpen={(x) => canTap && setOpen(x)} onNav={nav} navOff={!canTap} copyOff lit={lit} menuView={menuView} onMenu={() => setMenuView((x) => !x)} scrollTo={onBtn ? 'variants' : null} scrollKey={page}
             lines={{ variants: { onLine, sel: clip != null ? clip : tried, lineLed: lv >= 3 ? BTN_WANT_T1 : null, lineOff: !canTap } }} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, [linkL('lk', 1)], bodyL)} cls="kz-code-sm b1-nowrap" /></div>
@@ -10870,6 +10898,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T6. ПОЧЕМУ НЕ КРАСИТСЯ — btn-success (версия 5), btn-solid theme-green (нет цвета), theme-success (нет стиля).
@@ -10896,7 +10928,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -10950,7 +10982,12 @@ function W1({ p }) {
   const vs = normCls(sh), vc = normCls(co), vx = tx.trim();
   const ready = !!(vs && vc && vx);
   const confirm = () => {
-    if (!canTap || !ready || solved) return;
+    if (!canTap || solved) return;
+    if (!ready) {   // пустое поле — причина в панели, «Tayyor» не молчит (23.11.2026)
+      const m = !vs && !vc && !vx ? c.msgs.emptyAll : !vs ? c.msgs.emptyShape : !vc ? c.msgs.emptyColor : c.msgs.emptyText;
+      sfx('soft', true); setMsg(m); sayNow(m, 'think');
+      return;
+    }
     st.current.tries += 1;
     const issue = issueText(c, clsIssue(vs, 'shape', null)) || issueText(c, clsIssue(vc, 'theme', null))
       || (noTagsIn(vx) ? UI.noTags : vx.replace(/\s+/g, '').length < 3 ? c.msgs.text : normT(vx) === normT('Success') ? c.msgs.same : null);
@@ -10973,9 +11010,9 @@ function W1({ p }) {
         <div className={docsPhoneCls({ ref: true, done: solved })}>
           {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Button"><BsDocs page="Button" only="variants" copyOff /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 0, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }, { k: 'b', d: 1, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l2 }, hl('c', 0, '</button>')]} cls="kz-code-sm" /></div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} o={{ h1: false, btns: [{ cls: pageCls || null, text: vx || pick(C.site.btn) }] }} title={pick(UI.mySite)} /></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} o={{ h1: false, btns: [{ cls: pageCls || null, text: vx || '✎ …' }] }} title={pick(UI.mySite)} /></div>
         </div>
-        {!solved ? <ReadyBtn on={canTap && ready} glow={canTap && ready} onClick={confirm} /> : null}
+        {!solved ? <ReadyBtn on={canTap} glow={canTap && ready} onClick={confirm} /> : null}
       </Sheet>
     </StageB>
   );
@@ -14542,6 +14579,43 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
      (итог: код, умения, «Следующий урок») — дотягивается до её низа */
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col { container-type: inline-size; }
   .r28 .b1-sheet .kz-scene.b1-pair:not(.b2-q1) > .kz-col > .kz-br { aspect-ratio: auto; height: auto; max-height: none; min-height: min(var(--brh, 46dvh), 68.75cqw); flex: 1 1 0; }
+  /* итог: в правой колонке первая карточка (код или правила CSS) тянется, если окно браузера выше колонки */
+  .r28 .b1-sheet .kz-scene.b1-pair.b1-end > .b1-end-side > :first-child { flex: 1 1 auto; }
+}
+
+/* Длинные строки кода — прокрутка вбок, а не многоточие (заказчик, 23.11.2026, урок «Карусель», экран 9: «там где стоят
+   точечки… лучше поставь горизонтальный скролл»). Окно кода, где строка не помещается, листается вбок целиком; все строки —
+   в одну линию; строка с полем ввода переносится, как раньше, чтобы поле не уехало за край. Для всех уроков модуля. */
+.r28 .kz-code:has(> .kz-line.b2-cut), .r28 .kz-code.b1-nowrap,
+.r28 .b1-sheet .b8-pair .kz-code.b2-small, .r28 .b1-sheet .b7-s1 .kz-code.b2-small {
+  overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #5B6478 transparent; overscroll-behavior-x: contain;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) > .kz-line:not(:has(.kz-gap)), .r28 .kz-code.b1-nowrap > .kz-line:not(:has(.kz-gap)),
+.r28 .b1-sheet .b8-pair .kz-code.b2-small > .kz-line:not(:has(.kz-gap)), .r28 .b1-sheet .b7-s1 .kz-code.b2-small > .kz-line:not(:has(.kz-gap)) {
+  white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important; width: max-content; min-width: 100%; flex-shrink: 0;
+}
+.r28 .kz-code:has(> .kz-line.b2-cut) .b1-st, .r28 .b1-sheet .b8-pair .kz-code.b2-small .b1-st { word-break: normal; overflow-wrap: normal; white-space: nowrap; }
+
+/* Открытая клавиатура (23.11.2026, прогон по состояниям): общее правило помощников курса прячет нижнюю полосу при is-kbd,
+   а панель подсказки / ошибки — та же полоса; ученик жал Enter, ошибался — и не видел, что не так. В уроках Bootstrap панель
+   при клавиатуре видна (компактная — правила .is-kbd .b-sheet-* набора облика), прячется только полоса «Назад / Дальше». */
+.is-kbd .stage.has-sheet > .stage-nav.b-sheet, .is-kbd .stage.has-sheet .stage-nav.b-sheet { display: block; }
+/* …и пока панель видна, кнопка проверки над ней не нужна (у панели своя «Qayta urinish») — она наезжала на окно страницы. */
+.is-kbd .stage.has-sheet .kz-sheet-body > .kz-row, .is-kbd .stage.has-sheet .kz-sheet-body > .kz-ready-row { display: none; }
+/* Телефон, открыта панель ошибки (23.11.2026, прогон по состояниям): кнопка проверки стояла серой между сценой и панелью,
+   сцена ужималась — справка сайта наезжала на строку задания, окно страницы почти пропадало. Пока видна ошибка, кнопка не
+   нужна (у панели «Qayta urinish»; ученик начинает исправлять — панель закрывается, кнопка возвращается). При подсказке
+   кнопку не прячем: подсказка при наборе не закрывается. С клавиатурой при
+   ошибке прячется и образец «Kerak» — иначе он закрывал строку задания. */
+@media (max-width: 759px) {
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-row:has(> .kz-btn.is-coral),
+  .stage.r28:has(.stage-nav.b-sheet.is-err) .kz-sheet-body > .kz-ready-row { display: none; }
+}
+.is-kbd .stage:has(.stage-nav.b-sheet.is-err) .kz-sheet-body .b2-goal { display: none; }
+/* Телефон, открыта любая панель (подсказка или ошибка): сцена ниже — справка сайта в задании ужимается, иначе она наезжала
+   на строку задания (урок 4 · 8, урок 6 · 11, урок 3 · 13). */
+@media (max-width: 759px) {
+  .stage.r28.has-sheet .kz-scene.b1-tri.is-ref > .b1-tri-docs > .kz-br.b1-docs { min-height: 0 !important; max-height: 11dvh !important; }
 }
 /* =============================================================================
    УРОК 2 МОДУЛЯ BOOTSTRAP — свои стили поверх облика модуля (../bs1/bs1.css). Префикс b2-; bd- — похожий сайт.

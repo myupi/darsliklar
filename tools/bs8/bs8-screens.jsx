@@ -1,6 +1,6 @@
 // =============================================================================
 // ЭКРАНЫ УРОКА 8 «Карусель» (20.11.2026). Помощники — bs8-head.jsx, общие куски — bs8-common.jsx.
-// Сценарий — docs/scenarij-bootstrap-08-karusel.md.
+// Сценарий — docs/scenarij-bootstrap-09-karusel.md.
 // =============================================================================
 const NEWL = 'is-new is-read';
 const PLAIN = { car: null, id: null, auto: null, inner: null, items: [null, null, null], ints: [], btns: null, dots: null };
@@ -226,9 +226,9 @@ function G1({ p }) {
 }
 
 // Задание «впиши» по карусели: o — что уже есть, key/attr/before — где поле, set(v) — o с ответом.
-const fillCar = (pick, { o, key, attr, before, set, want, kind, ask, hints, why, ph, goal, gz, js, fold }) => ({
+const fillCar = (pick, { o, key, attr, before, after, set, want, kind, ask, hints, why, ph, goal, gz, js, fold }) => ({
   kind, want, ask, hints, why, gz: gz || 0.4, js, ph: ph || L3('…', '…', '…'),
-  line: (f) => carLines(pick, o, { field: { key, attr, node: f, before }, script: js, foldCtl: fold }),
+  line: (f) => carLines(pick, o, { field: { key, attr, node: f, before, after }, script: js, foldCtl: fold }),
   goal: goal ? carH(pick, set([].concat(want)[0])) : null,
   body: (v) => carH(pick, set(v || null))
 });
@@ -238,10 +238,13 @@ const setItem = (o, i, v) => Object.assign({}, o, { items: o.items.map((x, j) =>
 function T1({ p }) {
   const pick = usePick();
   const c = C.t1;
-  const o1 = carO({ inner: null }), o2 = setItem(carO(), 2, null), o3 = carO({ items: ['carousel-item', 'carousel-item', 'carousel-item'] });
+  // Раунд 2: карусель начинается с третьего фото (active у него) — образец открыт на нём; без carousel-item у третьего его на
+  // странице нет (ширина 0), страница стоит на первом; после ответа и страница открывается на третьем фото.
+  const I3 = ['carousel-item', 'carousel-item', 'carousel-item active'];
+  const o1 = carO({ inner: null }), o2 = carO({ items: ['carousel-item', 'carousel-item', null] }), o3 = carO({ items: ['carousel-item', 'carousel-item', 'carousel-item'] });
   const rounds = [
     fillCar(pick, { o: o1, key: 'inner', attr: 'class', set: (v) => carO({ inner: v }), want: 'carousel-inner', kind: 'cls', ask: c.ask1, hints: c.hints1, why: c.why1, goal: true }),
-    fillCar(pick, { o: o2, key: 'i2', attr: 'class', set: (v) => setItem(carO(), 2, v), want: 'carousel-item', kind: 'cls', ask: c.ask2, hints: c.hints2, why: c.why2, goal: true }),
+    fillCar(pick, { o: o2, key: 'i2', attr: 'class', after: ' active', set: (v) => carO({ items: I3.map((x, j) => (j === 2 ? (v ? v + ' active' : 'active') : x)) }), want: 'carousel-item', kind: 'cls', ask: c.ask2, hints: c.hints2, why: c.why2, goal: true, js: true }),
     fillCar(pick, { o: o3, key: 'i1', attr: 'class', before: 'carousel-item ', set: (v) => setItem(o3, 1, 'carousel-item' + (v ? ' ' + v : '')), want: 'active', kind: 'cls', ask: c.ask3, hints: c.hints3, why: c.why3, goal: true, js: true })
   ];
   return <FillRounds p={p} id="t1" c={c} rounds={rounds} type="carousel-classes" />;
@@ -427,7 +430,7 @@ function T4({ p }) {
   const led = useIdleLed(canTap && !fin, done.length);
   const rows = {};
   carRows(carO()).forEach((r) => { rows[r.key] = r; });
-  const label = { car: 'carousel slide', inner: 'carousel-inner', i0: 'carousel-item active · slayd1', i1: 'carousel-item · slayd2', i2: 'carousel-item · slayd3', innerc: '</div> · inner', carc: '</div> · carousel' };
+  const label = { car: '<div class="carousel slide">', inner: '<div class="carousel-inner">', i0: '<div class="carousel-item active"> slayd1', i1: '<div class="carousel-item"> slayd2', i2: '<div class="carousel-item"> slayd3', innerc: '</div> · inner', carc: '</div> · carousel' };
   const tap = (k) => {
     if (!canTap || fin || done.indexOf(k) >= 0) return;
     st.current.tries += 1;
@@ -530,12 +533,18 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ РАБОТАЕТ: нет строки script (кнопки мёртвые); data-bs-target без «#»; data-bs-ride — имя версии 5.
+// р1 — подсвечено пустое место в конце, где должна быть строка script; р2, р3 — строка с причиной свёрнута до нужного атрибута.
 const T6_ROUNDS = [
-  { k: 'noScript', o: carO({ btns: BTNS }), js: false, script: false, hl: { next: 'is-hl', prev: 'is-hl' } },
-  { k: 'noHash', o: carO({ btns: { prev: 'prev', next: 'next', target: CAR_ID } }), js: true, script: true, hl: { next: 'is-hl', prev: 'is-hl' } },
-  { k: 'old', o: carO({ extra: 'data-bs-ride="carousel"', dots: '#' + CAR_ID }), js: true, script: true, fold: true, hl: { car: 'is-hl' } }
+  { k: 'noScript', o: carO({ btns: BTNS }), js: false, script: false, gapEnd: true, hl: {} },
+  { k: 'noHash', o: carO({ btns: { prev: 'prev', next: 'next', target: CAR_ID } }), js: true, script: true, hl: { next: 'is-hl', prev: 'is-hl' },
+    src: { prev: '<button … data-bs-target="' + CAR_ID + '">', next: '<button … data-bs-target="' + CAR_ID + '">' } },
+  { k: 'old', o: carO({ extra: 'data-bs-ride="carousel"', dots: '#' + CAR_ID }), js: true, script: true, fold: true, hl: { car: 'is-hl' }, src: { car: '<div … data-bs-ride="carousel">' } }
 ];
 function T6({ p }) {
   const pick = usePick();
@@ -559,7 +568,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {
@@ -572,9 +581,9 @@ function T6({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
-        <div className="kz-scene b1-pair b1-wide-code b8-pair b8-t6" key={'r' + R.ii}>
-          <div className="kz-col"><KzCode lines={carLines(pick, RR.o, { hl: RR.hl, script: RR.script, foldCtl: RR.fold })} cls="kz-code-sm b2-small" /></div>
+        <KzAsk text={R.done ? c.ok : c.asks[R.ii]} hint={R.ok ? null : ch.now(hints)} err={ch.err} n={(R.ii + 1) + '/' + T6_ROUNDS.length} />
+        <div className="kz-scene b1-pair b1-wide-code b8-pair b8-t6 b8-t6c" key={'r' + R.ii}>
+          <div className="kz-col"><KzCode lines={carLines(pick, RR.o, { hl: RR.hl, script: RR.script, foldCtl: RR.fold, src: RR.src, gapEnd: RR.gapEnd && !R.ok })} cls="kz-code-sm b2-small" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} body={carH(pick, RR.o)} js={RR.js} title={pick(C.site.title)} /></div>
         </div>
         <div className="kz-pick b1-why">
@@ -621,7 +630,7 @@ function W1({ p }) {
   const good = msOk(v) ? v : null;
   const o = carO({ car: fade ? 'carousel carousel-fade' : 'carousel slide', auto: 'true', ints: [good, good, good], dots: '#' + CAR_ID });
   const field = solved ? <span key="f" className="b1-st">{v}</span>
-    : <span key="f" className={'kz-gap b1-slotin b2-field' + (led ? ' kz-gap-led' : '')}><InlineInput value={mv} onChange={(x) => { setMv(x); setMsg(null); }} onEnter={confirm} placeholder={L3('3000', '3000', '3000')} label={c.ask} max={8} /></span>;
+    : <span key="f" className={'kz-gap b1-slotin b2-field' + (led ? ' kz-gap-led' : '')}><InlineInput value={mv} onChange={(x) => { setMv(x); setMsg(null); }} onEnter={confirm} placeholder={L3('…', '…', '…')} label={c.ask} max={8} /></span>;
   const lines = carLines(pick, o, { field: { key: 'i0', attr: 'data-bs-interval', node: field }, hl: { car: 'is-read' }, foldCtl: true });
   useHlScroll(fade);
   return (

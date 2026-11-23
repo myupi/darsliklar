@@ -207,8 +207,12 @@ function T1({ p }) {
   const mk = (kind, want, where, o, ask, hints, why) => ({ kind, want, ask, hints, why, vw: LAPTOP, gz: 0.3, ph: L3('…', '…', '…'),
     line: fieldLines(pick, o, where), goal: goalGrid(pick, full),
     body: (v) => gridH(pick, Object.assign({}, o, where === 'cont' ? { cont: v } : where === 'row' ? { row: v } : { cols: o.cols.map((x, j) => (j === where ? v : x)) })) });
+  // 23.11.2026: раунд 1 — окно 1200 px (container 960 px), фон страницы серый, container белый: поля по краям видны
+  // серыми полосами и на странице, и в образце (без container блоки во всю ширину)
+  const r1 = mk('cont', 'container', 'cont', { cont: null, row: 'row', cols: COLS3('col') }, c.ask1, c.hints1, c.why1);
+  const BG1 = '<style>body{background:#E9ECEF}.container{background:#fff;padding-block:10px}</style>';
   const rounds = [
-    mk('cont', 'container', 'cont', { cont: null, row: 'row', cols: COLS3('col') }, c.ask1, c.hints1, c.why1),
+    Object.assign({}, r1, { vw: WIDE6, gvw: WIDE6, goal: BG1 + r1.goal, body: (v) => BG1 + r1.body(v) }),
     mk('row', 'row', 'row', { cont: 'container', row: null, cols: COLS3('col') }, c.ask2, c.hints2, c.why2),
     mk('col', 'col', 2, { cont: 'container', row: 'row', cols: ['col', 'col', null] }, c.ask3, c.hints3, c.why3)
   ];
@@ -302,8 +306,10 @@ function T3({ p }) {
     line: fieldLines(pick, { cont: 'container', row: 'row', cols: [others, others, null] }, 2),   // образца нет: два соседних блока уже показывают, как надо
 
     body: (v) => gridH(pick, { cont: 'container', row: 'row', cols: [others, others, v] }) });
-  const rounds = [mk('md:col-4', PHONE, 'md:col-4', c.ask1, c.hints1, c.why1), mk('lg:col-4', TABLET, 'lg:col-4', c.ask2, c.hints2, c.why2)];
-  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Breakpoints', only: 'bptable' }} type="responsive-col" />;
+  // 23.11.2026: на узкой ширине все блоки и так столбиком — сначала окно той ширины, где разница видна; переключатель — обе ширины
+  const rounds = [Object.assign(mk('md:col-4', TABLET, 'md:col-4', c.ask1, c.hints1, c.why1), { widths: [PHONE, TABLET] }),
+    Object.assign(mk('lg:col-4', LAPTOP, 'lg:col-4', c.ask2, c.hints2, c.why2), { widths: [TABLET, LAPTOP] })];
+  return <FillRounds p={p} id="t3" c={c} rounds={rounds} docs={{ page: 'Breakpoints', only: 'bptable', cls: 'l6-t3' }} type="responsive-col" />;
 }
 
 // S12. ВСЁ ВМЕСТЕ (показ): шапка (урок 4) + контейнер + ряд карточек (урок 5) с md:col-4; ширина 360 → 1024.
@@ -338,7 +344,8 @@ function T4({ p }) {
   const led = useIdleLed(canTap && !fin, done.length);
   const src = { cont: '<div class="container">', row: '<div class="row">', col: '<div class="md:col-6">', card: '<div class="card card-body">' + pick(C.site.b1) + '</div>', colc: '</div>', rowc: '</div>', contc: '</div>' };
   const depth = { cont: 0, row: 1, col: 2, card: 3, colc: 2, rowc: 1, contc: 0 };
-  const label = { cont: 'container', row: 'row', col: 'md:col-6', card: 'card', colc: '</div> · col', rowc: '</div> · row', contc: '</div> · container' };
+  // 23.11.2026: подписи одного вида — тегами
+  const label = { cont: '<div class="container">', row: '<div class="row">', col: '<div class="md:col-6">', card: '<div class="card card-body">…', colc: '</div> · col', rowc: '</div> · row', contc: '</div> · container' };
   const tap = (k) => {
     if (!canTap || fin || done.indexOf(k) >= 0) return;
     st.current.tries += 1;
@@ -441,6 +448,10 @@ function Q1({ p }) {
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // T6. ПОЧЕМУ НЕ ТАК: нет row (колонки столбиком); col-md-4 (версия 5); col-8 + col-8 (больше 12 — перенос).
 const T6_ROUNDS = [
@@ -469,7 +480,7 @@ function T6({ p }) {
   const choose = (k) => {
     if (!canTap || R.ok || off.indexOf(k) >= 0) return;
     R.st.current.tries += 1;
-    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== RR.k) { R.st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); R.setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (R.last) {

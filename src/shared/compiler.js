@@ -44,7 +44,7 @@ function parse(text) {
 }
 
 // { html: { file, head, items, notes }, css: … } — модули в порядке курсов (файлы читаются по алфавиту).
-const ORDER = ['html', 'css', 'js', 'ai'];
+const ORDER = ['html', 'css', 'js', 'ai', 'bootstrap'];
 const rank = (id) => (ORDER.indexOf(id) < 0 ? 99 : ORDER.indexOf(id));
 export const COMPILER = Object.fromEntries(Object.entries(RAW).map(([path, text]) => {
   const id = /kompilyator-amaliy-([a-z0-9]+)\.txt$/.exec(path)[1];

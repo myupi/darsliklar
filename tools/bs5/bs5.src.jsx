@@ -206,7 +206,7 @@ const C = {
     eyebrow: L3('Kartochkani oling', 'Возьми карточку', 'Take a card'),
     say: L3("Endi o'zingiz. Saytdan Card sahifasini toping, misol kodini nusxalang va body ichiga qo'ying.", 'Теперь сам. Найди на сайте страницу Card, скопируй код примера и вставь в body.', 'Now you. Find the Card page on the site, copy the example code and paste it into body.'),
     ask: L3("Misolni nusxalab, body ichiga qo'ying", 'Скопируй пример и вставь в body', 'Copy the example and paste it into body'),
-    askFind: L3('Menyudan Card sahifasini toping', 'Найди в меню страницу Card', 'Find the Card page in the menu'),
+    askFind: L3("☰ tugmasini bosing va Components → Card sahifasini toping", 'Нажми ☰ и найди Components → Card', 'Tap ☰ and find Components → Card'),
     copied: L3("Nusxalandi! Endi body ichidagi bo'sh joyni bosing.", 'Скопировано! Теперь нажми пустое место в body.', 'Copied! Now tap the empty spot in body.'),
     msgs: {
       wrongPage: L3("Bu {w} sahifasi. Kartochkalar Components bo'limida, Card sahifasida.", 'Это страница {w}. Карточки — в разделе Components, на странице Card.', 'This is the {w} page. Cards are in Components, on the Card page.'),
@@ -243,17 +243,17 @@ const C = {
     eyebrow: L3('Kartochka rangi', 'Цвет карточки', 'Card color'),
     help: [
       L3("section tegining class qismiga va kartochka rangiga qarang.", 'Посмотри на class тега section и на цвет карточки.', 'Look at the section tag’s class and the card’s color.'),
-      L3("theme so'zi kartochkani to'liq bo'yaydi. card-subtle bilan rang yumshoq bo'ladi.", 'Слово theme заливает карточку цветом. С card-subtle цвет мягкий.', 'A theme word fills the card with color. With card-subtle the color is soft.'),
-      L3("Bu daftar muqovasiga o'xshaydi: yorqin yoki och rangli.", 'Это как обложка тетради: яркая или пастельная.', 'It’s like a notebook cover: bright or pastel.')
+      L3("theme so'zi kartochka ramkasini va rasm ostidagi chiziqni bo'yaydi, foni esa oq qoladi. card-subtle bilan ramka och, yumshoq rangda.", 'Слово theme красит рамку карточки и линию под фото, а фон остаётся белым. С card-subtle рамка светлая, мягкого цвета.', 'A theme word colors the card’s frame and the line under the photo; the background stays white. With card-subtle the frame is a light, soft color.'),
+      L3("Bu rasm ramkasiga o'xshaydi: rasm o'sha, ramka esa yorqin yoki och rangli.", 'Это как рамка для фото: фото то же, а рамка яркая или пастельная.', 'It’s like a photo frame: the photo stays the same, the frame is bright or pastel.')
     ],
     say: L3("Kartochkani ham bo'yash mumkin. So'zlar tanish. Qarang.", 'Карточку тоже можно покрасить. Слова знакомые. Смотри.', 'Cards can be colored too. The words are familiar. Watch.'),
-    sayTheme: L3("theme-primary qo'shdim: kartochka to'liq ko'k bo'ldi. Tugmadagi so'z bilan bir xil!", 'Добавил theme-primary: карточка стала синей целиком. То же слово, что у кнопки!', 'I added theme-primary: the whole card turned blue. The same word as for buttons!'),
-    saySubtle: L3("card-subtle va theme-success: rang och yashil, yumshoq. Ko'zga yoqimli.", 'card-subtle и theme-success: светло-зелёный, мягкий цвет. Приятно глазу.', 'card-subtle and theme-success: a soft light green. Easy on the eyes.'),
-    done: L3("Eslab qoling: kartochka rangi theme so'zi bilan, yumshoq rang uchun yana card-subtle.", 'Запомни: цвет карточки — словом theme, для мягкого цвета ещё card-subtle.', 'Remember: a card’s color is a theme word; for a soft color add card-subtle.'),
+    sayTheme: L3("theme-primary qo'shdim: kartochka ramkasi ko'k bo'ldi, rasm ostidagi chiziq ham. Foni esa oq qoldi. Tugmadagi so'z bilan bir xil!", 'Добавил theme-primary: рамка карточки стала синей, и линия под фото тоже. А фон остался белым. То же слово, что у кнопки!', 'I added theme-primary: the card’s frame turned blue, and so did the line under the photo. The background stayed white. The same word as for buttons!'),
+    saySubtle: L3("card-subtle va theme-success: ramka och yashil, yumshoq. Ko'zga yoqimli.", 'card-subtle и theme-success: рамка светло-зелёная, мягкая. Приятно глазу.', 'card-subtle and theme-success: a soft light green frame. Easy on the eyes.'),
+    done: L3("Eslab qoling: kartochka ramkasining rangi theme so'zi bilan, yumshoq rang uchun yana card-subtle.", 'Запомни: цвет рамки карточки — словом theme, для мягкого цвета ещё card-subtle.', 'Remember: a card’s frame color is a theme word; for a soft color add card-subtle.'),
     askStart: L3('Qarang: oddiy kartochka', 'Смотри: обычная карточка', 'Watch: a plain card'),
     askTheme: L3('Qarang: theme-primary', 'Смотри: theme-primary', 'Watch: theme-primary'),
     askSubtle: L3('Qarang: card-subtle', 'Смотри: card-subtle', 'Watch: card-subtle'),
-    askDone: L3("Rang — theme, yumshoq — card-subtle", 'Цвет — theme, мягкий — card-subtle', 'Color: theme; soft: card-subtle')
+    askDone: L3("Ramka rangi — theme, yumshoq — card-subtle", 'Цвет рамки — theme, мягкий — card-subtle', 'Frame color: theme; soft: card-subtle')
   },
   g2: {
     eyebrow: L3('Theme variants', 'Theme variants', 'Theme variants'),
@@ -264,20 +264,20 @@ const C = {
     ],
     say: L3("Kartochka ranglari saytda ham bor. Qarang.", 'Цвета карточек есть и на сайте. Смотри.', 'Card colors are on the site too. Watch.'),
     sayPage: L3("Card sahifasining Theme variants qismi: sakkizta rangli kartochka va ularning kodi.", 'Часть Theme variants на странице Card: восемь цветных карточек и их код.', 'The Theme variants part of the Card page: eight colored cards and their code.'),
-    sayApply: L3("theme-success so'zini belgiladim va card dan keyin qo'ydim. Kartochka yashil bo'ldi!", 'Выделил theme-success и поставил после card. Карточка стала зелёной!', 'I selected theme-success and put it after card. The card turned green!'),
+    sayApply: L3("theme-success so'zini belgiladim va card dan keyin qo'ydim. Kartochka ramkasi yashil bo'ldi!", 'Выделил theme-success и поставил после card. Рамка карточки стала зелёной!', 'I selected theme-success and put it after card. The card’s frame turned green!'),
     done: L3("Rang so'zlari hamma joyda bir xil: tugmada ham, e'londa ham, kartochkada ham.", 'Слова цвета везде одинаковые: у кнопки, у объявления, у карточки.', 'Color words are the same everywhere: buttons, notices, cards.'),
     askStart: L3('Qarang: menyu', 'Смотри: меню', 'Watch: the menu'),
     askMenu: L3('Qarang: Components → Card', 'Смотри: Components → Card', 'Watch: Components → Card'),
     askPage: L3('Qarang: Theme variants', 'Смотри: Theme variants', 'Watch: Theme variants'),
     askWord: L3("Qarang: so'z belgilandi", 'Смотри: слово выделено', 'Watch: the word is selected'),
-    askApply: L3("Qarang: kartochka yashil", 'Смотри: карточка зелёная', 'Watch: the card is green'),
+    askApply: L3("Qarang: ramka yashil", 'Смотри: рамка зелёная', 'Watch: the frame is green'),
     askDone: L3('Card → Theme variants', 'Card → Theme variants', 'Card → Theme variants')
   },
   t3: {
-    eyebrow: L3("Kartochkani bo'yang", 'Покрась карточку', 'Color the card'),
-    say: L3("Uchinchi robot kartochkasini bo'yaymiz. Namunaga qarang va rang so'zini yozing.", 'Покрасим карточку третьего робота. Посмотри на образец и впиши слово цвета.', 'Let’s color the third robot’s card. Look at the goal and type the color word.'),
-    ask1: L3("Kartochka qizil bo'lsin", 'Карточка — красная', 'Make the card red'),
-    ask2: L3("Yumshoq sariq bo'lsin", 'Мягкая жёлтая', 'Make it soft yellow'),
+    eyebrow: L3("Ramkani bo'yang", 'Покрась рамку', 'Color the frame'),
+    say: L3("Uchinchi robot kartochkasining ramkasini bo'yaymiz. Namunaga qarang va rang so'zini yozing.", 'Покрасим рамку карточки третьего робота. Посмотри на образец и впиши слово цвета.', 'Let’s color the third robot’s card frame. Look at the goal and type the color word.'),
+    ask1: L3("Ramka qizil bo'lsin", 'Рамка — красная', 'Make the frame red'),
+    ask2: L3("Ramka yumshoq sariq bo'lsin", 'Рамка — мягкая жёлтая', 'Make the frame soft yellow'),
     hints1: [
       L3("Rang so'zi theme bilan boshlanadi.", 'Слово цвета начинается с theme.', 'The color word starts with theme.'),
       L3("Qizil — xavf rangi.", 'Красный — цвет опасности.', 'Red is the danger color.'),
@@ -288,9 +288,9 @@ const C = {
       L3("Sariq — ogohlantirish rangi.", 'Жёлтый — цвет предупреждения.', 'Yellow is the warning color.'),
       L3("Yozing: theme-warning", 'Впиши: theme-warning', 'Type: theme-warning')
     ],
-    why1: L3("theme-danger kartochkani qizil qildi.", 'theme-danger сделал карточку красной.', 'theme-danger made the card red.'),
-    why2: L3("card-subtle va theme-warning: yumshoq sariq.", 'card-subtle и theme-warning: мягкий жёлтый.', 'card-subtle and theme-warning: soft yellow.'),
-    done: L3("Ajoyib! Kartochkani istalgan rangga bo'yay olasiz.", 'Отлично! Карточку покрасишь в любой цвет.', 'Great! You can color a card any color.')
+    why1: L3("theme-danger kartochka ramkasini qizil qildi.", 'theme-danger сделал рамку карточки красной.', 'theme-danger made the card’s frame red.'),
+    why2: L3("card-subtle va theme-warning: ramka yumshoq sariq.", 'card-subtle и theme-warning: рамка мягкая жёлтая.', 'card-subtle and theme-warning: a soft yellow frame.'),
+    done: L3("Ajoyib! Kartochka ramkasini istalgan rangga bo'yay olasiz.", 'Отлично! Рамку карточки покрасишь в любой цвет.', 'Great! You can color a card’s frame any color.')
   },
   s11: {
     eyebrow: L3('Qatorda', 'В ряд', 'In a row'),
@@ -311,7 +311,7 @@ const C = {
   t5: {
     eyebrow: L3("Qatorga tering", 'Поставь в ряд', 'Line them up'),
     say: L3("Endi kartochkalarni o'zingiz qatorga terasiz. Namunaga qarang va bo'sh joyga so'z yozing.", 'Теперь ставишь карточки в ряд сам. Посмотри на образец и впиши слово.', 'Now you line up the cards. Look at the goal and type the word.'),
-    ask1: L3("Kartochkalar qatorda tursin", 'Карточки — в ряд', 'Put the cards in a row'),
+    ask1: L3("Kartochkalar ostma-ost emas, bir qatorda tursin", 'Карточки — в один ряд, а не столбиком', 'Cards in one row, not stacked'),
     ask2: L3("Oraliq 24 piksel bo'lsin", 'Расстояние — 24 пикселя', 'Make the spacing 24 pixels'),
     hints1: [
       L3("Qatorga teradigan so'z o'tgan darsda edi.", 'Слово, которое строит ряд, было на прошлом уроке.', 'The word that makes a row was in last lesson.'),
@@ -332,7 +332,7 @@ const C = {
     say: L3("Kartochka kodini o'zingiz yig'asiz. Pastdagi bo'laklarni to'g'ri tartibda bosing: tepadan pastga, xuddi kartochkada turganidek.",
       'Код карточки собираешь сам. Нажимай кусочки внизу в правильном порядке: сверху вниз, как они стоят в карточке.',
       'You build the card code yourself. Tap the pieces below in the right order: top to bottom, as they sit in the card.'),
-    ask: L3("Bo'laklarni tartib bilan bosing", 'Нажимай кусочки по порядку', 'Tap the pieces in order'),
+    ask: L3("Kartochkadagidek tepadan pastga bosing", 'Нажимай сверху вниз, как в карточке', 'Tap from top to bottom, like in the card'),
     msgs: {
       img: L3("Oldin rasm: u kartochkaning eng tepasida turadi.", 'Сначала фото: оно на самом верху карточки.', 'The photo first: it sits at the very top of the card.'),
       body: L3("Rasmdan keyin card-body ochiladi: matnlar uning ichida.", 'После фото открывается card-body: тексты внутри него.', 'After the photo, card-body opens: the texts go inside it.'),
@@ -351,19 +351,19 @@ const C = {
   q1: {
     eyebrow: L3('Qaysi class', 'Какой class', 'Which class'),
     say: L3("Kichik sinov. Chapda namuna, o'ngda sizning tanlovingiz natijasi. Kerakli bo'lakka qaysi class kerak?", 'Маленькое испытание. Слева образец, справа результат твоего выбора. Какой class нужен части?', 'A little test. The goal is on the left, your choice’s result on the right. Which class does the part need?'),
-    asks: [L3('Rasmga qaysi class?', 'Какой class у фото?', 'Which class for the photo?'), L3('Tashqi qutiga qaysi class?', 'Какой class у внешней коробки?', 'Which class for the outer box?'), L3('Ichki div tegiga qaysi class?', 'Какой class у внутреннего div?', 'Which class for the inner div?'), L3('Yashil kartochkaga qaysi class?', 'Какой class у зелёной карточки?', 'Which class for the green card?')],
+    asks: [L3('Rasmga qaysi class?', 'Какой class у фото?', 'Which class for the photo?'), L3('Tashqi qutiga qaysi class?', 'Какой class у внешней коробки?', 'Which class for the outer box?'), L3('Ichki div tegiga qaysi class?', 'Какой class у внутреннего div?', 'Which class for the inner div?'), L3('Yashil ramkali kartochkaga qaysi class?', 'Какой class у карточки с зелёной рамкой?', 'Which class for the green-framed card?')],
     ask: L3('Qaysi class?', 'Какой class?', 'Which class?'),
     empty: L3("Variantni tanlang, natija shu yerda chiqadi", 'Выбери вариант, результат появится здесь', 'Pick an option, the result shows here'),
     why: [
       L3("Rasm tepada, butun kenglikda: card-img-top.", 'Фото сверху во всю ширину: card-img-top.', 'The photo on top, full width: card-img-top.'),
       L3("Ramka va yumaloq burchak: card.", 'Рамка и скруглённые углы: card.', 'A border and rounded corners: card.'),
       L3("Ichki joy va oraliqlar: card-body.", 'Отступы и промежутки: card-body.', 'Inner space and gaps: card-body.'),
-      L3("Yashil kartochka: card va theme-success.", 'Зелёная карточка: card и theme-success.', 'A green card: card and theme-success.')
+      L3("Yashil ramkali kartochka: card va theme-success.", 'Карточка с зелёной рамкой: card и theme-success.', 'A card with a green frame: card and theme-success.')
     ],
     no: {
-      'card-img-bottom': L3("Bu pastdagi rasm uchun: tepa burchaklari to'g'ri, pastkilari yumaloq.", 'Это для фото снизу: верхние углы прямые, нижние скруглены.', 'That’s for a bottom photo: square top corners, rounded bottom ones.'),
-      'card-image': L3("Bunday class yo'q, rasm o'z o'lchamida qoldi.", 'Такого class нет, фото осталось своего размера.', 'There’s no such class; the photo kept its own size.'),
-      'img-fluid': L3("img-fluid faqat ekrandan katta bo'lishga qo'ymaydi, butun kenglikka cho'zmaydi.", 'img-fluid только не даёт быть шире, но не растягивает на всю ширину.', 'img-fluid only stops it being too wide; it doesn’t stretch to full width.'),
+      'rounded-circle': L3("rounded-circle rasmni oval qilib qirqdi. Namunada rasm to'rtburchak, kartochkaning tepasida.", 'rounded-circle обрезал фото овалом. В образце фото прямоугольное, наверху карточки.', 'rounded-circle cut the photo into an oval. In the goal the photo is a rectangle at the top of the card.'),
+      'card-body': L3("card-body ichki joy beradi: rasm atrofida oq hoshiya paydo bo'ldi. Namunada rasm kartochka chetlariga tegib turibdi.", 'card-body даёт отступы: вокруг фото появились белые поля. В образце фото вплотную к краям карточки.', 'card-body adds inner space: white margins appeared around the photo. In the goal the photo touches the card’s edges.'),
+      'img-thumbnail': L3("img-thumbnail rasmga soyali ramka berdi. Namunada rasm atrofida ramka yo'q.", 'img-thumbnail дал фото рамку с тенью. В образце вокруг фото рамки нет.', 'img-thumbnail gave the photo a frame with a shadow. In the goal there’s no frame around the photo.'),
       'card-box': L3("Bunday class yo'q: ramka ham, burchak ham chiqmadi.", 'Такого class нет: ни рамки, ни углов.', 'There’s no such class: no border, no corners.'),
       'cards': L3("Ko'plikda emas: class nomi birlikda.", 'Не во множественном числе: имя class в единственном.', 'Not plural: the class name is singular.'),
       'border': L3("border faqat chiziq chizadi, yumaloq burchak va kartochka tartibi yo'q.", 'border рисует только линию, без скругления и порядка карточки.', 'border only draws a line, without the rounding and the card layout.'),
@@ -372,7 +372,7 @@ const C = {
       'p-0': L3("p-0 ichki joyni olib tashlaydi, namunada esa joy bor.", 'p-0 убирает отступы, а в образце они есть.', 'p-0 removes inner space, but the goal has it.'),
       'card bg-green': L3("bg-green degan so'z yo'q. Rang theme bilan.", 'Слова bg-green нет. Цвет — через theme.', 'There’s no bg-green word. Color goes through theme.'),
       'card-success': L3("card-success degan class yo'q. Kartochka rangi theme bilan.", 'Такого class card-success нет. Цвет карточки — через theme.', 'There’s no card-success class. A card’s color goes through theme.'),
-      'card fg-success': L3("fg faqat matnni bo'yaydi, kartochka foni o'zgarmadi.", 'fg красит только текст, фон карточки не изменился.', 'fg only colors the text; the card background didn’t change.')
+      'card fg-success': L3("fg faqat matnni bo'yaydi, kartochka ramkasi o'zgarmadi.", 'fg красит только текст, рамка карточки не изменилась.', 'fg only colors the text; the card’s frame didn’t change.')
     },
     hint1: L3("Namunadagi bo'lakka qarang: u qanday ko'rinadi?", 'Посмотри на часть в образце: как она выглядит?', 'Look at the part in the goal: what does it look like?'),
     hint2: L3("Saytdagi misol esingizdami? card, card-img-top, card-body.", 'Вспомни пример с сайта: card, card-img-top, card-body.', 'Remember the site example: card, card-img-top, card-body.'),
@@ -383,6 +383,9 @@ const C = {
     eyebrow: L3('Nega bunday?', 'Почему так?', 'Why like this?'),
     say: L3("Oxirgi sinov. Uchta kartochka chiroyli chiqmadi, har birida sabab boshqa. Kodga qarang va sababini tanlang.", 'Последнее испытание. Три карточки вышли некрасиво, у каждой своя причина. Посмотри на код и выбери причину.', 'The last test. Three cards didn’t come out right, each for a different reason. Look at the code and pick the reason.'),
     ask: L3('Nega bunday? Sababini tanlang', 'Почему так? Выбери причину', 'Why like this? Pick the reason'),
+    asks: [L3('Matn ramkaga yopishgan. Nega?', 'Текст прилип к рамке. Почему?', 'The text sticks to the border. Why?'),
+      L3('Rasm chiqmadi. Nega?', 'Фото не появилось. Почему?', 'The photo didn’t show up. Why?'),
+      L3('Ramka rangsiz. Nega?', 'Рамка без цвета. Почему?', 'The frame has no color. Why?')],
     opts: {
       noBody: L3("card-body yo'q", 'Нет card-body', 'No card-body'),
       noSrc: L3("Rasm fayli yozilmagan", 'Не вписан файл фото', 'No photo file written'),
@@ -423,14 +426,14 @@ const C = {
       { text: L3("Qarang, birinchi kartochka sizniki!", 'Смотри, первая карточка — твоя!', 'Look, the first card is yours!'), k: null },
       { text: L3("Kartochka: card ramka, card-img-top rasm, card-body ichki joy.", 'Карточка: card — рамка, card-img-top — фото, card-body — место внутри.', 'A card: card is the frame, card-img-top the photo, card-body the inner space.'), k: 'parts' },
       { text: L3("Saytdan nusxalab, src, matn va rangni o'zimizga moslaymiz.", 'Копируем с сайта и подгоняем src, текст и цвет под себя.', 'We copy from the site and adapt src, text and color.'), k: 'copy' },
-      { text: L3("Rangni theme beradi, yumshoq rangni card-subtle.", 'Цвет даёт theme, мягкий цвет — card-subtle.', 'theme gives the color, card-subtle the soft version.'), k: 'color' },
+      { text: L3("Ramka rangini theme beradi, yumshoq rangni card-subtle.", 'Цвет рамки даёт theme, мягкий цвет — card-subtle.', 'theme gives the frame color, card-subtle the soft version.'), k: 'color' },
       { text: L3("Kartochkalarni qatorga d-flex va gap teradi.", 'Карточки в ряд ставят d-flex и gap.', 'd-flex and gap line the cards up.'), k: 'row' },
       { text: L3("Tabriklayman! Siz beshinchi darsni tugatdingiz. Keyingi darsda konteyner va setka bilan sahifani ustunlarga bo'lamiz. Ko'rishguncha!", 'Ура! Ты прошёл пятый урок. На следующем уроке разделим страницу на колонки с контейнером и сеткой. До встречи!', 'Hooray! You finished the fifth lesson. Next time we’ll split the page into columns with a container and a grid. See you!'), k: null }
     ],
     roles: {
       parts: L3('card · card-img-top · card-body', 'card · card-img-top · card-body', 'card · card-img-top · card-body'),
       copy: L3('Saytdan nusxa — keyin moslash', 'С сайта — потом подогнать', 'Copy from the site, then adapt'),
-      color: L3('theme — rang', 'theme — цвет', 'theme — color'),
+      color: L3('theme — ramka rangi', 'theme — цвет рамки', 'theme — frame color'),
       row: L3('d-flex gap — qator', 'd-flex gap — ряд', 'd-flex gap — a row')
     },
     ask: L3('Kartochkangizga qarang', 'Посмотри на свою карточку', 'Look at your card')

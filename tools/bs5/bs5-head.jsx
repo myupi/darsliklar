@@ -51,9 +51,9 @@ function CssCard({ pick, rules, on }) {
 }
 const CARD_RULES = { card: ['card', 'border; border-radius; display: flex; flex-direction: column'], 'card-img-top': ['card-img-top', 'width: 100%; border-top radius'], 'card-body': ['card-body', 'padding; display: flex; flex-direction: column; gap'], 'card-title': ['card-title', '— (Bootstrap 6 da qoida yo\'q)'] };
 // Полоса «Fayllar»: какие фото лежат рядом со страницей (как в уроке CSS 4).
-function FilesBar({ pick, lit }) {
+function FilesBar({ pick, lit, cls }) {
   return (
-    <div className="b5-files"><span className="b5-files-h">{pick(UI.files)}</span>
+    <div className={'b5-files' + (cls ? ' ' + cls : '')}><span className="b5-files-h">{pick(UI.files)}</span>
       {ROBOTS.map((r) => <span key={r.src} className={'b5-file' + (lit === r.src ? ' is-lit' : '')}><img src={FILES[r.src]} alt="" />{r.src}</span>)}
     </div>
   );

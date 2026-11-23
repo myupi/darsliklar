@@ -1,5 +1,5 @@
 // Сборка урока 10 модуля Bootstrap «Финальный проект» в облике «Редактор» (20.11.2026).
-//   node tools/bs10/build.mjs   → lessons/bootstrap/10-final-proekt.jsx
+//   node tools/bs10/build.mjs   → lessons/bootstrap/11-final-proekt.jsx
 // Исходник — bs10.src.jsx (тексты по /uzbekcha), набор — bs10-kit.jsx (копия набора урока 8; вместо карусели — меню и окно bsUi),
 // похожий сайт Bootstrap — bs10-site.jsx (Install, Alert и Components → Menu, Dialog),
 // экраны — bs10-screens.jsx, CSS — ../bs1/bs1.css … ../bs6/bs6.css + bs10.css. Облик эталона — общий набор naborRedaktor в gen/.
@@ -38,4 +38,4 @@ naborRedaktor(gen);
 }
 
 mkdirSync(join(root, 'lessons/bootstrap'), { recursive: true });
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs10.src.jsx'), join(root, 'lessons/bootstrap/10-final-proekt.jsx'), 'bootstrap'], { stdio: 'inherit' });
+execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'bs10.src.jsx'), join(root, 'lessons/bootstrap/11-final-proekt.jsx'), 'bootstrap'], { stdio: 'inherit' });

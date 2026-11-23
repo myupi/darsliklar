@@ -1,8 +1,8 @@
 // =============================================================================
-// МОДУЛЬ «BOOTSTRAP» · Урок 10 — «Финальный проект»
+// МОДУЛЬ «BOOTSTRAP» · Урок 11 — «Финальный проект»
 // (облик «Редактор», как уроки 1–9 модуля; 20.11.2026; финальный: final — практики и тестов нет). Дети 11–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node tools/bs10/build.mjs → lessons/bootstrap/10-final-proekt.jsx
+// Сборка: node tools/bs10/build.mjs → lessons/bootstrap/11-final-proekt.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -14,17 +14,17 @@
 // по порядку, «верно или нет», «почему не работает», свой цвет сайта и вывод. Загадка (без имён): Коди думает, что всё надо
 // знать наизусть; разгадка — главное умение модуля: найти на сайте, скопировать, настроить.
 //
-// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-10-final-proekt.md.
+// ДУГА (17 экранов). Сценарий — docs/scenarij-bootstrap-11-final-proekt.md.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'bootstrap-10-final-proekt',
+  lessonId: 'bootstrap-11-final-proekt',
   module: 'bootstrap-m1',
   lessonTitle: {
-    uz: '10-dars. Yakuniy loyiha',
-    ru: 'Урок 10. Финальный проект',
-    en: 'Lesson 10. Final project'
+    uz: '11-dars. Yakuniy loyiha',
+    ru: 'Урок 11. Финальный проект',
+    en: 'Lesson 11. Final project'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -86,6 +86,7 @@ const C = {
     st4: L3('Flex sarlavha', 'Шапка flex', 'Flex header'),
     st5: L3('Kartochka', 'Карточка', 'Card'),
     st6: L3('Setka', 'Сетка', 'Grid'),
+    stp: L3('Sahifa raqamlari', 'Номера страниц', 'Page numbers'),
     st7: L3('Forma', 'Форма', 'Form'),
     st8: L3('Karusel', 'Карусель', 'Carousel'),
     st9: L3('Menyu', 'Меню', 'Menu')
@@ -114,19 +115,19 @@ const C = {
     say: L3("Salom! Bugun oxirgi dars. Qarang, to'garak sayti Bootstrapni yo'qotib qo'yibdi: hamma narsa bir uyum, rasmlar ostma-ost, menyu ochiq yotibdi. Uni qaytaramiz. Avval qanday bo'lishi kerakligini ko'ring: «Bootstrap bilan» tugmasini bosing.",
       'Привет! Сегодня последний урок. Смотри, сайт кружка потерял Bootstrap: всё кучей, фото друг под другом, меню лежит открытым. Вернём его. Сначала посмотри, каким он должен быть: нажми «С Bootstrap».',
       'Hi! Today is the last lesson. Look, the club site lost its Bootstrap: everything is in a pile, photos stacked, the menu lying open. Let’s bring it back. First see how it should look: tap “With Bootstrap”.'),
-    magic: L3("Mana! Sarlavha, e'lon, karusel, kartochkalar va forma, hammasi joyida. To'qqiz dars, bitta sayt!",
-      'Вот! Шапка, объявление, карусель, карточки и форма — всё на месте. Девять уроков, один сайт!',
-      'There! Header, notice, carousel, cards and form, all in place. Nine lessons, one site!'),
-    done: L3("Bunday saytni qaytadan yasaymiz, bekatma-bekat. Lekin oldin topishmoq. Menimcha, buning uchun to'qqiz darsning hamma so'zlarini yoddan bilish kerak. Juda ko'p! Siz nima deb o'ylaysiz? Javobni dars oxirida topamiz.",
-      'Мы соберём такой сайт заново, станция за станцией. Но сначала загадка. По-моему, для этого надо знать наизусть все слова из девяти уроков. Это очень много! Как думаешь? Ответ найдём в конце урока.',
-      'We’ll rebuild this site stop by stop. But first, a riddle. I think for that you need to know every word from nine lessons by heart. That’s a lot! What do you think? We’ll find out at the end of the lesson.'),
+    magic: L3("Mana! Sarlavha, e'lon, karusel, kartochkalar va forma, hammasi joyida. O'n dars, bitta sayt!",
+      'Вот! Шапка, объявление, карусель, карточки и форма — всё на месте. Десять уроков, один сайт!',
+      'There! Header, notice, carousel, cards and form, all in place. Ten lessons, one site!'),
+    done: L3("Bunday saytni qaytadan yasaymiz, bekatma-bekat. Lekin oldin topishmoq. Menimcha, buning uchun o'n darsning hamma so'zlarini yoddan bilish kerak. Juda ko'p! Siz nima deb o'ylaysiz? Javobni dars oxirida topamiz.",
+      'Мы соберём такой сайт заново, станция за станцией. Но сначала загадка. По-моему, для этого надо знать наизусть все слова из десяти уроков. Это очень много! Как думаешь? Ответ найдём в конце урока.',
+      'We’ll rebuild this site stop by stop. But first, a riddle. I think for that you need to know every word from ten lessons by heart. That’s a lot! What do you think? We’ll find out at the end of the lesson.'),
     ask: L3('«Bootstrap bilan» tugmasini bosing', 'Нажми «С Bootstrap»', 'Tap “With Bootstrap”'),
-    askDone: L3("To'qqiz dars — bitta sayt", 'Девять уроков — один сайт', 'Nine lessons, one site')
+    askDone: L3("O'n dars — bitta sayt", 'Десять уроков — один сайт', 'Ten lessons, one site')
   },
   s2: {
     eyebrow: L3("Yo'l xaritasi", 'Карта пути', 'Route map'),
-    say: L3("Mana yo'limiz: to'qqizta bekat, har biri bitta darsdan. Har bekatda saytning bitta qismini qaytaramiz. Boshladik!", 'Вот наш путь: девять станций, каждая — один урок. На каждой станции возвращаем одну часть сайта. Поехали!', 'Here’s our route: nine stops, one per lesson. At each stop we bring back one part of the site. Let’s go!'),
-    ask: L3("To'qqiz bekat", 'Девять станций', 'Nine stops')
+    say: L3("Mana yo'limiz: o'nta bekat, har biri bitta darsdan. Har bekatda saytning bitta qismini qaytaramiz. Boshladik!", 'Вот наш путь: десять станций, каждая — один урок. На каждой станции возвращаем одну часть сайта. Поехали!', 'Here’s our route: ten stops, one per lesson. At each stop we bring back one part of the site. Let’s go!'),
+    ask: L3("O'nta bekat", 'Десять станций', 'Ten stops')
   },
   st1: {
     eyebrow: L3('Ulash', 'Подключение', 'Connect'),
@@ -135,7 +136,7 @@ const C = {
     opts: {
       link: L3('link · bootstrap.min.css', 'link · bootstrap.min.css', 'link · bootstrap.min.css'),
       script: L3('script · bootstrap.bundle.min.js', 'script · bootstrap.bundle.min.js', 'script · bootstrap.bundle.min.js'),
-      typo: L3('link · bootsrtap@6.0.0', 'link · bootsrtap@6.0.0', 'link · bootsrtap@6.0.0'),
+      typo: L3('link · bootsrtap.min.css', 'link · bootsrtap.min.css', 'link · bootsrtap.min.css'),
       style: L3('<style>bootstrap</style>', '<style>bootstrap</style>', '<style>bootstrap</style>')
     },
     no: {
@@ -164,6 +165,7 @@ const C = {
     eyebrow: L3('Rasm', 'Картинка', 'Image'),
     say: L3("Uchinchi bekat: jamoa rasmi telefonga sig'mayapti. Uni ekranga moslang.", 'Третья станция: фото команды не помещается в телефон. Подгони его под экран.', 'Stop three: the team photo doesn’t fit the phone. Make it fit the screen.'),
     ask: L3("Rasm telefonga sig'sin", 'Фото помещается в телефон', 'Make the photo fit the phone'),
+    noThumb: L3("Rasm sig'di, lekin ramka ham qo'shildi. Faqat moslaydigan so'z kerak.", 'Фото поместилось, но добавилась рамка. Нужно слово, которое только подгоняет.', 'The photo fits, but a frame was added too. You need the word that only fits it.'),
     hints: [
       L3("Uchinchi darsda rasmni ekranga moslaydigan so'z bor edi.", 'В третьем уроке было слово, которое подгоняет фото под экран.', 'Lesson three had a word that fits a photo to the screen.'),
       L3("img va fluid, ya'ni egiluvchan degani.", 'img и fluid, то есть «гибкий».', 'img and fluid.'),
@@ -176,6 +178,7 @@ const C = {
     eyebrow: L3('Flex sarlavha', 'Шапка flex', 'Flex header'),
     say: L3("To'rtinchi bekat: sarlavha. Logotip chapda, tugma o'ngda, oralarida bo'sh joy bo'lsin.", 'Четвёртая станция: шапка. Логотип слева, кнопка справа, между ними свободное место.', 'Stop four: the header. Logo on the left, button on the right, space between them.'),
     ask: L3("Chetlarga taqalsin, oralari teng", 'Края — к краям, промежутки поровну', 'Push to the edges, space between'),
+    noJc: L3("Bu ham joylash so'zi, lekin chetdagi bo'laklar chetga taqalmadi. Oxirini almashtiring.", 'Это тоже слово расстановки, но крайние части не прижались к краям. Поменяй окончание.', 'That’s a placement word too, but the outer parts didn’t reach the edges. Change the ending.'),
     hints: [
       L3("Bosh o'q bo'yicha joylash — justify-content.", 'Расстановка по главной оси — justify-content.', 'Placing along the main axis is justify-content.'),
       L3("Oraliqda bo'sh joy — between.", 'Место между — between.', 'Space between is between.'),
@@ -199,7 +202,7 @@ const C = {
   st6: {
     eyebrow: L3('Setka', 'Сетка', 'Grid'),
     say: L3("Oltinchi bekat: kartochkalar telefonda ostma-ost, planshetdan boshlab qatorda tursin. Uchinchisiga so'z yozing.", 'Шестая станция: на телефоне карточки друг под другом, а с планшета — в ряд. Впиши слово третьей.', 'Stop six: cards stack on a phone and go in a row from a tablet up. Give the third one its word.'),
-    ask: L3("Planshetda uchta ustun bo'lsin", 'На планшете — три колонки', 'Three columns on a tablet'),
+    ask: L3("Planshetda yonma-yon, telefonda ostma-ost", 'На планшете — рядом, на телефоне — друг под другом', 'Side by side on a tablet, stacked on a phone'),
     noCol: L3("Bu so'z bilan telefonda ham qatorda qoladi. Qolgan ikkitasiga qarang: oldida ekran o'lchami bor.", 'С этим словом колонки останутся рядом и на телефоне. Посмотри на две другие: впереди размер экрана.', 'With that word the columns stay in a row on phones too. Look at the other two: they start with a screen size.'),
     hints: [
       L3("Qolgan ikki ustunda qaysi so'z bor?", 'Какое слово у двух других колонок?', 'Which word do the other two columns have?'),
@@ -209,10 +212,24 @@ const C = {
     why: L3("md:col-4: planshetdan boshlab uchta ustun.", 'md:col-4: с планшета три колонки.', 'md:col-4: three columns from a tablet up.'),
     done: L3("Ajoyib! Setka ishlaydi.", 'Отлично! Сетка работает.', 'Great! The grid works.')
   },
+  // Станция урока 7 «Navbar и Pagination» (23.11.2026): номера страниц под карточками.
+  stp: {
+    eyebrow: L3('Sahifa raqamlari', 'Номера страниц', 'Page numbers'),
+    say: L3("Yettinchi bekat: kartochkalar ostidagi sahifa raqamlari ustma-ust ro'yxat bo'lib qolgan. ul tegiga kerakli so'zni yozing.", 'Седьмая станция: номера страниц под карточками стали списком друг под другом. Впиши тегу ul нужное слово.', 'Stop seven: the page numbers under the cards turned into a stacked list. Type the right word for the ul tag.'),
+    ask: L3("Raqamlar namunadagidek tugmachalar qatori bo'lsin", 'Номера — ряд кнопочек, как в образце', 'Make the numbers a row of buttons like the goal'),
+    noFlex: L3("Raqamlar qatorga turdi, lekin tugmacha bo'lmadi. Sahifa raqamlari uchun Bootstrapda alohida so'z bor.", 'Номера встали в ряд, но кнопочками не стали. Для номеров страниц у Bootstrap есть своё слово.', 'The numbers are in a row, but they aren’t buttons. Bootstrap has its own word for page numbers.'),
+    hints: [
+      L3("Raqamlar qatori qanday ataladi?", 'Как называется ряд номеров?', 'What’s the row of numbers called?'),
+      L3("Inglizcha sahifalash, ya'ni pagination degani.", 'По-английски — pagination.', 'In English: pagination.'),
+      L3("Yozing: pagination", 'Впиши: pagination', 'Type: pagination')
+    ],
+    why: L3("pagination raqamlarni bir qatorga, tugmachalarga aylantirdi.", 'pagination поставил номера в ряд кнопочками.', 'pagination turned the numbers into a row of buttons.'),
+    done: L3("Barakalla! Sahifa raqamlari joyida.", 'Здорово! Номера страниц на месте.', 'Great! The page numbers are in place.')
+  },
   st7: {
     eyebrow: L3('Forma', 'Форма', 'Form'),
-    say: L3("Yettinchi bekat: yozilish formasi. Ism maydoni chiroyli bo'lsin.", 'Седьмая станция: форма записи. Пусть поле «Имя» станет красивым.', 'Stop seven: the sign-up form. Make the Name field neat.'),
-    ask: L3("Ism maydoni chiroyli bo'lsin", 'Поле «Имя» — красивое', 'Make the Name field neat'),
+    say: L3("Sakkizinchi bekat: yozilish formasi. Ism maydoni chiroyli bo'lsin.", 'Восьмая станция: форма записи. Пусть поле «Имя» станет красивым.', 'Stop eight: the sign-up form. Make the Name field neat.'),
+    ask: L3("Ism maydoni namunadagidek keng bo'lsin", 'Поле «Имя» — широкое, как в образце', 'Make the Name field wide like the goal'),
     hints: [
       L3("Yozuvda form-label bor. Maydonda-chi?", 'У подписи form-label. А у поля?', 'The label has form-label. And the field?'),
       L3("form va control.", 'form и control.', 'form and control.'),
@@ -223,8 +240,8 @@ const C = {
   },
   st8: {
     eyebrow: L3('Karusel', 'Карусель', 'Carousel'),
-    say: L3("Sakkizinchi bekat: karuselda uchinchi rasm buzilgan. Unga kerakli so'zni yozing va tugmani bosib tekshiring.", 'Восьмая станция: в карусели сломалось третье фото. Впиши ему нужное слово и проверь кнопкой.', 'Stop eight: the carousel’s third photo is broken. Give it the right word and check with the button.'),
-    ask: L3("Uchinchi rasm ham karusel rasmi bo'lsin", 'Третье фото — тоже слайд карусели', 'Make the third photo a carousel slide'),
+    say: L3("To'qqizinchi bekat: karuselda uchinchi rasm buzilgan. Unga kerakli so'zni yozing va tugmani bosib tekshiring.", 'Девятая станция: в карусели сломалось третье фото. Впиши ему нужное слово и проверь кнопкой.', 'Stop nine: the carousel’s third photo is broken. Give it the right word and check with the button.'),
+    ask: L3("O'ng tugmani bosing: uchinchi rasm chiqmaydi. Uni karuselga qo'shing", 'Нажми ›: третьего фото нет. Добавь его в карусель', 'Tap ›: there’s no third photo. Add it to the carousel'),
     hints: [
       L3("Qolgan ikki rasmda qaysi so'z bor?", 'Какое слово у двух других фото?', 'Which word do the other two photos have?'),
       L3("carousel va item.", 'carousel и item.', 'carousel and item.'),
@@ -252,7 +269,7 @@ const C = {
   },
   st9: {
     eyebrow: L3('Menyu', 'Меню', 'Menu'),
-    say: L3("To'qqizinchi bekat: Bo'limlar tugmasi menyuni ochmayapti. Saytda ko'rgan so'zni yozing va bosib tekshiring.", 'Девятая станция: кнопка «Разделы» не открывает меню. Впиши слово, которое мы видели на сайте, и проверь.', 'Stop nine: the Sections button doesn’t open the menu. Type the word we saw on the site and test it.'),
+    say: L3("O'ninchi bekat: Bo'limlar tugmasi menyuni ochmayapti. Saytda ko'rgan so'zni yozing va bosib tekshiring.", 'Десятая станция: кнопка «Разделы» не открывает меню. Впиши слово, которое мы видели на сайте, и проверь.', 'Stop ten: the Sections button doesn’t open the menu. Type the word we saw on the site and test it.'),
     ask: L3("Tugma menyuni ochsin", 'Кнопка открывает меню', 'Make the button open the menu'),
     hints: [
       L3("Tugma nimani ochishi kerak?", 'Что должна открыть кнопка?', 'What should the button open?'),
@@ -260,12 +277,13 @@ const C = {
       L3("Yozing: menu", 'Впиши: menu', 'Type: menu')
     ],
     why: L3("data-bs-toggle menu tugmaga menyuni ochishni o'rgatdi.", 'data-bs-toggle menu научил кнопку открывать меню.', 'data-bs-toggle menu taught the button to open the menu.'),
-    done: L3("Ajoyib! To'qqiz bekat ham tayyor!", 'Отлично! Все девять станций пройдены!', 'Great! All nine stops are done!')
+    done: L3("Ajoyib! O'n bekat ham tayyor!", 'Отлично! Все десять станций пройдены!', 'Great! All ten stops are done!')
   },
   t4: {
     eyebrow: L3("Sahifani yig'ing", 'Собери страницу', 'Build the page'),
     say: L3("Endi sahifani tartib bilan yig'amiz: Bootstrap ulanishi, keyin sahifa qismlari tepadan pastga, oxirida skript.", 'Теперь соберём страницу по порядку: подключение Bootstrap, потом части страницы сверху вниз, в конце скрипт.', 'Now let’s build the page in order: connect Bootstrap, then the parts top to bottom, the script last.'),
     ask: L3("Bo'laklarni tartib bilan bosing", 'Нажимай кусочки по порядку', 'Tap the pieces in order'),
+    parts: { hdr: L3('Sarlavha', 'Шапка', 'Header'), car: L3('Karusel', 'Карусель', 'Carousel'), row: L3('Kartochkalar', 'Карточки', 'Cards') },
     msgs: {
       link: L3("Oldin head ichida link qatori: Bootstrap ulanadi.", 'Сначала строка link в head: подключаем Bootstrap.', 'First the link line in head: connect Bootstrap.'),
       bo: L3("Endi sahifa tanasi ochiladi: body.", 'Теперь открывается тело страницы: body.', 'Now the page body opens: body.'),
@@ -290,7 +308,7 @@ const C = {
       L3("Bootstrap ishlashi uchun head ichida link qatori kerak.", 'Чтобы Bootstrap работал, в head нужна строка link.', 'For Bootstrap to work, head needs the link line.'),
       L3("Bootstrap 6 da yashil tugma — btn-success.", 'В Bootstrap 6 зелёная кнопка — btn-success.', 'In Bootstrap 6 a green button is btn-success.'),
       L3("Menyu va karusel tugmalari ishlashi uchun script qatori kerak.", 'Чтобы работали кнопки меню и карусели, нужна строка script.', 'Menu and carousel buttons need the script line.'),
-      L3("Telefonda ustunlar ostma-ost tursin desak, col-md-4 yozamiz.", 'Чтобы на телефоне колонки шли друг под другом, пишем col-md-4.', 'To stack columns on a phone, we write col-md-4.'),
+      L3("Bootstrap 6 da telefonda ustunlar ostma-ost tursin desak, col-md-4 yozamiz.", 'В Bootstrap 6, чтобы на телефоне колонки шли друг под другом, пишем col-md-4.', 'In Bootstrap 6, to stack columns on a phone, we write col-md-4.'),
       L3("Ro'yxat, ya'ni select ham form-control bilan bezaladi.", 'Список select тоже украшается form-control.', 'A select list is styled with form-control too.')
     ],
     why: [
@@ -302,14 +320,32 @@ const C = {
     ],
     opts: { yes: L3("To'g'ri", 'Верно', 'True'), no: L3("Noto'g'ri", 'Неверно', 'False') },
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    hint1: L3("O'qing: bu so'z oltinchi versiyadanmi?", 'Прочитай: это слово из шестой версии?', 'Read it: is the word from version six?'),
-    hint2: L3("Beshinchi versiyaning nomlari oltinchisida ishlamaydi.", 'Имена пятой версии в шестой не работают.', 'Version five names don’t work in version six.'),
+    // подсказки — к каждому утверждению своя (23.11.2026: одна общая «это слово из шестой версии?» не подходила к link, script и select)
+    hint1s: [
+      L3("Bootstrap qanday ulanadi? 1-bekatni eslang.", 'Как подключается Bootstrap? Вспомни станцию 1.', 'How is Bootstrap connected? Remember stop 1.'),
+      L3("So'zga qarang: u oltinchi versiyadanmi?", 'Посмотри на слово: оно из шестой версии?', 'Look at the word: is it from version six?'),
+      L3("Menyu va karusel tugmalarini nima ishlatadi?", 'Что оживляет кнопки меню и карусели?', 'What powers the menu and carousel buttons?'),
+      L3("So'zga qarang: col-md-4 oltinchi versiyadanmi?", 'Посмотри на слово: col-md-4 — из шестой версии?', 'Look at the word: is col-md-4 from version six?'),
+      L3("8-bekatni eslang: ro'yxat qanday bezaldi?", 'Вспомни станцию 8: как оформили список?', 'Remember stop 8: how was the list styled?')
+    ],
+    hint2s: [
+      L3("CSS faylini link qatori ulaydi, u head ichida turadi.", 'CSS-файл подключает строка link, она стоит в head.', 'The link line connects the CSS file, and it sits in head.'),
+      L3("Oltinchi versiyada tugma ikki so'zdan: btn-solid va theme.", 'В шестой версии у кнопки два слова: btn-solid и theme.', 'In version six a button has two words: btn-solid and theme.'),
+      L3("CSS faqat bezaydi, tugmalarni Bootstrap skripti ishlatadi.", 'CSS только оформляет, а кнопки оживляет скрипт Bootstrap.', 'CSS only styles things; Bootstrap’s script powers the buttons.'),
+      L3("Oltinchi versiyada ekran o'lchami oldinda, ikki nuqta bilan.", 'В шестой версии размер экрана пишется впереди, через двоеточие.', 'In version six the screen size goes first, with a colon.'),
+      L3("Oltinchi versiyada alohida form-select yo'q.", 'В шестой версии отдельного form-select нет.', 'Version six has no separate form-select.')
+    ],
     ok: L3("Hammasi to'g'ri! Siz Bootstrap 6 ni yaxshi bilasiz.", 'Всё верно! Ты хорошо знаешь Bootstrap 6.', 'All correct! You know Bootstrap 6 well.')
   },
   t6: {
     eyebrow: L3('Nega ishlamayapti?', 'Почему не работает?', 'Why isn’t it working?'),
     say: L3("Oxirgi sinov. Uchta sayt buzilgan, har birida sabab boshqa. Sahifaga va kodga qarang, sababini tanlang.", 'Последнее испытание. Три сайта сломаны, у каждого своя причина. Посмотри на страницу и код, выбери причину.', 'The last test. Three sites are broken, each for a different reason. Look at the page and code, pick the reason.'),
     ask: L3('Nega ishlamayapti? Sababini tanlang', 'Почему не работает? Выбери причину', 'Why isn’t it working? Pick the reason'),
+    asks: [
+      L3("Sahifa bezanmagan. Nega?", 'Страница без оформления. Почему?', 'The page has no styling. Why?'),
+      L3("Yozilish tugmasi oddiy, qolgani chiroyli. Nega?", 'Кнопка «Записаться» простая, остальное красивое. Почему?', 'The Join button is plain, the rest looks nice. Why?'),
+      L3("Bo'limlar tugmasini bosing: menyu ochilmaydi. Nega?", 'Нажми «Разделы»: меню не открывается. Почему?', 'Tap Sections: the menu won’t open. Why?')
+    ],
     opts: {
       noLink: L3("link qatori yo'q", 'Нет строки link', 'No link line'),
       old: L3('Eski nom, 5-versiyadan', 'Старое имя из версии 5', 'An old name from version 5'),
@@ -328,7 +364,7 @@ const C = {
   w1: {
     eyebrow: L3("Saytingiz rangi", 'Цвет твоего сайта', 'Your site’s color'),
     say: L3("Endi saytni o'zingizga moslang. Bootstrap ranglaridan birini tanlab, bo'sh joyga yozing: e'lon va tugmalar o'sha rangga kiradi. Keyin «Tayyor»ni bosing.", 'Теперь подгони сайт под себя. Выбери цвет Bootstrap и впиши его: объявление и кнопки станут этого цвета. Потом нажми «Готово».', 'Now make the site yours. Pick a Bootstrap color and type it in: the notice and buttons take that color. Then tap “Done”.'),
-    ask: L3("Rang so'zini yozing", 'Впиши слово цвета', 'Type a color word'),
+    ask: L3("Bootstrap rangini yozing: primary, danger, warning…", 'Впиши цвет Bootstrap: primary, danger, warning…', 'Type a Bootstrap color: primary, danger, warning…'),
     hints: [
       L3("Bootstrap ranglari: primary, success, danger, warning, info, accent.", 'Цвета Bootstrap: primary, success, danger, warning, info, accent.', 'Bootstrap colors: primary, success, danger, warning, info, accent.'),
       L3("theme- allaqachon yozilgan, faqat rang so'zi kerak.", 'theme- уже написано, нужно только слово цвета.', 'theme- is already there, just the color word.'),
@@ -339,9 +375,9 @@ const C = {
   s18: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men hamma so'zni yoddan bilish kerak deb o'ylagandim? Afsuski, adashibman. Siz to'qqiz bekatni o'tdingiz, esdan chiqqanini esa saytdan topdingiz. Bootstrapning asosiy siri shu: topasiz, nusxalaysiz, o'zingizga moslaysiz.",
-        'Вернёмся к загадке. Помнишь, я думал, что всё надо знать наизусть? Увы, я ошибся. Ты прошёл девять станций, а забытое нашёл на сайте. Вот главный секрет Bootstrap: нашёл, скопировал, подогнал под себя.',
-        'Back to our riddle. Remember, I thought you had to know everything by heart? Sadly, I was wrong. You passed nine stops and found what you forgot on the site. That’s Bootstrap’s main secret: find it, copy it, make it yours.'), k: 'riddle' },
+      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men hamma so'zni yoddan bilish kerak deb o'ylagandim? Afsuski, adashibman. Siz o'n bekatni o'tdingiz, esdan chiqqanini esa saytdan topdingiz. Bootstrapning asosiy siri shu: topasiz, nusxalaysiz, o'zingizga moslaysiz.",
+        'Вернёмся к загадке. Помнишь, я думал, что всё надо знать наизусть? Увы, я ошибся. Ты прошёл десять станций, а забытое нашёл на сайте. Вот главный секрет Bootstrap: нашёл, скопировал, подогнал под себя.',
+        'Back to our riddle. Remember, I thought you had to know everything by heart? Sadly, I was wrong. You passed ten stops and found what you forgot on the site. That’s Bootstrap’s main secret: find it, copy it, make it yours.'), k: 'riddle' },
       { text: L3("Qarang, mana sizning saytingiz!", 'Смотри, вот твой сайт!', 'Look, here’s your site!'), k: null },
       { text: L3("Ulanish: head ichida link, body oxirida script.", 'Подключение: link в head, script в конце body.', 'Connecting: link in head, script at the end of body.'), k: 'cdn' },
       { text: L3("Ko'rinish: theme ranglari, tugmalar, kartochkalar va rasmlar.", 'Вид: цвета theme, кнопки, карточки и картинки.', 'Look: theme colors, buttons, cards and images.'), k: 'look' },
@@ -362,7 +398,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { help: 1, hints: 1, why: 1, hint1: 1, hint2: 1, msgs: 1, magic: 1, ok: 1, no: 1, noCol: 1, sayPage: 1, sayLine: 1, right: 1, rounds: 1, claims: 1 });
+Object.assign(SPOKEN, { help: 1, hints: 1, why: 1, hint1: 1, hint2: 1, hint1s: 1, hint2s: 1, msgs: 1, magic: 1, ok: 1, no: 1, noCol: 1, sayPage: 1, sayLine: 1, right: 1, rounds: 1, claims: 1 });
 
 /*@FILE:gen/b16-chrome.jsx@*/
 

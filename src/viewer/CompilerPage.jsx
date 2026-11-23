@@ -8,6 +8,14 @@ import { MenuButton } from './Toolbar.jsx';
 // справа) и промпт, по которому работу проверяет ИИ платформы. Данные — docs/kompilyator-amaliy-<модуль>.txt.
 // Модули без результата на слайде и без примера решения (заказчик, 16.11.2026, «ИИ»: «результат не показывать, а только дать задания»).
 const NO_RESULT = new Set(['ai']);
+// Результат — отдельным слайдом «Amaliy ish ko'rinishi» (заказчик, 23.11.2026, Bootstrap: «если не вмещается результат, то можешь
+// в 2 картинки вынести»): на первом слайде только условия, на втором — сайт целиком в ширину ноутбука (RES_W), крупно.
+const TWO_SLIDES = new Set(['bootstrap']);
+const RES_W = 1200;
+const RES_TITLE = { uz: "Amaliy ish ko'rinishi", ru: 'Как выглядит результат', en: 'What the result looks like' };
+// Окно, открытое на слайде результата (страница без скриптов — открывает просмотрщик): задание → селектор <dialog>.
+const RES_OPEN = { 'bootstrap:10': '#buyurtma' };   // 23.11.2026: пиццерия — задание 10 (урок 7 «Navbar и Pagination» встал после сетки)
+const RES_MIN_H = 600;   // высота страницы с открытым окном — чтобы окно встало на фоне страницы
 // Страница-пример на языке слайда (16.11.2026: «результат везде узбекский, сделай соответствующими языками»):
 // узбекская — <NN>/index.html, русская и английская — <NN>/ru/index.html и <NN>/en/index.html (картинки рядом, те же имена).
 const exampleUrl = (it, lang) => '/kompilyator/' + it.module + '/' + String(it.n).padStart(2, '0') + '/' + (lang && lang !== 'uz' ? lang + '/' : '') + 'index.html';
@@ -47,7 +55,8 @@ function StudentView({ it, lang }) {
   const slideRef = useRef(null);
   const [busy, setBusy] = useState('');
   const url = exampleUrl(it, lang);
-  const noRes = NO_RESULT.has(it.module);
+  const two = TWO_SLIDES.has(it.module);
+  const noRes = NO_RESULT.has(it.module) || two;
   const measure = () => {
     const f = frame.current, v = view.current;
     const d = f && f.contentDocument;
@@ -108,7 +117,71 @@ function StudentView({ it, lang }) {
         </button>
       ))}
     </div>
+    {two ? <ResultSlide it={it} lang={lang} /> : null}
     <TaskText T={T} />
+    </>
+  );
+}
+
+// Слайд «Amaliy ish ko'rinishi»: сайт-пример в ширину ноутбука (RES_W px), уменьшенный целиком в рамку кадра.
+function ResultSlide({ it, lang }) {
+  const [fit, setFit] = useState(null);   // { s, ch }
+  const frame = useRef(null);
+  const slideRef = useRef(null);
+  const tries = useRef(0);
+  const [busy, setBusy] = useState('');
+  const url = exampleUrl(it, lang);
+  const measure = () => {
+    const f = frame.current, slide = slideRef.current;
+    const d = f && f.contentDocument;
+    if (!d || !d.body || d.readyState !== 'complete' || !slide) return;
+    d.documentElement.style.overflow = 'hidden';
+    // Слайд — картинка: анимации стоят, у spinner-grow первый кадр прозрачный — показываем его целиком.
+    if (!d.getElementById('cmp-still')) {
+      const st = d.createElement('style'); st.id = 'cmp-still';
+      st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}.spinner-grow{opacity:1!important}';
+      d.head.appendChild(st);
+    }
+    const sel = RES_OPEN[it.module + ':' + it.n];
+    const dlg = sel && d.querySelector(sel);
+    if (dlg && !dlg.open) { try { dlg.showModal(); } catch (e) { dlg.setAttribute('open', ''); } }
+    const ch = Math.max(Math.ceil(d.documentElement.getBoundingClientRect().height), dlg ? RES_MIN_H : 0);
+    const sw = slide.clientWidth;
+    const s = Math.min(sw * 0.92 / RES_W, sw * 0.4 / ch);
+    tries.current += 1;
+    if (tries.current > 6) return;
+    setFit((o) => (o && Math.abs(o.s - s) < 0.002 && o.ch === ch ? o : { s, ch }));
+  };
+  useEffect(() => { setFit(null); tries.current = 0; }, [url]);
+  useEffect(() => { const t = requestAnimationFrame(measure); return () => cancelAnimationFrame(t); }, [fit && fit.s, fit && fit.ch]);
+  useEffect(() => { const onResize = () => { tries.current = 0; measure(); }; window.addEventListener('resize', onResize); return () => window.removeEventListener('resize', onResize); }, []);
+  const save = async (kind) => {
+    if (busy || !slideRef.current) return;
+    setBusy(kind);
+    try { await exportSlide(slideRef.current, kind, 'amaliy-ish-korinishi-' + it.module + '-' + String(it.n).padStart(2, '0') + '-' + lang); }
+    catch (e) { console.error('[slide] ' + kind, e); }
+    finally { setBusy(''); }
+  };
+  return (
+    <>
+    <div ref={slideRef} className="cmp-slide is-res" aria-label="Как выглядит результат">
+      <div className="cmp-slide-top">{String(it.module).toUpperCase()}</div>
+      <div className="cmp-slide-junior">JUNIOR</div>
+      <div className="cmp-slide-title">{RES_TITLE[lang] || RES_TITLE.uz}</div>
+      <div className="cmp-slide-res is-big" style={fit ? { width: Math.round(RES_W * fit.s) } : undefined}>
+        <div className="cmp-slide-view" style={fit ? { height: Math.ceil(fit.ch * fit.s) } : undefined}>
+          <iframe ref={frame} title={'Результат ' + it.n} src={url} sandbox="allow-same-origin" scrolling="no" onLoad={() => { tries.current = 0; measure(); }}
+            style={fit ? { width: RES_W, height: fit.ch, transform: 'scale(' + fit.s + ')' } : { width: RES_W }} />
+        </div>
+      </div>
+    </div>
+    <div className="cmp-slide-dl">
+      {[['png', 'Скачать PNG'], ['pdf', 'Скачать PDF']].map(([k, t]) => (
+        <button key={k} type="button" className="cmp-dl-btn" disabled={!!busy || !fit} onClick={() => save(k)}>
+          <Download size={15} aria-hidden="true" /> {busy === k ? 'Готовлю…' : t}
+        </button>
+      ))}
+    </div>
     </>
   );
 }

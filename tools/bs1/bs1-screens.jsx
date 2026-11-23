@@ -25,6 +25,36 @@ const SAMPLE = 'A simple alert—check it out!';
 
 // ── СТРОКИ КОДА: подсветка HTML как в VS Code; значение integrity свёрнуто, как в редакторе (sha384-B/GM…CrCe).
 const sp = () => <span className="b1-sp">{' '}</span>;
+// Есть ли в сцене элемент: ☰ сайта есть, только пока окно сайта узкое (useNarrow в bs1-site.jsx) — строка задания и
+// подсказка называют ☰, только когда он на экране (23.11.2026).
+function useHasEl(ref, sel) {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const r = ref.current;
+    if (!r) return undefined;
+    const upd = () => setHas(!!r.querySelector(sel));
+    upd();
+    if (typeof MutationObserver === 'undefined') return undefined;
+    const mo = new MutationObserver(upd);
+    mo.observe(r, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  return has;
+}
+// Телефон (раскладка сцены по шагам — та же граница, что в bs1.css).
+function useL1Phone() {
+  const q = '(max-width: 759px)';
+  const [on, setOn] = useState(() => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(q).matches);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const m = window.matchMedia(q);
+    const upd = () => setOn(m.matches);
+    upd();
+    if (m.addEventListener) { m.addEventListener('change', upd); return () => m.removeEventListener('change', upd); }
+    m.addListener(upd); return () => m.removeListener(upd);
+  }, []);
+  return on;
+}
 function foldVal(v, mark, fold) {
   if (fold === 'pkg' && /cdn\.jsdelivr/.test(v)) { const m = /npm\/([^/]+)\//.exec(v); return <span title={v}>{'…/npm/'}<b className="b1-pkg">{m ? m[1] : ''}</b>{'/…/' + v.slice(v.lastIndexOf('/') + 1)}</span>; }   // видна буква в имени пакета (t4)
   if (fold && /cdn\.jsdelivr/.test(v)) return <span className="b1-fold" title={v}>{'…/' + v.slice(v.lastIndexOf('/') + 1)}</span>;
@@ -297,7 +327,7 @@ function X1({ p }) {
           </div>
           <div className="kz-col"><SitePage pick={pick} a={{ cls: cl ? 'alert theme-success' : null, text: pick(C.site.mine) }} bs={lk} /></div>
         </div>
-        <div className="kz-row b1-sws">{sw('lk', lk, pick(c.linkL))}{sw('cl', cl, 'class="alert"')}</div>
+        <div className="kz-row b1-sws">{sw('lk', lk, pick(c.linkL))}{sw('cl', cl, 'class="alert theme-success"')}</div>
       </Sheet>
     </StageB>
   );
@@ -550,10 +580,11 @@ function T1({ p }) {
   const body = alertCode('a', 1, 'alert theme-success', pick(C.site.mine), true)
     .concat(pasted && !moved ? [{ k: 'drop', d: 1, cls: 'b1-line b1-slot' + (picked ? ' is-on' : ''), onTap: drop, disabled: !canTap, led: picked && (led || lv >= 3), parts: [<span key="p" className="b1-paste">{'✎ ' + pick(UI.paste)}</span>] }] : moved ? [scriptL('sc2', 1, { cls: 'is-new' })] : []);
   const hintNow = moved ? null : (cp.msg || msg2 || (cp.clip && !pasted ? c.copied : null) || hintAt(lv, c.hints));
+  const phone = useL1Phone();
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={moved ? c.ok : pasted ? c.askMove : c.ask} hint={hintNow} err={!!cp.msg || msg2 === c.msgs.needPick} />
+        <KzAsk text={moved ? c.ok : pasted ? c.askMove : phone ? c.askPhone : c.ask} hint={hintNow} err={!!cp.msg || msg2 === c.msgs.needPick} />
         <div className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : '') + (moved ? ' is-done' : '')}>
           {!moved ? <div className="kz-col b1-tri-docs"><DocsBr page="Install"><BsDocs page="Install" only="cdn" onCopy={(k) => cp.copy(k)} copied={cp.clip} lit={!cp.clip && (led || lv >= 2) ? 'cdn' : null} copyOff={!canTap || pasted} scrollTo="cdn" /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, head, body)} cls="kz-code-sm b1-nowrap" /></div>
@@ -597,14 +628,18 @@ function T2({ p }) {
   };
   const onAlert = page === 'Alert';
   const g = 'comp';
-  const lit = pasted ? null : !onAlert ? (lv >= 2 ? (open === g ? 'item:Alert' : 'grp:' + g) : null) : (!cp.clip && (led || lv >= 2) ? 'alert' : null);
+  const scene = useRef(null);
+  const burger = useHasEl(scene, '[data-x="burger"]');
+  // ☰ горит сразу, пока меню закрыто (23.11.2026: «найди в меню», а меню не видно); внутри меню — по ступеням, как было.
+  const lit = pasted ? null : !onAlert ? (burger && !menuView ? 'burger' : lv >= 2 ? (open === g ? 'item:Alert' : 'grp:' + g) : null) : (!cp.clip && (led || lv >= 2) ? 'alert' : null);
+  const hints = burger ? [c.hintMenu].concat(c.hints.slice(1)) : c.hints;
   const body = pasted ? alertCode('a', 1, 'alert', SAMPLE, false, { cls: 'is-new' }) : [slotLine('slot', 1, pick, () => cp.paste(sayNow), !!cp.clip && (led || lv >= 3), !canTap)];
-  const hintNow = pasted ? null : (cp.msg || msg || (cp.clip ? c.copied : null) || hintAt(lv, c.hints));
+  const hintNow = pasted ? null : (cp.msg || msg || (cp.clip ? c.copied : null) || hintAt(lv, hints));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={pasted ? c.ok : onAlert ? c.ask : c.askFind} hint={hintNow} err={!!cp.msg || !!msg} />
-        <div className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : ' is-nav') + (pasted ? ' is-done' : '')}>
+        <KzAsk text={pasted ? c.ok : onAlert ? c.ask : burger ? c.askFind : c.askFindSide} hint={hintNow} err={!!cp.msg || !!msg} />
+        <div ref={scene} className={'kz-scene b1-tri' + (cp.clip ? ' has-clip' : ' is-nav') + (pasted ? ' is-done' : '')}>
           {!pasted ? <div className="kz-col b1-tri-docs"><DocsBr page={page}><BsDocs page={page} open={open} onOpen={(x) => canTap && setOpen(x)} onNav={nav} navOff={!canTap} onCopy={(k) => { if (onAlert) cp.copy(k); }} copied={cp.clip} copyOff={!canTap || !onAlert} lit={lit} menuView={menuView} onMenu={() => setMenuView((x) => !x)} scrollTo={onAlert ? 'alert' : null} scrollKey={page} /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={docLines(pick, [linkL('lk', 1)], body)} cls="kz-code-sm" /></div>
           <div className="kz-col b1-tri-page"><SitePage pick={pick} a={pasted ? { cls: 'alert', text: SAMPLE } : null} bs /></div>
@@ -652,7 +687,12 @@ function W1({ p }) {
   const vt = th.trim().toLowerCase(), vx = tx.trim();
   const ready = !!(vt && vx);
   const confirm = () => {
-    if (!canTap || !ready || solved) return;
+    if (!canTap || solved) return;
+    if (!ready) {   // пустое поле — причина в панели, «Tayyor» не молчит (23.11.2026)
+      const m = !vt && !vx ? c.msgs.empty : !vx ? c.msgs.noText : c.msgs.noColor;
+      sfx('soft', true); setMsg(m); sayNow(m, 'think');
+      return;
+    }
     st.current.tries += 1;
     const nt = fillL(c.msgs.notTheme, { w: th.trim() });
     const tIssue = themeIssue(vt, { msgs: { empty: c.msgs.empty, native: c.msgs.native, noTheme: c.msgs.noTheme, green: nt, typo: nt, other: null } }, null);
@@ -674,13 +714,17 @@ function W1({ p }) {
         <div className={'kz-scene b1-tri is-ref' + (solved ? ' is-done' : '')}>
           {!solved ? <div className="kz-col b1-tri-docs"><DocsBr page="Alert"><BsDocs page="Alert" only="variants" copyOff scrollTo="variants" /></DocsBr></div> : null}
           <div className="kz-col b1-tri-code"><KzCode lines={[{ k: 'a', d: 1, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l1 }, { k: 'b', d: 2, cls: 'b1-line ' + (solved ? 'is-new' : 'is-hl'), parts: l2 }, hl('c', 1, '</div>')]} cls="kz-code-sm" /></div>
-          <div className="kz-col b1-tri-page"><SitePage pick={pick} a={{ cls: 'alert' + (valid ? ' ' + vt : ''), text: vx || SAMPLE }} bs title={pick(UI.mySite)} /></div>
+          <div className="kz-col b1-tri-page"><SitePage pick={pick} a={{ cls: 'alert' + (valid ? ' ' + vt : ''), text: vx || '✎ …' }} bs title={pick(UI.mySite)} /></div>
         </div>
-        {!solved ? <ReadyBtn on={canTap && ready} glow={canTap && ready} onClick={confirm} /> : null}
+        {!solved ? <ReadyBtn on={canTap} glow={canTap && ready} onClick={confirm} /> : null}
       </Sheet>
     </StageB>
   );
 }
+// Промах в «почему не работает» / «верно или нет» (заказчик, 23.11.2026: «да, сделай» — при ошибке сначала намёк, а не ответ):
+// первая ошибка — нейтральная фраза, со второй к ней добавляется ступень подсказки; объяснение верного ответа — только на 3-й ступени.
+const MISS_WHY = L3("Bu sabab emas. Sahifaga va kodga yana bir qarang.", 'Не эта причина. Посмотри ещё раз на страницу и код.', 'That’s not the reason. Look at the page and the code again.');
+const MISS_TF = L3("Unday emas. Gapni yana bir bor o'qing.", 'Не так. Прочитай утверждение ещё раз.', 'Not quite. Read the statement again.');
 
 // =============================================================================
 // T4. ПОЧЕМУ НЕ РАБОТАЕТ — три поломки по очереди: нет строки link; в ссылке изменена буква; класс старый (alert-success).
@@ -714,7 +758,7 @@ function T4({ p }) {
   const choose = (k) => {
     if (!canTap || ok || off.indexOf(k) >= 0) return;
     st.current.tries += 1;
-    if (k !== R.k) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(why, hints), 'think'); return; }
+    if (k !== R.k) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(k)); sayNow(ch.miss(MISS_WHY, hints), 'think'); return; }
     sfx('ok', true); setOk(true); ch.clear();
     const line = joinL(c.right, why);
     if (ii === T4_ROUNDS.length - 1) {
@@ -728,13 +772,13 @@ function T4({ p }) {
     const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff([]); }, reduceMotion() ? 300 : 1100);
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lines = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(R.head.length ? R.head.map((h, j) => hl('h' + j, 1, h, {}, { fold: 'pkg' })) : [{ k: 'none', d: 1, cls: 'b1-line b1-off', parts: [<span key="t" className="b1-cm">{'  '}</span>] }],
+  const lines = [hl('ho', 0, '<head>', { cls: 'b1-edge' })].concat(R.head.length ? R.head.map((h, j) => hl('h' + j, 1, h, {}, { fold: 'pkg' })) : [{ k: 'none', d: 1, cls: 'b1-line b1-off', parts: [<span key="t" className="b1-cm">{'\u00a0'}</span>] }],
     [hl('hc', 0, '</head>', { cls: 'b1-edge' }), hl('d', 0, '<div class="' + R.cls + '" role="alert">'), hl('p', 1, '<p>' + pick(C.site.mine) + '</p>'), hl('dc', 0, '</div>')]);
   const keys = ['noLink', 'typo', 'oldClass'];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="b1-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + T4_ROUNDS.length} />
+        <KzAsk text={done ? c.ok : (c.rounds[ii].ask || c.ask)} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + T4_ROUNDS.length} />
         <div className="kz-scene b1-pair b1-wide-code" key={'r' + ii}>
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm b1-nowrap" /></div>
           <div className="kz-col b1-t4-page"><SitePage pick={pick} a={{ cls: R.cls, text: pick(C.site.mine) }} bs={R.bs} /></div>

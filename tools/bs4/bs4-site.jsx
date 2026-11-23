@@ -177,7 +177,9 @@ function BsDocs({ page, open, onOpen, onNav, onCopy, copied, hl: H, lit, only, m
     if (!m || !scrollTo) return undefined;
     const go = () => {
       // «sec:имя» — к началу раздела (заголовок и пример), иначе сначала блок кода (урок 2, 20.11.2026)
-      const el = /^sec:/.test(scrollTo) ? m.querySelector('[data-sec="' + scrollTo.slice(4) + '"]') : (m.querySelector('[data-code="' + scrollTo + '"]') || m.querySelector('[data-sec="' + scrollTo + '"]'));
+      // «ln:блок:N» — к строке N блока кода или таблицы (урок 4, 23.11.2026: на телефоне задание t3 — строки таблицы Gap)
+      const ln = /^ln:([^:]+):(\d+)$/.exec(scrollTo);
+      const el = ln ? m.querySelector('[data-code="' + ln[1] + '"] [data-ln="' + ln[2] + '"]') : /^sec:/.test(scrollTo) ? m.querySelector('[data-sec="' + scrollTo.slice(4) + '"]') : (m.querySelector('[data-code="' + scrollTo + '"]') || m.querySelector('[data-sec="' + scrollTo + '"]'));
       if (el) m.scrollTop = Math.max(0, Math.round(el.getBoundingClientRect().top - m.getBoundingClientRect().top + m.scrollTop - (only ? 4 : 30)));
     };
     go();

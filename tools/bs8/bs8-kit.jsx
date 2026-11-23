@@ -114,7 +114,14 @@ function BsFrame({ body, bs, js, onDismiss, onDead, dep, zoom, onPick, vw, onWid
   // Картинки — по именам файлов (src="robot.jpg"): в окне вместо файла рисунок из FILES; в коде — имя файла (урок 3).
   const doc = useMemo(() => '<!doctype html><html data-bs-theme="light" style="color-scheme:light"><head><meta charset="utf-8">' + (bs ? '<style>' + BS_CSS + '</style>' : '') +
     '<style>html,body{margin:0}body{padding:12px 14px}</style></head><body>' + withFiles(body) + '</body>' + (js ? '<!--js-->' : '') + '</html>', [body, bs, js]);
+  // После подгонки ширины окна карусель снова встаёт на свой слайд: начальный active не первый (урок 9, t1) — иначе
+  // прокрутка, посчитанная до подгонки, показывала соседний слайд.
   const fit = () => {
+    fit0();
+    const d = ref.current && ref.current.contentDocument;
+    if (d && d.querySelectorAll) d.querySelectorAll('.carousel').forEach((c) => { if (c.__bs && c.__bs.realign) c.__bs.realign(); });
+  };
+  const fit0 = () => {
     const f = ref.current, w = wrap.current;
     const d = f && f.contentDocument;
     if (!d || !d.documentElement || !w) return;
@@ -335,7 +342,7 @@ function bsCarousel(d, R) {   // R — ref живых настроек окна 
       car.style.setProperty('--bs-carousel-interval', ms + 'ms');
       timer = setTimeout(() => { go(idx + 1, true); restart(); }, ms);
     };
-    car.__bs = { go, idx: () => idx, restart };
+    car.__bs = { go, idx: () => idx, restart, realign: () => { if (!fade && idx) slideTo(idx, false); } };
     if (R.current.js) { mark(idx); if (!fade && idx) slideTo(idx, false); }
     if (auto) { car.classList.add('carousel-playing'); restart(); }
     // прокрутка пальцем или мышью: какой слайд виден
