@@ -7,3 +7,373 @@ Lesson, practice and test titles in three languages with file names
   RU: Урок 1. Введение в Bootstrap
   UZ: 1-dars. Bootstrapga kirish
   EN: Lesson 1. Getting started with Bootstrap
+
+Файл / Fayl / File:  01p-vvedenie.jsx
+  RU: Практика 1. Объявления возвращаются
+  UZ: 1-amaliyot. E'lonlar qaytadi
+  EN: Practice 1. The notices are back
+
+--- Тесты к уроку 1 / 1-dars testlari / Tests for lesson 1 ---
+
+Файл / Fayl / File:  01t1-vvedenie.jsx
+  RU: Урок 1, тест 1/5. Чего не хватает?
+  UZ: 1-dars, 1/5-test. Nima yetishmayapti?
+  EN: Lesson 1, test 1/5. What is missing?
+
+Файл / Fayl / File:  01t2-vvedenie.jsx
+  RU: Урок 1, тест 2/5. Какая строка ставится на пустое место в конце body?
+  UZ: 1-dars, 2/5-test. body oxiridagi bo'sh joyga qaysi qator qo'yiladi?
+  EN: Lesson 1, test 2/5. Which line goes in the empty spot at the end of body?
+
+Файл / Fayl / File:  01t3-vvedenie.jsx
+  RU: Урок 1, тест 3/5. Почему Bootstrap не сработал?
+  UZ: 1-dars, 3/5-test. Nega Bootstrap ishlamadi?
+  EN: Lesson 1, test 3/5. Why didn’t Bootstrap work?
+
+Файл / Fayl / File:  01t4-vvedenie.jsx
+  RU: Урок 1, тест 4/5. В каком разделе сайта вы найдёте пример Alert?
+  UZ: 1-dars, 4/5-test. Saytning qaysi bo'limida Alert namunasini topasiz?
+  EN: Lesson 1, test 4/5. In which section of the site will you find the Alert example?
+
+Файл / Fayl / File:  01t5-vvedenie.jsx
+  RU: Урок 1, тест 5/5. Что пишется в class вместо alert-warning?
+  UZ: 1-dars, 5/5-test. class ichida alert-warning o'rniga nima yoziladi?
+  EN: Lesson 1, test 5/5. What goes in class instead of alert-warning?
+
+Файл / Fayl / File:  02-cveta-i-knopki.jsx
+  RU: Урок 2. Цвета и кнопки
+  UZ: 2-dars. Ranglar va tugmalar
+  EN: Lesson 2. Colors and buttons
+
+Файл / Fayl / File:  02p-cveta-i-knopki.jsx
+  RU: Практика 2. Цвета возвращаются
+  UZ: 2-amaliyot. Ranglar qaytadi
+  EN: Practice 2. The colors are back
+
+--- Тесты к уроку 2 / 2-dars testlari / Tests for lesson 2 ---
+
+Файл / Fayl / File:  02t1-cveta-i-knopki.jsx
+  RU: Урок 2, тест 1/5. Какое слово пишется на пустое место?
+  UZ: 2-dars, 1/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 2, test 1/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  02t2-cveta-i-knopki.jsx
+  RU: Урок 2, тест 2/5. Почему?
+  UZ: 2-dars, 2/5-test. Nega?
+  EN: Lesson 2, test 2/5. Why?
+
+Файл / Fayl / File:  02t3-cveta-i-knopki.jsx
+  RU: Урок 2, тест 3/5. Какое слово пишется на пустое место?
+  UZ: 2-dars, 3/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 2, test 3/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  02t4-cveta-i-knopki.jsx
+  RU: Урок 2, тест 4/5. Что это слово изменило у абзаца?
+  UZ: 2-dars, 4/5-test. Bu so'z abzasda nimani o'zgartirdi?
+  EN: Lesson 2, test 4/5. What did this word change in the paragraph?
+
+Файл / Fayl / File:  02t5-cveta-i-knopki.jsx
+  RU: Урок 2, тест 5/5. Что пишется на пустое место?
+  UZ: 2-dars, 5/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 2, test 5/5. What goes in the empty spot?
+
+Файл / Fayl / File:  03-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3. Загрузка и изображения
+  UZ: 3-dars. Yuklanish va rasmlar
+  EN: Lesson 3. Loading and images
+
+Файл / Fayl / File:  03p-zagruzka-i-izobrazheniya.jsx
+  RU: Практика 3. Галерея
+  UZ: 3-amaliyot. Galereya
+  EN: Practice 3. The gallery
+
+--- Тесты к уроку 3 / 3-dars testlari / Tests for lesson 3 ---
+
+Файл / Fayl / File:  03t1-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3, тест 1/5. Что написать в class, чтобы фото уместилось?
+  UZ: 3-dars, 1/5-test. Surat ekranga sig'ishi uchun class-ga nima yoziladi?
+  EN: Lesson 3, test 1/5. What goes in class so the photo fits?
+
+Файл / Fayl / File:  03t2-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3, тест 2/5. Какое слово пишется на пустое место?
+  UZ: 3-dars, 2/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 3, test 2/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  03t3-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3, тест 3/5. Что этот значок сообщает посетителю?
+  UZ: 3-dars, 3/5-test. Bu belgi foydalanuvchiga nimani bildiradi?
+  EN: Lesson 3, test 3/5. What does this sign tell the visitor?
+
+Файл / Fayl / File:  03t4-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3, тест 4/5. Какое слово пишется на пустое место?
+  UZ: 3-dars, 4/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 3, test 4/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  03t5-zagruzka-i-izobrazheniya.jsx
+  RU: Урок 3, тест 5/5. Чего не хватает?
+  UZ: 3-dars, 5/5-test. Nima yetishmayapti?
+  EN: Lesson 3, test 5/5. What is missing?
+
+Файл / Fayl / File:  04-flex.jsx
+  RU: Урок 4. Flex
+  UZ: 4-dars. Flex
+  EN: Lesson 4. Flex
+
+Файл / Fayl / File:  04p-flex.jsx
+  RU: Практика 4. Всё в ряд
+  UZ: 4-amaliyot. Hammasi qatorda
+  EN: Practice 4. All in a row
+
+--- Тесты к уроку 4 / 4-dars testlari / Tests for lesson 4 ---
+
+Файл / Fayl / File:  04t1-flex.jsx
+  RU: Урок 4, тест 1/5. Какое слово пишется на пустое место?
+  UZ: 4-dars, 1/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 4, test 1/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  04t2-flex.jsx
+  RU: Урок 4, тест 2/5. Что пишется на пустое место?
+  UZ: 4-dars, 2/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 4, test 2/5. What goes in the empty spot?
+
+Файл / Fayl / File:  04t3-flex.jsx
+  RU: Урок 4, тест 3/5. Что означает число 5 в gap-5?
+  UZ: 4-dars, 3/5-test. gap-5 dagi 5 raqami nimani bildiradi?
+  EN: Lesson 4, test 3/5. What does the number 5 in gap-5 mean?
+
+Файл / Fayl / File:  04t4-flex.jsx
+  RU: Урок 4, тест 4/5. Что пишется на пустое место?
+  UZ: 4-dars, 4/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 4, test 4/5. What goes in the empty spot?
+
+Файл / Fayl / File:  04t5-flex.jsx
+  RU: Урок 4, тест 5/5. Почему?
+  UZ: 4-dars, 5/5-test. Nega?
+  EN: Lesson 4, test 5/5. Why?
+
+Файл / Fayl / File:  05-kartochki.jsx
+  RU: Урок 5. Карточки
+  UZ: 5-dars. Kartochkalar
+  EN: Lesson 5. Cards
+
+Файл / Fayl / File:  05p-kartochki.jsx
+  RU: Практика 5. Карточки роботов
+  UZ: 5-amaliyot. Robotlar kartochkalari
+  EN: Practice 5. Robot cards
+
+--- Тесты к уроку 5 / 5-dars testlari / Tests for lesson 5 ---
+
+Файл / Fayl / File:  05t1-kartochki.jsx
+  RU: Урок 5, тест 1/5. Какой class даёт рамку и скруглённые углы?
+  UZ: 5-dars, 1/5-test. Ramka va yumaloq burchaklarni qaysi class beradi?
+  EN: Lesson 5, test 1/5. Which class gives the border and rounded corners?
+
+Файл / Fayl / File:  05t2-kartochki.jsx
+  RU: Урок 5, тест 2/5. Какого div с class не хватает вокруг надписей?
+  UZ: 5-dars, 2/5-test. Qaysi class bilan o'ralgan div yetishmayapti?
+  EN: Lesson 5, test 2/5. Which class is missing on a div around the text?
+
+Файл / Fayl / File:  05t3-kartochki.jsx
+  RU: Урок 5, тест 3/5. Что нужно исправить?
+  UZ: 5-dars, 3/5-test. Nimani tuzatish kerak?
+  EN: Lesson 5, test 3/5. What must be fixed?
+
+Файл / Fayl / File:  05t4-kartochki.jsx
+  RU: Урок 5, тест 4/5. Какое слово пишется на пустое место?
+  UZ: 5-dars, 4/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 5, test 4/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  05t5-kartochki.jsx
+  RU: Урок 5, тест 5/5. Что пишется в class родителя?
+  UZ: 5-dars, 5/5-test. Ota div-ning class-iga nima yoziladi?
+  EN: Lesson 5, test 5/5. What goes in the parent div’s class?
+
+Файл / Fayl / File:  06-kontejner-i-setka.jsx
+  RU: Урок 6. Контейнер и сетка
+  UZ: 6-dars. Konteyner va setka
+  EN: Lesson 6. Container and grid
+
+Файл / Fayl / File:  06p-kontejner-i-setka.jsx
+  RU: Практика 6. Сетка страницы
+  UZ: 6-amaliyot. Sahifa to'ri
+  EN: Practice 6. The page grid
+
+--- Тесты к уроку 6 / 6-dars testlari / Tests for lesson 6 ---
+
+Файл / Fayl / File:  06t1-kontejner-i-setka.jsx
+  RU: Урок 6, тест 1/5. Какую часть строки занимает col-4?
+  UZ: 6-dars, 1/5-test. col-4 qatorning qancha qismini egallaydi?
+  EN: Lesson 6, test 1/5. How much of the row does col-4 take?
+
+Файл / Fayl / File:  06t2-kontejner-i-setka.jsx
+  RU: Урок 6, тест 2/5. Что пишется на пустые места?
+  UZ: 6-dars, 2/5-test. Bo'sh joylarga nima yoziladi?
+  EN: Lesson 6, test 2/5. What goes in the empty spots?
+
+Файл / Fayl / File:  06t3-kontejner-i-setka.jsx
+  RU: Урок 6, тест 3/5. Какой class нужен div вокруг колонок?
+  UZ: 6-dars, 3/5-test. Ustunlarni o'rab turgan div-ga qaysi class kerak?
+  EN: Lesson 6, test 3/5. Which class does the div around the columns need?
+
+Файл / Fayl / File:  06t4-kontejner-i-setka.jsx
+  RU: Урок 6, тест 4/5. Что сделал container?
+  UZ: 6-dars, 4/5-test. container nima qildi?
+  EN: Lesson 6, test 4/5. What did container do?
+
+Файл / Fayl / File:  06t5-kontejner-i-setka.jsx
+  RU: Урок 6, тест 5/5. Какой ширины будут колонки?
+  UZ: 6-dars, 5/5-test. Ustunlar qanday kenglikda bo'ladi?
+  EN: Lesson 6, test 5/5. How wide will the columns be?
+
+Файл / Fayl / File:  07-navbar-i-pagination.jsx
+  RU: Урок 7. Navbar и Pagination
+  UZ: 7-dars. Navbar va Pagination
+  EN: Lesson 7. Navbar and Pagination
+
+Файл / Fayl / File:  07p-navbar-i-pagination.jsx
+  RU: Практика 7. Навигация сайта
+  UZ: 7-amaliyot. Sayt menyusi
+  EN: Practice 7. Site navigation
+
+--- Тесты к уроку 7 / 7-dars testlari / Tests for lesson 7 ---
+
+Файл / Fayl / File:  07t1-navbar-i-pagination.jsx
+  RU: Урок 7, тест 1/5. Какой class пишется на пустое место у названия?
+  UZ: 7-dars, 1/5-test. Sayt nomidagi bo'sh joyga qaysi class yoziladi?
+  EN: Lesson 7, test 1/5. Which class goes in the empty spot on the name?
+
+Файл / Fayl / File:  07t2-navbar-i-pagination.jsx
+  RU: Урок 7, тест 2/5. Что написать, чтобы на широком экране ссылки встали в ряд?
+  UZ: 7-dars, 2/5-test. Havolalar keng ekranda qatorga chiqishi uchun nima yoziladi?
+  EN: Lesson 7, test 2/5. What do you write so the links line up on a wide screen?
+
+Файл / Fayl / File:  07t3-navbar-i-pagination.jsx
+  RU: Урок 7, тест 3/5. Почему ☰ не работает?
+  UZ: 7-dars, 3/5-test. Nega ☰ ishlamayapti?
+  EN: Lesson 7, test 3/5. Why doesn’t ☰ work?
+
+Файл / Fayl / File:  07t4-navbar-i-pagination.jsx
+  RU: Урок 7, тест 4/5. Что пишется на пустое место у пункта с номером 2?
+  UZ: 7-dars, 4/5-test. 2-raqam bandidagi bo'sh joyga nima yoziladi?
+  EN: Lesson 7, test 4/5. What goes in the empty spot on the item with number 2?
+
+Файл / Fayl / File:  07t5-navbar-i-pagination.jsx
+  RU: Урок 7, тест 5/5. Что пишется на пустое место у тега nav?
+  UZ: 7-dars, 5/5-test. nav tegidagi bo'sh joyga nima yoziladi?
+  EN: Lesson 7, test 5/5. What goes in the empty spot on the nav tag?
+
+Файл / Fayl / File:  08-formy.jsx
+  RU: Урок 8. Формы
+  UZ: 8-dars. Formalar
+  EN: Lesson 8. Forms
+
+Файл / Fayl / File:  08p-formy.jsx
+  RU: Практика 8. Анкета записи
+  UZ: 8-amaliyot. Ro'yxat formasi
+  EN: Practice 8. The sign-up form
+
+--- Тесты к уроку 8 / 8-dars testlari / Tests for lesson 8 ---
+
+Файл / Fayl / File:  08t1-formy.jsx
+  RU: Урок 8, тест 1/5. Какое слово пишется на пустое место?
+  UZ: 8-dars, 1/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 8, test 1/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  08t2-formy.jsx
+  RU: Урок 8, тест 2/5. Какое слово пишется у select?
+  UZ: 8-dars, 2/5-test. select-ga qaysi so'z yoziladi?
+  EN: Lesson 8, test 2/5. Which word goes on the select?
+
+Файл / Fayl / File:  08t3-formy.jsx
+  RU: Урок 8, тест 3/5. Какое слово пишется у label?
+  UZ: 8-dars, 3/5-test. label-ga qaysi so'z yoziladi?
+  EN: Lesson 8, test 3/5. Which word goes on the label?
+
+Файл / Fayl / File:  08t4-formy.jsx
+  RU: Урок 8, тест 4/5. Какое поле нужно для такого выбора?
+  UZ: 8-dars, 4/5-test. Bunday tanlov uchun qaysi maydon kerak?
+  EN: Lesson 8, test 4/5. Which field is needed for this choice?
+
+Файл / Fayl / File:  08t5-formy.jsx
+  RU: Урок 8, тест 5/5. Почему?
+  UZ: 8-dars, 5/5-test. Nega?
+  EN: Lesson 8, test 5/5. Why?
+
+Файл / Fayl / File:  09-karusel.jsx
+  RU: Урок 9. Карусель
+  UZ: 9-dars. Karusel
+  EN: Lesson 9. Carousel
+
+Файл / Fayl / File:  09p-karusel.jsx
+  RU: Практика 9. Выставка роботов
+  UZ: 9-amaliyot. Robotlar ko'rgazmasi
+  EN: Practice 9. The robot show
+
+--- Тесты к уроку 9 / 9-dars testlari / Tests for lesson 9 ---
+
+Файл / Fayl / File:  09t1-karusel.jsx
+  RU: Урок 9, тест 1/5. Какое слово пишется на пустое место?
+  UZ: 9-dars, 1/5-test. Bo'sh joyga qaysi so'z yoziladi?
+  EN: Lesson 9, test 1/5. Which word goes in the empty spot?
+
+Файл / Fayl / File:  09t2-karusel.jsx
+  RU: Урок 9, тест 2/5. Какое слово добавляют в class первого слайда?
+  UZ: 9-dars, 2/5-test. Birinchi slaydning class-iga qaysi so'z qo'shiladi?
+  EN: Lesson 9, test 2/5. Which word is added to the first slide’s class?
+
+Файл / Fayl / File:  09t3-karusel.jsx
+  RU: Урок 9, тест 3/5. Что не так?
+  UZ: 9-dars, 3/5-test. Nima xato?
+  EN: Lesson 9, test 3/5. What is wrong?
+
+Файл / Fayl / File:  09t4-karusel.jsx
+  RU: Урок 9, тест 4/5. Какое число пишется на пустое место?
+  UZ: 9-dars, 4/5-test. Bo'sh joyga qaysi son yoziladi?
+  EN: Lesson 9, test 4/5. Which number goes in the empty spot?
+
+Файл / Fayl / File:  09t5-karusel.jsx
+  RU: Урок 9, тест 5/5. Что пишется на пустое место?
+  UZ: 9-dars, 5/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 9, test 5/5. What goes in the empty spot?
+
+Файл / Fayl / File:  10-menu-i-dialog.jsx
+  RU: Урок 10. Menu и Dialog
+  UZ: 10-dars. Menu va Dialog
+  EN: Lesson 10. Menu and Dialog
+
+Файл / Fayl / File:  10p-menu-i-dialog.jsx
+  RU: Практика 10. Страница турнира
+  UZ: 10-amaliyot. Musobaqa sahifasi
+  EN: Practice 10. The contest page
+
+--- Тесты к уроку 10 / 10-dars testlari / Tests for lesson 10 ---
+
+Файл / Fayl / File:  10t1-menu-i-dialog.jsx
+  RU: Урок 10, тест 1/5. Что пишется на пустое место?
+  UZ: 10-dars, 1/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 10, test 1/5. What goes in the empty spot?
+
+Файл / Fayl / File:  10t2-menu-i-dialog.jsx
+  RU: Урок 10, тест 2/5. С какого тега начинается окно в Bootstrap 6?
+  UZ: 10-dars, 2/5-test. Bootstrap 6 da oyna qaysi teg bilan boshlanadi?
+  EN: Lesson 10, test 2/5. Which tag starts a window in Bootstrap 6?
+
+Файл / Fayl / File:  10t3-menu-i-dialog.jsx
+  RU: Урок 10, тест 3/5. Что пишется на пустое место?
+  UZ: 10-dars, 3/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 10, test 3/5. What goes in the empty spot?
+
+Файл / Fayl / File:  10t4-menu-i-dialog.jsx
+  RU: Урок 10, тест 4/5. Что пишется на пустое место?
+  UZ: 10-dars, 4/5-test. Bo'sh joyga nima yoziladi?
+  EN: Lesson 10, test 4/5. What goes in the empty spot?
+
+Файл / Fayl / File:  10t5-menu-i-dialog.jsx
+  RU: Урок 10, тест 5/5. Чего не хватает?
+  UZ: 10-dars, 5/5-test. Nima yetishmayapti?
+  EN: Lesson 10, test 5/5. What is missing?
+
+Файл / Fayl / File:  11-final-proekt.jsx
+  RU: Урок 11. Финальный проект
+  UZ: 11-dars. Yakuniy loyiha
+  EN: Lesson 11. Final project

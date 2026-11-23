@@ -199,7 +199,19 @@ mkdirSync(root + 'canon/ai', { recursive: true });
 writeFileSync(root + 'canon/ai/canon-v1.jsx', text);
 // Модуль Bootstrap — на том же каноне (19.11.2026); своя папка — чтобы sync-canon / check-canon работали и для него.
 mkdirSync(root + 'canon/bootstrap', { recursive: true });
-writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', text);
+// Модуль Bootstrap — свой голос на каждом языке урока (23.11.2026, заказчик: «если узбекский то agoC45V78njTIxYzwmSb, если
+// русский TQ8rsxkw0HvhV0iDpqG5, если английский то 8IbUB2LiiCZ85IJAHNnZ»). Только канон Bootstrap: HTML, CSS и «ИИ» —
+// как были (Davronbek на всех языках). Голос уходит в обоих параметрах сервиса, voice_id и voice.
+let bsText = text;
+const bsSwap = (a, b) => { if (!bsText.includes(a)) throw new Error('bootstrap: не найдено: ' + a.slice(0, 80)); bsText = bsText.split(a).join(b); };
+bsSwap(`const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';`, `const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// МОДУЛЬ BOOTSTRAP (23.11.2026): голос по языку урока — uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;`);
+bsSwap(`url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));`);
+bsSwap(`url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));`);
+bsSwap(`//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра.`, `//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра.`);
+writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', bsText);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
