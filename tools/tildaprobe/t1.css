@@ -1,0 +1,132 @@
+/* ══ ПРОБНЫЙ ЭКРАН МОДУЛЯ TILDA (24.11.2026): похожий редактор Tilda (белый, чёрные кнопки, как в настоящем). Окна браузера
+   и кода нет (заказчик, 24.11.2026: «убери браузер… ни одного кода не должно быть»); раскладка — сначала под телефон
+   («в приоритете должна быть телефонная версия всегда»): одна колонка, на ноутбуке — та же карточка по центру. Цвета Tilda — серый холст #F0F0F0, оранжевый #FA876B (кнопка «Открыть страницу», «Контент»). */
+.r28 .t1-sheet { --t1-or: #FA876B; --t1-ink: #000; --t1-gr: #777; --t1-line: #E3E3E3; }
+.r28 .kz-scene.t1-scene { display: flex; flex-direction: column; align-items: center; flex: 1 1 auto; min-height: 0; width: 100%; }
+.r28 .t1-left { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; max-width: 760px; }
+/* ── Редактор ── */
+.r28 .t1-ed { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 260px; border-radius: 10px; overflow: hidden;
+  background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, .12), 0 8px 24px rgba(15, 23, 42, .12); font-family: var(--r-font); color: #000; }
+.r28 .t1-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 40px; padding: 0 12px;
+  background: #fff; box-shadow: 0 1px 0 var(--t1-line), 0 2px 8px rgba(0, 0, 0, .05); position: relative; z-index: 3; }
+.r28 .t1-crumb { display: flex; align-items: center; gap: 6px; min-width: 0; font: 600 10.5px/1 var(--r-font); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.r28 .t1-crumb span { color: #bbb; }
+.r28 .t1-home { width: 12px; height: 11px; background: #000; clip-path: polygon(50% 0, 100% 45%, 86% 45%, 86% 100%, 14% 100%, 14% 45%, 0 45%); flex: none; }
+.r28 .t1-acts { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.r28 .t1-undo { color: #999; font-size: 13px; }
+.r28 .t1-act { border: 0; background: none; padding: 4px 0; font: 500 12.5px/1 var(--r-font); color: #000; }
+.r28 .t1-act.is-pub { font-weight: 800; cursor: pointer; }
+.r28 .t1-act.is-pub:disabled { cursor: default; }
+.r28 .t1-act.is-pub.is-led { color: var(--t1-or); animation: t1Glow 1.4s ease-in-out infinite; }
+.r28 .t1-canvas { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: #fff; overflow: hidden; }
+.r28 .t1-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 16px; text-align: center; }
+.r28 .t1-empty b { font: 600 clamp(13px, 1.9dvh, 16px)/1.35 var(--r-font); max-width: 26em; }
+.r28 .t1-empty span { color: #aaa; font: 500 clamp(13px, 1.9dvh, 16px)/1.35 var(--r-font); max-width: 26em; }
+.r28 .t1-cam { width: 46px; height: 30px; margin-bottom: 10px; background: #000; border-radius: 4px; position: relative; }
+.r28 .t1-cam::after { content: ''; position: absolute; right: -12px; top: 7px; border: 8px solid transparent; border-right: 12px solid #000; border-left: 0; }
+/* Низ страницы: «ВСЕ БЛОКИ» и быстрые кнопки. */
+.r28 .t1-dock { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 10px 14px; flex-wrap: wrap; border-top: 1px dashed #ddd; }
+.r28 .t1-all { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; border: 0; border-radius: 2px; background: #000; color: #fff;
+  font: 800 10.5px/1 var(--r-font); letter-spacing: .08em; cursor: pointer; }
+.r28 .t1-all i { font-style: normal; font-size: 14px; }
+.r28 .t1-all:disabled { cursor: default; opacity: .9; }
+.r28 .t1-all.is-led { animation: t1Ring 1.4s ease-in-out infinite; }
+.r28 .t1-quick { display: inline-flex; border: 1px solid #ddd; border-radius: 2px; overflow: hidden; }
+.r28 .t1-quick span { padding: 6px 8px; font: 500 10.5px/1 var(--r-font); color: #333; border-right: 1px solid #eee; white-space: nowrap; }
+.r28 .t1-quick span:last-child { border-right: 0; }
+/* Блок на странице: полоса «CR28 ▾ · Настройки · Контент · </>». */
+.r28 .t1-rec { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.r28 .t1-bar { position: absolute; left: 8px; top: 8px; z-index: 2; display: flex; gap: 4px; }
+.r28 .t1-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border: 1px solid #ddd; border-radius: 3px; background: #fff; font: 500 10.5px/1 var(--r-font); color: #000; white-space: nowrap; }
+.r28 .t1-chip.is-content { background: var(--t1-or); border-color: var(--t1-or); color: #fff; }
+/* Обложка (в редакторе и на сайте). */
+.r28 .t1-cover { position: relative; flex: 1 1 auto; min-height: 180px; display: flex; align-items: center; justify-content: center; padding: 44px 16px 20px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(20, 10, 30, .35), rgba(20, 10, 30, .55)), linear-gradient(160deg, #F59E7B 0%, #C2416B 45%, #3B2A6B 100%); color: #fff; text-align: center; }
+.r28 .t1-cover::after { content: ''; position: absolute; inset: auto 0 0 0; height: 38%; background: linear-gradient(170deg, transparent 0 30%, #2A1F4F 30.5%), linear-gradient(190deg, transparent 0 45%, #1F1740 45.5%); opacity: .9; }
+.r28 .t1-cover.is-author { background: #F2EFEA; color: #111; flex-direction: column; gap: 10px; }
+.r28 .t1-cover.is-author::after { display: none; }
+.r28 .t1-avatar { position: relative; z-index: 1; width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #C9A88A 0 22%, transparent 23%), radial-gradient(ellipse at 50% 105%, #4B5563 0 45%, transparent 46%), #D8D2C8; }
+.r28 .t1-plate { position: relative; z-index: 1; max-width: 92%; padding: 14px 18px; }
+.r28 .t1-cover.is-plate .t1-plate { background: rgba(0, 0, 0, .45); }
+.r28 .t1-h { display: block; margin: 0 auto 6px; padding: 0; border: 0; background: none; color: inherit; font: 700 clamp(20px, 3.6dvh, 32px)/1.15 var(--r-font); overflow-wrap: anywhere; }
+.r28 .t1-h.is-tap { cursor: text; border-radius: 4px; outline: 2px dashed rgba(255, 255, 255, .75); outline-offset: 4px; animation: t1Dash 1.4s ease-in-out infinite; }
+.r28 .t1-cover.is-author .t1-h.is-tap { outline-color: var(--t1-or); }
+.r28 .t1-p { margin: 0; font: 400 clamp(12px, 1.8dvh, 15px)/1.4 var(--r-font); opacity: .9; }
+.r28 .t1-edit { display: flex; gap: 6px; align-items: center; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
+.r28 .t1-in { min-width: 0; width: min(18em, 70vw); padding: 6px 10px; border: 2px solid var(--t1-or); border-radius: 6px; background: #fff; color: #000;
+  font: 700 clamp(16px, 2.6dvh, 22px)/1.2 var(--r-font); text-align: center; outline: none; }
+.r28 .t1-ok { min-height: 36px; }
+/* Библиотека блоков (слева, поверх страницы). */
+.r28 .t1-lib { position: absolute; inset: 0; z-index: 4; display: flex; background: rgba(0, 0, 0, .25); animation: t1Fade .2s ease-out both; }
+.r28 .t1-lib-l { flex: none; width: min(46%, 210px); display: flex; flex-direction: column; background: #fff; box-shadow: 1px 0 0 var(--t1-line); animation: t1Slide .25s ease-out both; overflow: hidden; }
+.r28 .t1-lib-h { display: flex; justify-content: space-between; padding: 10px 12px 6px; color: #999; font: 500 12px/1.2 var(--r-font); }
+.r28 .t1-lib-tabs { display: flex; gap: 14px; padding: 4px 12px 0; border-bottom: 1px solid var(--t1-line); }
+.r28 .t1-lib-tabs span { padding: 6px 0; font: 500 12px/1 var(--r-font); color: #333; }
+.r28 .t1-lib-tabs span.is-on { box-shadow: inset 0 -2px 0 #000; }
+.r28 .t1-cats { display: flex; flex-direction: column; overflow-y: auto; min-height: 0; }
+.r28 .t1-cat { text-align: left; padding: 9px 12px; border: 0; border-bottom: 1px solid #F2F2F2; background: #fff; font: 700 clamp(12.5px, 1.8dvh, 15px)/1.2 var(--r-font); color: #000; cursor: pointer; }
+.r28 .t1-cat.is-on { box-shadow: inset -3px 0 0 var(--t1-or); }
+.r28 .t1-cat.is-led { animation: t1Bg 1.4s ease-in-out infinite; }
+.r28 .t1-lib-r { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 10px; background: #fff; overflow-y: auto; animation: t1Fade .25s ease-out both; }
+.r28 .t1-card { display: flex; flex-direction: column; gap: 4px; padding: 0 0 8px; border: 0; border-bottom: 1px solid #F0F0F0; background: none; text-align: left; cursor: pointer; }
+.r28 .t1-thumb { position: relative; display: block; height: clamp(54px, 9dvh, 84px); border-radius: 4px; overflow: hidden; background: linear-gradient(160deg, #F59E7B, #C2416B 50%, #3B2A6B); }
+.r28 .t1-thumb.is-lake { background: linear-gradient(180deg, #5B7083, #2F4858); }
+.r28 .t1-thumb.is-author { background: #F2EFEA; }
+.r28 .t1-thumb i { position: absolute; left: 50%; top: 50%; width: 56%; height: 9px; transform: translate(-50%, -80%); background: rgba(255, 255, 255, .85); border-radius: 2px; }
+.r28 .t1-thumb b { position: absolute; left: 50%; top: 50%; width: 38%; height: 4px; transform: translate(-50%, 160%); background: rgba(255, 255, 255, .6); border-radius: 2px; }
+.r28 .t1-thumb.is-plate i { box-shadow: 0 0 0 8px rgba(0, 0, 0, .35); }
+.r28 .t1-thumb.is-author i, .r28 .t1-thumb.is-author b { background: #333; }
+.r28 .t1-thumb.is-author::before { content: ''; position: absolute; left: 50%; top: 14%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #9CA3AF; }
+.r28 .t1-cap { font: 700 11.5px/1.3 var(--r-font); color: #000; }
+.r28 .t1-cap em { display: inline-flex; align-items: center; gap: 3px; margin-right: 6px; padding: 1px 6px; border-radius: 999px; background: #E5E5E5; color: #fff; font: 800 10px/1.5 var(--r-font); font-style: normal; background: #B5B5B5; }
+.r28 .t1-lock { width: 7px; height: 6px; margin-top: 2px; border-radius: 1px; background: #fff; position: relative; }
+.r28 .t1-lock::before { content: ''; position: absolute; left: 1px; top: -4px; width: 5px; height: 5px; border: 1.5px solid #fff; border-bottom: 0; border-radius: 3px 3px 0 0; box-sizing: border-box; }
+.r28 .t1-paid { font: 500 10.5px/1.2 var(--r-font); color: #aaa; }
+.r28 .t1-card.is-paid .t1-thumb, .r28 .t1-card.is-paid .t1-cap { opacity: .45; }
+.r28 .t1-card:not(.is-paid) .t1-thumb { box-shadow: 0 0 0 2px transparent; transition: box-shadow .15s; }
+.r28 .t1-card:not(.is-paid):hover .t1-thumb { box-shadow: 0 0 0 2px var(--t1-or); }
+.r28 .t1-card.is-flash { animation: t1Shake .45s ease-in-out; }
+/* Окно «Публикация прошла успешно!». */
+.r28 .t1-modal { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(255, 255, 255, .6); animation: t1Fade .2s ease-out both; }
+.r28 .t1-dlg { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(100%, 420px); padding: 18px 16px 0; border-radius: 6px; background: #fff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .18); text-align: center; animation: t1Pop .3s cubic-bezier(.2, .9, .3, 1.2) both; }
+.r28 .t1-qr { position: absolute; left: 14px; top: 16px; width: 14px; height: 14px; border: 2px solid #999; border-radius: 2px; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 5px #999; }
+.r28 .t1-dlg-h { font: 600 14px/1.3 var(--r-font); margin-bottom: 10px; }
+.r28 .t1-dlg-l { font: 400 clamp(14px, 2.2dvh, 18px)/1.3 var(--r-font); }
+.r28 .t1-dlg-u { font: 600 clamp(14px, 2.2dvh, 18px)/1.3 var(--r-font); overflow-wrap: anywhere; }
+.r28 .t1-open { margin: 10px 0 6px; padding: 12px 26px; border: 0; border-radius: 4px; background: var(--t1-or); color: #fff; font: 500 14px/1 var(--r-font); cursor: pointer; }
+.r28 .t1-open.is-led { animation: t1Ring 1.4s ease-in-out infinite; }
+.r28 .t1-dlg-f { align-self: stretch; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 10px 2px 12px; border-top: 1px solid var(--t1-line); font: 400 12px/1 var(--r-font); color: #555; }
+.r28 .t1-dlg-x { padding: 7px 14px; border: 1px solid #999; border-radius: 3px; }
+/* Опубликованный сайт: карточка без панелей редактора, адрес — строкой-ссылкой. */
+.r28 .t1-url { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 12px; background: #fff;
+  box-shadow: 0 1px 0 var(--t1-line); font: 600 clamp(12.5px, 1.9dvh, 15px)/1 var(--r-font); color: #111; overflow: hidden; white-space: nowrap; }
+.r28 .t1-url span { overflow: hidden; text-overflow: ellipsis; }
+.r28 .t1-globe { flex: none; width: 14px; height: 14px; border: 1.6px solid #16A34A; border-radius: 50%;
+  background: linear-gradient(#16A34A, #16A34A) center / 1.4px 100% no-repeat, linear-gradient(#16A34A, #16A34A) center / 100% 1.4px no-repeat; }
+.r28 .t1-site { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; animation: t1In .4s ease-out both; }
+.r28 .t1-site .t1-cover { padding-top: 24px; }
+.r28 .t1-ed.is-live { animation: t1In .4s ease-out both; }
+.r28 .t1-made { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: #111; color: #aaa; font: 500 11px/1 var(--r-font); letter-spacing: .03em; }
+.r28 .t1-made i { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid #aaa; border-radius: 50%; font: 600 10px/1 var(--r-font); font-style: normal; }
+@keyframes t1Ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(250, 79, 40, .55); } 50% { box-shadow: 0 0 0 6px rgba(250, 79, 40, 0); } }
+@keyframes t1Glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes t1Bg { 0%, 100% { background: #fff; } 50% { background: #FFF1EC; } }
+@keyframes t1Dash { 0%, 100% { outline-offset: 4px; } 50% { outline-offset: 7px; } }
+@keyframes t1Fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes t1Slide { from { transform: translateX(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes t1Pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes t1In { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes t1Shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .r28 .t1-sheet * { animation: none !important; } }
+/* Телефон (главный экран): крупные нажатия, лишнее из полосы редактора убрано. */
+@media (max-width: 759px) {
+  .r28 .t1-quick span:nth-child(n+3) { display: none; }
+  .r28 .t1-acts .t1-undo, .r28 .t1-acts .is-more, .r28 .t1-crumb .t1-pg { display: none; }
+  .r28 .t1-crumb { font-size: 10px; }
+  .r28 .t1-act { padding: 10px 0; font-size: 13px; }
+  .r28 .t1-all { height: 40px; padding: 0 18px; font-size: 11.5px; }
+  .r28 .t1-lib-l { width: 44%; }
+  .r28 .t1-cat { padding: 12px 10px; }
+  .r28 .t1-cover { min-height: 220px; }
+}

@@ -217,6 +217,9 @@ writeFileSync(root + 'canon/ai/canon-v1.jsx', text);
 // Модуль Bootstrap — на том же каноне (19.11.2026); своя папка — чтобы sync-canon / check-canon работали и для него.
 mkdirSync(root + 'canon/bootstrap', { recursive: true });
 writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', text);
+// Модуль Tilda — копия канона Bootstrap (24.11.2026: голос по языку урока; модуль идёт после Bootstrap).
+mkdirSync(root + 'canon/tilda', { recursive: true });
+writeFileSync(root + 'canon/tilda/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
