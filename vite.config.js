@@ -19,6 +19,10 @@ export default defineConfig({
   build: {
     // Файлы уроков большие (до 600 КБ) — это нормально, не предупреждаем.
     chunkSizeWarningLimit: 4000,
+    // Память сборки (24.11.2026): уроков 300+, исходников ~175 МБ — сборка на Rollup не помещалась в память контейнера Vercel
+    // (OOM, SIGKILL). Сборщик — rolldown-vite (тот же Vite, ядро на Rust); размер в gzip для отчёта не считаем.
+    reportCompressedSize: false,
+    sourcemap: false,
     rollupOptions: {
       // demo-mir — проба «живого мира» урока 17 (заказчик открывает её на Vercel по тому же пути).
       input: { main: r('./index.html'), player: r('./player.html'), trainer: r('./trainer.html'), 'demo-mir': r('./tools/problemitas17/demo/mir.html'),
