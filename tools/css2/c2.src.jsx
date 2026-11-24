@@ -365,7 +365,7 @@ const C = {
       'Now give your paragraph a class. Make up a name and type it in two places: in the class attribute in HTML and after the dot in CSS. If the names match, your paragraph gets colored. Then tap “Done”.'),
     msgs: {
       empty: L3("Ikkala joyga ham class nomini yozing.", 'Впиши имя класса в оба места.', 'Type the class name in both places.'),
-      mismatch: L3("Nomlar har xil: HTML kodida {a}, CSSda {b}. Ularni harfma-harf bir xil yozing.", 'Имена разные: в HTML {a}, в CSS {b}. Напиши их одинаково, буква в букву.', 'The names differ: {a} in HTML, {b} in CSS. Make them the same, letter by letter.'),
+      mismatch: L3("Nomlar har xil: \u2063HTML kodida {a}, CSSda {b}\u2064. Ularni harfma-harf bir xil yozing.", 'Имена разные: \u2063в HTML {a}, в CSS {b}\u2064. Напиши их одинаково, буква в букву.', 'The names differ: \u2063{a} in HTML, {b} in CSS\u2064. Make them the same, letter by letter.'),
       bad: L3("class nomida faqat lotin harflari, raqamlar va chiziqcha bo'ladi, raqam bilan boshlanmaydi. Masalan, mening yoki rang1.", 'В имени класса — только латинские буквы, цифры и дефис, и оно не начинается с цифры. Например, mening или rang1.', 'A class name uses only Latin letters, digits and dashes, and doesn’t start with a digit. For example, mening or rang1.'),
       dot: L3("HTML kodidagi class nomiga nuqta kerak emas. Nuqta faqat CSSda turadi.", 'В имени класса в HTML точка не нужна. Точка стоит только в CSS.', 'No dot in the class name in HTML. The dot goes only in CSS.')
     },

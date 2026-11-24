@@ -94,7 +94,7 @@ const C = {
       old: L3("Bu eski nom, beshinchi versiyadan. Oltinchisida: {w}.", 'Это старое имя из пятой версии. В шестой: {w}.', 'That’s an old name from version five. In version six: {w}.'),
       fam: L3("{w} boshqa narsa uchun. Bu yerga boshqa so'z kerak.", '{w} — для другой вещи. Сюда нужно другое слово.', '{w} is for something else. This spot needs another word.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas.", 'Bootstrap это слово знает, но результат не как в образце.', 'Bootstrap knows that word, but the result isn’t like the goal.'),
-      unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось.', 'Bootstrap doesn’t know the word {w}, so nothing changed.'),
+      unknown: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому ничего не изменилось.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So nothing changed.'),
       noHash: L3("id-ga ishora qilganda oldiga panjara qo'yiladi: {w}. Busiz tugma oynani topmaydi.", 'Когда указываешь на id, впереди ставится решётка: {w}. Без неё кнопка не найдёт окно.', 'Pointing to an id needs a hash in front: {w}. Without it the button won’t find the window.'),
       otherId: L3("Bunday id yo'q. Oynaning id-si dialog qatorida: {w}.", 'Такого id нет. id окна — в строке dialog: {w}.', 'There’s no such id. The window’s id is on the dialog line: {w}.'),
       dotTarget: L3("Nuqta class uchun. id-ga panjara bilan ishora qilinadi: {w}.", 'Точка — для class. На id указывают решёткой: {w}.', 'A dot is for class. An id is pointed to with a hash: {w}.'),

@@ -394,8 +394,8 @@ const C = {
     eyebrow: L3("O'z foningiz", 'Свой фон', 'Your own background'),
     say: L3("Endi o'z sahifangizni bezang. Fayllardan sahifa foni uchun bitta rasm tanlang va uning nomini yozing. Sarlavha orqasi uchun esa istalgan rangni yozing. Keyin «Tayyor»ni bosing.", 'Теперь укрась свою страницу. Выбери из файлов картинку для фона страницы и впиши её имя. А для фона заголовка впиши любой цвет. Потом нажми «Готово».', 'Now decorate your own page. Pick a picture from the files for the page background and type its name. Then type any color for the heading’s background. Then tap “Done”.'),
     msgs: {
-      noFile: L3("Fayllar orasida {w} degan nom yo'q. Fayl nomini nuqta va oxiri bilan to'liq yozing, masalan osmon.jpg.", "Среди файлов нет имени {w}. Перепиши имя файла целиком, с точкой и окончанием, например osmon.jpg.", "There’s no file called {w}. Copy the whole file name, with the dot and the ending, for example osmon.jpg."),
-      notColor: L3("Brauzer {w} ni rang deb tanimadi. Rang nomini yoki kodini tekshiring.", 'Браузер не узнал цвет в {w}. Проверь имя или код цвета.', 'The browser didn’t recognize {w} as a color. Check the color’s name or code.')
+      noFile: L3("Fayllar orasida bunday nom yo'q: \u2063{w}\u2064. Fayl nomini nuqta va oxiri bilan to'liq yozing, masalan osmon.jpg.", "Среди файлов нет такого имени: \u2063{w}\u2064. Перепиши имя файла целиком, с точкой и окончанием, например osmon.jpg.", "There’s no file with that name: \u2063{w}\u2064. Copy the whole file name, with the dot and the ending, for example osmon.jpg."),
+      notColor: L3("Brauzer buni rang deb tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini tekshiring.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Проверь имя или код цвета.', 'The browser didn’t recognize this as a color: \u2063{w}\u2064. Check the color’s name or code.')
     },
     hints: [
       L3("Qaysi rasm sizga yoqadi? Uning nomini fayllardan ko'ring.", 'Какая картинка тебе нравится? Посмотри её имя в файлах.', 'Which picture do you like? Look up its name in the files.'),

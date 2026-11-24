@@ -43,7 +43,7 @@
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,6 +969,9 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
@@ -963,10 +995,10 @@ const buildTtsUrl = (base, text, gender, lang) => {
   }
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
-  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
-  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -7164,10 +7196,10 @@ const C = {
       'Теперь оживи свою кнопку. Впиши любые значения для цвета под мышкой, transform и указателя. Потом нажми «Готово».',
       'Now bring your own button to life. Type any values for the hover color, the transform and the pointer. Then tap “Done”.'),
     msgs: {
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.'),
-      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan bir.", "Браузер не узнал {w}. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая одна десятая.", "The browser didn’t recognize {w}. After scale, rotate or translate you need brackets with a number inside, for example scale with one point one in brackets."),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.'),
+      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan bir.", "Браузер не узнал такое значение: \u2063{w}\u2064. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая одна десятая.", "The browser didn’t recognize this value: \u2063{w}\u2064. After scale, rotate or translate you need brackets with a number inside, for example scale with one point one in brackets."),
       deg: L3("rotate da son yonida deg yo'q.", 'В rotate рядом с числом нет deg.', 'In rotate there’s no deg next to the number.'),
-      cur: L3("Brauzer {w} ko'rsatkichini tanimadi. Masalan, pointer yozing.", 'Браузер не узнал указатель {w}. Впиши, например, pointer.', 'The browser didn’t recognize the pointer {w}. Type, for example, pointer.'),
+      cur: L3("Brauzer bu ko'rsatkichni tanimadi: \u2063{w}\u2064. Masalan, pointer yozing.", 'Браузер не узнал такой указатель: \u2063{w}\u2064. Впиши, например, pointer.', 'The browser didn’t recognize this pointer: \u2063{w}\u2064. Type, for example, pointer.'),
       comma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta bir.", "Дробь в CSS пишут через точку: одна точка одна, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point one.")
     },
     hints: [

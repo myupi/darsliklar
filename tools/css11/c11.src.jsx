@@ -403,9 +403,9 @@ const C = {
       'Теперь выровняй свою полку. Впиши любые значения для главной оси, поперечной оси и промежутка. Потом нажми «Готово».',
       'Now align your own shelf. Type any values for the main axis, the cross axis and the gap. Then tap “Done”.'),
     msgs: {
-      j: L3("Brauzer justify-content uchun {w} so'zini tanimadi. Masalan, center yoki space-between yozing.", 'Браузер не узнал слово {w} для justify-content. Впиши, например, center или space-between.', 'The browser didn’t recognize {w} for justify-content. Type, for example, center or space-between.'),
-      a: L3("Brauzer align-items uchun {w} so'zini tanimadi. Masalan, center yoki flex-end yozing.", 'Браузер не узнал слово {w} для align-items. Впиши, например, center или flex-end.', 'The browser didn’t recognize {w} for align-items. Type, for example, center or flex-end.'),
-      gap: L3("Brauzer {w} oralig'ini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал промежуток {w}. Напиши число и px без пробела.', 'The browser didn’t recognize the gap {w}. Write a number and px with no space.')
+      j: L3("Brauzer justify-content uchun bu so'zni tanimadi: \u2063{w}\u2064. Masalan, center yoki space-between yozing.", 'Браузер не узнал такое слово для justify-content: \u2063{w}\u2064. Впиши, например, center или space-between.', 'The browser didn’t recognize this word for justify-content: \u2063{w}\u2064. Type, for example, center or space-between.'),
+      a: L3("Brauzer align-items uchun bu so'zni tanimadi: \u2063{w}\u2064. Masalan, center yoki flex-end yozing.", 'Браузер не узнал такое слово для align-items: \u2063{w}\u2064. Впиши, например, center или flex-end.', 'The browser didn’t recognize this word for align-items: \u2063{w}\u2064. Type, for example, center or flex-end.'),
+      gap: L3("Brauzer bu oraliqni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такой промежуток: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this gap: \u2063{w}\u2064. Write a number and px with no space.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),

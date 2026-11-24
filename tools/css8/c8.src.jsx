@@ -383,7 +383,7 @@ const C = {
       'Теперь укрась свою карточку. Впиши любые значения для углов, тени и полосы слева. Потом нажми «Готово».',
       'Now decorate your own card. Type any values for the corners, the shadow and the left stripe. Then tap “Done”.'),
     msgs: {
-      rad: L3("Brauzer {w} qiymatini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал значение {w}. Напиши число и px без пробела.', 'The browser didn’t recognize {w}. Write a number and px with no space.'),
+      rad: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такое значение: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this value: \u2063{w}\u2064. Write a number and px with no space.'),
       shd: L3("Brauzer soyani tanimadi. Uchta son va rang yozing, bo'sh joy bilan.", 'Браузер не узнал тень. Напиши три числа и цвет через пробел.', 'The browser didn’t recognize the shadow. Write three numbers and a color with spaces.'),
       comma: L3("Soyada vergul bor. Qismlarni faqat bo'sh joy bilan ajrating.", 'В тени есть запятая. Разделяй части только пробелами.', 'There’s a comma in the shadow. Separate the parts with spaces only.'),
       left: L3("Brauzer chap chiziqni tanimadi. Uch qism yozing: qalinlik, tur va rang.", 'Браузер не узнал левую полосу. Напиши три части: толщина, вид и цвет.', 'The browser didn’t recognize the left stripe. Write three parts: thickness, type and color.'),

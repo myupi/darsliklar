@@ -390,13 +390,13 @@ const C = {
       'Теперь сделай свою кнопку. Сам выбери, что меняется под мышкой, сколько это длится и какая скорость. Потом нажми «Готово».',
       'Now make your own button. Choose what changes under the mouse, how long it takes and the speed. Then tap “Done”.'),
     msgs: {
-      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan uch.", "Браузер не узнал {w}. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая три десятых.", "The browser didn’t recognize {w}. After scale, rotate or translate you need brackets with a number inside, for example scale with one point three in brackets."),
+      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan uch.", "Браузер не узнал такое значение: \u2063{w}\u2064. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая три десятых.", "The browser didn’t recognize this value: \u2063{w}\u2064. After scale, rotate or translate you need brackets with a number inside, for example scale with one point three in brackets."),
       comma: L3("Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
       unit: L3("Vaqtga s yoki ms kerak.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
-      time: L3("Brauzer {w} vaqtini tanimadi. Son va s yoki ms yozing.", 'Браузер не узнал время {w}. Напиши число и s или ms.', 'The browser didn’t recognize the time {w}. Write a number and s or ms.'),
+      time: L3("Brauzer bu vaqtni tanimadi: \u2063{w}\u2064. Son va s yoki ms yozing.", 'Браузер не узнал такое время: \u2063{w}\u2064. Напиши число и s или ms.', 'The browser didn’t recognize this time: \u2063{w}\u2064. Write a number and s or ms.'),
       zero: L3("Nol soniyada o'zgarish birdaniga bo'ladi. Noldan katta vaqt yozing.", 'За ноль секунд изменение будет сразу. Напиши время больше нуля.', 'With zero seconds the change is instant. Write a time greater than zero.'),
       long: L3("Bu juda uzoq: tugmani kutib charchab qolasiz. Besh soniyadan kam yozing.", 'Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.', 'That’s too long: you’d get tired waiting for the button. Write less than five seconds.'),
-      fn: L3("Brauzer {w} tezligini tanimadi. linear yoki ease yozing.", 'Браузер не узнал скорость {w}. Впиши linear или ease.', 'The browser didn’t recognize the speed {w}. Type linear or ease.'),
+      fn: L3("Brauzer bu tezlikni tanimadi: \u2063{w}\u2064. linear yoki ease yozing.", 'Браузер не узнал такую скорость: \u2063{w}\u2064. Впиши linear или ease.', 'The browser didn’t recognize this speed: \u2063{w}\u2064. Type linear or ease.'),
       tfComma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta uch.", "Дробь в CSS пишут через точку: одна точка три, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point three.")
     },
     hints: [

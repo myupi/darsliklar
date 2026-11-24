@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,7 +969,7 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
-// МОДУЛЬ BOOTSTRAP (23.11.2026): голос по языку урока — uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
 const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
 const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
@@ -6887,13 +6916,13 @@ const C = {
       isShape: L3("Bu uslub so'zi. Bu joyga esa rang so'zi kerak.", 'Это слово стиля. А сюда нужно слово цвета.', 'That’s a style word. This spot needs a color word.'),
       isColor: L3("Bu rang so'zi. Bu joyga esa uslub kerak: ichi to'la yoki chegarali.", 'Это слово цвета. А сюда нужен стиль: с заливкой или с рамкой.', 'That’s a color word. This spot needs a style: filled or outlined.'),
       noPrefix: L3("Oz qoldi! Saytda bu so'z to'liq yozilgan: {w}.", 'Почти! На сайте это слово записано целиком: {w}.', 'Close! On the site the word is written in full: {w}.'),
-      noColor: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun rang chiqmadi. Saytdagi so'zlardan birini oling.", 'Bootstrap не знает слова {w}, поэтому цвета нет. Возьми одно из слов на сайте.', 'Bootstrap doesn’t know the word {w}, so there’s no color. Take one of the words from the site.'),
-      noShape: L3("{w} degan uslub yo'q. Tugma uslubi ikkita: btn-solid va btn-outline.", 'Стиля {w} нет. У кнопки два стиля: btn-solid и btn-outline.', 'There’s no {w} style. A button has two styles: btn-solid and btn-outline.'),
+      noColor: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun rang chiqmadi. Saytdagi so'zlardan birini oling.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому цвета нет. Возьми одно из слов на сайте.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So there’s no color. Take one of the words from the site.'),
+      noShape: L3("Bunday uslub yo'q: \u2063{w}\u2064. Tugma uslubi ikkita: btn-solid va btn-outline.", 'Такого стиля нет: \u2063{w}\u2064. У кнопки два стиля: btn-solid и btn-outline.', 'There’s no such style: \u2063{w}\u2064. A button has two styles: btn-solid and btn-outline.'),
       otherShape: L3("Uslub boshqa chiqdi. Namunaga qarang: tugmaning ichi to'lami yoki faqat chegarasi bormi?", 'Стиль получился другой. Посмотри на образец: кнопка залита цветом или у неё только рамка?', 'The style came out different. Look at the goal: is the button filled, or does it just have a border?'),
       other: L3("Bootstrap bu so'zni bildi, lekin rang namunadagidan boshqa. Sahifani namuna bilan solishtiring va saytdan o'sha rangni toping.", 'Bootstrap это слово знает, но цвет не как в образце. Сравни страницу с образцом и найди этот цвет на сайте.', 'Bootstrap knows that word, but the color isn’t the one in the goal. Compare the page with the goal and find that color on the site.'),
-      fam_theme: L3("{w} boshqa narsa uchun. Tugma va e'lon rangi theme so'zi bilan boshlanadi.", '{w} — для другого. Цвет кнопки и объявления начинается со слова theme.', '{w} is for something else. A button’s or notice’s color starts with theme.'),
-      fam_fg: L3("{w} bu matn rangi emas. Matn rangi fg bilan boshlanadi.", '{w} — это не цвет текста. Цвет текста начинается с fg.', '{w} isn’t a text color. Text color starts with fg.'),
-      fam_bg: L3("{w} bu fon emas. Fon rangi bg bilan boshlanadi, fg esa matn rangi.", '{w} — это не фон. Фон начинается с bg, а fg — это цвет текста.', '{w} isn’t a background. Background starts with bg, and fg is the text color.')
+      fam_theme: L3("Bu so'z boshqa narsa uchun: \u2063{w}\u2064. Tugma va e'lon rangi theme so'zi bilan boshlanadi.", 'Это слово для другого: \u2063{w}\u2064. Цвет кнопки и объявления начинается со слова theme.', 'This word is for something else: \u2063{w}\u2064. A button’s or notice’s color starts with theme.'),
+      fam_fg: L3("Bu matn rangi emas: \u2063{w}\u2064. Matn rangi fg bilan boshlanadi.", 'Это не цвет текста: \u2063{w}\u2064. Цвет текста начинается с fg.', 'That’s not a text color: \u2063{w}\u2064. Text color starts with fg.'),
+      fam_bg: L3("Bu fon emas: \u2063{w}\u2064. Fon rangi bg bilan boshlanadi, fg esa matn rangi.", 'Это не фон: \u2063{w}\u2064. Фон начинается с bg, а fg — это цвет текста.', 'That’s not a background: \u2063{w}\u2064. Background starts with bg, and fg is the text color.')
     }
   },
   s1: {

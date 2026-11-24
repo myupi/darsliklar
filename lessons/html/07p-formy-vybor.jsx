@@ -43,7 +43,7 @@
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,6 +969,9 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
@@ -963,10 +995,10 @@ const buildTtsUrl = (base, text, gender, lang) => {
   }
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
-  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
-  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -6918,11 +6950,11 @@ const XTRA = {
 const FB = {
   empty: L3("Hozircha bo'sh. Kodni shu yerga yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
   backslash: L3("Bu teskari chiziq «\\». Yopuvchi tegda oddiy qiya chiziq «/» turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
-  noGt: L3("«{bad}» tegining oxirida o'ng burchakli qavs «>» yo'q.", 'В конце тега «{bad}» не хватает уголка «>».', 'The tag “{bad}” is missing the bracket “>” at the end.'),
-  noLt: L3("«{bad}»: teg chap burchakli qavs «<» bilan boshlanadi.", '«{bad}» — тег начинается с уголка «<».', '“{bad}” — a tag starts with the bracket “<”.'),
-  typo: L3("«{bad}» degan teg yo'q. Balki «{near}» demoqchisiz?", '«{bad}» — такого тега нет. Может быть, «{near}»?', '“{bad}” — there’s no such tag. Did you mean “{near}”?'),
-  unknown: L3("«{bad}» tegi bizning anketamizda kerak emas. Bizda select, option, textarea va button bor.", 'Тег «{bad}» в нашей анкете не нужен. У нас есть select, option, textarea и button.', 'Our form doesn’t need the “{bad}” tag. We have select, option, textarea and button.'),
-  noLevel: L3("«{bad}» degan sarlavha yo'q: sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Заголовка «{bad}» нет: заголовки бывают от h1 до h6.', 'There’s no “{bad}” heading: headings go from h1 to h6.'),
+  noGt: L3("Bu tegning oxirida o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
+  noLt: L3("Teg chap burchakli qavs «<» bilan boshlanadi, bu yerda esa u yo'q: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
+  typo: L3("Bunday teg yo'q: \u2063«{bad}»\u2064. Balki «{near}» demoqchisiz?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
+  unknown: L3("Bu teg bizning anketamizda kerak emas: \u2063«{bad}»\u2064. Bizda select, option, textarea va button bor.", 'Этот тег в нашей анкете не нужен: \u2063«{bad}»\u2064. У нас есть select, option, textarea и button.', 'Our form doesn’t need this tag: \u2063“{bad}”\u2064. We have select, option, textarea and button.'),
+  noLevel: L3("Bunday sarlavha yo'q: \u2063«{bad}»\u2064. Sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Такого заголовка нет: \u2063«{bad}»\u2064. Заголовки бывают от h1 до h6.', 'There’s no such heading: \u2063“{bad}”\u2064. Headings go from h1 to h6.'),
   emptyTag: L3("Burchakli qavslar ichida teg nomi bo'lishi kerak.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
   inBody: L3("Bu yerga faqat body ichidagi qismni yozing: qolgani allaqachon bor.", 'Здесь пишется только то, что внутри body: остальное уже есть.', 'Write only what goes inside body here: the rest is already there.'),
   hasBody: L3("body allaqachon bor: tepada va pastda. Uning ichiga yozing.", 'body уже есть: сверху и снизу. Пиши внутри него.', 'body is already there, at the top and bottom. Write inside it.'),
@@ -6934,7 +6966,7 @@ const FB = {
   needSlash: L3("Bu ochuvchi teg. Yopuvchi tegda {tag} so'zidan oldin qiya chiziq «/» turadi.", 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
   needClose: L3("{tag} qismi yopilmadi: oxiriga yopuvchi {tag} tegini yozing.", 'Часть {tag} не закрыта: в конце напиши закрывающий тег {tag}.', 'The {tag} part isn’t closed: add the closing {tag} tag at the end.'),
   headOpen: L3("{tag} yopilmadi, shuning uchun pastdagi hamma narsa ham katta bo'lib ketdi. Sarlavhadan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт, поэтому всё ниже тоже стало крупным. После заголовка напиши закрывающий тег {tag}.', '{tag} isn’t closed, so everything below got big too. Add the closing {tag} tag after the heading.'),
-  extra: L3("Oxirida ortiqcha narsa qolibdi: {got}.", 'В конце осталось лишнее: {got}.', 'There’s something extra at the end: {got}.'),
+  extra: L3("Oxirida ortiqcha narsa qolibdi: \u2063{got}\u2064.", 'В конце осталось лишнее: \u2063{got}\u2064.', 'There’s something extra at the end: \u2063{got}\u2064.'),
   short: L3("Matn juda qisqa: kamida ikki harf yozing.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
   inlineOpen: L3("{tag} yopilmadi. Ajratilgan so'zlardan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт. После выделенных слов напиши закрывающий тег {tag}.', '{tag} isn’t closed. After the marked words, add the closing {tag} tag.'),
   inlineStray: L3("Bu yopuvchi {tag} tegi, lekin {tag} ochilmagan. Oldin ochuvchi {tag} tegini yozing.", 'Это закрывающий тег {tag}, но {tag} не открыт. Сначала напиши открывающий тег {tag}.', 'That’s the closing {tag} tag, but {tag} was never opened. Write the opening {tag} tag first.'),
@@ -6946,14 +6978,14 @@ const FB = {
   // Атрибуты (уроки 4–7).
   noQuote: L3("{attr} qiymatini qo'shtirnoq ichiga yozing.", 'Значение {attr} пиши в кавычках.', 'Put the {attr} value in quotes.'),
   noEq: L3("{attr} so'zidan keyin teng belgisi, keyin qo'shtirnoq ichida qiymat keladi.", 'После {attr} идёт знак равенства, а потом значение в кавычках.', 'After {attr} comes an equals sign, then the value in quotes.'),
-  attrTypo: L3("«{bad}» degan atribut yo'q. {tag} tegida {list} bo'ladi.", 'Атрибута «{bad}» нет. У тега {tag} бывают {list}.', 'There’s no “{bad}” attribute. The {tag} tag has {list}.'),
+  attrTypo: L3("Bunday atribut yo'q: \u2063«{bad}»\u2064. {tag} tegida {list} bo'ladi.", 'Такого атрибута нет: \u2063«{bad}»\u2064. У тега {tag} бывают {list}.', 'There’s no such attribute: \u2063“{bad}”\u2064. The {tag} tag has {list}.'),
   attrNone: L3("{tag} tegiga atribut kerak emas, uni olib tashlang.", 'Тегу {tag} атрибут не нужен, убери его.', 'The {tag} tag doesn’t need an attribute, remove it.'),
   inputClose: L3("input yopilmaydi: yopuvchi input tegi kerak emas, uni olib tashlang.", 'input не закрывается: закрывающий тег input не нужен, убери его.', 'input doesn’t close: the closing input tag isn’t needed, remove it.'),
   needLabel: L3("Yozuvni label ichiga yozing, maydon ham o'sha yerda bo'lsin.", 'Подпись пиши внутри label, и поле — там же.', 'Write the caption inside label, with the field right there.'),
   // Список, большое поле, кнопка (урок 7).
   liNotOption: L3("{got} tegi oddiy ro'yxat uchun. select ichidagi variant option tegida yoziladi.", 'Тег {got} — для обычного списка. Пункт внутри select пишут в теге option.', 'The {got} tag is for a regular list. An item inside select goes in the option tag.'),
   selNotOption: L3("select bu butun ro'yxat. Bitta variant uchun option tegi kerak.", 'select — это весь список. Для одного пункта нужен тег option.', 'select is the whole list. One item needs the option tag.'),
-  wordNoOpt: L3("«{got}» so'zi option tegisiz turibdi, shuning uchun ro'yxatga tushmadi. Uni ochuvchi va yopuvchi option teglari o'rtasiga yozing.", 'Слово «{got}» стоит без тега option, поэтому в список не попало. Напиши его между открывающим и закрывающим option.', 'The word “{got}” has no option tag, so it didn’t get into the list. Write it between the opening and closing option tags.'),
+  wordNoOpt: L3("Bu so'z option tegisiz turibdi: \u2063«{got}»\u2064. Shuning uchun u ro'yxatga tushmadi. Uni ochuvchi va yopuvchi option teglari o'rtasiga yozing.", 'Это слово стоит без тега option: \u2063«{got}»\u2064. Поэтому оно не попало в список. Напиши его между открывающим и закрывающим option.', 'This word has no option tag: \u2063“{got}”\u2064. So it didn’t get into the list. Write it between the opening and closing option tags.'),
   optInSel: L3("option faqat select ichida yashaydi.", 'option живёт только внутри select.', 'option lives only inside select.'),
   needOpts: L3("Ro'yxatda {n} ta variant bo'lsin: har biri o'z option tegida.", 'В списке должно быть {n} пункта: каждый в своём option.', 'The list should have {n} items, each in its own option.'),
   optMissing: L3("Ro'yxatda «{want}» varianti yo'q.", 'В списке нет пункта «{want}».', 'The list has no “{want}” item.'),

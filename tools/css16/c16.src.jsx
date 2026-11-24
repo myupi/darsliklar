@@ -389,9 +389,9 @@ const C = {
       'Now make your own site responsive. Choose the breakpoint, the banner color and the card color for a narrow window. Then switch phone and computer and tap “Done”.'),
     msgs: {
       noPx: L3("Chegarada px yo'q.", 'У границы нет px.', 'The breakpoint has no px.'),
-      bp: L3("Brauzer {w} chegarasini tanimadi. Son va px yozing.", 'Браузер не узнал границу {w}. Напиши число и px.', 'The browser didn’t recognize the breakpoint {w}. Write a number and px.'),
+      bp: L3("Brauzer bu chegarani tanimadi: \u2063{w}\u2064. Son va px yozing.", 'Браузер не узнал такую границу: \u2063{w}\u2064. Напиши число и px.', 'The browser didn’t recognize this breakpoint: \u2063{w}\u2064. Write a number and px.'),
       range: L3("Uch yuz oltmishdan ming pikselgacha bo'lgan chegarani yozing, aks holda farqni ko'rmaysiz.", 'Напиши границу от трёхсот шестидесяти до тысячи пикселей, иначе разницы не увидишь.', 'Write a breakpoint from three hundred sixty to a thousand pixels, otherwise you won’t see a difference.'),
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.')
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),

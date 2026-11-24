@@ -411,7 +411,7 @@ const C = {
     msgs: {
       empty: L3("Ikkala rangni ham yozing: sarlavha uchun va fon uchun.", 'Впиши оба цвета: для заголовка и для фона.', 'Type both colors: for the heading and for the background.'),
       space: L3("Rang nomida bo'sh joy bo'lmaydi: lightblue qo'shib yoziladi.", 'В названии цвета нет пробелов: lightblue пишут слитно.', 'Color names have no spaces: lightblue is one word.'),
-      notColor: L3("Brauzer {w} degan rangni bilmaydi. Rang nomini inglizcha yozing, masalan pastdagilardan.", 'Браузер не знает цвета {w}. Напиши название по-английски, например из списка внизу.', 'The browser doesn’t know the color {w}. Type an English name, for example from the list below.'),
+      notColor: L3("Brauzer bunday rangni bilmaydi: \u2063{w}\u2064. Rang nomini inglizcha yozing, masalan pastdagilardan.", 'Браузер не знает такого цвета: \u2063{w}\u2064. Напиши название по-английски, например из списка внизу.', 'The browser doesn’t know that color: \u2063{w}\u2064. Type an English name, for example from the list below.'),
       same: L3("Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", 'Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.', 'If the heading and the background are the same color, the heading disappears. Pick different colors.')
     },
     hints: [

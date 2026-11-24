@@ -387,13 +387,13 @@ const C = {
       'Теперь сделай свою анимацию. Сам выбери, каким кубик станет в конце, сколько это длится и сколько раз повторится. Потом нажми «Готово».',
       'Now make your own animation. Choose what the cube becomes at the end, how long it takes and how many times it repeats. Then tap “Done”.'),
     msgs: {
-      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan rotate va qavs ichida qirq besh deg.", "Браузер не узнал {w}. Нужно слово и число в скобках — например, rotate и в скобках сорок пять deg.", "The browser didn’t recognize {w}. You need a word and a number in brackets, for example rotate with forty-five deg in brackets."),
+      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan rotate va qavs ichida qirq besh deg.", "Браузер не узнал такое значение: \u2063{w}\u2064. Нужно слово и число в скобках — например, rotate и в скобках сорок пять deg.", "The browser didn’t recognize this value: \u2063{w}\u2064. You need a word and a number in brackets, for example rotate with forty-five deg in brackets."),
       comma: L3("Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
       unit: L3("Vaqtga s yoki ms kerak.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
-      time: L3("Brauzer {w} vaqtini tanimadi. Son va s yozing.", 'Браузер не узнал время {w}. Напиши число и s.', 'The browser didn’t recognize the time {w}. Write a number and s.'),
+      time: L3("Brauzer bu vaqtni tanimadi: \u2063{w}\u2064. Son va s yozing.", 'Браузер не узнал такое время: \u2063{w}\u2064. Напиши число и s.', 'The browser didn’t recognize this time: \u2063{w}\u2064. Write a number and s.'),
       zero: L3("Nol soniyada hech narsa ko'rinmaydi. Noldan katta vaqt yozing.", 'За ноль секунд ничего не видно. Напиши время больше нуля.', 'With zero seconds you see nothing. Write a time greater than zero.'),
       long: L3("Bu juda uzoq. Besh soniyadan kam yozing.", 'Это слишком долго. Напиши меньше пяти секунд.', 'That’s too long. Write less than five seconds.'),
-      count: L3("{w} bu takrorlash emas. infinite yoki son yozing.", '{w} — это не повторы. Впиши infinite или число.', '{w} isn’t a repeat count. Type infinite or a number.')
+      count: L3("Bu takrorlash soni emas: \u2063{w}\u2064. infinite yoki son yozing.", 'Это не число повторов: \u2063{w}\u2064. Впиши infinite или число.', 'This isn’t a repeat count: \u2063{w}\u2064. Type infinite or a number.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),

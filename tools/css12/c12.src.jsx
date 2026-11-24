@@ -404,8 +404,8 @@ const C = {
       'Теперь размести свою метку. Карточка — якорь, метка — absolute. Впиши отступ сверху и справа и цвет метки. Потом нажми «Готово».',
       'Now place your own badge. The card is the anchor, the badge is absolute. Type the distance from the top and from the right, and the badge color. Then tap “Done”.'),
     msgs: {
-      len: L3("Brauzer {w} qiymatini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал значение {w}. Напиши число и px без пробела.', 'The browser didn’t recognize {w}. Write a number and px with no space.'),
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.')
+      len: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такое значение: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this value: \u2063{w}\u2064. Write a number and px with no space.'),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),

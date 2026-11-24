@@ -136,6 +136,12 @@ swapSlowVoice();
 // Inter ресурсами WOFF2 — во всех уроках через канон (было только в уроке 1, tools/redaktor28/r28-lms.jsx).
 swapLmsPlatform();
 swapContractV1();
+// СЛОВО УЧЕНИКА НЕ ОЗВУЧИВАЕТСЯ (заказчик, 24.11.2026: «Да, убери» — в разборе ошибки Коди читал то, что ввёл ученик,
+// и каждая опечатка уходила в сервис новой фразой). См. swapSayHide.
+swapSayHide();
+// РЕЧЬ ОДНОРОДНАЯ, БЕЗ ПОМЕТОК ЯЗЫКА ВНУТРИ ФРАЗЫ (заказчик, 24.11.2026: «убираем это, и всё делаем однообразными,
+// так как переходим на элевенлабс 4 турбо… tag берем как teg»). См. swapTtsPlain.
+swapTtsPlain();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -190,6 +196,17 @@ swap(`.tour-back { position: absolute; inset: 0; display: grid; place-items: cen
 @keyframes backBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
 @media (prefers-reduced-motion: reduce) { .tour-back i { animation: none; } }`);
 
+// ГОЛОС ПО ЯЗЫКУ УРОКА — свой голос на каждом языке (23.11.2026 — модуль Bootstrap, заказчик: «если узбекский то
+// agoC45V78njTIxYzwmSb, если русский TQ8rsxkw0HvhV0iDpqG5, если английский то 8IbUB2LiiCZ85IJAHNnZ»; 24.11.2026 — так же
+// HTML, CSS и «ИИ», заказчик: «да, сделай так же для html css и ии»). Голос уходит в обоих параметрах сервиса, voice_id и voice.
+const bsSwap = swap;
+bsSwap(`const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';`, `const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;`);
+bsSwap(`url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));`);
+bsSwap(`url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));`);
+bsSwap(`//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра.`, `//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра.`);
 writeFileSync(root + 'canon/html/canon-v1.jsx', text);
 // Курс CSS строится на том же каноне, что HTML (заказчик, 05.11.2026: «как html редактор возьмём»):
 // canon/css/canon-v1.jsx — дословная копия, чтобы sync-canon / check-canon работали и для уроков CSS.
@@ -199,19 +216,7 @@ mkdirSync(root + 'canon/ai', { recursive: true });
 writeFileSync(root + 'canon/ai/canon-v1.jsx', text);
 // Модуль Bootstrap — на том же каноне (19.11.2026); своя папка — чтобы sync-canon / check-canon работали и для него.
 mkdirSync(root + 'canon/bootstrap', { recursive: true });
-// Модуль Bootstrap — свой голос на каждом языке урока (23.11.2026, заказчик: «если узбекский то agoC45V78njTIxYzwmSb, если
-// русский TQ8rsxkw0HvhV0iDpqG5, если английский то 8IbUB2LiiCZ85IJAHNnZ»). Только канон Bootstrap: HTML, CSS и «ИИ» —
-// как были (Davronbek на всех языках). Голос уходит в обоих параметрах сервиса, voice_id и voice.
-let bsText = text;
-const bsSwap = (a, b) => { if (!bsText.includes(a)) throw new Error('bootstrap: не найдено: ' + a.slice(0, 80)); bsText = bsText.split(a).join(b); };
-bsSwap(`const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';`, `const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
-// МОДУЛЬ BOOTSTRAP (23.11.2026): голос по языку урока — uz Davronbek, ru и en — свои; язык не распознан — узбекский.
-const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
-const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;`);
-bsSwap(`url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));`);
-bsSwap(`url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);`, `url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));`);
-bsSwap(`//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра.`, `//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра.`);
-writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', bsText);
+writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
@@ -832,6 +837,67 @@ function swapUzPace() {
   swap(`      const clean = sanitizeForTts(t);`, `      const clean = sanitizeForTts(t, lang);`);
   swap(`      await sleep(400);`, `      // КУРС HTML: узбекскому — пауза после реплики длиннее (заказчик, 19.10.2026).
       await sleep(lang === 'uz' ? 800 : 400);`);
+}
+
+// СЛОВО УЧЕНИКА — ТОЛЬКО НА ЭКРАНЕ (24.11.2026). Разбор ошибки показывает введённое учеником («Браузер не знает
+// такого свойства: backgroud»), но в озвучку оно не идёт: иначе каждая опечатка — новая фраза для сервиса, новая
+// генерация на каждого ученика. Урок оборачивает вставку ученика невидимыми метками U+2063 … U+2064 (`sayHide(x)`
+// или прямо в шаблоне: '…: \u2063{p}\u2064.'); перед озвучкой метка вырезается вместе с кавычками «» и стоящим перед
+// ней «:» или тире. Шаблон пишется так, чтобы и без вставки вышло целое предложение. Реплики без метки не меняются
+// ни на знак — их прежняя озвучка в кэше сервиса остаётся действительной.
+function swapSayHide() {
+  swap(`const sanitizeForTts = (text, lang) =>
+  String(text || '')
+`, `// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \\t]*[:—–]?[ \\t]*[«"“]?\\u2063[^\\u2064]*\\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \\t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\\u2063' + String(x == null ? '' : x) + '\\u2064';
+const sanitizeForTts = (text, lang) =>
+  sayHideCut(String(text || ''))
+`);
+}
+
+// РЕЧЬ БЕЗ ПОМЕТОК ЯЗЫКА ВНУТРИ ФРАЗЫ (24.11.2026, переход на ElevenLabs v4 Turbo). Наборы уроков (b16EnWords,
+// kzTagWord, TAG_SAY) готовили английские слова так: «[English pronunciation] tag [O'zbekcha tallaffuz]-ini»,
+// h1 — «H one», img — «I M G». Заказчик: «убираем это… не нужно показывать, что это слово читается на английском;
+// tag берём как teg: tegi, tegini». Перед отправкой в сервис канон приводит речь к обычному тексту, как в образце
+// заказчика («html tegidan boshlanadi… sarlavha uchun h1, matn uchun p, rasm uchun img… btn-solid va theme-primary»):
+//   · пометки языка внутри фразы убираются, английское слово остаётся как написано;
+//   · узбекский «tag» + окончание — снова «teg» слитно: tag-i → tegi, tag-ini → tegini, tag-larni → teglarni;
+//     окончание у другого английского слова — через дефис (Copy-ni, Bootstrap-da);
+//   · H one…H six → h1…h6, H T M L → HTML, I M G → img, S R C → src, U L / O L / L I → ul / ol / li.
+// Пометка языка в начале реплики (markLang) и тег эмоции остаются — их ставит канон после этой обработки.
+function swapTtsPlain() {
+  swap(`const sanitizeForTts = (text, lang) =>
+  sayHideCut(String(text || ''))
+`, `// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\\\]";
+const TTS_EN_SEG = new RegExp("\\\\[English pronunciation\\\\]\\\\s*([^\\\\[]*?)\\\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\\\s*' + TTS_LANG_TAG + '\\\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\\s*|[.!?]\\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\\bH (one|two|three|four|five|six)\\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\\bH T M L\\b/g, 'HTML').replace(/\\bI M G\\b/g, 'img').replace(/\\bS R C\\b/g, 'src')
+    .replace(/\\bU L\\b/g, 'ul').replace(/\\bO L\\b/g, 'ol').replace(/\\bL I\\b/g, 'li');
+  return t.replace(/[ \\t]+([.,!?;:])/g, '$1').replace(/[ \\t]{2,}/g, ' ');
+};
+const sanitizeForTts = (text, lang) =>
+  ttsPlain(sayHideCut(String(text || '')), lang)
+`);
 }
 
 // ПРЕДОХРАНИТЕЛЬ ОТВЕТОВ СЧИТАЕТ ТИШИНУ (заказчик, 19.10.2026) — см. комментарий в функции.

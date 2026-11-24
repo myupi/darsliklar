@@ -363,8 +363,8 @@ const C = {
     eyebrow: L3("O'z blogingiz", 'Свой блог', 'Your own blog'),
     say: L3("Endi o'z sahifangizni bezang. Sarlavha uchun istalgan o'lchamni yozing, butun sahifa uchun esa istalgan shriftni. Keyin «Tayyor»ni bosing.", 'Теперь укрась свою страницу. Впиши любой размер для заголовка и любой шрифт для всей страницы. Потом нажми «Готово».', 'Now decorate your own page. Type any size for the heading and any font for the whole page. Then tap “Done”.'),
     msgs: {
-      size: L3("Brauzer {w} ni o'lcham deb tanimadi. Son va px yozing.", 'Браузер не узнал размер в {w}. Напиши число и px.', 'The browser didn’t recognize {w} as a size. Write a number and px.'),
-      font: L3("Brauzer {w} ni shrift deb tanimadi. Masalan, sans-serif yoki monospace yozing.", 'Браузер не узнал шрифт в {w}. Напиши, например, sans-serif или monospace.', 'The browser didn’t recognize {w} as a font. Write sans-serif or monospace, for example.')
+      size: L3("Brauzer buni o'lcham deb tanimadi: \u2063{w}\u2064. Son va px yozing.", 'Браузер не узнал такой размер: \u2063{w}\u2064. Напиши число и px.', 'The browser didn’t recognize this as a size: \u2063{w}\u2064. Write a number and px.'),
+      font: L3("Brauzer buni shrift deb tanimadi: \u2063{w}\u2064. Masalan, sans-serif yoki monospace yozing.", 'Браузер не узнал такой шрифт: \u2063{w}\u2064. Напиши, например, sans-serif или monospace.', 'The browser didn’t recognize this as a font: \u2063{w}\u2064. Write sans-serif or monospace, for example.')
     },
     hints: [
       L3("Sarlavha qanchalik katta bo'lsin? Qaysi shrift sizga yoqadi?", 'Насколько большим будет заголовок? Какой шрифт тебе нравится?', 'How big should the heading be? Which font do you like?'),

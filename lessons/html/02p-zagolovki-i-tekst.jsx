@@ -43,7 +43,7 @@
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,6 +969,9 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
@@ -963,10 +995,10 @@ const buildTtsUrl = (base, text, gender, lang) => {
   }
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
-  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
-  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -6904,11 +6936,11 @@ const XTRA = {
 const FB = {
   empty: L3("Hozircha bo'sh. Kodni shu yerga yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
   backslash: L3("Bu teskari chiziq «\\». Yopuvchi tegda oddiy qiya chiziq «/» turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
-  noGt: L3("«{bad}» tegining oxirida o'ng burchakli qavs «>» yo'q.", 'В конце тега «{bad}» не хватает уголка «>».', 'The tag “{bad}” is missing the bracket “>” at the end.'),
-  noLt: L3("«{bad}»: teg chap burchakli qavs «<» bilan boshlanadi.", '«{bad}» — тег начинается с уголка «<».', '“{bad}” — a tag starts with the bracket “<”.'),
-  typo: L3("«{bad}» degan teg yo'q. Balki «{near}» demoqchisiz?", '«{bad}» — такого тега нет. Может быть, «{near}»?', '“{bad}” — there’s no such tag. Did you mean “{near}”?'),
-  unknown: L3("«{bad}» tegi bizning sahifamizda yo'q. Bizda h1 tegidan h6 tegigacha sarlavhalar, p, b va i bor.", 'Тега «{bad}» на нашей странице нет. У нас заголовки от h1 до h6, p, b и i.', 'Our page has no “{bad}” tag. We have headings from h1 to h6, p, b and i.'),
-  noLevel: L3("«{bad}» degan sarlavha yo'q: sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Заголовка «{bad}» нет: заголовки бывают от h1 до h6.', 'There’s no “{bad}” heading: headings go from h1 to h6.'),
+  noGt: L3("Bu tegning oxirida o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
+  noLt: L3("Teg chap burchakli qavs «<» bilan boshlanadi, bu yerda esa u yo'q: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
+  typo: L3("Bunday teg yo'q: \u2063«{bad}»\u2064. Balki «{near}» demoqchisiz?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
+  unknown: L3("Bunday teg bizning sahifamizda yo'q: \u2063«{bad}»\u2064. Bizda h1 tegidan h6 tegigacha sarlavhalar, p, b va i bor.", 'Такого тега на нашей странице нет: \u2063«{bad}»\u2064. У нас заголовки от h1 до h6, p, b и i.', 'Our page has no such tag: \u2063“{bad}”\u2064. We have headings from h1 to h6, p, b and i.'),
+  noLevel: L3("Bunday sarlavha yo'q: \u2063«{bad}»\u2064. Sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Такого заголовка нет: \u2063«{bad}»\u2064. Заголовки бывают от h1 до h6.', 'There’s no such heading: \u2063“{bad}”\u2064. Headings go from h1 to h6.'),
   emptyTag: L3("Burchakli qavslar ichida teg nomi bo'lishi kerak.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
   inBody: L3("Bu yerga faqat body ichidagi qismni yozing: qolgani allaqachon bor.", 'Здесь пишется только то, что внутри body: остальное уже есть.', 'Write only what goes inside body here: the rest is already there.'),
   hasBody: L3("body allaqachon bor: tepada va pastda. Uning ichiga yozing.", 'body уже есть: сверху и снизу. Пиши внутри него.', 'body is already there, at the top and bottom. Write inside it.'),
@@ -6923,15 +6955,15 @@ const FB = {
   needClose: L3("{tag} qismi yopilmadi: oxiriga yopuvchi {tag} tegini yozing.", 'Часть {tag} не закрыта: в конце напиши закрывающий тег {tag}.', 'The {tag} part isn’t closed: add the closing {tag} tag at the end.'),
   headOpen: L3("{tag} yopilmadi, shuning uchun pastdagi hamma narsa ham katta bo'lib ketdi. Sarlavhadan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт, поэтому всё ниже тоже стало крупным. После заголовка напиши закрывающий тег {tag}.', '{tag} isn’t closed, so everything below got big too. Add the closing {tag} tag after the heading.'),
   textAfter: L3("Yopuvchi {tag} tegidan keyin matn qolib ketdi. Uni teglar ichiga o'tkazing.", 'После закрывающего тега {tag} остался текст. Перенеси его внутрь тегов.', 'There’s text left after the closing {tag} tag. Move it inside the tags.'),
-  extra: L3("Oxirida ortiqcha teg qolibdi: {got}.", 'В конце остался лишний тег: {got}.', 'There’s an extra tag at the end: {got}.'),
+  extra: L3("Oxirida ortiqcha teg qolibdi: \u2063{got}\u2064.", 'В конце остался лишний тег: \u2063{got}\u2064.', 'There’s an extra tag at the end: \u2063{got}\u2064.'),
   short: L3("Matn juda qisqa: kamida ikki harf yozing.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
   textOutP: L3("Brauzer bu matnni baribir ko'rsatadi, lekin hammasini bitta qatorga yopishtiradi. Har bir abzas o'z p tegida turadi.", 'Браузер всё равно покажет этот текст, но слепит всё в одну строку. Каждый абзац стоит в своём p.', 'The browser will still show this text, but it glues it all into one line. Each paragraph sits in its own p.'),
   oneP: L3("Hozircha abzas bitta: brauzer kod qatorlarini yopishtirib yuboradi. Ikkinchi abzas uchun yana bitta p kerak.", 'Пока абзац один: браузер склеивает строки кода. Для второго абзаца нужен ещё один p.', 'There’s only one paragraph so far: the browser glues code lines together. The second paragraph needs another p.'),
   inlineOpen: L3("{tag} yopilmadi. Ajratilgan so'zlardan keyin, yopuvchi p tegidan oldin yopuvchi {tag} tegini yozing.", '{tag} не закрыт. После выделенных слов, перед закрывающим p, напиши закрывающий тег {tag}.', '{tag} isn’t closed. After the marked words, before the closing p, add the closing {tag} tag.'),
   inlineStray: L3("Bu yopuvchi {tag} tegi, lekin {tag} ochilmagan. Oldin ochuvchi {tag} tegini yozing.", 'Это закрывающий тег {tag}, но {tag} не открыт. Сначала напиши открывающий тег {tag}.', 'That’s the closing {tag} tag, but {tag} was never opened. Write the opening {tag} tag first.'),
   inlineEmpty: L3("{tag} ichida kamida bitta so'z bo'lsin.", 'Внутри {tag} должно быть хотя бы одно слово.', 'Put at least one word inside {tag}.'),
-  wrongHead: L3("Sahifada «{got}» chiqdi. Bizga «{want}» kerak.", 'На странице вышло «{got}». А нужно «{want}».', 'The page says “{got}”. We need “{want}”.'),
-  wrongWord: L3("Sarlavhada «{got}» chiqdi. Bizga «{want}» kerak.", 'В заголовке вышло «{got}». А нужно «{want}».', 'The heading says “{got}”. We need “{want}”.'),
+  wrongHead: L3("Sahifada boshqa matn chiqdi: \u2063«{got}»\u2064. Bizga «{want}» kerak.", 'На странице вышел другой текст: \u2063«{got}»\u2064. А нужно «{want}».', 'The page shows different text: \u2063“{got}”\u2064. We need “{want}”.'),
+  wrongWord: L3("Sarlavhada boshqa matn chiqdi: \u2063«{got}»\u2064. Bizga «{want}» kerak.", 'В заголовке вышел другой текст: \u2063«{got}»\u2064. А нужно «{want}».', 'The heading shows different text: \u2063“{got}”\u2064. We need “{want}”.'),
   keepWords: L3("So'zlar o'zgarmasin: «{want}». Faqat b qismini yoping.", 'Пусть слова останутся прежними: «{want}». Просто закрой b.', 'Keep the words as they were: “{want}”. Just close b.'),
   keepB: L3("b tegini o'chirmang: so'zlar qalin bo'lib qolsin, faqat b qismini yoping.", 'Не убирай b: слова должны остаться жирными, просто закрой b.', 'Don’t remove b: the words should stay bold, just close b.'),
   h1First: L3("Maqola sarlavhadan boshlanadi: eng tepaga h1 tegini yozing.", 'Статья начинается с заголовка: в самом верху напиши h1.', 'An article starts with a heading: write h1 at the very top.'),

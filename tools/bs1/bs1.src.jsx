@@ -304,7 +304,7 @@ const C = {
       empty: L3("E'londa ikkita bo'sh joy bor: rang so'zi va matn. Ikkalasini ham yozing.", 'В объявлении два пустых места: слово цвета и текст. Заполни оба.', 'The notice has two empty spots: the color word and the text. Fill in both.'),
       native: L3("Bootstrap o'zbekcha so'zlarni bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает таких слов. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know such words. Take a word from the Variants section on the site.'),
       noTheme: L3("Oz qoldi! Saytdagi so'z theme va chiziqcha bilan boshlanadi.", 'Почти! Слово на сайте начинается с theme и дефиса.', 'Close! The word on the site starts with theme and a dash.'),
-      notTheme: L3("Bootstrap {w} so'zini bilmaydi. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает слова {w}. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know the word {w}. Take a word from the Variants section on the site.'),
+      notTheme: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Saytdagi Variants bo'limidan so'z oling.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Возьми слово из раздела Variants на сайте.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. Take a word from the Variants section on the site.'),
       same: L3("Bu hali saytdagi inglizcha matn. O'z e'loningizni yozing.", 'Это ещё английский текст с сайта. Напиши своё объявление.', 'That’s still the English text from the site. Write your own notice.'),
       // «Tayyor» с одним пустым полем — причина, а не молча (23.11.2026).
       noText: L3("E'loningiz matnini 2-qatorga yozing", 'Впиши текст своего объявления — строка 2', 'Type your notice text — line 2'),

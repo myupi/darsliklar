@@ -84,7 +84,7 @@ const C = {
       old: L3("Bu eski nom, beshinchi versiyadan. Oltinchi versiyada u ishlamaydi.", 'Это старое имя из пятой версии. В шестой оно не работает.', 'That’s an old name from version five. It doesn’t work in version six.'),
       fam: L3("{w} boshqa narsa uchun. Bu yerga boshqa so'z kerak.", '{w} — для другой вещи. Сюда нужно другое слово.', '{w} is for something else. This spot needs another word.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas.", 'Bootstrap это слово знает, но результат не как в образце.', 'Bootstrap knows that word, but the result isn’t like the goal.'),
-      unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось.', 'Bootstrap doesn’t know the word {w}, so nothing changed.'),
+      unknown: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому ничего не изменилось.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So nothing changed.'),
       dir: L3("Bu tugma o'ngga, ya'ni keyingi rasmga o'tkazishi kerak. next — keyingi, prev — oldingi degani.", 'Эта кнопка должна листать вправо, к следующему фото. next — следующий, prev — предыдущий.', 'This button should go right, to the next photo. next means next, prev means previous.'),
       dirWord: L3("Bootstrap inglizcha qisqa so'zni kutadi: {w}.", 'Bootstrap ждёт короткое английское слово: {w}.', 'Bootstrap expects a short English word: {w}.'),
       noHash: L3("id ga ishora qilganda oldiga panjara qo'yiladi: {w}. Busiz tugma karuselni topmaydi.", 'Когда указываешь на id, впереди ставится решётка: {w}. Без неё кнопка не найдёт карусель.', 'Pointing to an id needs a hash in front: {w}. Without it the button won’t find the carousel.'),
@@ -92,9 +92,9 @@ const C = {
       dotTarget: L3("Nuqta class uchun. id ga panjara bilan ishora qilinadi: {w}.", 'Точка — для class. На id указывают решёткой: {w}.', 'A dot is for class. An id is pointed to with a hash: {w}.'),
       autoFalse: L3("false — o'chiq degani. Rasmlar o'zi aylansin desangiz, yoqiq so'zini yozing.", 'false значит «выключено». Чтобы фото листались сами, нужно «включено».', 'false means off. For the photos to change by themselves, it needs on.'),
       autoYes: L3("Oz qoldi! Bootstrap bu yerda inglizcha {w} so'zini kutadi.", 'Почти! Bootstrap ждёт здесь английское {w}.', 'Close! Bootstrap expects the English word {w} here.'),
-      msSec: L3("Vaqt soniyada emas, millisekundda yoziladi va harfsiz: {w}.", 'Время пишется не в секундах, а в миллисекундах и без букв: {w}.', 'Time is written in milliseconds, without letters: {w}.'),
-      msSmall: L3("Bu juda kam: vaqt millisekundda. 1 soniya — 1000. Demak: {w}.", 'Это слишком мало: время в миллисекундах. 1 секунда — 1000. Значит: {w}.', 'That’s too little: the time is in milliseconds. 1 second is 1000. So: {w}.'),
-      msUnit: L3("ms yozish shart emas, faqat raqam: {w}.", 'ms писать не нужно, только число: {w}.', 'No need for ms, just the number: {w}.'),
+      msSec: L3("Vaqt soniyada emas, millisekundda yoziladi va harfsiz: \u2063{w}\u2064.", 'Время пишется не в секундах, а в миллисекундах и без букв: \u2063{w}\u2064.', 'Time is written in milliseconds, without letters: \u2063{w}\u2064.'),
+      msSmall: L3("Bu juda kam: vaqt millisekundda. 1 soniya — 1000.\u2063 Demak: {w}.\u2064", 'Это слишком мало: время в миллисекундах. 1 секунда — 1000.\u2063 Значит: {w}.\u2064', 'That’s too little: the time is in milliseconds. 1 second is 1000.\u2063 So: {w}.\u2064'),
+      msUnit: L3("ms yozish shart emas, faqat raqam: \u2063{w}\u2064.", 'ms писать не нужно, только число: \u2063{w}\u2064.', 'No need for ms, just the number: \u2063{w}\u2064.'),
       msOther: L3("Raqam to'g'ri yozilgan, lekin vaqt boshqa. 3 soniya necha millisekund?", 'Число записано верно, но время другое. 3 секунды — это сколько миллисекунд?', 'The number is fine, but the time is different. How many milliseconds is 3 seconds?'),
       msNum: L3("Bu yerga faqat raqam kerak, millisekundlarda.", 'Сюда нужно только число, в миллисекундах.', 'Only a number goes here, in milliseconds.')
     }

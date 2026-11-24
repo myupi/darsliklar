@@ -36,7 +36,7 @@ Lesson, practice and test titles in three languages with file names
   EN: Lesson 1, test 4/5. What is missing in the code?
 
 Файл / Fayl / File:  01t5-struktura-dokumenta.jsx
-  RU: Урок 1, тест 5/5. В какую строку её написать?
+  RU: Урок 1, тест 5/5. В какую строку его написать?
   UZ: 1-dars, 5/5-test. Uni qaysi qatorga yozamiz?
   EN: Lesson 1, test 5/5. Which line should it go on?
 

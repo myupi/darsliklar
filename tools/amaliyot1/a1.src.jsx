@@ -106,10 +106,10 @@ const XTRA = {
 const FB = {
   empty: L3("Hozircha bo'sh. Kodni shu yerga yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
   backslash: L3("Bu teskari chiziq «\\». Yopuvchi tegda oddiy qiya chiziq «/» turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
-  noGt: L3("«{bad}» tegining oxirida o'ng burchakli qavs «>» yo'q.", 'В конце тега «{bad}» не хватает уголка «>».', 'The tag “{bad}” is missing the bracket “>” at the end.'),
-  noLt: L3("«{bad}»: teg chap burchakli qavs «<» bilan boshlanadi.", '«{bad}» — тег начинается с уголка «<».', '“{bad}” — a tag starts with the bracket “<”.'),
-  typo: L3("«{bad}» degan teg yo'q. Balki «{near}» demoqchisiz?", '«{bad}» — такого тега нет. Может быть, «{near}»?', '“{bad}” — there’s no such tag. Did you mean “{near}”?'),
-  unknown: L3("«{bad}» tegi bizning sahifamizda yo'q. Bizda faqat html, head, title va body bor.", 'Тега «{bad}» на нашей странице нет. У нас только html, head, title и body.', 'Our page has no “{bad}” tag. We only have html, head, title and body.'),
+  noGt: L3("Bu tegning oxirida o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
+  noLt: L3("Teg chap burchakli qavs «<» bilan boshlanadi, bu yerda esa u yo'q: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
+  typo: L3("Bunday teg yo'q: \u2063«{bad}»\u2064. Balki «{near}» demoqchisiz?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
+  unknown: L3("Bunday teg bizning sahifamizda yo'q: \u2063«{bad}»\u2064. Bizda faqat html, head, title va body bor.", 'Такого тега на нашей странице нет: \u2063«{bad}»\u2064. У нас только html, head, title и body.', 'Our page has no such tag: \u2063“{bad}”\u2064. We only have html, head, title and body.'),
   emptyTag: L3("Burchakli qavslar ichida teg nomi bo'lishi kerak.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
   needOpenText: L3("Matndan oldin ochuvchi {tag} tegi kerak.", 'Перед текстом нужен открывающий тег {tag}.', 'Before the text you need the opening {tag} tag.'),
   closeFirst: L3("Bu yopuvchi {got} tegi. Bu yerda oldin ochuvchi {tag} tegi kerak.", 'Это закрывающий тег {got}. Здесь сначала нужен открывающий тег {tag}.', 'That’s the closing {got} tag. First you need the opening {tag} tag here.'),
@@ -126,10 +126,10 @@ const FB = {
   next: L3("Endi {tag} qismini yozing.", 'Теперь напиши часть {tag}.', 'Now write the {tag} part.'),
   headNotClosed: L3("head hali yopilmadi. body tegidan oldin yopuvchi head tegini yozing.", 'head ещё не закрыт. Перед body напиши закрывающий тег head.', 'head isn’t closed yet. Add the closing head tag before body.'),
   textAfter: L3("Yopuvchi {tag} tegidan keyin matn qolib ketdi. Uni teglar ichiga o'tkazing.", 'После закрывающего тега {tag} остался текст. Перенеси его внутрь тегов.', 'There’s text left after the closing {tag} tag. Move it inside the tags.'),
-  extra: L3("Oxirida ortiqcha teg qolibdi: {got}.", 'В конце остался лишний тег: {got}.', 'There’s an extra tag at the end: {got}.'),
+  extra: L3("Oxirida ortiqcha teg qolibdi: \u2063{got}\u2064.", 'В конце остался лишний тег: \u2063{got}\u2064.', 'There’s an extra tag at the end: \u2063{got}\u2064.'),
   textOut: L3("Brauzer bu matnni oynada baribir ko'rsatadi. Lekin bizning qoidamiz bo'yicha oynadagi matn body ichida turadi.", 'Браузер всё равно покажет этот текст в окне. Но по нашему правилу текст окна стоит внутри body.', 'The browser will still show this text in the window. But by our rule, window text goes inside body.'),
   short: L3("Matn juda qisqa: kamida ikki harf yozing.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
-  wrongName: L3("Varaqda «{got}» chiqdi. Bizga «{want}» kerak.", 'На вкладке вышло «{got}». А нужно «{want}».', 'The tab says “{got}”. We need “{want}”.'),
+  wrongName: L3("Varaqda boshqa nom chiqdi: \u2063«{got}»\u2064. Bizga «{want}» kerak.", 'На вкладке вышло другое название: \u2063«{got}»\u2064. А нужно «{want}».', 'The tab shows a different name: \u2063“{got}”\u2064. We need “{want}”.'),
   keepName: L3("Nom «{want}» bo'lib qolsin, faqat qatorni yoping.", 'Пусть название останется «{want}», просто закрой строку.', 'Keep the name “{want}”, just close the line.')
 };
 

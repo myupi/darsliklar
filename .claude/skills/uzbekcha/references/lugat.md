@@ -4,7 +4,7 @@
 
 | Понятие | Узбекский | Примечание |
 |---|---|---|
-| тег | **teg** | в озвучке звучит английское «tag» (движок, `kzTagWord`): «tegi» → «tag-i». В тексте пишем «teg». |
+| тег | **teg** | в тексте и в озвучке — «teg»: «tegi», «tegini», «teglarni» (24.11.2026, заказчик: «убираем это, всё однообразно… tag берём как teg»; переход на ElevenLabs v4 Turbo): в озвучке нет пометок языка внутри фразы, английские слова звучат как написаны, «teg» — «teg»: «tegi», «tegini», «teglarni»; h1 — «h1», img — «img» (канон, `swapTtsPlain`). Раньше движок слал «tag-i» — отменено. |
 | открывающий / закрывающий тег | **ochuvchi / yopuvchi teg** | «yopuvchi html tegi», «ochuvchi head tegi» |
 | угловая скобка | **burchakli qavs** | левая — «chap burchakli qavs», правая — «o‘ng burchakli qavs»; коротко — «qavs» |
 | косая черта | **qiya chiziq** | «qiya chiziqli yopuvchi teg», «qiya chiziqsiz ochuvchi teg» |

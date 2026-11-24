@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,7 +969,7 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
-// МОДУЛЬ BOOTSTRAP (23.11.2026): голос по языку урока — uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
 const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
 const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
@@ -6886,9 +6915,9 @@ const C = {
       native: L3("Bootstrap o'z so'zlarini biladi, oddiy so'zni emas. Kerakli so'zni saytdan oling.", 'Bootstrap знает свои слова, а не обычные. Возьми нужное слово с сайта.', 'Bootstrap knows its own words, not everyday ones. Take the right word from the site.'),
       old: L3("Bu eski nom, Bootstrapning oldingi versiyalaridan. Oltinchisida u ishlamaydi, so'zni saytdan oling.", 'Это старое имя из прошлых версий Bootstrap. В шестой оно не работает, возьми слово с сайта.', 'That’s an old name from earlier Bootstrap versions. It doesn’t work in version six: take the word from the site.'),
       noPrefix: L3("Oz qoldi! Saytda bu so'z to'liq yozilgan: {w}.", 'Почти! На сайте это слово записано целиком: {w}.', 'Close! On the site the word is written in full: {w}.'),
-      unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi. Saytdagi so'zlardan birini oling.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось. Возьми одно из слов на сайте.', 'Bootstrap doesn’t know the word {w}, so nothing changed. Take one of the words from the site.'),
+      unknown: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun hech narsa o'zgarmadi. Saytdagi so'zlardan birini oling.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому ничего не изменилось. Возьми одно из слов на сайте.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So nothing changed. Take one of the words from the site.'),
       fam: L3("{w} boshqa narsa uchun. Bu joyga boshqa so'z kerak: sahifani namuna bilan solishtiring.", '{w} — для другого. Сюда нужно другое слово: сравни страницу с образцом.', '{w} is for something else. This spot needs another word: compare the page with the goal.'),
-      fam_fg: L3("{w} bu matn rangi emas. Rang fg bilan boshlanadi, xuddi o'tgan darsdagidek.", '{w} — это не цвет текста. Цвет начинается с fg, как на прошлом уроке.', '{w} isn’t a text color. Color starts with fg, just like last lesson.'),
+      fam_fg: L3("Bu matn rangi emas: \u2063{w}\u2064. Rang fg bilan boshlanadi, xuddi o'tgan darsdagidek.", 'Это не цвет текста: \u2063{w}\u2064. Цвет начинается с fg, как на прошлом уроке.', 'That’s not a text color: \u2063{w}\u2064. Color starts with fg, just like last lesson.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas. Sahifani namuna bilan solishtiring.", 'Bootstrap это слово знает, но результат не как в образце. Сравни страницу с образцом.', 'Bootstrap knows that word, but the result isn’t like the goal. Compare the page with the goal.')
     }
   },

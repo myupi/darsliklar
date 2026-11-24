@@ -381,10 +381,10 @@ const C = {
       'Теперь оживи свою кнопку. Впиши любые значения для цвета под мышкой, transform и указателя. Потом нажми «Готово».',
       'Now bring your own button to life. Type any values for the hover color, the transform and the pointer. Then tap “Done”.'),
     msgs: {
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.'),
-      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan bir.", "Браузер не узнал {w}. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая одна десятая.", "The browser didn’t recognize {w}. After scale, rotate or translate you need brackets with a number inside, for example scale with one point one in brackets."),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.'),
+      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan bir.", "Браузер не узнал такое значение: \u2063{w}\u2064. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая одна десятая.", "The browser didn’t recognize this value: \u2063{w}\u2064. After scale, rotate or translate you need brackets with a number inside, for example scale with one point one in brackets."),
       deg: L3("rotate da son yonida deg yo'q.", 'В rotate рядом с числом нет deg.', 'In rotate there’s no deg next to the number.'),
-      cur: L3("Brauzer {w} ko'rsatkichini tanimadi. Masalan, pointer yozing.", 'Браузер не узнал указатель {w}. Впиши, например, pointer.', 'The browser didn’t recognize the pointer {w}. Type, for example, pointer.'),
+      cur: L3("Brauzer bu ko'rsatkichni tanimadi: \u2063{w}\u2064. Masalan, pointer yozing.", 'Браузер не узнал такой указатель: \u2063{w}\u2064. Впиши, например, pointer.', 'The browser didn’t recognize this pointer: \u2063{w}\u2064. Type, for example, pointer.'),
       comma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta bir.", "Дробь в CSS пишут через точку: одна точка одна, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point one.")
     },
     hints: [

@@ -91,13 +91,13 @@ const C = {
       plural: L3("Ko'plikda emas, birlikda: {w}.", 'Не во множественном числе, а в единственном: {w}.', 'Not plural, singular: {w}.'),
       flexRow: L3("d-flex ham qator qiladi, lekin setka uchun Bootstrapda alohida so'z bor: u ustunlarning kengligini to'g'ri hisoblaydi.", 'd-flex тоже делает ряд, но для сетки у Bootstrap есть своё слово: оно правильно считает ширину колонок.', 'd-flex also makes a row, but the grid has its own word: it calculates the column widths correctly.'),
       fam_cont: L3("{w} ichkaridagi bo'lak uchun. Eng tashqi quti — konteyner.", '{w} — для внутренней части. Самая внешняя коробка — контейнер.', '{w} is for an inner part. The outermost box is the container.'),
-      fam_row: L3("{w} boshqa bo'lak uchun. Bu yerda qator kerak.", '{w} — для другой части. Здесь нужен ряд.', '{w} is for another part. This spot needs the row.'),
-      fam_col: L3("{w} boshqa bo'lak uchun. Bu yerda ustun kerak.", '{w} — для другой части. Здесь нужна колонка.', '{w} is for another part. This spot needs a column.'),
-      old: L3("Bu eski nom, beshinchi versiyadan. Oltinchisida ekran o'lchami oldinda, ikki nuqta bilan: {w}.", 'Это старое имя из пятой версии. В шестой размер экрана впереди, через двоеточие: {w}.', 'That’s an old name from version five. In version six the screen size comes first, with a colon: {w}.'),
-      noColon: L3("Oz qoldi! Ekran o'lchamidan keyin chiziqcha emas, ikki nuqta: {w}.", 'Почти! После размера экрана не дефис, а двоеточие: {w}.', 'Close! After the screen size comes a colon, not a dash: {w}.'),
-      over: L3("{w} degan class yo'q: setka 12 bo'lakdan iborat, raqam 1 dan 12 gacha.", 'Класса {w} нет: сетка из 12 частей, число от 1 до 12.', 'There’s no {w} class: the grid has 12 parts, the number goes from 1 to 12.'),
+      fam_row: L3("Bu so'z boshqa bo'lak uchun: \u2063{w}\u2064. Bu yerda qator kerak.", 'Это слово для другой части: \u2063{w}\u2064. Здесь нужен ряд.', 'This word is for another part: \u2063{w}\u2064. This spot needs the row.'),
+      fam_col: L3("Bu so'z boshqa bo'lak uchun: \u2063{w}\u2064. Bu yerda ustun kerak.", 'Это слово для другой части: \u2063{w}\u2064. Здесь нужна колонка.', 'This word is for another part: \u2063{w}\u2064. This spot needs a column.'),
+      old: L3("Bu eski nom, beshinchi versiyadan. Oltinchisida ekran o'lchami oldinda, ikki nuqta bilan: \u2063{w}\u2064.", 'Это старое имя из пятой версии. В шестой размер экрана впереди, через двоеточие: \u2063{w}\u2064.', 'That’s an old name from version five. In version six the screen size comes first, with a colon: \u2063{w}\u2064.'),
+      noColon: L3("Oz qoldi! Ekran o'lchamidan keyin chiziqcha emas, ikki nuqta: \u2063{w}\u2064.", 'Почти! После размера экрана не дефис, а двоеточие: \u2063{w}\u2064.', 'Close! After the screen size comes a colon, not a dash: \u2063{w}\u2064.'),
+      over: L3("Bunday class yo'q: \u2063{w}\u2064. Setka 12 bo'lakdan iborat, raqam 1 dan 12 gacha.", 'Такого класса нет: \u2063{w}\u2064. Сетка из 12 частей, число от 1 до 12.', 'There’s no such class: \u2063{w}\u2064. The grid has 12 parts, the number goes from 1 to 12.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas. Sahifani namuna bilan solishtiring.", 'Bootstrap это слово знает, но результат не как в образце. Сравни страницу с образцом.', 'Bootstrap knows that word, but the result isn’t like the goal. Compare the page with the goal.'),
-      unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось.', 'Bootstrap doesn’t know the word {w}, so nothing changed.')
+      unknown: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому ничего не изменилось.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So nothing changed.')
     }
   },
   s1: {

@@ -410,7 +410,7 @@ const C = {
       'Теперь укрась свою заметку. Впиши любые значения для внутреннего отступа, рамки и внешнего отступа. Потом нажми «Готово».',
       'Now decorate your own note. Type any values for the inner space, the frame and the outer space. Then tap “Done”.'),
     msgs: {
-      bad: L3("Brauzer {w} qiymatini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал значение {w}. Напиши число и px без пробела.', 'The browser didn’t recognize {w}. Write a number and px with no space.'),
+      bad: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такое значение: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this value: \u2063{w}\u2064. Write a number and px with no space.'),
       badB: L3("Brauzer chegarani tanimadi. Uch qism yozing: qalinlik, tur va rang.", 'Браузер не узнал рамку. Напиши три части: толщина, вид и цвет.', 'The browser didn’t recognize the frame. Write three parts: thickness, type and color.'),
       noStyle: L3("Chegarada chiziq turi yo'q: solid, dashed yoki dotted qo'shing.", 'У рамки нет вида линии: добавь solid, dashed или dotted.', 'The frame has no line type: add solid, dashed or dotted.')
     },

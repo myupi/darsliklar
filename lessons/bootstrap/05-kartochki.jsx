@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,7 +969,7 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
-// МОДУЛЬ BOOTSTRAP (23.11.2026): голос по языку урока — uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
 const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
 const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
@@ -6877,17 +6906,17 @@ const C = {
       dots: L3("Bu saytdagi uchta nuqta, ya'ni to'ldirgich degani. Uning o'rniga rasm faylining nomini yozing.", 'Это три точки с сайта, то есть заглушка. Вместо них впиши имя файла с фото.', 'Those are the site’s three dots, a placeholder. Type the photo file name instead.'),
       otherFile: L3("Bu fayl bor, lekin rasm namunadagidek emas. Fayllar ro'yxatiga qarang.", 'Такой файл есть, но фото не как в образце. Посмотри на список файлов.', 'That file exists, but the photo doesn’t match the goal. Check the file list.'),
       noExt: L3("Oz qoldi! Fayl nomi oxiri bilan yoziladi: {w}.", 'Почти! Имя файла пишется с окончанием: {w}.', 'Close! A file name needs its ending: {w}.'),
-      noFile: L3("{w} degan fayl yo'q, shuning uchun rasm chiqmadi. Fayllar ro'yxatidan oling.", 'Файла {w} нет, поэтому фото не появилось. Возьми имя из списка файлов.', 'There’s no {w} file, so no photo appeared. Take a name from the file list.'),
+      noFile: L3("Bunday fayl yo'q: \u2063{w}\u2064. Shuning uchun rasm chiqmadi. Fayllar ro'yxatidan oling.", 'Такого файла нет: \u2063{w}\u2064. Поэтому фото не появилось. Возьми имя из списка файлов.', 'There’s no such file: \u2063{w}\u2064. So no photo appeared. Take a name from the file list.'),
       other: L3("Bootstrap bu so'zni biladi, lekin natija namunadagidek emas. Sahifani namuna bilan solishtiring.", 'Bootstrap это слово знает, но результат не как в образце. Сравни страницу с образцом.', 'Bootstrap knows that word, but the result isn’t like the goal. Compare the page with the goal.'),
       noPrefix: L3("Oz qoldi! Saytda bu so'z to'liq yozilgan: {w}.", 'Почти! На сайте это слово записано целиком: {w}.', 'Close! On the site the word is written in full: {w}.'),
       native: L3("Bootstrap o'z so'zlarini biladi, oddiy so'zni emas. Rang so'zini saytdan oling.", 'Bootstrap знает свои слова, а не обычные. Возьми слово цвета с сайта.', 'Bootstrap knows its own words, not everyday ones. Take the color word from the site.'),
-      unknown: L3("Bootstrap {w} so'zini bilmaydi, shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает слова {w}, поэтому ничего не изменилось.', 'Bootstrap doesn’t know the word {w}, so nothing changed.'),
+      unknown: L3("Bootstrap bunday so'zni bilmaydi: \u2063{w}\u2064. Shuning uchun hech narsa o'zgarmadi.", 'Bootstrap не знает такого слова: \u2063{w}\u2064. Поэтому ничего не изменилось.', 'Bootstrap doesn’t know this word: \u2063{w}\u2064. So nothing changed.'),
       old: L3("Bu boshqa narsa uchun yoki eski nom. Rang so'zi theme bilan boshlanadi.", 'Это для другого или старое имя. Слово цвета начинается с theme.', 'That’s for something else or an old name. The color word starts with theme.'),
       cardTheme: L3("Bunday class yo'q. Kartochka rangi ham theme bilan: {w}.", 'Такого class нет. Цвет карточки тоже начинается с theme: {w}.', 'There’s no such class. A card’s color starts with theme too: {w}.'),
-      bgTheme: L3("{w} faqat fon yoki matnni bo'yaydi. Kartochka va tugma rangi theme bilan.", '{w} красит только фон или текст. Цвет карточки и кнопки — через theme.', '{w} only colors the background or text. Cards and buttons take theme.'),
-      needFlex: L3("{w} ishlashi uchun oldin bloklar qatorga tizilishi kerak. Qaysi so'z qatorga tizadi?", 'Чтобы {w} заработал, блоки сначала надо выстроить в ряд. Какое слово строит ряд?', 'For {w} to work, the blocks must be in a row first. Which word makes a row?'),
+      bgTheme: L3("Bu so'z faqat fon yoki matnni bo'yaydi: \u2063{w}\u2064. Kartochka va tugma rangi theme bilan.", 'Это слово красит только фон или текст: \u2063{w}\u2064. Цвет карточки и кнопки — через theme.', 'This word only colors the background or text: \u2063{w}\u2064. Cards and buttons take theme.'),
+      needFlex: L3("Siz yozgan so'z \u2063({w})\u2064 ishlashi uchun oldin bloklar qatorga tizilishi kerak. Qaysi so'z qatorga tizadi?", 'Чтобы слово \u2063«{w}»\u2064 заработало, блоки сначала надо выстроить в ряд. Какое слово строит ряд?', 'For the word \u2063“{w}”\u2064 to work, the blocks must be in a row first. Which word makes a row?'),
       grid: L3("row va col bu setka, keyingi dars mavzusi. Bugun qatorni flex bilan qilamiz.", 'row и col — это сетка, тема следующего урока. Сегодня ряд делаем через flex.', 'row and col are the grid, next lesson’s topic. Today we make the row with flex.'),
-      noSize: L3("{w} degan o'lcham yo'q. gap dan keyingi raqam jadvaldagi tartib raqami.", 'Размера {w} нет. Число после gap — номер в таблице.', 'There’s no {w} size. The number after gap is the row number in the table.'),
+      noSize: L3("Bunday o'lcham yo'q: \u2063{w}\u2064. gap dan keyingi raqam jadvaldagi tartib raqami.", 'Такого размера нет: \u2063{w}\u2064. Число после gap — номер в таблице.', 'There’s no such size: \u2063{w}\u2064. The number after gap is the row number in the table.'),
       isFlex: L3("d-flex allaqachon yozilgan. Bu joyga oraliq so'zi kerak.", 'd-flex уже написан. Сюда нужно слово расстояния.', 'd-flex is already there. This spot needs a spacing word.')
     }
   },

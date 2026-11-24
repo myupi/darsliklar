@@ -42,7 +42,7 @@
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -865,8 +865,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -939,6 +968,9 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
@@ -962,10 +994,10 @@ const buildTtsUrl = (base, text, gender, lang) => {
   }
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
-  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
-  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -6847,18 +6879,18 @@ const FB = {
   braceClose: L3("Qoida yopilmadi: oxiriga yopuvchi jingalak qavs qo'ying.", 'Правило не закрыто: в конце поставь закрывающую фигурную скобку.', 'The rule isn’t closed: put a closing curly brace at the end.'),
   braceExtra: L3("Ortiqcha yopuvchi jingalak qavs bor. Har bir ochuvchi qavsga bitta yopuvchi qavs kerak.", 'Есть лишняя закрывающая скобка. На каждую открывающую — одна закрывающая.', 'There’s an extra closing brace. Each opening brace gets one closing brace.'),
   noSel: L3("Qavsdan oldin selektor yo'q: nimani bezashimizni yozing.", 'Перед скобкой нет селектора: напиши, что оформляем.', 'There’s no selector before the brace: write what we’re styling.'),
-  eq: L3("{p} xususiyatidan keyin teng belgisi turibdi. CSS kodida xususiyat va qiymat o'rtasida ikki nuqta bo'ladi.", 'После {p} стоит знак «равно». В CSS между свойством и значением — двоеточие.', 'There’s an equals sign after {p}. In CSS a colon goes between the property and the value.'),
-  colon: L3("{p} xususiyatidan keyin ikki nuqta yo'q: xususiyat va qiymat o'rtasiga ikki nuqta qo'ying.", 'После {p} нет двоеточия: поставь его между свойством и значением.', 'There’s no colon after {p}: put one between the property and the value.'),
+  eq: L3("Xususiyat nomidan keyin teng belgisi turibdi: \u2063{p}\u2064. CSS kodida xususiyat va qiymat o'rtasida ikki nuqta bo'ladi.", 'После свойства \u2063{p}\u2064 стоит знак «равно». В CSS между свойством и значением — двоеточие.', 'There’s an equals sign after the property \u2063{p}\u2064. In CSS a colon goes between the property and the value.'),
+  colon: L3("Xususiyat nomidan keyin ikki nuqta yo'q: \u2063{p}\u2064. Xususiyat va qiymat o'rtasiga ikki nuqta qo'ying.", 'После свойства \u2063{p}\u2064 нет двоеточия: поставь его между свойством и значением.', 'There’s no colon after the property \u2063{p}\u2064: put one between the property and the value.'),
   semi: L3("Ikki xususiyat o'rtasida nuqtali vergul yo'q. Har bir qiymatdan keyin nuqtali vergul qo'ying.", 'Между двумя свойствами нет точки с запятой. Ставь её после каждого значения.', 'There’s no semicolon between two properties. Put one after every value.'),
-  prop: L3("Brauzer {p} degan xususiyatni bilmaydi. Nomni harfma-harf tekshiring.", 'Браузер не знает свойства {p}. Проверь имя буква за буквой.', 'The browser doesn’t know the property {p}. Check the name letter by letter.'),
-  propNear: L3("Brauzer {p} degan xususiyatni bilmaydi. Balki {n} demoqchisiz?", 'Браузер не знает свойства {p}. Может быть, {n}?', 'The browser doesn’t know the property {p}. Did you mean {n}?'),
+  prop: L3("Brauzer bunday xususiyatni bilmaydi: \u2063{p}\u2064. Nomni harfma-harf tekshiring.", 'Браузер не знает такого свойства: \u2063{p}\u2064. Проверь имя буква за буквой.', 'The browser doesn’t know this property: \u2063{p}\u2064. Check the name letter by letter.'),
+  propNear: L3("Brauzer bunday xususiyatni bilmaydi: \u2063{p}\u2064. Balki {n} demoqchisiz?", 'Браузер не знает такого свойства: \u2063{p}\u2064. Может быть, {n}?', 'The browser doesn’t know this property: \u2063{p}\u2064. Did you mean {n}?'),
   unit: L3("{p} uchun son yoniga o'lchov kerak, masalan px. Usiz brauzer qiymatni tashlab yuboradi.", 'Для {p} к числу нужна единица, например px. Без неё браузер выбросит значение.', '{p} needs a unit next to the number, like px. Without it the browser throws the value away.'),
   space: L3("{p} qiymatida son va o'lchov o'rtasida bo'sh joy bor. Ularni qo'shib yozing.", 'В {p} между числом и единицей пробел. Пиши их слитно.', 'In {p} there’s a space between the number and the unit. Write them together.'),
   time: L3("{p} qiymatida vaqt sonining yonida s yoki ms yo'q. Masalan yarim soniya nol butun beshdan s bo'ladi.", 'В {p} у времени нет s или ms. Например, полсекунды — ноль целых пять и буква s.', 'In {p} the time has no s or ms. For example, half a second is zero point five and the letter s.'),
   comma: L3("{p} qiymatida kasr vergul bilan yozilgan. CSS kodida kasr nuqta bilan yoziladi.", 'В {p} дробь записана через запятую. В CSS дробь пишут через точку.', 'In {p} the decimal uses a comma. In CSS decimals use a dot.'),
-  valueNear: L3("Brauzer {v} degan so'zni tanimadi. Balki {n} demoqchisiz? Harflarini solishtirib ko'ring.", 'Браузер не знает слова {v}. Может быть, {n}? Сравни буквы.', 'The browser doesn’t know the word {v}. Did you mean {n}? Compare the letters.'),
+  valueNear: L3("Brauzer bunday so'zni tanimadi: \u2063{v}\u2064. Balki {n} demoqchisiz? Harflarini solishtirib ko'ring.", 'Браузер не знает такого слова: \u2063{v}\u2064. Может быть, {n}? Сравни буквы.', 'The browser doesn’t know this word: \u2063{v}\u2064. Did you mean {n}? Compare the letters.'),
   noRule: L3("Bu hali qoida emas. Qoida shunday bo'ladi: selektor, keyin jingalak qavslar, ularning ichida xususiyat va qiymat.", 'Это пока не правило. Правило такое: селектор, потом фигурные скобки, а в них свойство и значение.', 'This isn’t a rule yet. A rule goes: selector, then curly braces, and inside them a property and a value.'),
-  declNoProp: L3("Qavslar ichida {v} turibdi, lekin xususiyat yo'q. Oldin xususiyatni yozing, keyin ikki nuqta va qiymat.", 'В скобках стоит {v}, но нет свойства. Сначала напиши свойство, потом двоеточие и значение.', 'Inside the braces there’s {v}, but no property. Write the property first, then a colon and the value.'),
+  declNoProp: L3("Qavslar ichida xususiyat yo'q, faqat mana bu turibdi: \u2063{v}\u2064. Oldin xususiyatni yozing, keyin ikki nuqta va qiymat.", 'Свойства в скобках нет, стоит только это: \u2063{v}\u2064. Сначала напиши свойство, потом двоеточие и значение.', 'There’s no property inside the braces, only this: \u2063{v}\u2064. Write the property first, then a colon and the value.'),
   needDot: L3("Sahifada {s} degan teg yo'q, lekin shunday class bor. Class nomidan oldin nuqta qo'ying.", 'На странице нет тега {s}, но есть такой класс. Перед именем класса поставь точку.', 'There’s no {s} tag on the page, but there is such a class. Put a dot before the class name.'),
   needHash: L3("Sahifada {s} degan teg yo'q, lekin shunday id bor. id nomidan oldin panjara belgisini qo'ying.", 'На странице нет тега {s}, но есть такой id. Перед именем id поставь решётку.', 'There’s no {s} tag on the page, but there is such an id. Put a hash sign before the id name.'),
   noDot: L3("{s} bu teg nomi, class emas. Teg nomidan oldin nuqta qo'yilmaydi.", '{s} — это имя тега, а не класса. Перед именем тега точку не ставят.', '{s} is a tag name, not a class. Tag names don’t get a dot.'),

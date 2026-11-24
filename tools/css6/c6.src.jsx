@@ -357,7 +357,7 @@ const C = {
     eyebrow: L3("O'z otkritkangiz", 'Своя открытка', 'Your own postcard'),
     say: L3("Endi o'z otkritkangizni yasang. Surat uchun istalgan kenglikni yozing, abzas uchun ham. Piksel yoki foiz, o'zingiz tanlang. Keyin «Tayyor»ni bosing.", 'Теперь сделай свою открытку. Впиши любую ширину для фото и для абзаца. Пиксели или проценты — выбирай сам. Потом нажми «Готово».', 'Now make your own postcard. Type any width for the photo and for the paragraph. Pixels or percent, you choose. Then tap “Done”.'),
     msgs: {
-      bad: L3("Brauzer {w} ni o'lcham deb tanimadi. Son va px yoki foiz belgisini bo'sh joysiz yozing.", 'Браузер не узнал размер в {w}. Напиши число и px или знак процента без пробела.', 'The browser didn’t recognize {w} as a size. Write a number with px or the percent sign, with no space.')
+      bad: L3("Brauzer buni o'lcham deb tanimadi: \u2063{w}\u2064. Son va px yoki foiz belgisini bo'sh joysiz yozing.", 'Браузер не узнал такой размер: \u2063{w}\u2064. Напиши число и px или знак процента без пробела.', 'The browser didn’t recognize this as a size: \u2063{w}\u2064. Write a number with px or the percent sign, with no space.')
     },
     hints: [
       L3("Surat qanchalik katta bo'lsin? Abzas-chi?", 'Насколько большим будет фото? А абзац?', 'How big should the photo be? And the paragraph?'),

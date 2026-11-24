@@ -375,7 +375,7 @@ const C = {
       'Теперь выбери цвета для своей страницы. Можно любым способом: название, hex или rgb. Впиши один цвет для заголовка и другой для фона. Потом нажми «Готово».',
       'Now pick colors for your own page. Any way you like: a name, hex or rgb. Type one color for the heading and another for the background. Then tap “Done”.'),
     msgs: {
-      notColor: L3("Brauzer «{w}» degan rangni bilmaydi. Nomni xatosiz yozing, hex uchun panjara va oltita belgi kerak.", "Браузер не знает цвета «{w}». Проверь название, а для hex — решётку и шесть знаков.", "The browser doesn’t know the color “{w}”. Check the name, and for hex a hash sign and six symbols."),
+      notColor: L3("Brauzer bunday rangni bilmaydi: «\u2063{w}\u2064». Nomni xatosiz yozing, hex uchun panjara va oltita belgi kerak.", "Браузер не знает такого цвета: «\u2063{w}\u2064». Проверь название, а для hex — решётку и шесть знаков.", "The browser doesn’t know that color: “\u2063{w}\u2064”. Check the name, and for hex a hash sign and six symbols."),
       same: L3("Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", 'Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.', 'If the heading and the background are the same color, the heading disappears. Pick different colors.')
     },
     hints: [

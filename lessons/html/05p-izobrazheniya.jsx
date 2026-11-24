@@ -43,7 +43,7 @@
 //     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
 //     lesson_id и lesson_name берутся из META урока (название — на языке ученика);
 //     student_uuid и k — из пропсов LMS studentUuid (student_uuid) и ttsKey, если они есть;
-//     voice_id и voice — голос курса TTS_VOICE_ID (Davronbek), оба параметра. Нет сервиса или он не ответил — голос браузера.
+//     voice_id и voice — голос по языку урока (ttsVoiceFor: uz Davronbek, ru, en — свои), оба параметра. Нет сервиса или он не ответил — голос браузера.
 //   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
 //     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
@@ -866,8 +866,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const estimateMs = (text) => Math.max(1800, Math.min(14000, String(text || '').length * 75));
 
 // Разметка, которая нужна глазам, но не нужна голосу.
+// Слово ученика (между U+2063 и U+2064) видно на экране, но не звучит — см. swapSayHide в tools/build-canon.mjs.
+const SAY_HIDE_RE = /[ \t]*[:—–]?[ \t]*[«"“]?\u2063[^\u2064]*\u2064[»"”]?/g;
+const sayHideCut = (s) => (s.indexOf('\u2063') < 0 ? s : s.replace(SAY_HIDE_RE, '').replace(/[ \t]+([.,!?;:])/g, '$1').replace(/([.!?])[.,;:]+/g, '$1'));
+const sayHide = (x) => '\u2063' + String(x == null ? '' : x) + '\u2064';
+// Речь без пометок языка внутри фразы и без чтения по буквам — см. swapTtsPlain в tools/build-canon.mjs.
+const TTS_LANG_TAG = "\\[(?:English pronunciation|O['‘’ʻʼ]zbekcha tallaffuz|Русское произношение)\\]";
+const TTS_EN_SEG = new RegExp("\\[English pronunciation\\]\\s*([^\\[]*?)\\s*" + TTS_LANG_TAG + "(?:(-[A-Za-z'‘’ʻʼ]+)|\\s+(ni|ga|da|dan|ning|dagi|lar|larni|larga|larda)(?![A-Za-z'‘’ʻʼ]))?", 'g');
+const TTS_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ttsPlain = (s, lang) => {
+  let t = String(s || '');
+  if (t.indexOf('[') >= 0) {
+    t = t.replace(TTS_EN_SEG, (all, words, suf, suf2) => {
+      let w = words;
+      if (lang === 'uz') w = w.replace(/(^|[^A-Za-z])tag(?![A-Za-z])/g, '$1teg');
+      const s2 = suf ? suf.slice(1) : suf2;
+      if (!s2) return w;
+      return /teg$/.test(w) && lang === 'uz' ? w + s2.toLowerCase() : w + '-' + s2;
+    });
+    t = t.replace(new RegExp('\\s*' + TTS_LANG_TAG + '\\s*', 'g'), ' ');
+  }
+  if (lang === 'uz') {
+    t = t.replace(/(^|[^A-Za-z'‘’ʻʼ-])tag-([a-z'‘’ʻʼ]+)/g, '$1teg$2').replace(/(^|[^A-Za-z'‘’ʻʼ-])tag(?![A-Za-z'‘’ʻʼ-])/g, '$1teg');
+    t = t.replace(/(^\s*|[.!?]\s+)teg/g, '$1Teg');   // в начале предложения — с большой буквы, как на экране
+  }
+  t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
+    .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
+    .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+};
 const sanitizeForTts = (text, lang) =>
-  String(text || '')
+  ttsPlain(sayHideCut(String(text || '')), lang)
     .replace(/\*\*/g, '')
     .replace(/[«»"“”]/g, '')
     .replace(/\s*→\s*/g, ', ')
@@ -940,6 +969,9 @@ let LMS_VOICE = null;
 // КУРС HTML (14.11.2026, как Dars001): голос курса и данные LMS для адреса озвучки. TTS_AUTH ставит корень урока
 // при каждом рендере (useLessonRoot → setTtsAuth) — значение не остаётся от прошлого открытия.
 const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
+// Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
+const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
+const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
 const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
@@ -963,10 +995,10 @@ const buildTtsUrl = (base, text, gender, lang) => {
   }
   // КУРС HTML (14.11.2026, как Dars001): ученик, голос курса и ключ сервиса.
   if (TTS_AUTH.uuid) url += '&student_uuid=' + encodeURIComponent(TTS_AUTH.uuid);
-  url += '&voice_id=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice_id=' + encodeURIComponent(ttsVoiceFor(lang));
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
-  url += '&voice=' + encodeURIComponent(TTS_VOICE_ID);
+  url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -6899,11 +6931,11 @@ const XTRA = {
 const FB = {
   empty: L3("Hozircha bo'sh. Kodni shu yerga yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
   backslash: L3("Bu teskari chiziq «\\». Yopuvchi tegda oddiy qiya chiziq «/» turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
-  noGt: L3("«{bad}» tegining oxirida o'ng burchakli qavs «>» yo'q.", 'В конце тега «{bad}» не хватает уголка «>».', 'The tag “{bad}” is missing the bracket “>” at the end.'),
-  noLt: L3("«{bad}»: teg chap burchakli qavs «<» bilan boshlanadi.", '«{bad}» — тег начинается с уголка «<».', '“{bad}” — a tag starts with the bracket “<”.'),
-  typo: L3("«{bad}» degan teg yo'q. Balki «{near}» demoqchisiz?", '«{bad}» — такого тега нет. Может быть, «{near}»?', '“{bad}” — there’s no such tag. Did you mean “{near}”?'),
-  unknown: L3("«{bad}» tegi bizning sahifamizda yo'q. Rasm uchun bizda img tegi bor.", 'Тега «{bad}» на нашей странице нет. Для картинки у нас есть тег img.', 'Our page has no “{bad}” tag. For a picture we have the img tag.'),
-  noLevel: L3("«{bad}» degan sarlavha yo'q: sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Заголовка «{bad}» нет: заголовки бывают от h1 до h6.', 'There’s no “{bad}” heading: headings go from h1 to h6.'),
+  noGt: L3("Bu tegning oxirida o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
+  noLt: L3("Teg chap burchakli qavs «<» bilan boshlanadi, bu yerda esa u yo'q: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
+  typo: L3("Bunday teg yo'q: \u2063«{bad}»\u2064. Balki «{near}» demoqchisiz?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
+  unknown: L3("Bunday teg bizning sahifamizda yo'q: \u2063«{bad}»\u2064. Rasm uchun bizda img tegi bor.", 'Такого тега на нашей странице нет: \u2063«{bad}»\u2064. Для картинки у нас есть тег img.', 'Our page has no such tag: \u2063“{bad}”\u2064. For a picture we have the img tag.'),
+  noLevel: L3("Bunday sarlavha yo'q: \u2063«{bad}»\u2064. Sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Такого заголовка нет: \u2063«{bad}»\u2064. Заголовки бывают от h1 до h6.', 'There’s no such heading: \u2063“{bad}”\u2064. Headings go from h1 to h6.'),
   emptyTag: L3("Burchakli qavslar ichida teg nomi bo'lishi kerak.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
   inBody: L3("Bu yerga faqat body ichidagi qismni yozing: qolgani allaqachon bor.", 'Здесь пишется только то, что внутри body: остальное уже есть.', 'Write only what goes inside body here: the rest is already there.'),
   hasBody: L3("body allaqachon bor: tepada va pastda. Uning ichiga yozing.", 'body уже есть: сверху и снизу. Пиши внутри него.', 'body is already there, at the top and bottom. Write inside it.'),
@@ -6916,7 +6948,7 @@ const FB = {
   needClose: L3("{tag} qismi yopilmadi: oxiriga yopuvchi {tag} tegini yozing.", 'Часть {tag} не закрыта: в конце напиши закрывающий тег {tag}.', 'The {tag} part isn’t closed: add the closing {tag} tag at the end.'),
   headOpen: L3("{tag} yopilmadi, shuning uchun pastdagi hamma narsa ham katta bo'lib ketdi. Sarlavhadan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт, поэтому всё ниже тоже стало крупным. После заголовка напиши закрывающий тег {tag}.', '{tag} isn’t closed, so everything below got big too. Add the closing {tag} tag after the heading.'),
   textAfter: L3("Yopuvchi {tag} tegidan keyin matn qolib ketdi. Uni teglar ichiga o'tkazing.", 'После закрывающего тега {tag} остался текст. Перенеси его внутрь тегов.', 'There’s text left after the closing {tag} tag. Move it inside the tags.'),
-  extra: L3("Oxirida ortiqcha teg qolibdi: {got}.", 'В конце остался лишний тег: {got}.', 'There’s an extra tag at the end: {got}.'),
+  extra: L3("Oxirida ortiqcha teg qolibdi: \u2063{got}\u2064.", 'В конце остался лишний тег: \u2063{got}\u2064.', 'There’s an extra tag at the end: \u2063{got}\u2064.'),
   short: L3("Matn juda qisqa: kamida ikki harf yozing.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
   inlineOpen: L3("{tag} yopilmadi. Ajratilgan so'zlardan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт. После выделенных слов напиши закрывающий тег {tag}.', '{tag} isn’t closed. After the marked words, add the closing {tag} tag.'),
   inlineStray: L3("Bu yopuvchi {tag} tegi, lekin {tag} ochilmagan. Oldin ochuvchi {tag} tegini yozing.", 'Это закрывающий тег {tag}, но {tag} не открыт. Сначала напиши открывающий тег {tag}.', 'That’s the closing {tag} tag, but {tag} was never opened. Write the opening {tag} tag first.'),
@@ -6929,19 +6961,19 @@ const FB = {
   listMismatch: L3("Ro'yxat {tag} bilan ochilgan, demak u {tag} bilan yopiladi.", 'Список открыт тегом {tag}, значит, и закрывается тегом {tag}.', 'The list opens with {tag}, so it closes with {tag}.'),
   noHref: L3("Bu a tegida href yo'q, shuning uchun so'z oddiy matn bo'lib qoldi. Ochuvchi a tegiga href qo'shing.", 'У этого тега a нет href, поэтому слово осталось простым текстом. Добавь href в открывающий тег a.', 'This a tag has no href, so the word stayed plain text. Add href to the opening a tag.'),
   emptyHref: L3("href bo'sh: qo'shtirnoq ichiga fayl nomini yozing.", 'href пустой: впиши в кавычки имя файла.', 'href is empty: write the file name in the quotes.'),
-  fileNo: L3("«{got}» degan fayl yo'q. Fayl nomini harfma-harf yozing: ro'yxatga qarang.", 'Файла «{got}» нет. Пиши имя файла буква в букву: посмотри на список.', 'There’s no “{got}” file. Write the file name letter by letter: look at the list.'),
-  fileOther: L3("Bu havola {got} sahifasiga olib boradi. Bizga {want} kerak.", 'Эта ссылка ведёт на {got}. А нужно {want}.', 'This link goes to {got}. We need {want}.'),
+  fileNo: L3("Bunday fayl yo'q: \u2063«{got}»\u2064. Fayl nomini harfma-harf yozing: ro'yxatga qarang.", 'Такого файла нет: \u2063«{got}»\u2064. Пиши имя файла буква в букву: посмотри на список.', 'There’s no such file: \u2063“{got}”\u2064. Write the file name letter by letter: look at the list.'),
+  fileOther: L3("Bu havola boshqa sahifaga olib boradi: \u2063{got}\u2064. Bizga {want} kerak.", 'Эта ссылка ведёт на другую страницу: \u2063{got}\u2064. А нужно {want}.', 'This link goes to a different page: \u2063{got}\u2064. We need {want}.'),
   aOpen: L3("a yopilmadi, shuning uchun keyingi matn ham havola bo'lib qoldi. Havola so'zlaridan keyin yopuvchi a tegini yozing.", 'a не закрыт, поэтому и текст дальше стал ссылкой. После слов ссылки напиши закрывающий тег a.', 'a isn’t closed, so the text after it became a link too. Add the closing a tag after the link words.'),
   // Атрибуты (уроки 4–5).
   noQuote: L3("{attr} qiymatini qo'shtirnoq ichiga yozing.", 'Значение {attr} пиши в кавычках.', 'Put the {attr} value in quotes.'),
   noEq: L3("{attr} so'zidan keyin teng belgisi, keyin qo'shtirnoq ichida qiymat keladi.", 'После {attr} идёт знак равенства, а потом значение в кавычках.', 'After {attr} comes an equals sign, then the value in quotes.'),
-  attrTypo: L3("«{bad}» degan atribut yo'q. Rasmda src va alt bo'ladi.", 'Атрибута «{bad}» нет. У картинки есть src и alt.', 'There’s no “{bad}” attribute. A picture has src and alt.'),
+  attrTypo: L3("Bunday atribut yo'q: \u2063«{bad}»\u2064. Rasmda src va alt bo'ladi.", 'Такого атрибута нет: \u2063«{bad}»\u2064. У картинки есть src и alt.', 'There’s no such attribute: \u2063“{bad}”\u2064. A picture has src and alt.'),
   attrNone: L3("{tag} tegiga atribut kerak emas, uni olib tashlang.", 'Тегу {tag} атрибут не нужен, убери его.', 'The {tag} tag doesn’t need an attribute, remove it.'),
   // Картинки (урок 5).
   hrefOnImg: L3("Rasmga href emas, src kerak: src rasm faylining nomini aytadi.", 'Картинке нужен не href, а src: src называет файл картинки.', 'A picture needs src, not href: src names the picture file.'),
   noSrc: L3("Bu img tegida src yo'q, shuning uchun rasm chiqmadi. Ochuvchi img tegiga src qo'shing.", 'У этого тега img нет src, поэтому картинка не появилась. Добавь src в тег img.', 'This img tag has no src, so the picture didn’t show. Add src to the img tag.'),
   emptySrc: L3("src bo'sh: qo'shtirnoq ichiga rasm faylining nomini yozing.", 'src пустой: впиши в кавычки имя файла картинки.', 'src is empty: write the picture file name in the quotes.'),
-  imgNo: L3("«{got}» degan rasm fayli yo'q, shuning uchun buzilgan rasm belgisi chiqdi. Fayl nomini harfma-harf yozing: ro'yxatga qarang.", 'Файла картинки «{got}» нет, поэтому вышел значок сломанной картинки. Пиши имя файла буква в букву: посмотри на список.', 'There’s no picture file “{got}”, so a broken picture icon showed up. Write the file name letter by letter: look at the list.'),
+  imgNo: L3("Bunday rasm fayli yo'q: \u2063«{got}»\u2064. Shuning uchun buzilgan rasm belgisi chiqdi. Fayl nomini harfma-harf yozing: ro'yxatga qarang.", 'Такого файла картинки нет: \u2063«{got}»\u2064. Поэтому вышел значок сломанной картинки. Пиши имя файла буква в букву: посмотри на список.', 'There’s no such picture file: \u2063“{got}”\u2064. That’s why a broken picture icon showed up. Write the file name letter by letter: look at the list.'),
   imgOther: L3("Bu {got} rasmi. Bizga {want} kerak.", 'Это картинка {got}. А нужна {want}.', 'That’s the {got} picture. We need {want}.'),
   noAlt: L3("alt yo'q. alt ichida rasmda nima borligini so'z bilan yozing: rasm ochilmasa, shu so'zlar chiqadi.", 'Нет alt. Напиши в alt словами, что на картинке: если она не откроется, появятся эти слова.', 'There’s no alt. In alt, say in words what’s in the picture: if it doesn’t open, those words show up.'),
   emptyAlt: L3("alt bo'sh: rasmda nima borligini yozing.", 'alt пустой: напиши, что на картинке.', 'alt is empty: write what’s in the picture.'),

@@ -381,9 +381,9 @@ const C = {
       'Теперь сделай свою полку. Полка уже flex. Впиши любые значения для направления, фона карточек и внутреннего отступа. Потом нажми «Готово».',
       'Now make your own shelf. The shelf is flex. Type any values for the direction, the cards’ background and the inner space. Then tap “Done”.'),
     msgs: {
-      dir: L3("Brauzer {w} yo'nalishini tanimadi. row, column, row-reverse yoki column-reverse yozing.", 'Браузер не узнал направление {w}. Впиши row, column, row-reverse или column-reverse.', 'The browser didn’t recognize the direction {w}. Type row, column, row-reverse or column-reverse.'),
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.'),
-      pad: L3("Brauzer {w} qiymatini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал значение {w}. Напиши число и px без пробела.', 'The browser didn’t recognize {w}. Write a number and px with no space.')
+      dir: L3("Brauzer bu yo'nalishni tanimadi: \u2063{w}\u2064. row, column, row-reverse yoki column-reverse yozing.", 'Браузер не узнал такое направление: \u2063{w}\u2064. Впиши row, column, row-reverse или column-reverse.', 'The browser didn’t recognize this direction: \u2063{w}\u2064. Type row, column, row-reverse or column-reverse.'),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.'),
+      pad: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такое значение: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this value: \u2063{w}\u2064. Write a number and px with no space.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),

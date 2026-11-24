@@ -481,7 +481,7 @@ const C = {
       'Теперь сайт твой! Сам выбери фон страницы, цвет кнопки и скругление карточек. Результат сразу виден на странице. Потом нажми «Готово».',
       'Now the site is yours! Choose the page background, the button color and the card corners yourself. You’ll see the result right away. Then tap “Done”.'),
     msgs: {
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.'),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.'),
       radius: L3("Burchak uchun son va px yozing.", 'Для углов напиши число и px.', 'For the corners write a number and px.'),
       range: L3("Qirq pikseldan oshmasin, aks holda karta g'alati bo'ladi.", 'Не больше сорока пикселей, иначе карточка станет странной.', 'No more than forty pixels, or the card will look odd.')
     },

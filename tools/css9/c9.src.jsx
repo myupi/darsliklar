@@ -389,10 +389,10 @@ const C = {
       'Теперь сделай своё меню. Впиши для ссылок display, ширину и цвет фона. Потом нажми «Готово».',
       'Now make your own menu. Type display, a width and a background color for the links. Then tap “Done”.'),
     msgs: {
-      disp: L3("Brauzer display uchun {w} so'zini tanimadi. block, inline yoki inline-block yozing.", 'Браузер не узнал слово {w} для display. Впиши block, inline или inline-block.', 'The browser didn’t recognize {w} for display. Type block, inline or inline-block.'),
+      disp: L3("Brauzer display uchun bu so'zni tanimadi: \u2063{w}\u2064. block, inline yoki inline-block yozing.", 'Браузер не узнал такое слово для display: \u2063{w}\u2064. Впиши block, inline или inline-block.', 'The browser didn’t recognize this word for display: \u2063{w}\u2064. Type block, inline or inline-block.'),
       none: L3("none bilan menyu yo'qoladi. Ko'rinadigan qiymat tanlang.", 'С none меню пропадёт. Выбери видимое значение.', 'With none the menu disappears. Pick a visible value.'),
-      width: L3("Brauzer {w} kengligini tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал ширину {w}. Напиши число и px без пробела.', 'The browser didn’t recognize the width {w}. Write a number and px with no space.'),
-      color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.')
+      width: L3("Brauzer bu kenglikni tanimadi: \u2063{w}\u2064. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал такую ширину: \u2063{w}\u2064. Напиши число и px без пробела.', 'The browser didn’t recognize this width: \u2063{w}\u2064. Write a number and px with no space.'),
+      color: L3("Brauzer bu rangni tanimadi: \u2063{w}\u2064. Rang nomini yoki kodini yozing.", 'Браузер не узнал такой цвет: \u2063{w}\u2064. Напиши название или код цвета.', 'The browser didn’t recognize this color: \u2063{w}\u2064. Write a color name or code.')
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),
