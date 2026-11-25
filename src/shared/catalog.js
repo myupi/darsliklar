@@ -59,7 +59,26 @@ function normalizeCourse(id, def) {
   const d = def || {};
   const plan = [];
   (d.lessons || []).forEach((l) => {
-    plan.push({
+    // Урок частями (parts в строке плана; HTML 1, 25.11.2026): вместо одной строки урока — строка на каждую часть,
+    // файлы <NN>q<K>-<slug>.jsx; номер урока тот же, практика и тесты — после последней части.
+    if (Array.isArray(l.parts) && l.parts.length) {
+      l.parts.forEach((pt, i) => {
+        const qk = pt.k || i + 1;
+        plan.push({
+          ...l,
+          kind: 'lesson',
+          qk,
+          baseTitle: l.title,
+          title: pt.title || `${l.title} — часть ${qk}`,
+          key: `${id}/#${l.n}q${qk}`,
+          course: id,
+          topics: pt.topics || l.topics || [],
+          file: null,
+          status: 'planned',
+          expected: `lessons/${id}/${pad2(l.n)}q${qk}-${l.slug || 'urok'}.jsx`,
+        });
+      });
+    } else plan.push({
       ...l,
       kind: 'lesson',
       key: `${id}/#${l.n}`,
@@ -97,12 +116,16 @@ export function buildCatalog() {
     const [, cid, base] = m;
     if (!courses.has(cid)) courses.set(cid, normalizeCourse(cid, null));
     const course = courses.get(cid);
-    const num = /^(\d+)(p|t(\d)?)?(?=[-_]|$)/i.exec(base);
+    const num = /^(\d+)(p|t(\d)?|q(\d))?(?=[-_]|$)/i.exec(base);
     const n = num ? Number(num[1]) : null;
-    const kind = num && num[2] ? (num[2][0].toLowerCase() === 't' ? 'test' : 'practice') : 'lesson';
+    const k0 = num && num[2] ? num[2][0].toLowerCase() : '';
+    const kind = k0 === 't' ? 'test' : k0 === 'p' ? 'practice' : 'lesson';
     const tk = kind === 'test' ? Number(num[3] || 1) : null;
+    const qk = k0 === 'q' ? Number(num[4]) : null;
     const fileId = `${cid}/${base}`;
-    const slot = n != null ? course.lessons.find((l) => l.n === n && l.kind === kind && (kind !== 'test' || l.tk === tk) && l.status === 'planned') : null;
+    // Целый файл урока, который в плане разделён на части, в списке не показывается (части — свои файлы).
+    if (kind === 'lesson' && qk == null && n != null && course.lessons.some((l) => l.n === n && l.qk != null)) continue;
+    const slot = n != null ? course.lessons.find((l) => l.n === n && l.kind === kind && (kind !== 'test' || l.tk === tk) && (l.qk ?? null) === qk && l.status === 'planned') : null;
     if (slot) {
       slot.file = fileId;
       slot.status = 'ready';
@@ -117,10 +140,10 @@ export function buildCatalog() {
   const list = [...courses.values()];
   list.forEach((c) => {
     // Практика стоит сразу после своего урока, тест — за ней.
-    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : l.kind === 'test' ? 0.6 + (l.tk || 1) * 0.01 : 0);
+    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : l.kind === 'test' ? 0.6 + (l.tk || 1) * 0.01 : (l.qk || 0) * 0.01);
     c.lessons.sort((a, b) => pos(a) - pos(b) || String(a.key).localeCompare(String(b.key)));
     // Счётчики курса — по урокам; практика и тесты считаются отдельно.
-    const lessons = c.lessons.filter((l) => l.kind !== 'practice' && l.kind !== 'test');
+    const lessons = c.lessons.filter((l) => l.kind !== 'practice' && l.kind !== 'test' && !(l.qk > 1));   // урок частями — один урок
     const tests = c.lessons.filter((l) => l.kind === 'test');
     c.testReady = tests.filter((l) => l.status !== 'planned').length;
     c.testPlanned = tests.filter((l) => l.status !== 'extra').length;

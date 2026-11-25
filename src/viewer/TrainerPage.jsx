@@ -105,7 +105,7 @@ function Play({ tr, course, bank, prefs, set, onMenu, frameRef, log, clearLog })
   const pool = !bank ? null : tr.pick === 'block' ? null
     : bank.filter((x) => !prefs.trnUpto || (x.lesson != null && x.lesson <= Number(prefs.trnUpto))).length;
   const size = tr.fixedSize ? tr.size : Number(prefs.trnN) || 15;
-  const lessonTitle = (n) => { const l = course && course.lessons.find((x) => x.kind === 'lesson' && x.n === n); return l ? l.title : ''; };
+  const lessonTitle = (n) => { const l = course && course.lessons.find((x) => x.kind === 'lesson' && x.n === n); return l ? (l.baseTitle || l.title) : ''; };
   return (
     <>
       <header className="toolbar">
@@ -237,7 +237,7 @@ function Bank({ tr, course, bank, sub, prefs, set, onMenu, frameRef }) {
   const rows = !bank ? [] : bank.filter((x) => sub == null || (tr.pick === 'block' ? x.block_id === sub : String(x.lesson) === sub));
   const selQ = rows.find((x) => x.question_id === prefs.trnQ) || rows[0] || null;
   const lessonTitle = sub == null ? '' : tr.pick === 'block' ? G01_BLOCKS[sub] || sub
-    : ((course && course.lessons.find((x) => x.kind === 'lesson' && String(x.n) === sub)) || {}).title || '';
+    : (((course && course.lessons.find((x) => x.kind === 'lesson' && String(x.n) === sub)) || {}).baseTitle || ((course && course.lessons.find((x) => x.kind === 'lesson' && String(x.n) === sub)) || {}).title) || '';
   const pos = { a: 0, b: 0, c: 0, d: 0 };
   rows.forEach((x) => { if ((x.question_type || 'single_choice') !== 'single_choice') return; const i = (x.options || []).findIndex((o) => o.id === x.correct_answer); if (i >= 0) pos['abcd'[i]]++; });
   const nType = (t) => rows.filter((x) => x.question_type === t).length;

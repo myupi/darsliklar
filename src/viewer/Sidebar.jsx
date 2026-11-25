@@ -162,7 +162,7 @@ function TrainerSection({ t, catalog, q, trnKey, onTrn }) {
     bank.forEach((x) => { const k = t.pick === 'block' ? x.block_id : x.lesson; if (k != null) m.set(String(k), (m.get(String(k)) || 0) + 1); });
     return [...m.entries()].sort((a, b) => (t.pick === 'block' ? a[0].localeCompare(b[0]) : Number(a[0]) - Number(b[0])));
   }, [bank]);
-  const titleOf = (k) => (t.pick === 'block' ? G01_BLOCKS[k] || k : ((course && course.lessons.find((l) => l.kind === 'lesson' && String(l.n) === k)) || {}).title || k + '-dars');
+  const titleOf = (k) => (t.pick === 'block' ? G01_BLOCKS[k] || k : (((course && course.lessons.find((l) => l.kind === 'lesson' && String(l.n) === k)) || {}).baseTitle || ((course && course.lessons.find((l) => l.kind === 'lesson' && String(l.n) === k)) || {}).title) || k + '-dars');
   const rows = groups.filter(([k]) => !q || [k, titleOf(k)].some((s) => String(s).toLowerCase().includes(q)));
   if (q && !rows.length && !t.title.toLowerCase().includes(q)) return null;
   const color = t.color || (course && course.color) || '#999';

@@ -11,8 +11,10 @@ export function titlesOf(lesson, course) {
   if (!lesson || !lesson.file) return null;
   if (TITLES[lesson.file]) return TITLES[lesson.file];
   if (lesson.kind === 'test' && lesson.tk != null && course) {
+    // Урок частями: тема теста — по целому файлу урока (<NN>-<slug>), а не по части.
+    const whole = lesson.slug ? TITLES[`${lesson.course}/${String(lesson.n).padStart(2, '0')}-${lesson.slug}`] : null;
     const own = course.lessons.find((l) => l.kind === 'lesson' && l.n === lesson.n && l.file);
-    const t = own && TITLES[own.file];
+    const t = whole || (own && TITLES[own.file]);
     if (!t) return null;
     return Object.fromEntries(LANGS.map((l) => [l, `${TEST[l]} ${lesson.tk}/5 · ${t[l].replace(PREFIX[l], '')}`]));
   }
