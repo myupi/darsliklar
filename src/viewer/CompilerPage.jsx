@@ -7,7 +7,14 @@ import { MenuButton } from './Toolbar.jsx';
 // Режим «Компилятор» просмотрщика (14.11.2026): одно задание — как его видит ученик (слайд «Amaliy vazifa»: условия и результат
 // справа) и промпт, по которому работу проверяет ИИ платформы. Данные — docs/kompilyator-amaliy-<модуль>.txt.
 // Модули без результата на слайде и без примера решения (заказчик, 16.11.2026, «ИИ»: «результат не показывать, а только дать задания»).
-const NO_RESULT = new Set(['ai']);
+// Tilda (25.11.2026): задания из Figma — сайт делается в настоящей Tilda, сдаётся снимок или ссылка; кода и страницы-примера нет.
+const NO_RESULT = new Set(['ai', 'tilda']);
+// Результат — картинкой со слайда заказчика (Tilda, 25.11.2026: «в слайдах есть фотки того как оно должно выглядеть»):
+// public/kompilyator/<модуль>/<NN>.png, снята со слайда «Amaliy vazifa» в Figma. Нет файла — слайд только с текстом.
+const IMG_RESULT = new Set(['tilda']);
+const imageUrl = (it) => '/kompilyator/' + it.module + '/' + String(it.n).padStart(2, '0') + '.png';
+// Ширина картинки в карточке (доля ширины кадра, cqw), где длинному тексту нужно больше места (по замеру на трёх языках).
+const IMG_MAX_W = { 'tilda:18': 12, 'tilda:19': 19 };
 // Результат — отдельным слайдом «Amaliy ish ko'rinishi» (заказчик, 23.11.2026, Bootstrap: «если не вмещается результат, то можешь
 // в 2 картинки вынести»): на первом слайде только условия, на втором — сайт целиком в ширину ноутбука (RES_W), крупно.
 const TWO_SLIDES = new Set(['bootstrap']);
@@ -56,7 +63,11 @@ function StudentView({ it, lang }) {
   const [busy, setBusy] = useState('');
   const url = exampleUrl(it, lang);
   const two = TWO_SLIDES.has(it.module);
-  const noRes = NO_RESULT.has(it.module) || two;
+  const imgMode = IMG_RESULT.has(it.module);
+  const [imgBad, setImgBad] = useState(false);
+  useEffect(() => { setImgBad(false); }, [it.module, it.n]);
+  const withImg = imgMode && !imgBad;
+  const noRes = (NO_RESULT.has(it.module) && !withImg) || two;
   const measure = () => {
     const f = frame.current, v = view.current;
     const d = f && f.contentDocument;
@@ -97,12 +108,17 @@ function StudentView({ it, lang }) {
       <div className="cmp-slide-top">{String(it.module).toUpperCase()}</div>
       <div className="cmp-slide-junior">JUNIOR</div>
       <div className="cmp-slide-title">{SLIDE_TITLE[lang] || SLIDE_TITLE.uz}</div>
-      <div className={'cmp-slide-card' + (noRes ? ' is-text' : '')}>
+      <div className={'cmp-slide-card' + (noRes ? ' is-text' : withImg ? ' has-img' : '')}>
         <div className="cmp-slide-text">
           <p className="cmp-slide-intro">{hl(T.intro)}</p>
           {T.steps.length ? <ol className="cmp-slide-list">{T.steps.map((x, i) => <li key={i}>{hl(x)}</li>)}</ol> : null}
         </div>
-        {noRes ? null : <div className="cmp-slide-res">
+        {noRes ? null : withImg ? (
+          <div className="cmp-slide-res is-img">
+            <img src={imageUrl(it)} alt="" onError={() => setImgBad(true)}
+              style={IMG_MAX_W[it.module + ':' + it.n] ? { maxWidth: IMG_MAX_W[it.module + ':' + it.n] + 'cqw' } : undefined} />
+          </div>
+        ) : <div className="cmp-slide-res">
           <div ref={view} className="cmp-slide-view" style={fit ? { height: Math.ceil(fit.ch * fit.s) } : undefined}>
             <iframe ref={frame} title={'Результат ' + it.n} src={url} sandbox="allow-same-origin" scrolling="no" onLoad={() => { tries.current = 0; measure(); }}
               style={fit ? { width: (100 / fit.s) + '%', height: fit.ch, transform: 'scale(' + fit.s + ')' } : undefined} />
@@ -112,7 +128,7 @@ function StudentView({ it, lang }) {
     </div>
     <div className="cmp-slide-dl">
       {[['png', 'Скачать PNG'], ['pdf', 'Скачать PDF']].map(([k, t]) => (
-        <button key={k} type="button" className="cmp-dl-btn" disabled={!!busy || (!fit && !noRes)} onClick={() => save(k)}>
+        <button key={k} type="button" className="cmp-dl-btn" disabled={!!busy || (!fit && !noRes && !withImg)} onClick={() => save(k)}>
           <Download size={15} aria-hidden="true" /> {busy === k ? 'Готовлю…' : t}
         </button>
       ))}
@@ -295,10 +311,12 @@ export default function CompilerTask({ item, items, course, onPick, onMenu }) {
               <StudentView it={item} lang={l} />
             </section>
           ))}
-          <section>
-            <div className="cmp-label"><ClipboardCheck size={14} aria-hidden="true" /> Промпт проверки <CopyButton text={item.check} label="Скопировать промпт" /></div>
-            <pre className="cmp-prompt">{item.check}</pre>
-          </section>
+          {item.check ? (
+            <section>
+              <div className="cmp-label"><ClipboardCheck size={14} aria-hidden="true" /> Промпт проверки <CopyButton text={item.check} label="Скопировать промпт" /></div>
+              <pre className="cmp-prompt">{item.check}</pre>
+            </section>
+          ) : null}
           {NO_RESULT.has(item.module) ? null : <Example it={item} />}
           <p className="cmp-src">Источник: <code>{item.file}</code> — правка там сразу видна здесь.</p>
         </div>

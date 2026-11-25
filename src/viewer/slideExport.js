@@ -83,7 +83,17 @@ export async function renderSlide(slide) {
   const res = slide.querySelector('.cmp-slide-res');
   const frame = slide.querySelector('.cmp-slide-view iframe');
   const view = slide.querySelector('.cmp-slide-view');
-  if (res) {
+  const shot = res && res.classList.contains('is-img') ? res.querySelector('img') : null;
+  if (shot) {
+    // Результат картинкой (Tilda): картинка со своей красной рамкой.
+    const r = R(shot), bw = 0.2 * cq, rad = 0.5 * cq;
+    ctx.save(); roundRect(ctx, r.x, r.y, r.w, r.h, rad); ctx.clip();
+    ctx.fillStyle = '#fff'; ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (shot.complete && shot.naturalWidth) ctx.drawImage(shot, r.x + bw, r.y + bw, r.w - 2 * bw, r.h - 2 * bw);
+    ctx.restore();
+    ctx.strokeStyle = css(shot).borderTopColor; ctx.lineWidth = bw;
+    roundRect(ctx, r.x + bw / 2, r.y + bw / 2, r.w - bw, r.h - bw, rad); ctx.stroke();
+  } else if (res) {
     const r = R(res), bw = 0.2 * cq, rad = 0.5 * cq;
     ctx.fillStyle = '#fff'; roundRect(ctx, r.x, r.y, r.w, r.h, rad); ctx.fill();
     if (frame && view) {

@@ -1,0 +1,301 @@
+Курс: Dasturlash kursi
+Модуль: Tilda
+Задания для компилятора к модулю Tilda (25.11.2026, заказчик: «в фигме были задания помнишь? можешь эти задания и оставить
+(в заданиях в компиляторах)»). Источник — раздел Tilda в Figma «Web Updated»: слайд «Amaliy vazifa» в конце каждого урока
+и три «Amaliy ish» между уроками (в Figma — уроки 6, 12, 18; в плане курса их нет, заказчик убрал их 24.11.2026 —
+здесь они стоят заданиями на своих местах: после уроков 5, 10 и 15) и итоговая работа «Tilda modul oxiri» (урок 16).
+Узбекский текст — как на слайдах Figma (апостроф — ASCII), у разделов библиотеки Tilda в скобках — русское название
+(узбекского интерфейса у Tilda нет, ученики видят русский); перевод — «(RU: …)» и «(EN: …)».
+Кода нет: ученик делает сайт в настоящей Tilda и сдаёт на платформу снимок экрана или ссылку на опубликованную
+страницу (как сказано в задании). Работу проверяет человек — промпта проверки нет (заказчик, 25.11.2026: «промты
+не обязательно… тильду проверяет человек»). Примера решения нет. На слайде справа — картинка «как должно выглядеть»
+со слайда Figma (заказчик, 25.11.2026: «в слайдах есть фотки того как оно должно выглядеть»): public/kompilyator/tilda/<NN>.png
+(IMG_RESULT в src/viewer/CompilerPage.jsx); у заданий 1 и 13 картинки в Figma нет — слайд только с текстом.
+Формы и Popup на бесплатном тарифе Tilda недоступны (0 бесплатных блоков; сверка 24.11.2026) — задания 14, 17, 18
+выполнимы на пробном периоде или платном тарифе.
+Номер задания — порядок в курсе: 1–5 — уроки 1–5, 6 — Amaliy ish 1, 7–11 — уроки 6–10, 12 — Amaliy ish 2,
+13–17 — уроки 11–15, 18 — Amaliy ish 3, 19 — урок 16 (финальный проект).
+
+======================================================================
+
+1. НАЗВАНИЕ УРОКА: Amaliy ish. Tilda bilan tanishuv va birinchi sayt
+НАЗВАНИЕ (RU): Практика. Знакомство с Tilda и первый сайт
+НАЗВАНИЕ (EN): Practice. Meet Tilda: your first site
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Tilda'da ro'yxatdan o'ting va birinchi sahifangizni oching.
+- Kompyuteringizda `Tilda` saytidan ro'yxatdan o'ting
+- O'z birinchi `web sahifangizni` ochib oling
+- Saytingiz ichida bo'sh `draft` sahifa tursin
+- Web sahifangiz bor ekanligini `screenshotga` olib platformaga yuboring
+(RU: Зарегистрируйся в Tilda и открой свою первую страницу: зарегистрируйся на сайте `Tilda` с компьютера; открой свою первую `веб-страницу`; пусть в сайте будет пустая страница-`черновик`; сделай `скриншот` своей страницы и отправь его на платформу.)
+(EN: Sign up for Tilda and open your first page: sign up on the `Tilda` website from a computer; open your first `web page`; keep one empty `draft` page in your site; take a `screenshot` of your page and send it to the platform.)
+
+======================================================================
+
+2. НАЗВАНИЕ УРОКА: Amaliy ish. Bloklar: nima va qanday qo'shiladi
+НАЗВАНИЕ (RU): Практика. Блоки: что это и как добавить
+НАЗВАНИЕ (EN): Practice. Blocks: what they are and how to add them
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Bo'sh sahifangizni bloklar bilan to'ldiring.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- Avvalgi darsda ochgan `draft` sahifangiz ichiga kirib `2-3 ta` o'zingizga yoqqan `blok` qo'shing
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Наполни пустую страницу блоками: открой свою `веб-страницу` в `Tilda`; зайди в страницу-`черновик` с прошлого урока и добавь `2–3` понравившихся `блока`; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Fill your empty page with blocks: open your `web page` in `Tilda`; go into the `draft` page from the last lesson and add `2–3` `blocks` you like; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+3. НАЗВАНИЕ УРОКА: Amaliy ish. Text va Button bloklari
+НАЗВАНИЕ (RU): Практика. Блоки Text и Button
+НАЗВАНИЕ (EN): Practice. Text and Button blocks
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangizga matn va tugma qo'shing.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Text blocks"` (Текстовый блок) menyu qismidan matnli blokni tanlab oling va uni qo'shing
+- Matn pastida esa `tugma` ham bo'lsin
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Добавь на страницу текст и кнопку: открой свою `веб-страницу` в `Tilda`; в разделе «Текстовый блок» выбери блок с текстом и добавь его; под текстом пусть будет `кнопка`; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Add text and a button to your page: open your `web page` in `Tilda`; in the “Text Block” section pick a block with text and add it; put a `button` under the text; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+4. НАЗВАНИЕ УРОКА: Amaliy ish. Rasmlar va Cover
+НАЗВАНИЕ (RU): Практика. Картинки и Cover
+НАЗВАНИЕ (EN): Practice. Images and Cover
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangiz boshiga menyu va muqova qo'ying.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` blokni tanlab oling va uni qo'shing
+- `"Cover block"` (Обложка) qismidan esa asosiy qismni tanlab sahifaga qo'shing
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Поставь в начало страницы меню и обложку: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери блок `navbar` и добавь его; в разделе «Обложка» выбери главный экран и добавь на страницу; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Put a menu and a cover at the top of your page: open your `web page` in `Tilda`; in the “Menu” section pick a `navbar` block and add it; in the “Cover” section pick a main screen and add it to the page; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+5. НАЗВАНИЕ УРОКА: Amaliy ish. Ranglar va shriftlar
+НАЗВАНИЕ (RU): Практика. Цвета и шрифты
+НАЗВАНИЕ (EN): Practice. Colors and fonts
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangizga ranglar bering.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Text block"` (Текстовый блок) qismidan matn tanlab uni qo'shing va `orqa foniga rang` bering
+- `"Images"` (Изображение) qismidan esa rasmlar joylang
+- Sahifangizda ishlatgan matnlaringiz uchun `rang` bering
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Раскрась свою страницу: открой свою `веб-страницу` в `Tilda`; в разделе «Текстовый блок» выбери текст, добавь его и задай ему `цвет фона`; в разделе «Изображение» добавь картинки; задай `цвет` текстам на странице; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Color your page: open your `web page` in `Tilda`; in the “Text Block” section pick a text, add it and give it a `background color`; in the “Image” section add pictures; give the texts on the page a `color`; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+6. НАЗВАНИЕ УРОКА: Amaliy ish 1
+НАЗВАНИЕ (RU): Практическая работа 1
+НАЗВАНИЕ (EN): Practical work 1
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+1–5-darslarda o'rganganlaringizdan bitta sahifa yarating.
+- `Menu` (Меню) blokidan foydalanib `navbar` yaratib oling va unga o'zingiz `custom stillarni` bering
+- `Cover block` (Обложка) menyusiga kiring va birorta `hero` qismini tanlab oling va uni o'zingizga moslab o'zgartiring
+- `Text`, `button` va `Images` blocklaridan foydalanish esingizdan chiqmasin
+(RU: Сделай одну страницу из того, что изучил на уроках 1–5: возьми блок «Меню», сделай `navbar` и задай ему свой `стиль`; зайди в раздел «Обложка», выбери `hero` и измени его под себя; не забудь про блоки `текста`, `кнопки` и `картинок`.)
+(EN: Make one page from what you learned in lessons 1–5: take a “Menu” block, make a `navbar` and give it your own `style`; open the “Cover” section, pick a `hero` and change it to suit you; don't forget the `text`, `button` and `image` blocks.)
+
+======================================================================
+
+7. НАЗВАНИЕ УРОКА: Amaliy ish. Joylashuv va o'qish qulayligi
+НАЗВАНИЕ (RU): Практика. Расположение и удобство чтения
+НАЗВАНИЕ (EN): Practice. Layout and readability
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangizni o'qishga qulay qiling.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `"Cover block"` (Обложка) qismidan esa `hero` qismini joylang
+- Sahifangizda `text` hamda `rasmlar` ham bo'lsin
+- `"Divider"` (Разделитель) qismidan esa `bo'shliq` qo'shing
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Сделай страницу удобной для чтения: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; в разделе «Обложка» поставь `hero`; пусть на странице будут `текст` и `картинки`; в разделе «Разделитель» добавь `свободное место`; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Make your page easy to read: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; in the “Cover” section place a `hero`; have `text` and `pictures` on the page; in the “Divider” section add `empty space`; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+8. НАЗВАНИЕ УРОКА: Amaliy ish. Header va Hero
+НАЗВАНИЕ (RU): Практика. Header и Hero
+НАЗВАНИЕ (EN): Practice. Header and Hero
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Saytingizning boshini yasang: header va hero.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `"Cover"` (Обложка) block qismidan `hero` qo'shing
+- `"Text block"` (Текстовый блок) qismidan `matnlarni` joylang
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Сделай начало сайта — header и hero: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; в разделе «Обложка» добавь `hero`; в разделе «Текстовый блок» добавь `тексты`; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Make the top of your site — a header and a hero: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; in the “Cover” section add a `hero`; in the “Text Block” section add `texts`; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+9. НАЗВАНИЕ УРОКА: Amaliy ish. Kontent va Footer
+НАЗВАНИЕ (RU): Практика. Контент и Footer
+НАЗВАНИЕ (EN): Practice. Content and Footer
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangizga kontent va kontaktlar qo'shing.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `"Divider"` (Разделитель) block qismidan `bo'shliq` qo'shing
+- `"Services"` (Услуги) qismidan `servis` qismlarini qo'shing
+- `"Contacts"` (Контакты) qismidan `kontaktlarni` qo'shing
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Добавь на страницу контент и контакты: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; в разделе «Разделитель» добавь `свободное место`; в разделе «Услуги» добавь блок `услуг`; в разделе «Контакты» добавь `контакты`; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Add content and contacts to your page: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; in the “Divider” section add `empty space`; in the “Services” section add a `services` block; in the “Contacts” section add `contacts`; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+10. НАЗВАНИЕ УРОКА: Amaliy ish. Landing page
+НАЗВАНИЕ (RU): Практика. Landing page
+НАЗВАНИЕ (EN): Practice. Landing page
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Bitta sahifali landing yarating.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `"Cover block"` (Обложка) qismidan `header` uchun blok qo'shing
+- `"Text block"` (Текстовый блок) qismi orqali `matnlar` qo'shing
+- `"Card block"` qismidan `cardlar` joylang
+- `"Footer"` (Подвал) qismini qo'shish esingizdan chiqmasin!
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Сделай одностраничный лендинг: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; в разделе «Обложка» добавь блок для `header`; добавь `тексты` из раздела «Текстовый блок»; поставь `карточки`; не забудь добавить `подвал` (Footer)!; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Make a one-page landing: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; in the “Cover” section add a block for the `header`; add `texts` from the “Text Block” section; place `cards`; don't forget to add a `footer`!; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+11. НАЗВАНИЕ УРОКА: Amaliy ish. Kartochkalar va Popup
+НАЗВАНИЕ (RU): Практика. Карточки и Popup
+НАЗВАНИЕ (EN): Practice. Cards and Popup
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Kartochkalarga Popup oyna ulang.
+- Sahifangizga `Cardlar` joylab oling
+- Har bir card uchun `rasm` va `matn` qo'shing
+- `Tugmaga` bosilganda `Popup` oyna chiqsin
+- Popup oynasi card bilan `mos` bo'lsin!
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Подключи к карточкам окно Popup: поставь на страницу `карточки`; у каждой карточки добавь `картинку` и `текст`; при нажатии на `кнопку` пусть открывается окно `Popup`; окно Popup пусть `подходит` к своей карточке!; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Connect a Popup window to your cards: place `cards` on your page; give each card a `picture` and `text`; when the `button` is pressed a `Popup` window should open; the Popup must `match` its card!; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+12. НАЗВАНИЕ УРОКА: Amaliy ish 2
+НАЗВАНИЕ (RU): Практическая работа 2
+НАЗВАНИЕ (EN): Practical work 2
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+6–10-darslarda o'rganganlaringizdan landing yarating.
+- `Menu` (Меню) blokidan foydalanib `navbar` yaratib oling va unga o'zingiz `custom stillarni` bering
+- `Cover block` (Обложка) menyusiga kiring va birorta `hero` qismini tanlab oling va uni o'zingizga moslab o'zgartiring
+- `Card blokidan` foydalanib o'zingizga yoqqan `cardlarni` yasab chiqing. `Rasm`, `matn` esingizdan chiqmasin!
+- `Content` qismidan, `Contacts blokni` (Контакты) joylang
+- `Footer` (Подвал) menyusidan sayt oxiri blokini ham joylab qo'ying
+(RU: Сделай лендинг из того, что изучил на уроках 6–10: возьми блок «Меню», сделай `navbar` и задай ему свой `стиль`; зайди в раздел «Обложка», выбери `hero` и измени его под себя; сделай свои `карточки` — не забудь `картинку` и `текст`!; поставь блок `«Контакты»`; поставь в конец сайта блок `«Подвал»` (Footer).)
+(EN: Make a landing from what you learned in lessons 6–10: take a “Menu” block, make a `navbar` and give it your own `style`; open the “Cover” section, pick a `hero` and change it to suit you; make your own `cards` — don't forget a `picture` and `text`!; place a `Contacts` block; place a `Footer` block at the end of the site.)
+
+======================================================================
+
+13. НАЗВАНИЕ УРОКА: Amaliy ish. Havolalar va yakorlar
+НАЗВАНИЕ (RU): Практика. Ссылки и якоря
+НАЗВАНИЕ (EN): Practice. Links and anchors
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Menyuni sahifa bo'limlariga ulang.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `3 ta` `anchor havola` ulab qo'ying
+- `Footer blokini` (Подвал) sahifangizga qo'shing va `ikonkalar` uchun `link` ulang
+- Natijasini esa `screenshotga` olib platformaga joylashni unutmang!
+(RU: Свяжи меню с разделами страницы: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; подключи `3` `ссылки-якоря`; добавь на страницу блок `«Подвал»` и поставь `ссылки` на его значки; не забудь сделать `скриншот` результата и отправить его на платформу!)
+(EN: Link the menu to sections of the page: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; connect `3` `anchor links`; add a `Footer` block to the page and put `links` on its icons; don't forget to take a `screenshot` of the result and send it to the platform!)
+
+======================================================================
+
+14. НАЗВАНИЕ УРОКА: Amaliy ish. Formalar va arizalar
+НАЗВАНИЕ (RU): Практика. Формы и заявки
+НАЗВАНИЕ (EN): Practice. Forms and requests
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Sahifangizga ariza formasini qo'shing.
+- Sahifangizga `Ariza qoldirish` uchun `tugma` qo'shing
+- Tugmaga bosilganda esa `popup forma` ochilishi kerak
+- Kelayotgan ma'lumotlarni `Tilda crm` uchun saqlab qo'yishingiz kerak bo'ladi
+- Formani `Tilda crm'ga ulab qo'yganingizni` screenshot olib platformaga yuboring
+(RU: Добавь на страницу форму заявки: добавь на страницу `кнопку` «Оставить заявку»; при нажатии на кнопку должна открываться `popup-форма`; заявки должны сохраняться в `Tilda CRM`; сделай `скриншот`, что форма подключена к `Tilda CRM`, и отправь его на платформу.)
+(EN: Add a request form to your page: add a “Leave a request” `button` to your page; pressing the button must open a `popup form`; the requests must be saved to `Tilda CRM`; take a `screenshot` showing the form is connected to `Tilda CRM` and send it to the platform.)
+
+======================================================================
+
+15. НАЗВАНИЕ УРОКА: Amaliy ish. Zero Block
+НАЗВАНИЕ (RU): Практика. Zero Block
+НАЗВАНИЕ (EN): Practice. Zero Block
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Telefonga moslashgan sahifa yarating.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `"Menu"` (Меню) qismidan `navbar` tanlab joylab oling
+- `"Cover"` (Обложка) block qismi bo'lsin
+- `"Team"` (Команда) block qismi ham joylang
+- `"Forma blockini"` (Форма) ham sahifaga qo'shishingiz lozim
+- `"Footer"` (Подвал) sahifaning eng oxirgi qismi ham bo'lsin
+- Har bir block `telefonga moslashgan` bo'lishi shart!
+- Web sahifangizni `havolasini` platformaga yuboring
+(RU: Сделай страницу, которая хорошо выглядит на телефоне: открой свою `веб-страницу` в `Tilda`; в разделе «Меню» выбери и поставь `navbar`; пусть будет блок `«Обложка»`; поставь и блок `«Команда»`; добавь на страницу блок `«Форма»`; в самом конце страницы пусть будет `«Подвал»`; каждый блок обязательно должен `подстраиваться под телефон`!; отправь `ссылку` на свою страницу на платформу.)
+(EN: Make a page that looks good on a phone: open your `web page` in `Tilda`; in the “Menu” section pick and place a `navbar`; have a `Cover` block; place a `Team` block too; add a `Form` block to the page; put a `Footer` at the very end of the page; every block must `fit the phone`!; send the `link` to your page to the platform.)
+
+======================================================================
+
+16. НАЗВАНИЕ УРОКА: Amaliy ish. Tayyor shablonlar
+НАЗВАНИЕ (RU): Практика. Готовые шаблоны
+НАЗВАНИЕ (EN): Practice. Ready templates
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Tayyor shablondan o'z sahifangizni yasang.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `Create Web Page` (Создать новую страницу) orqali biror `templateni` tanlashingiz kerak
+- `Template` ichidagi hamma bloklarni `moslashuvchan` qilishingiz kerak
+- Amaliy ishingizni `havolasini` platformaga yuboring
+(RU: Сделай свою страницу из готового шаблона: открой свою `веб-страницу` в `Tilda`; через «Создать новую страницу» выбери какой-нибудь `шаблон`; все блоки шаблона нужно `подстроить под себя`; отправь `ссылку` на свою работу на платформу.)
+(EN: Make your own page from a ready template: open your `web page` in `Tilda`; with “Create new page” pick a `template`; make all the blocks of the template `your own`; send the `link` to your work to the platform.)
+
+======================================================================
+
+17. НАЗВАНИЕ УРОКА: Amaliy ish. Sahifalar va manzillar
+НАЗВАНИЕ (RU): Практика. Страницы и адреса
+НАЗВАНИЕ (EN): Practice. Pages and addresses
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Saytingizga ingliz tilidagi sahifa qo'shing.
+- `Tilda` saytida o'zingizning `web sahifangizni` oching
+- `Create Web Page` (Создать новую страницу) orqali `blank page` (Пустая страница) yaratib oling
+- Asosiy sahifa `URL manzili /` bo'lsin
+- Sahifani `ingliz tiliga` o'giring va uning `URL manzili /en` bo'lsin
+- Ikkala sahifangizni ham `publish` qiling va platformaga `havolani` yuborib qo'ying
+(RU: Добавь на сайт страницу на английском: открой свою `веб-страницу` в `Tilda`; через «Создать новую страницу» создай `пустую страницу`; у главной страницы `адрес` пусть будет `/`; переведи страницу на `английский`, и её `адрес` пусть будет `/en`; `опубликуй` обе страницы и отправь `ссылку` на платформу.)
+(EN: Add an English page to your site: open your `web page` in `Tilda`; with “Create new page” make a `blank page`; the main page `address` should be `/`; translate the page into `English` and give it the `address` `/en`; `publish` both pages and send the `link` to the platform.)
+
+======================================================================
+
+18. НАЗВАНИЕ УРОКА: Amaliy ish 3
+НАЗВАНИЕ (RU): Практическая работа 3
+НАЗВАНИЕ (EN): Practical work 3
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+11–15-darslar bo'yicha sayt yarating.
+- `Menu` (Меню) blokidan foydalanib `navbar` yaratib oling va unga o'zingiz `custom stillarni` bering
+- `Cover block` (Обложка) menyusiga kiring va birorta `hero` qismini tanlab oling va uni o'zingizga moslab o'zgartiring
+- `Card blokidan` foydalanib o'zingizga yoqqan `cardlarni` yasab chiqing. `Rasm`, `matn` esingizdan chiqmasin!
+- `Form blokidan` (Форма) foydalanib `forma` ham qo'shing
+- Ma'lumotlarni `Tilda crm jadvaliga` ulab qo'yishingiz lozim
+- Sahifangizni `publish` qiling va platformaga saytingiz `havolasini` yuborib qo'ying
+(RU: Сделай сайт по урокам 11–15: возьми блок «Меню», сделай `navbar` и задай ему свой `стиль`; зайди в раздел «Обложка», выбери `hero` и измени его под себя; сделай свои `карточки` — не забудь `картинку` и `текст`!; добавь `форму` из раздела «Форма»; подключи заявки к таблице `Tilda CRM`; `опубликуй` страницу и отправь `ссылку` на свой сайт на платформу.)
+(EN: Make a site for lessons 11–15: take a “Menu” block, make a `navbar` and give it your own `style`; open the “Cover” section, pick a `hero` and change it to suit you; make your own `cards` — don't forget a `picture` and `text`!; add a `form` from the “Form” section; connect the requests to the `Tilda CRM` table; `publish` the page and send the `link` to your site to the platform.)
+
+======================================================================
+
+19. НАЗВАНИЕ УРОКА: Amaliy ish. Yakuniy loyiha
+НАЗВАНИЕ (RU): Практика. Финальный проект
+НАЗВАНИЕ (EN): Practice. Final project
+ЗАДАНИЕ ДЛЯ УЧЕНИКА:
+Butun modul bo'yicha o'z saytingizni yarating.
+- `Menu` (Меню) blokidan foydalanib `navbar` yaratib oling va unga o'zingiz `custom stillarni` bering
+- `Cover block` (Обложка) menyusiga kiring va birorta `hero` qismini tanlab oling va uni `ZERO BLOCK` ko'rinishiga o'tkazing
+- `Card blokidan` foydalanib o'zingizga yoqqan `cardlarni` yasab chiqing. `Rasm`, `matn` esingizdan chiqmasin!
+- `Content` qismidan, `Contacts blokni` (Контакты) joylang
+- `Footer` (Подвал) menyusidan sayt oxiri blokini ham joylab qo'ying
+(RU: Сделай свой сайт по всему модулю: возьми блок «Меню», сделай `navbar` и задай ему свой `стиль`; зайди в раздел «Обложка», выбери `hero` и переведи его в `Zero Block`; сделай свои `карточки` — не забудь `картинку` и `текст`!; поставь блок `«Контакты»`; поставь в конец сайта блок `«Подвал»` (Footer).)
+(EN: Make your own site for the whole module: take a “Menu” block, make a `navbar` and give it your own `style`; open the “Cover” section, pick a `hero` and turn it into a `Zero Block`; make your own `cards` — don't forget a `picture` and `text`!; place a `Contacts` block; place a `Footer` block at the end of the site.)

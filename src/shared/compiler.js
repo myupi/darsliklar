@@ -16,8 +16,10 @@ function parse(text) {
     const m = /^(\d+)\.\s*НАЗВАНИЕ УРОКА:\s*(.+)$/m.exec(b);
     if (!m) continue;
     const taskAt = b.indexOf('ЗАДАНИЕ ДЛЯ УЧЕНИКА:');
-    const checkAt = b.indexOf('ПРОМПТ ДЛЯ ПРОВЕРКИ:');
-    if (checkAt < 0) continue;
+    // Без промпта — тоже задание: работу проверяет человек (Tilda, заказчик 25.11.2026: «тильду проверяет человек»).
+    const checkAt0 = b.indexOf('ПРОМПТ ДЛЯ ПРОВЕРКИ:');
+    const checkAt = checkAt0 < 0 ? b.length : checkAt0;
+    if (taskAt < 0 && checkAt0 < 0) continue;
     const tRu = /^НАЗВАНИЕ \(RU\):\s*(.+)$/m.exec(b);
     const tEn = /^НАЗВАНИЕ \(EN\):\s*(.+)$/m.exec(b);
     let task = taskAt >= 0 ? b.slice(taskAt + 'ЗАДАНИЕ ДЛЯ УЧЕНИКА:'.length, checkAt).trim() : '';
@@ -36,7 +38,7 @@ function parse(text) {
       steps: lines.filter((s) => s.startsWith('- ')).map((s) => s.slice(2)),
       ru,
       en,
-      check: b.slice(checkAt + 'ПРОМПТ ДЛЯ ПРОВЕРКИ:'.length).trim()
+      check: checkAt0 < 0 ? '' : b.slice(checkAt + 'ПРОМПТ ДЛЯ ПРОВЕРКИ:'.length).trim()
     });
   }
   const tail = blocks.find((b) => !/^\d+\.\s*НАЗВАНИЕ УРОКА:/m.test(b)) || '';
@@ -44,7 +46,7 @@ function parse(text) {
 }
 
 // { html: { file, head, items, notes }, css: … } — модули в порядке курсов (файлы читаются по алфавиту).
-const ORDER = ['html', 'css', 'js', 'ai', 'bootstrap'];
+const ORDER = ['html', 'css', 'js', 'ai', 'bootstrap', 'tilda'];
 const rank = (id) => (ORDER.indexOf(id) < 0 ? 99 : ORDER.indexOf(id));
 export const COMPILER = Object.fromEntries(Object.entries(RAW).map(([path, text]) => {
   const id = /kompilyator-amaliy-([a-z0-9]+)\.txt$/.exec(path)[1];
