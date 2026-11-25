@@ -6859,21 +6859,12 @@ const fillL = (node, vars) => {
   });
   return out;
 };
+// =============================================================================
+// ОБЩИЕ СЛОВА И ДАННЫЕ ИНТЕРФЕЙСА TILDA для уроков модуля (урок 1, урок 2 …). Слово интерфейса — как в Tilda: для uz и ru
+// русское (узбекского интерфейса у Tilda нет), для en — английское. Подключается меткой FILE на этот файл.
+// =============================================================================
 // Слово интерфейса Tilda: у uz — русское, как увидит ученик.
 const TW = (ru, en) => ({ uz: ru, ru: ru, en: en });
-
-const UI = {
-  done: L3('Tayyor', 'Готово', 'Done'),
-  yes: L3('Ha, bo\'ladi', 'Да, можно', 'Yes, you can'),
-  no: L3("Yo'q, kod kerak", 'Нет, нужен код', 'No, you need code'),
-  tru: L3("To'g'ri", 'Верно', 'True'),
-  fls: L3("Noto'g'ri", 'Неверно', 'False'),
-  finish: L3('Darsni tugatish', 'Завершить урок', 'Finish the lesson'),
-  nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Bloklar: nima va qanday qo\'shiladi', 'Блоки: что это и как добавить', 'Blocks: what they are and how to add them'),
-  club: L3('Robotlar klubi', 'Клуб роботов', 'Robot club'),
-  homework: L3('Uyga vazifa', 'Домашнее задание', 'Homework')
-};
 
 // Слова интерфейса Tilda.
 const TL = {
@@ -6980,6 +6971,20 @@ const COVER_TXT = {
 };
 // Адрес сайта: Tilda выдаёт его сама (в настоящей — три случайных слова, как sedately-strong-walnut.tilda.ws).
 const SITE_URL = 'brave-orange-robot.tilda.ws';
+
+const UI = {
+  done: L3('Tayyor', 'Готово', 'Done'),
+  yes: L3('Ha, bo\'ladi', 'Да, можно', 'Yes, you can'),
+  no: L3("Yo'q, kod kerak", 'Нет, нужен код', 'No, you need code'),
+  tru: L3("To'g'ri", 'Верно', 'True'),
+  fls: L3("Noto'g'ri", 'Неверно', 'False'),
+  finish: L3('Darsni tugatish', 'Завершить урок', 'Finish the lesson'),
+  nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
+  next: L3('Bloklar: nima va qanday qo\'shiladi', 'Блоки: что это и как добавить', 'Blocks: what they are and how to add them'),
+  club: L3('Robotlar klubi', 'Клуб роботов', 'Robot club'),
+  homework: L3('Uyga vazifa', 'Домашнее задание', 'Homework')
+};
+
 
 // ───────────────────────────────────────────────────────────────────────────
 // ТЕКСТЫ. Звучат: say, steps, ok, done, why, hints, help, right, reply, intro; печатаются: eyebrow, ask, opts, items.

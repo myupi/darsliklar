@@ -1,0 +1,137 @@
+/* ══ УРОК 2 МОДУЛЯ TILDA (25.11.2026): страница из блоков, панель выбранного блока, «+», ↶ ↷, библиотека разделов.
+   Поверх tl1.css и tl1-real.css урока 1. Сначала — телефон. */
+/* ── Редактор: страница листается внутри окна, низ «ВСЕ БЛОКИ» — на месте ── */
+.r28 .tl2-ed .tl2-canvas { min-height: 0; }
+.r28 .tl2-page { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; background: #fff; overscroll-behavior: contain; scrollbar-width: thin; }
+/* ↶ ↷ — настоящие кнопки, видны и на телефоне. */
+.r28 .tl2-ur { display: inline-flex; align-items: center; gap: 2px; }
+.r28 .tl2-u { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: none; color: #111; cursor: pointer; }
+.r28 .tl2-u:disabled { color: #BBB; cursor: default; }
+.r28 .tl2-u.is-led { color: #fff; background: var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+/* ── Блок на странице ── */
+.r28 .tl2-b { position: relative; flex: none; border-bottom: 1px solid #F2F2F2; transition: box-shadow .15s; }
+.r28 .tl2-b.is-pick { cursor: pointer; }
+.r28 .tl2-b.is-sel { box-shadow: inset 0 0 0 2px var(--tl-or); z-index: 2; }
+.r28 .tl2-b.is-born { animation: tl2Born 1.1s ease-out both; }
+.r28 .tl2-b.is-gone { animation: tl2Gone .38s ease-in both; overflow: hidden; }
+@keyframes tl2Born { 0% { opacity: 0; transform: translateY(-10px); background: #FFF1EC; } 40% { opacity: 1; transform: none; background: #FFF1EC; } 100% { background: #fff; } }
+@keyframes tl2Gone { to { opacity: 0; transform: scale(.96); max-height: 0; } }
+.r28 .tl2-b .tl-cover { min-height: clamp(118px, 20dvh, 200px); padding: 38px 14px 16px; }
+.r28 .tl2-b .tl-cover .tl-h { font-size: clamp(20px, 3dvh, 30px); }
+.r28 .tl2-tl { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 16px 18px; text-align: center; }
+.r28 .tl2-h { margin: 0; font: 700 clamp(20px, 3dvh, 30px)/1.15 var(--tl-f, var(--r-font)); color: #000; }
+.r28 .tl2-sub { margin: 0; font: 400 14px/1.4 var(--tl-f, var(--r-font)); color: #777; }
+.r28 .tl2-line { width: 50px; height: 3px; background: #000; }
+.r28 .tl2-tx { display: block; width: 100%; margin: 0; padding: 40px 18px 18px; border: 0; background: none; text-align: left; color: #111;
+  font: 400 clamp(14px, 2dvh, 16px)/1.5 var(--tl-f, var(--r-font)); overflow-wrap: anywhere; }
+.r28 .tl2-tx.is-big { font-size: clamp(17px, 2.5dvh, 21px); }
+.r28 .tl2-tx.is-tap { cursor: text; }
+.r28 .tl2-tx.is-tap::after { content: ''; position: absolute; left: 12px; right: 12px; top: 34px; bottom: 12px; border-radius: 4px; outline: 2px dashed var(--tl-or); animation: tlDash 1.4s ease-in-out infinite; pointer-events: none; }
+.r28 .tl2-imgw { padding: 40px 14px 14px; }
+.r28 .tl2-img { position: relative; height: clamp(74px, 13dvh, 170px); border-radius: 4px; overflow: hidden; background: linear-gradient(180deg, #8EC5FF, #D8ECFF 70%); }
+.r28 .tl2-sun { position: absolute; right: 16%; top: 16%; width: 22px; height: 22px; border-radius: 50%; background: #FFD25A; }
+.r28 .tl2-m1 { position: absolute; left: -6%; bottom: 0; width: 64%; height: 70%; background: #4F7C6B; clip-path: polygon(0 100%, 48% 8%, 100% 100%); }
+.r28 .tl2-m2 { position: absolute; right: -8%; bottom: 0; width: 66%; height: 54%; background: #2F5D50; clip-path: polygon(0 100%, 52% 6%, 100% 100%); }
+.r28 .tl2-bot { position: absolute; left: 44%; bottom: 8%; width: 22px; height: 26px; border-radius: 5px 5px 3px 3px; background: #FA876B; box-shadow: inset 0 7px 0 -3px #fff; }
+.r28 .tl2-cap { margin: 8px 0 0; text-align: center; font: 400 13px/1.3 var(--tl-f, var(--r-font)); color: #777; }
+/* Выключенный блок: бледный, с подписью. */
+.r28 .tl2-b.is-off > :not(.tl2-tb):not(.tl2-offl):not(.tl2-plus) { opacity: .25; }
+.r28 .tl2-offl { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 3px; background: #000; color: #fff; font: 600 11px/1.2 var(--r-font); white-space: nowrap; }
+/* ── Панель выбранного блока: слева шифр, «Настройки», «Контент»; справа копировать, удалить, выключить, ▾, ↑, ↓ ── */
+.r28 .tl2-tb { position: absolute; left: 6px; right: 6px; top: 6px; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 6px; pointer-events: none; }
+.r28 .tl2-tb > * { pointer-events: auto; }
+.r28 .tl2-tbl { display: flex; gap: 4px; min-width: 0; }
+.r28 .tl2-tb .tl-chip { height: 28px; }
+.r28 .tl2-tb .tl2-id { font-weight: 700; }
+.r28 .tl2-tbr { display: flex; gap: 3px; }
+.r28 .tl2-tool { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 28px; padding: 0; border: 1px solid #DDD; border-radius: 3px; background: #fff; color: #111; cursor: pointer; }
+.r28 .tl2-tool:disabled { cursor: default; }
+.r28 .tl2-tool[data-t="more"] { color: #999; }
+.r28 .tl2-tool.is-led { border-color: var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl2-tool:not(:disabled):hover { border-color: #000; }
+/* Чёрный «+» на нижней границе выбранного блока. */
+.r28 .tl2-plus { position: absolute; left: 50%; bottom: -15px; z-index: 5; width: 30px; height: 30px; margin-left: -15px; padding: 0; border: 2px solid #fff; border-radius: 50%;
+  background: #000; color: #fff; font: 400 22px/26px var(--r-font); text-align: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); animation: tlPop .25s ease-out both; }
+.r28 .tl2-b:last-child { margin-bottom: 18px; }
+/* Правка текста на месте. */
+.r28 .tl2-edit { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.r28 .tl2-in { width: 100%; min-height: 70px; padding: 8px 10px; border: 2px solid var(--tl-or); border-radius: 6px; outline: none; resize: none; background: #fff; color: #111;
+  font: 400 16px/1.45 var(--tl-f, var(--r-font)); }
+.r28 .tl2-ok { align-self: flex-end; min-height: 40px; }
+/* ── Библиотека: карточки разделов Заголовок, Текстовый блок, Изображение ── */
+.r28 .tl2-th { position: relative; display: block; height: clamp(54px, 8.5dvh, 78px); border-radius: 4px; overflow: hidden; background: #F4F4F4; box-shadow: inset 0 0 0 1px #EAEAEA; }
+.r28 .tl2-th i, .r28 .tl2-th b, .r28 .tl2-th em { position: absolute; left: 50%; transform: translateX(-50%); display: block; border-radius: 2px; }
+.r28 .tl2-th.is-title i { top: 34%; width: 58%; height: 9px; background: #222; }
+.r28 .tl2-th.is-title.is-sub b { top: 58%; width: 40%; height: 4px; background: #AAA; }
+.r28 .tl2-th.is-title.is-line b { top: 58%; width: 14%; height: 3px; background: #222; }
+.r28 .tl2-th.is-text i { top: 26%; width: 72%; height: 4px; background: #999; box-shadow: 0 9px 0 #999, 0 18px 0 #999; }
+.r28 .tl2-th.is-text.is-big i { height: 6px; box-shadow: 0 11px 0 #999, 0 22px 0 #999; }
+.r28 .tl2-th.is-quote i { top: 22%; left: 24%; width: 18px; height: 18px; border-radius: 50%; background: #9CA3AF; }
+.r28 .tl2-th.is-quote b { top: 30%; left: 60%; width: 46%; height: 4px; background: #999; box-shadow: 0 9px 0 #999; }
+.r28 .tl2-th.is-quote em { top: 64%; left: 60%; width: 26%; height: 4px; background: #555; }
+.r28 .tl2-th.is-img { background: linear-gradient(180deg, #8EC5FF, #D8ECFF 70%); }
+.r28 .tl2-th.is-img i { bottom: 0; top: auto; left: 30%; width: 64%; height: 62%; border-radius: 0; background: #4F7C6B; clip-path: polygon(0 100%, 50% 10%, 100% 100%); }
+.r28 .tl2-th.is-img b { bottom: 0; top: auto; left: 70%; width: 60%; height: 46%; border-radius: 0; background: #2F5D50; clip-path: polygon(0 100%, 50% 10%, 100% 100%); }
+.r28 .tl2-th.is-img.is-cap { box-shadow: inset 0 -14px 0 #fff, inset 0 0 0 1px #EAEAEA; }
+/* ── Крючок: сообщение клуба, маленький редактор, два ответа ── */
+.r28 .tl2-hook { gap: 10px; }
+.r28 .tl2-hook .tl2-mini { flex: 0 1 auto; min-height: 0; max-width: 520px; }
+.r28 .tl2-hook .tl2-mini .tl2-page { overflow: hidden; }
+.r28 .tl2-hook .tl2-mini .tl-cover { min-height: 104px; }
+/* ── Проверка «какая кнопка?» ── */
+.r28 .tl2-quiz { gap: 16px; }
+.r28 .tl2-qn { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 560px !important; padding: 16px 18px; border-radius: 14px; background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .1), 0 6px 18px rgba(15, 23, 42, .08); text-align: center; }
+.r28 .tl2-qn b { font: 700 clamp(17px, 2.6dvh, 21px)/1.3 var(--r-font); color: #111; }
+.r28 .tl2-qdots { display: flex; gap: 6px; }
+.r28 .tl2-qdots i { width: 22px; height: 5px; border-radius: 3px; background: #E5E7EB; }
+.r28 .tl2-qdots i.is-now { background: #FDBA9F; }
+.r28 .tl2-qdots i.is-done { background: #16A34A; }
+.r28 .tl2-qb { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 420px !important; }
+.r28 .tl2-qk { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 74px; padding: 8px 4px; border: 1.5px solid #DDD; border-radius: 10px;
+  background: #fff; color: #111; cursor: pointer; transition: border-color .15s, transform .15s; }
+.r28 .tl2-qk svg { width: 28px; height: 28px; }
+.r28 .tl2-qk:not(:disabled):hover { border-color: #000; transform: translateY(-1px); }
+.r28 .tl2-qk:disabled { cursor: default; }
+.r28 .tl2-qk.is-ok { border-color: #16A34A; background: #F0FDF4; color: #15803D; }
+.r28 .tl2-qk.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .tl2-qname { font: 600 12px/1.15 var(--r-font); color: #9CA3AF; }
+.r28 .tl2-qname.is-on { color: #15803D; }
+/* ── Вывод: сайт ученика из четырёх блоков ── */
+.r28 .tl2-end .tl2-live { flex: 1 1 auto; min-height: 0; max-width: 560px; }
+.r28 .tl2-live .tl2-canvas { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.r28 .tl2-live .tl2-b:last-child { margin-bottom: 0; }
+/* ── Телефон ── */
+@media (max-width: 759px) {
+  .r28 .tl2-w { display: none; }
+  .r28 .tl2-tb .tl-chip { padding: 0 7px; }
+  .r28 .tl2-tool { width: 28px; }
+  .r28 .tl2-tool[data-t="more"] { display: none; }
+  .r28 .tl2-b .tl-cover { padding-top: 40px; }
+  .r28 .tl2-tl { padding: 40px 12px 14px; }
+  .r28 .tl2-tx { padding: 40px 14px 14px; }
+  .r28 .tl2-imgw { padding: 40px 12px 12px; }
+  .r28 .tl2-ed .tl-acts { gap: 4px; }
+  .r28 .tl2-ed .tl-crumb .tl-ms { display: none; }
+  .r28 .tl2-qk { min-height: 66px; }
+}
+@media (max-width: 359px) {
+  .r28 .tl2-tb .is-content { display: none; }
+}
+/* ── Ноутбук: страница шире, блоки — как в настоящей Tilda на компьютере ── */
+@media (min-width: 760px) {
+  .r28 .tl2-tl { padding: 48px 24px 26px; }
+  .r28 .tl2-tx { padding: 46px max(24px, 14%) 24px; }
+  .r28 .tl2-imgw { padding: 46px max(24px, 14%) 20px; }
+  .r28 .tl2-b .tl-cover { min-height: clamp(150px, 26dvh, 260px); }
+  .r28 .kz-sheet .kz-scene.tl2-end > .tl2-live { max-width: 760px !important; }
+  .r28 .kz-sheet .kz-scene.tl2-hook > .tl2-mini { max-width: 760px !important; flex: 0 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .tl2-b.is-born, .r28 .tl2-b.is-gone, .r28 .tl2-plus { animation: none !important; } }
+/* Вывод на телефоне: сайт ученика берёт оставшееся место и листается внутри (урок 1 ставит окну flex: none). */
+.r28 .kz-scene.tl2-end > .tl-ed.is-live.tl2-live { flex: 1 1 auto; min-height: 150px; }
+.r28 .tl2-live .tl2-canvas { overflow: hidden; }
+@media (max-width: 759px) {
+  .r28 .tl2-end .kz-next { display: none; }
+  .r28 .tl2-end .tl-roles { gap: 6px; }
+}
