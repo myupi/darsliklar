@@ -887,6 +887,8 @@ const ttsPlain = (s, lang) => {
   t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
     .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
     .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  // 25.11.2026 (v4 turbo): узбекское «HTML» — как в разборе «Голос Коди» (имя файла index.html не трогаем).
+  if (lang === 'uz') t = t.replace(/(^|[^.\w/<])HTML(?![\w.])/gi, '$1eych-ti-em-el');
   return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
 };
 const sanitizeForTts = (text, lang) =>
@@ -966,7 +968,7 @@ const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
 // Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
 const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
 const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
-const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
+const TTS_RATE = 1;   // 25.11.2026 (v4 turbo): обычный темп; 0,9 (16.11.2026) было поправкой на быстрый v3
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
 let _ttsFirstLogged = false;   // jsx-tekshir: ataylab — faqat konsol diagnostikasi (диагностика: первый запрос к сервису — в консоль)
@@ -993,6 +995,8 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
   url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
+  // 25.11.2026 (v4 turbo): язык — параметром, модель — подсказкой сервису.
+  url += '&language_code=' + (/^(uz|ru|en)$/.test(lang) ? lang : 'uz') + '&model_id=eleven_v4_turbo';
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };

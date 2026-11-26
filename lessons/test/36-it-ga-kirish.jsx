@@ -894,6 +894,8 @@ const ttsPlain = (s, lang) => {
   t = t.replace(/\bH (one|two|three|four|five|six)\b/g, (all, n) => 'h' + TTS_NUM[n])
     .replace(/\bH T M L\b/g, 'HTML').replace(/\bI M G\b/g, 'img').replace(/\bS R C\b/g, 'src')
     .replace(/\bU L\b/g, 'ul').replace(/\bO L\b/g, 'ol').replace(/\bL I\b/g, 'li');
+  // 25.11.2026 (v4 turbo): узбекское «HTML» — как в разборе «Голос Коди» (имя файла index.html не трогаем).
+  if (lang === 'uz') t = t.replace(/(^|[^.\w/<])HTML(?![\w.])/gi, '$1eych-ti-em-el');
   return t.replace(/[ \t]+([.,!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
 };
 const sanitizeForTts = (text, lang) =>
@@ -973,7 +975,7 @@ const TTS_VOICE_ID = 'agoC45V78njTIxYzwmSb';
 // Голос по языку урока (Bootstrap — 23.11.2026, HTML, CSS, «ИИ» — 24.11.2026): uz Davronbek, ru и en — свои; язык не распознан — узбекский.
 const TTS_VOICE_BY_LANG = { uz: 'agoC45V78njTIxYzwmSb', ru: 'TQ8rsxkw0HvhV0iDpqG5', en: '8IbUB2LiiCZ85IJAHNnZ' };
 const ttsVoiceFor = (lang) => TTS_VOICE_BY_LANG[lang] || TTS_VOICE_ID;
-const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)
+const TTS_RATE = 1;   // 25.11.2026 (v4 turbo): обычный темп; 0,9 (16.11.2026) было поправкой на быстрый v3
 let TTS_AUTH = { k: '', uuid: '' };   // jsx-tekshir: ataylab — har renderda yangilanadi (props'dan)
 const setTtsAuth = (k, uuid) => { TTS_AUTH = { k: k ? String(k) : '', uuid: uuid ? String(uuid) : '' }; };
 let _ttsFirstLogged = false;   // jsx-tekshir: ataylab — faqat konsol diagnostikasi (диагностика: первый запрос к сервису — в консоль)
@@ -1000,6 +1002,8 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // 16.11.2026 (заказчик: «добавь оба»): уроки финансов (Afandi, Pul tarixi) передают голос параметром voice —
   // «сервис берёт голос параметром voice»; Dars001 — voice_id. Шлём оба, лишний сервис не читает.
   url += '&voice=' + encodeURIComponent(ttsVoiceFor(lang));
+  // 25.11.2026 (v4 turbo): язык — параметром, модель — подсказкой сервису.
+  url += '&language_code=' + (/^(uz|ru|en)$/.test(lang) ? lang : 'uz') + '&model_id=eleven_v4_turbo';
   if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;
 };
@@ -7804,6 +7808,24 @@ function GoalCard({ goal, n, total, done, doneText }) {
 Object.assign(SPOKEN, { sayI: 1, sayT: 1, hints: 1, riddle: 1, wow: 1, ok: 1, lvlOk: 1, low: 1, equal: 1, bump: 1, edge: 1, short: 1, empty: 1, noColor: 1,
   dirs: 1 });
 Object.assign(NOT_SPOKEN_IN, { dirs: { name: 1, who: 1, does: 1 } });
+
+// Новая узбекская озвучка (заказчик, 25.11.2026: «чтобы поменялся хоть 1 символ, чтобы платформа посчитала, что такой
+// записи нет»): в конец каждой узбекской реплики — невидимый пробел нулевой ширины (U+200B). На экране ничего не меняется,
+// а для сервиса озвучки это новый текст — он сгенерирует запись заново. Обход — как у heroLines (SPOKEN, NOT_SPOKEN_IN).
+const ITK_UZ_NEW = '​';
+function itkUzNew(node, on, parent) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) { node.forEach((x) => itkUzNew(x, on, parent)); return; }
+  if (node.uz !== undefined || node.ru !== undefined) {
+    if (on && typeof node.uz === 'string' && node.uz && node.uz.slice(-1) !== ITK_UZ_NEW) node.uz += ITK_UZ_NEW;
+    return;
+  }
+  Object.keys(node).forEach((k) => {
+    if (parent && NOT_SPOKEN_IN[parent] && NOT_SPOKEN_IN[parent][k]) return;
+    itkUzNew(node[k], on || !!SPOKEN[k], SPOKEN[k] ? k : parent);
+  });
+}
+itkUzNew(C, false, null);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // РАМКА «B · O'YIN» (тестовый урок 16, 28.10.2026; заказчик: «оставив стилистику

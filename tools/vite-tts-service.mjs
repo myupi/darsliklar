@@ -55,7 +55,7 @@ export default function ttsService() {
         // начинается. Не пишем пробу и дочитку (Range), повторы (&r=2, &r=3) —
         // их урок делает сам, когда сервис не ответил, — и прогрев (HEAD).
         if (!head && !q.get('r') && from === 0 && !probe) {
-          server.ws.send({ type: 'custom', event: 'darsliklar:tts', data: { sid, mode, text, g: q.get('g') || null } });
+          server.ws.send({ type: 'custom', event: 'darsliklar:tts', data: { sid, mode, text, g: q.get('g') || null, language: q.get('language_code') || null, model: q.get('model_id') || null } });
         }
 
         if (mode === 'browser') {

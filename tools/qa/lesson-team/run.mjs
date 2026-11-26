@@ -485,14 +485,14 @@ async function main() {
       const expects = await pg.evaluate('!!(window.__ltqa && window.__ltqa.platform && window.__ltqa.platform.expectsServiceVoice)', 5000).catch(() => false);
       for (const lang of langs) {
         const list = ttsByLang[lang] || [];
-        if (!['fast', 'simulate'].includes(voice)) add(check('voice', { title: 'Озвучка: маркер языка', lang, status: 'not-run', reason: `режим голоса ${voice}: сервис озвучки не используется` }));
-        else if (!expects) add(check('voice', { title: 'Озвучка: маркер языка', lang, status: 'not-run', reason: `адаптер ${adapter} не ждёт озвучки по ttsApiBase` }));
-        else if (!list.length) add(check('voice', { title: 'Озвучка: маркер языка', lang, status: 'not-run', reason: 'за время прогона реплики не запрашивались у сервиса озвучки' }));
+        if (!['fast', 'simulate'].includes(voice)) add(check('voice', { title: 'Озвучка: язык реплики', lang, status: 'not-run', reason: `режим голоса ${voice}: сервис озвучки не используется` }));
+        else if (!expects) add(check('voice', { title: 'Озвучка: язык реплики', lang, status: 'not-run', reason: `адаптер ${adapter} не ждёт озвучки по ttsApiBase` }));
+        else if (!list.length) add(check('voice', { title: 'Озвучка: язык реплики', lang, status: 'not-run', reason: 'за время прогона реплики не запрашивались у сервиса озвучки' }));
         else {
           const bad = list.filter((x) => !x.marker || x.lang !== lang);
-          add(check('voice', { title: 'Озвучка: маркер языка', lang, status: bad.length ? 'failed' : 'passed',
-            condition: 'каждая реплика начинается с маркера языка урока',
-            reason: bad.length ? `${bad.length} из ${list.length} без маркера или с чужим: «${String(bad[0].text).slice(0, 80)}»` : null,
+          add(check('voice', { title: 'Озвучка: язык реплики', lang, status: bad.length ? 'failed' : 'passed',
+            condition: 'у каждой реплики язык урока (language_code или пометка в начале)',
+            reason: bad.length ? `${bad.length} из ${list.length} без языка или с чужим: «${String(bad[0].text).slice(0, 80)}»` : null,
             evidence: [`реплик: ${list.length}`, `пример: «${String(list[0].text).slice(0, 90)}»`] }));
         }
       }

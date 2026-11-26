@@ -63,6 +63,24 @@ Object.assign(SPOKEN, { sayI: 1, sayT: 1, hints: 1, riddle: 1, wow: 1, ok: 1, lv
   dirs: 1 });
 Object.assign(NOT_SPOKEN_IN, { dirs: { name: 1, who: 1, does: 1 } });
 
+// Новая узбекская озвучка (заказчик, 25.11.2026: «чтобы поменялся хоть 1 символ, чтобы платформа посчитала, что такой
+// записи нет»): в конец каждой узбекской реплики — невидимый пробел нулевой ширины (U+200B). На экране ничего не меняется,
+// а для сервиса озвучки это новый текст — он сгенерирует запись заново. Обход — как у heroLines (SPOKEN, NOT_SPOKEN_IN).
+const ITK_UZ_NEW = '​';
+function itkUzNew(node, on, parent) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) { node.forEach((x) => itkUzNew(x, on, parent)); return; }
+  if (node.uz !== undefined || node.ru !== undefined) {
+    if (on && typeof node.uz === 'string' && node.uz && node.uz.slice(-1) !== ITK_UZ_NEW) node.uz += ITK_UZ_NEW;
+    return;
+  }
+  Object.keys(node).forEach((k) => {
+    if (parent && NOT_SPOKEN_IN[parent] && NOT_SPOKEN_IN[parent][k]) return;
+    itkUzNew(node[k], on || !!SPOKEN[k], SPOKEN[k] ? k : parent);
+  });
+}
+itkUzNew(C, false, null);
+
 /*@FILE:gen/b16-chrome.jsx@*/
 
 /*@FILE:gen/p17-skin.jsx@*/

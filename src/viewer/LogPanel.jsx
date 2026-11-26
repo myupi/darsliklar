@@ -24,7 +24,7 @@ function Row({ e }) {
     case 'tts':
       return (
         <Item icon={<Volume2 size={14} />} tone="voice" t={e.t}
-          head={<>{KIND[d.kind] || 'реплика'}{d.id ? <code>{d.id}</code> : null}<span className="tag">{d.lang}</span>{d.voice ? <span className="tag">{d.voice}</span> : null}{!d.marker ? <span className="tag warn" title="Реплика без маркера языка в начале ([Русское произношение] …)">без маркера</span> : null}{d.muted ? <span className="tag">звук выкл.</span> : null}</>}
+          head={<>{KIND[d.kind] || 'реплика'}{d.id ? <code>{d.id}</code> : null}<span className="tag">{d.lang}</span>{d.voice ? <span className="tag">{d.voice}</span> : null}{!d.marker ? <span className="tag warn" title="Реплика без языка: нет параметра language_code и пометки языка в начале">без языка</span> : null}{d.muted ? <span className="tag">звук выкл.</span> : null}</>}
           body={d.spoken} />
       );
     case 'wait':

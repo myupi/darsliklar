@@ -51,7 +51,7 @@ self.addEventListener('fetch', (e) => {
   const range = /^bytes=(\d*)-(\d*)$/.exec(String(e.request.headers.get('range') || '').trim());
   const from = range && range[1] !== '' ? Number(range[1]) : 0;
   const probe = !!range && range[2] !== '' && Number(range[2]) - from < 16;
-  if (!head && !q.get('r') && from === 0 && !probe) e.waitUntil(notify({ sid, mode, text, g: q.get('g') || null }));
+  if (!head && !q.get('r') && from === 0 && !probe) e.waitUntil(notify({ sid, mode, text, g: q.get('g') || null, language: q.get('language_code') || null, model: q.get('model_id') || null }));
 
   if (mode === 'browser') {
     e.respondWith(new Response('Сервис озвучки в режиме «Браузер» недоступен — урок переходит на голос браузера.',

@@ -142,6 +142,10 @@ swapSayHide();
 // РЕЧЬ ОДНОРОДНАЯ, БЕЗ ПОМЕТОК ЯЗЫКА ВНУТРИ ФРАЗЫ (заказчик, 24.11.2026: «убираем это, и всё делаем однообразными,
 // так как переходим на элевенлабс 4 турбо… tag берем как teg»). См. swapTtsPlain.
 swapTtsPlain();
+// ОЗВУЧКА ПОД ELEVENLABS v4 TURBO (заказчик, 25.11.2026: артефакт «Голос Коди» — «какой должен быть (v4 turbo) можем такой
+// же сделать все уроки»). Пометка языка в начале реплики остаётся, язык ещё и параметром language_code; узбекское «HTML» — «eych-ti-em-el»;
+// темп 1,0 (0,9 было поправкой на быстрый v3). См. swapTtsV4Turbo.
+swapTtsV4Turbo();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -901,6 +905,31 @@ const ttsPlain = (s, lang) => {
 const sanitizeForTts = (text, lang) =>
   ttsPlain(sayHideCut(String(text || '')), lang)
 `);
+}
+
+// ── ОЗВУЧКА ПОД ELEVENLABS v4 TURBO (25.11.2026) ──────────────────────────────────────────────────────────
+// Разбор «Голос Коди» (сравнение v3 / v4 / v4 turbo на 11 репликах урока 1): turbo прочитал все реплики без ошибок.
+// Как в записях turbo из разбора, в сервис уходит только тег эмоции и текст:
+//   · пометка языка в начале реплики ОСТАЁТСЯ (заказчик, 25.11.2026: «[O'zbekcha tallaffuz] эта штука нам нужна»),
+//     и язык дополнительно — параметром адреса language_code=uz|ru|en;
+//   · model_id=eleven_v4_turbo — подсказка сервису (модель выбирает сервер платформы; лишний параметр он не читает);
+//   · в узбекском «HTML» — «eych-ti-em-el» (как в разборе), «teg» — уже в swapTtsPlain;
+//   · TTS_RATE 1,0 — браузер больше не растягивает запись (0,9 было поправкой на быстрый v3).
+function swapTtsV4Turbo() {
+  swap(`  if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
+  return url;`, `  // 25.11.2026 (v4 turbo): язык — параметром, модель — подсказкой сервису.
+  url += '&language_code=' + (/^(uz|ru|en)$/.test(lang) ? lang : 'uz') + '&model_id=eleven_v4_turbo';
+  if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
+  return url;`);
+  swap(`const TTS_RATE = 0.9;   // КУРС HTML (16.11.2026): темп голоса Коди — 0,9 (swapSlowVoice в tools/build-canon.mjs)`,
+    `const TTS_RATE = 1;   // 25.11.2026 (v4 turbo): обычный темп; 0,9 (16.11.2026) было поправкой на быстрый v3`);
+  swap(`  return t.replace(/[ \\t]+([.,!?;:])/g, '$1').replace(/[ \\t]{2,}/g, ' ');
+};
+const sanitizeForTts`, `  // 25.11.2026 (v4 turbo): узбекское «HTML» — как в разборе «Голос Коди» (имя файла index.html не трогаем).
+  if (lang === 'uz') t = t.replace(/(^|[^.\\w/<])HTML(?![\\w.])/gi, '$1eych-ti-em-el');
+  return t.replace(/[ \\t]+([.,!?;:])/g, '$1').replace(/[ \\t]{2,}/g, ' ');
+};
+const sanitizeForTts`);
 }
 
 // ПРЕДОХРАНИТЕЛЬ ОТВЕТОВ СЧИТАЕТ ТИШИНУ (заказчик, 19.10.2026) — см. комментарий в функции.

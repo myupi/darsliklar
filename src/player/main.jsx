@@ -48,9 +48,11 @@ let ttsApiBase = import.meta.env.DEV ? ttsBase : '';
 const emitTts = (d) => {
   if (!d || d.sid !== sid) return;
   const line = parseLine(d.text);
+  // 25.11.2026 (v4 turbo): язык реплики — параметр language_code, а не пометка в тексте.
+  const lc = d.language && /^(uz|ru|en)$/.test(d.language) ? d.language : null;
   emit('tts', {
-    text: d.text, spoken: line.spoken, lang: line.lang, marker: line.marker,
-    voice: d.g ? 'g=' + d.g : null, kind: 'service', id: null, muted: false, mode: d.mode,
+    text: d.text, spoken: line.spoken, lang: lc || line.lang, marker: lc ? 'language_code=' + lc : line.marker,
+    voice: [d.g ? 'g=' + d.g : null, d.model || null].filter(Boolean).join(' · ') || null, kind: 'service', id: null, muted: false, mode: d.mode,
   });
 };
 async function ttsWorker() {
