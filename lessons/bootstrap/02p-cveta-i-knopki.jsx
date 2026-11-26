@@ -986,7 +986,9 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
   // voiceGender от LMS голос курса не меняет.
   const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  // 26.11.2026: невидимый знак в конце — новая запись у сервиса (swapTtsFresh в tools/build-canon.mjs).
+  const fresh = String(text).slice(0, 999);
+  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(fresh.slice(-1) === '\u200B' ? fresh : fresh + '\u200B') + '&g=' + g;
   const meta = typeof META !== 'undefined' && META ? META : null;
   if (meta && meta.lessonId) {
     url += '&lesson_id=' + encodeURIComponent(meta.lessonId);

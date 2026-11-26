@@ -31,4 +31,7 @@ naborRedaktor(gen);
     "  const out = spokenHtmlL2(s, lang).replace(/(^|[^A-Za-z'‘’-])a(?=\\s+(?:teg|tag|тег))/g, (all, pre) => pre + 'A');", 'a speech'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z4.src.jsx'), join(root, 'lessons/html/04-ssylki-i-atributy.jsx')], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z4.src.jsx'), join(root, 'lessons/html/04-ssylki-i-atributy.jsx')], { stdio: 'inherit' });
+}

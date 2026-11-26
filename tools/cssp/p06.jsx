@@ -154,13 +154,13 @@ const PR = {
 const C = {
   s1: {
     eyebrow: L3("Kodining o'yini", 'Игра Коди', 'Kodi’s game'),
-    say: L3("Salom! Men o'yin yasadim, mana uning sayti. Qarang: yuklanish chizig'i chiroyli to'lib boryapti, tugma esa ixcham va ko'zga tashlanadi. Hamma o'lchamlarni CSS bergan. Saytda beshta sahifa bor. Hozir saytni yangilayman, «Yangilash» tugmasini bosing.",
+    say: L3("Salom! Men bitta o'yin yasadim, mana uning sayti. Qarang-chi: yuklanish chizig'i chiroyli to'lib boryapti, «O'ynash» tugmasi esa ixchamgina, darrov ko'zga tashlanadi. Bu o'lchamlarning hammasini CSS bergan. O'yinim haqida beshta sahifa yasaganman, ular tepada yorliqlarda turibdi. Endi saytni bir yangilab qo'yaylik: qani, «Yangilash» tugmasini bosing!",
       'Привет! Я сделал игру, а вот её сайт. Смотри: полоска загрузки аккуратно заполняется, а кнопка компактная и заметная. Все размеры задал CSS. На сайте пять страниц. Сейчас я его обновлю, нажми «Обновить».',
       'Hi! I made a game, and here’s its website. Look: the loading bar fills up neatly, and the button is compact and easy to spot. CSS set all the sizes. The site has five pages. I’m about to update it, tap “Refresh”.'),
-    broke: L3("Voy! O'lchamlar o'chib ketibdi. Yuklanish chizig'i ham, tugma ham butun oyna bo'ylab cho'zilib ketibdi.",
+    broke: L3("Voy-voy, o'yinimning o'lchamlari yo'qolib qolibdi! Endi yuklanish chizig'i ham, tugma ham oynaning bir chetidan narigi chetigacha cho'zilib yotibdi.",
       'Ой! Размеры стёрлись. И полоска, и кнопка растянулись на всё окно.',
       'Oh no! The sizes got erased. The bar and the button both stretched across the whole window.'),
-    done: L3("Ranglar joyida, faqat o'lchamlar yo'qoldi. O'tgan darsda width va height xususiyatlarini o'rgandik: pikselda va foizda. Endi beshta sahifani birma-bir tuzatamiz, kodni esa o'zingiz yozasiz. Beshinchi sahifa sizniki bo'ladi.",
+    done: L3("Yaxshiyamki, ranglar joyida qolibdi, faqat o'lchamlar o'chib ketgan. O'tgan darsda width va height xususiyatlarini o'rgangan edik, esingizdami? Ularni pikselda ham, foizda ham yozdik. Endi o'yin sahifalarini bittalab tiklab chiqamiz, kodni esa siz yozasiz. Beshinchi sahifada o'zingizning darajangizni yasaysiz.",
       'Цвета на месте, пропали только размеры. На прошлом уроке мы разобрали width и height: в пикселях и в процентах. Теперь починим пять страниц по одной, а код будешь писать ты. Пятая страница будет твоей.',
       'The colors are fine, only the sizes are gone. Last lesson we learned width and height: in pixels and in percent. Now let’s fix the five pages one by one, and you’ll write the code. The fifth page will be yours.'),
     ask: L3("«Yangilash» tugmasini bosing", 'Нажми «Обновить»', 'Tap “Refresh”'),
@@ -168,100 +168,100 @@ const C = {
   },
   t1: {
     eyebrow: L3("Yuklanish", 'Загрузка', 'Loading'),
-    say: L3("Birinchi sahifa: o'yin yuklanishi. Chiziq zo'rg'a ko'rinyapti, u bor-yo'g'i o'n foizga to'lgan. Uni yarmigacha to'ldiring: qoidadagi qiymatni almashtiring.",
+    say: L3("Yuklanish sahifasidan boshlaymiz. Yashil chiziqqa bir qarang-chi: zo'rg'a ko'rinyapti, chunki u bor-yo'g'i o'n foizga to'lgan. Chiziq yarmigacha to'lsin: buning uchun qoidadagi qiymatni almashtiring.",
       'Первая страница: загрузка игры. Полоску еле видно, она заполнена всего на десять процентов. Заполни её наполовину: замени в правиле значение.',
       'The first page is the game loading. The bar is barely visible, it’s only ten percent full. Fill it halfway: change the value in the rule.'),
     ask: L3("Chiziqni yarmigacha to'ldiring", 'Заполни полоску наполовину', 'Fill the bar halfway'),
-    ok: L3("Ajoyib! Chiziq roppa-rosa yarmigacha to'ldi.", 'Отлично! Полоска заполнена ровно наполовину.', 'Great! The bar is exactly half full.'),
+    ok: L3("Ana, chiziq roppa-rosa yarmigacha to'ldi! O'yin ham yuklanib qolay deb turibdi.", 'Отлично! Полоска заполнена ровно наполовину.', 'Great! The bar is exactly half full.'),
     hints: [
-      L3("Qoidaga qarang: chiziqning kengligi nimada yozilgan, pikseldami yoki foizdami?", 'Посмотри на правило: в чём записана ширина полоски, в пикселях или в процентах?', 'Look at the rule: what is the bar’s width written in, pixels or percent?'),
-      L3("Foiz butunning bir qismi: yuz foiz bu hammasi, yarmi esa ellik foiz. O'nni o'chirib, ellik yozing.", 'Проценты — часть целого: сто процентов — всё, а половина — пятьдесят. Сотри десять и напиши пятьдесят.', 'Percent is a part of the whole: one hundred percent is all of it, and half is fifty. Erase ten and write fifty.'),
-      L3("Namuna kod ostida: u chiziqni chorak qismigacha to'ldiradi. Xuddi shunday yozing, faqat ellik foiz bilan.", 'Образец под кодом заполняет полоску на четверть. Напиши так же, только пятьдесят процентов.', 'The example under the code fills the bar a quarter of the way. Write the same, only with fifty percent.')
+      L3("Qoidaga bir qarang-chi: chiziqning kengligi nimada yozilgan ekan, pikseldami yoki foizdami?", 'Посмотри на правило: в чём записана ширина полоски, в пикселях или в процентах?', 'Look at the rule: what is the bar’s width written in, pixels or percent?'),
+      L3("Foizda ekan. Foiz butunning qancha qismi to'lganini aytadi: yuz foiz bo'lsa butun yo'lak, ellik foiz bo'lsa uning yarmi. Shuning uchun o'nni o'chirib, o'rniga ellik yozing.", 'Проценты — часть целого: сто процентов — всё, а половина — пятьдесят. Сотри десять и напиши пятьдесят.', 'Percent is a part of the whole: one hundred percent is all of it, and half is fifty. Erase ten and write fifty.'),
+      L3("Kod ostiga bitta namuna qo'yib qo'ydim: u chiziqni chorak qismigacha, yigirma besh foizgacha to'ldiradi. Siz ham shunday yozing, faqat yigirma besh o'rniga ellik foiz bo'lsin.", 'Образец под кодом заполняет полоску на четверть. Напиши так же, только пятьдесят процентов.', 'The example under the code fills the bar a quarter of the way. Write the same, only with fifty percent.')
     ],
-    no: L3("Chiziq yarmigacha to'lmadi. Yarmi degani ellik foiz.", 'Полоска заполнена не наполовину. Половина — это пятьдесят процентов.', 'The bar isn’t half full. Half is fifty percent.'),
-    px: L3("Bu piksel. Yarmini esa foiz bilan yozamiz: ellik foiz.", 'Это пиксели. А половину пишут в процентах: пятьдесят процентов.', 'Those are pixels. Half is written in percent: fifty percent.'),
+    no: L3("Chiziq yarmida to'xtamadi-ku. Yarmi esa ellik foiz bo'ladi.", 'Полоска заполнена не наполовину. Половина — это пятьдесят процентов.', 'The bar isn’t half full. Half is fifty percent.'),
+    px: L3("Bu piksel bo'lib qoldi-ku. Yarmini esa foizda yozamiz: ellik foiz.", 'Это пиксели. А половину пишут в процентах: пятьдесят процентов.', 'Those are pixels. Half is written in percent: fifty percent.'),
     drill: L3("endi chiziqni oxirigacha to'ldiring", 'теперь заполни полоску до конца', 'now fill the bar all the way'),
-    drillNo: L3("Chiziq hali oxirigacha to'lmadi. Hammasi degani yuz foiz.", 'Полоска ещё не заполнена до конца. Всё целиком — это сто процентов.', 'The bar isn’t full yet. All of it is one hundred percent.')
+    drillNo: L3("Chiziq hali oxirigacha yetib bormadi. Butun yo'lakni to'ldirish uchun yuz foiz kerak.", 'Полоска ещё не заполнена до конца. Всё целиком — это сто процентов.', 'The bar isn’t full yet. All of it is one hundred percent.')
   },
   t2: {
     eyebrow: L3("Tugma", 'Кнопка', 'Button'),
-    say: L3("Chiziq to'ldi! Endi «O'ynash» tugmasi. U butun oyna bo'ylab cho'zilib yotibdi, bunaqasi tugmaga umuman o'xshamaydi. Tugmaning kengligi bir yuz ellik piksel bo'lsin: qoidaning ichiga xususiyat va qiymatni yozing.",
+    say: L3("Chiziq to'ldi, endi o'yinni boshlash kerak! Lekin «O'ynash» tugmasiga qarang: oynaning butun eniga cho'zilib yotibdi, tugmaga sira o'xshamaydi. Uning kengligi yuz ellik piksel bo'lsin: qoidaning ichiga xususiyat bilan qiymatni yozing.",
       'Полоска заполнена! Теперь кнопка «Играть». Она растянулась на всё окно и на кнопку совсем не похожа. Пусть ширина кнопки будет сто пятьдесят пикселей: впиши в правило свойство и значение.',
       'The bar is full! Now the “Play” button. It’s stretched across the whole window and doesn’t look like a button at all. Let’s make the button one hundred fifty pixels wide: write a property and a value inside the rule.'),
     ask: L3("Tugmani 150 piksel kenglikda qiling", 'Сделай кнопку шириной 150 пикселей', 'Make the button 150 pixels wide'),
-    ok: L3("Zo'r! Endi bu haqiqiy tugma, uni bosgingiz keladi.", 'Огонь! Теперь это настоящая кнопка, на неё хочется нажать.', 'Awesome! Now it’s a real button, you want to press it.'),
+    ok: L3("Mana endi haqiqiy tugma bo'ldi! Ixchamgina, bir bosgingiz kelib turadi.", 'Огонь! Теперь это настоящая кнопка, на неё хочется нажать.', 'Awesome! Now it’s a real button, you want to press it.'),
     hints: [
-      L3("Kenglikni qaysi xususiyat beradi? Kenglik inglizchada nima deyiladi?", 'Какое свойство задаёт ширину? Как «ширина» по-английски?', 'Which property sets the width? What’s the English word for it?'),
-      L3("Kenglikni width beradi. Keyin ikki nuqta, son va px, oxirida nuqtali vergul.", 'Ширину задаёт width. Потом двоеточие, число и px, в конце точка с запятой.', 'width sets the width. Then a colon, the number and px, and a semicolon at the end.'),
-      L3("Namuna kod ostida: u sarlavhani ikki yuz piksel kenglikda qiladi. Tugma uchun ham xuddi shunday yozing, faqat bir yuz ellik bilan.", 'Образец под кодом делает заголовок шириной двести пикселей. Для кнопки напиши так же, только сто пятьдесят.', 'The example under the code makes the heading two hundred pixels wide. Write the same for the button, only one hundred fifty.')
+      L3("Kenglikni qaysi xususiyat berardi? «Kenglik» inglizchada qanday bo'ladi?", 'Какое свойство задаёт ширину? Как «ширина» по-английски?', 'Which property sets the width? What’s the English word for it?'),
+      L3("Kenglikni width beradi. Undan keyin ikki nuqta qo'yasiz, keyin son bilan px keladi, oxirida esa nuqtali vergul turadi.", 'Ширину задаёт width. Потом двоеточие, число и px, в конце точка с запятой.', 'width sets the width. Then a colon, the number and px, and a semicolon at the end.'),
+      L3("Pastdagi namunani ko'ryapsizmi? U sarlavhaning kengligini ikki yuz piksel qiladi. Tugmaga ham shunday qoida yozing, faqat son yuz ellik bo'lsin.", 'Образец под кодом делает заголовок шириной двести пикселей. Для кнопки напиши так же, только сто пятьдесят.', 'The example under the code makes the heading two hundred pixels wide. Write the same for the button, only one hundred fifty.')
     ],
-    no: L3("Tugmaning kengligi boshqa. Bizga bir yuz ellik piksel kerak.", 'Ширина кнопки другая. Нужно сто пятьдесят пикселей.', 'The button’s width is different. We need one hundred fifty pixels.'),
-    pct: L3("Bu foiz: bunday tugma oyna bilan birga o'zgarib turadi. Tugmaga piksel kerak, bir yuz ellik piksel.", 'Это проценты: такая кнопка будет меняться вместе с окном. Кнопке нужны пиксели, сто пятьдесят.', 'That’s percent: a button like that changes with the window. The button needs pixels, one hundred fifty.'),
+    no: L3("Tugmaning kengligi boshqacha chiqdi. Bizga aynan yuz ellik piksel kerak.", 'Ширина кнопки другая. Нужно сто пятьдесят пикселей.', 'The button’s width is different. We need one hundred fifty pixels.'),
+    pct: L3("Bu foiz bo'lib qoldi, bunday tugma esa oyna bilan birga goh kengayib, goh torayib turadi. Tugmaga piksel kerak: yuz ellik piksel.", 'Это проценты: такая кнопка будет меняться вместе с окном. Кнопке нужны пиксели, сто пятьдесят.', 'That’s percent: a button like that changes with the window. The button needs pixels, one hundred fifty.'),
     drill: L3("endi tugmani balandroq qiling: 50 piksel", 'теперь сделай кнопку выше: 50 пикселей', 'now make the button taller: 50 pixels'),
-    drillNo: L3("Tugmaning balandligi boshqa. Balandlikni height beradi, bizga ellik piksel kerak.", 'Высота кнопки другая. Высоту задаёт height, нужно пятьдесят пикселей.', 'The button’s height is different. height sets it, and we need fifty pixels.')
+    drillNo: L3("Tugmaning balandligi hali ellik piksel bo'lmadi. Balandlikni height beradi, unga ellik piksel yozing.", 'Высота кнопки другая. Высоту задаёт height, нужно пятьдесят пикселей.', 'The button’s height is different. height sets it, and we need fifty pixels.')
   },
   t3: {
     eyebrow: L3("Qahramon", 'Герой', 'Hero'),
-    say: L3("Tugma tayyor! Uchinchi sahifa: o'yin qahramoni. Hozir u uzun chiziqqa o'xshab qolibdi. Qahramon kvadrat bo'lsin: kengligi ham, balandligi ham yuz piksel. Bu yerda kod umuman yo'q, qoidani boshidan oxirigacha o'zingiz yozing. Qahramonning class nomi hero.",
+    say: L3("Tugma tayyor, endi o'yinning qahramoni bilan tanishing! Hozir u qahramonga emas, uzun chiziqqa o'xshab qolibdi. Keling, uni kvadrat qilamiz: kengligi ham, balandligi ham yuz piksel bo'lsin. Bu safar kod umuman yo'q, qoidani boshidan oxirigacha o'zingiz yozasiz. Qahramonning class nomi hero.",
       'Кнопка готова! Третья страница: герой игры. Сейчас он похож на длинную полосу. Пусть герой станет квадратом: и ширина, и высота по сто пикселей. Здесь кода нет совсем, напиши правило целиком. Класс героя называется hero.',
       'The button is ready! The third page is the game’s hero. Right now he looks like a long stripe. Let’s make the hero a square: both width and height one hundred pixels. There’s no code here at all, write the whole rule yourself. The hero’s class is called hero.'),
     ask: L3("Qahramonni 100 ga 100 pikselli kvadrat qiling", 'Сделай героя квадратом 100 на 100 пикселей', 'Make the hero a 100 by 100 pixel square'),
-    ok: L3("Qoyil! Qahramon kvadrat bo'ldi, endi u o'yinga tayyor.", 'Вот это да! Герой стал квадратом и готов к игре.', 'Wow! The hero is a square and ready to play.'),
+    ok: L3("Qoyil! Qahramon kvadratga aylandi, endi u sarguzashtga tayyor.", 'Вот это да! Герой стал квадратом и готов к игре.', 'Wow! The hero is a square and ready to play.'),
     hints: [
-      L3("Qoida uch qismdan iborat: nimani bezaymiz, qaysi xususiyat va qanday qiymat. Bu safar ikkita xususiyat kerak: kenglik va balandlik.", 'Правило — это три части: что оформляем, какое свойство и какое значение. В этот раз свойств два: ширина и высота.', 'A rule has three parts: what we style, which property and which value. This time there are two properties: width and height.'),
-      L3("Selektor nuqta va hero so'zi, xususiyatlar width va height, ikkalasi ham yuz piksel.", 'Селектор — точка и слово hero, свойства width и height, оба по сто пикселей.', 'The selector is a dot and the word hero. The properties are width and height, both one hundred pixels.'),
-      L3("Namuna kod ostida: u boshqa qutini oltmishga sakson qiladi. Xuddi shunday qoida yozing, faqat ikkalasiga yuz piksel.", 'Образец под кодом делает другую коробку шестьдесят на восемьдесят. Напиши такое же правило, только оба по сто пикселей.', 'The example under the code makes another box sixty by eighty. Write the same kind of rule, only both one hundred pixels.')
+      L3("Qoida yozishda uchta narsani o'ylaymiz: nimani bezaymiz, qaysi xususiyat va qanday qiymat. Bu safar esa xususiyat ikkita bo'ladi: kenglik bilan balandlik.", 'Правило — это три части: что оформляем, какое свойство и какое значение. В этот раз свойств два: ширина и высота.', 'A rule has three parts: what we style, which property and which value. This time there are two properties: width and height.'),
+      L3("Selektorga nuqta bilan hero so'zini yozasiz. Xususiyatlar width bilan height bo'ladi, ikkalasiga ham yuz piksel bering.", 'Селектор — точка и слово hero, свойства width и height, оба по сто пикселей.', 'The selector is a dot and the word hero. The properties are width and height, both one hundred pixels.'),
+      L3("Kod tagida bir misol turibdi: u boshqa qutini oltmishga sakson piksel qiladi. Siz ham shunday qoida yozing, faqat ikkala son ham yuz bo'lsin.", 'Образец под кодом делает другую коробку шестьдесят на восемьдесят. Напиши такое же правило, только оба по сто пикселей.', 'The example under the code makes another box sixty by eighty. Write the same kind of rule, only both one hundred pixels.')
     ],
-    no: L3("Qahramon hali kvadrat emas. Kengligi ham, balandligi ham yuz piksel bo'lishi kerak.", 'Герой пока не квадрат. И ширина, и высота должны быть по сто пикселей.', 'The hero isn’t a square yet. Both width and height should be one hundred pixels.'),
-    needH: L3("Kenglik joyida, lekin balandlik boshqa. Kvadratga ikkalasi kerak: height ham yozing.", 'Ширина на месте, а высота другая. Квадрату нужны обе: допиши height.', 'The width is right, but the height isn’t. A square needs both: add height.'),
-    needW: L3("Balandlik joyida, lekin kenglik boshqa. Kvadratga ikkalasi kerak: width ham yozing.", 'Высота на месте, а ширина другая. Квадрату нужны обе: допиши width.', 'The height is right, but the width isn’t. A square needs both: add width.'),
+    no: L3("Qahramon kvadratga aylanmadi-ku. Uning kengligi ham, balandligi ham yuz piksel bo'lishi kerak.", 'Герой пока не квадрат. И ширина, и высота должны быть по сто пикселей.', 'The hero isn’t a square yet. Both width and height should be one hundred pixels.'),
+    needH: L3("Kenglik joyida, lekin balandlik hali boshqacha. Kvadratga ikkalasi ham kerak-ku, height ham yozing.", 'Ширина на месте, а высота другая. Квадрату нужны обе: допиши height.', 'The width is right, but the height isn’t. A square needs both: add height.'),
+    needW: L3("Balandlik joyida, lekin kenglik hali boshqacha. Kvadrat bo'lishi uchun width ham yozing.", 'Высота на месте, а ширина другая. Квадрату нужны обе: допиши width.', 'The height is right, but the width isn’t. A square needs both: add width.'),
     drill: L3("endi jon chizig'ini 80 piksel kenglikda qiling, qoidani o'zingiz yozing", 'теперь сделай полоску здоровья шириной 80 пикселей, правило пиши сам', 'now make the health bar 80 pixels wide, write the rule yourself'),
-    drillNo: L3("Jon chizig'ining kengligi boshqa. Uning class nomi hp, bizga sakson piksel kerak.", 'Ширина полоски здоровья другая. Её класс hp, нужно восемьдесят пикселей.', 'The health bar’s width is different. Its class is hp, and we need eighty pixels.')
+    drillNo: L3("Jon chizig'i hali sakson piksel bo'lmadi. Uning class nomi hp, kengligiga sakson piksel bering.", 'Ширина полоски здоровья другая. Её класс hp, нужно восемьдесят пикселей.', 'The health bar’s width is different. Its class is hp, and we need eighty pixels.')
   },
   t4: {
     eyebrow: L3("Do'kon", 'Магазин', 'Shop'),
-    say: L3("Qahramon tayyor! To'rtinchi sahifa: do'kon. Mahsulot kartochkasini men shoshib yozgan edim, unda ikkita joy buzilgan. Brauzer buzilgan qiymatni tashlab yuboradi, shuning uchun kartochka butun oyna bo'ylab cho'zilib qoldi. Ikkala buzilgan joyni toping va tuzating.",
+    say: L3("Qahramon tayyor, endi unga qurol kerak! Do'konga kiramiz. Mahsulot kartochkasini shoshib yozgan edim, shekilli, ikkita joyini buzib qo'yibman. Brauzer buzilgan qiymatni tushunmay, o'tkazib yuboradi, shuning uchun kartochka butun oyna bo'ylab yoyilib ketgan. Ikkala buzilgan joyni topib, tuzatib bering.",
       'Герой готов! Четвёртая страница: магазин. Карточку товара я писал в спешке, и в ней две поломки. Браузер сломанные значения выбрасывает, поэтому карточка растянулась на всё окно. Найди и почини обе поломки.',
       'The hero is ready! The fourth page is the shop. I wrote the item card in a hurry, and it has two broken spots. The browser throws broken values away, so the card stretched across the whole window. Find and fix both.'),
     ask: L3("Ikkita buzilgan joyni toping va tuzating", 'Найди и почини две поломки', 'Find and fix the two broken spots'),
-    ok: L3("Mana bu ish! Kartochka ixcham bo'ldi, do'kon ochildi.", 'Вот это да! Карточка стала аккуратной, магазин открыт.', 'That’s it! The card is neat, and the shop is open.'),
+    ok: L3("Mana, tuzaldi! Kartochka ixchamgina bo'ldi, do'kon ham xaridorlarni kutyapti.", 'Вот это да! Карточка стала аккуратной, магазин открыт.', 'That’s it! The card is neat, and the shop is open.'),
     hints: [
-      L3("Har bir qiymatni darsdagidek tekshiring: son va px qanday yoziladi? Ular o'rtasida nima turibdi?", 'Проверь каждое значение, как на уроке: как пишутся число и px? Что стоит между ними?', 'Check each value like in the lesson: how are the number and px written? What’s between them?'),
-      L3("width qiymatida son va px o'rtasida bo'sh joy bor. height qiymatida esa px umuman yo'q.", 'В width между числом и px стоит пробел. А в height px нет совсем.', 'In width there’s a space between the number and px. And height has no px at all.'),
-      L3("Namuna kod ostida: ishlaydigan qoida. Qiymatlarni xuddi shunday yozing va Tekshirishni bosing.", 'Образец под кодом — рабочее правило. Напиши значения так же и нажми «Проверить».', 'The example under the code is a working rule. Write the values the same way and tap Check.')
+      L3("Har bir qiymatni darsdagidek bittalab tekshirib chiqing: son bilan px qanday yoziladi? Ularning o'rtasida nima turibdi?", 'Проверь каждое значение, как на уроке: как пишутся число и px? Что стоит между ними?', 'Check each value like in the lesson: how are the number and px written? What’s between them?'),
+      L3("width qiymatida son bilan px o'rtasida bo'sh joy qolibdi. height qiymatida esa px umuman tushib qolgan.", 'В width между числом и px стоит пробел. А в height px нет совсем.', 'In width there’s a space between the number and px. And height has no px at all.'),
+      L3("Kod ostidagi namunaga qarang: u ishlaydigan qoida. Qiymatlarni xuddi undagidek yozing-da, «Tekshirish»ni bosing.", 'Образец под кодом — рабочее правило. Напиши значения так же и нажми «Проверить».', 'The example under the code is a working rule. Write the values the same way and tap Check.')
     ],
-    no: L3("Kartochka hali kerakli o'lchamda emas: kengligi bir yuz oltmish, balandligi to'qson piksel bo'lishi kerak.", 'Карточка пока не того размера: ширина должна быть сто шестьдесят, а высота девяносто пикселей.', 'The card isn’t the right size yet: it should be one hundred sixty wide and ninety pixels tall.'),
+    no: L3("Kartochka kerakli o'lchamga kelmabdi. Kengligi yuz oltmish, balandligi esa to'qson piksel bo'lishi kerak.", 'Карточка пока не того размера: ширина должна быть сто шестьдесят, а высота девяносто пикселей.', 'The card isn’t the right size yet: it should be one hundred sixty wide and ninety pixels tall.'),
     drill: L3("endi tangani tuzating: u kvadrat bo'lishi kerak", 'теперь почини монетку: она должна быть квадратной', 'now fix the coin: it should be square'),
-    drillNo: L3("Tanga hali kvadrat emas. Foiz uni oyna bo'ylab cho'zadi, bizga qirq piksel kerak.", 'Монетка пока не квадратная. Проценты растягивают её по окну, а нужно сорок пикселей.', 'The coin isn’t square yet. Percent stretches it with the window, and we need forty pixels.')
+    drillNo: L3("Tanga hozircha kvadrat emas. Foiz uni oyna bo'ylab cho'zib yuboryapti, bizga esa qirq piksel kerak.", 'Монетка пока не квадратная. Проценты растягивают её по окну, а нужно сорок пикселей.', 'The coin isn’t square yet. Percent stretches it with the window, and we need forty pixels.')
   },
   t5: {
     eyebrow: L3("Mening darajam", 'Мой уровень', 'My level'),
-    say: L3("To'rtta sahifa yonib turibdi! Oxirgisi sizniki: o'z darajangizni yasang. Yuklanish chizig'ini foizda to'ldiring, qahramonga kenglik va balandlik bering, tugmaga esa pikselda kenglik bering. Qiymatlarni o'zingiz tanlang. Oyna ostida nima tayyorligi ko'rinib turadi.",
+    say: L3("O'yinimning to'rtta sahifasi yana o'z o'lchamiga qaytdi! Oxirgisi esa sizniki: unda o'z darajangizni yasaysiz. Yuklanish chizig'ini foizda to'ldiring, qahramonga kenglik bilan balandlik bering, tugmaning kengligini esa pikselda yozing. Qiymatlarni xohlaganingizcha tanlang. Nima tayyor bo'lganini oyna ostidagi ro'yxatdan ko'rib turasiz.",
       'Четыре страницы горят! Последняя — твоя: собери свой уровень. Заполни полоску в процентах, дай герою ширину и высоту, а кнопке — ширину в пикселях. Значения выбирай любые. Под окном видно, что уже готово.',
       'Four pages are lit! The last one is yours: build your own level. Fill the bar in percent, give the hero a width and a height, and give the button a width in pixels. Pick the values yourself. Under the window you can see what’s done.'),
     ask: L3("Darajangizni yasang: uchta qoida", 'Собери свой уровень: три правила', 'Build your level: three rules'),
-    ok: L3("Ura! Darajangiz tayyor, hamma narsa o'z o'lchamida!", 'Ура! Твой уровень готов, у всего свой размер!', 'Hooray! Your level is ready, everything has its own size!'),
+    ok: L3("Ajoyib daraja chiqdi! Undagi har bir narsaning o'z o'lchami bor.", 'Ура! Твой уровень готов, у всего свой размер!', 'Hooray! Your level is ready, everything has its own size!'),
     hints: [
-      L3("Bittadan boshlang, masalan yuklanish chizig'idan. Keyin qahramon va tugmani qo'shing.", 'Начни с одного правила, например с полоски. Потом добавь героя и кнопку.', 'Start with one rule, for example the bar. Then add the hero and the button.'),
-      L3("Uchta qoida kerak: bar uchun foizda width, hero uchun width va height, btn uchun pikselda width.", 'Нужны три правила: для bar ширина в процентах, для hero width и height, для btn ширина в пикселях.', 'You need three rules: width in percent for bar, width and height for hero, width in pixels for btn.'),
-      L3("Namuna kod ostida: boshqa qiymatlar bilan. O'zingizga yoqqan o'lchamlarni tanlang.", 'Образец под кодом — с другими значениями. Выбери свои размеры.', 'The example under the code uses other values. Pick your own sizes.')
+      L3("Hammasini birdan yozmang, bittasidan boshlang, masalan, yuklanish chizig'idan. Keyin qahramon bilan tugmani qo'shasiz.", 'Начни с одного правила, например с полоски. Потом добавь героя и кнопку.', 'Start with one rule, for example the bar. Then add the hero and the button.'),
+      L3("Sizga uchta qoida kerak bo'ladi: bar uchun foizda width, hero uchun width bilan height, btn uchun esa pikselda width.", 'Нужны три правила: для bar ширина в процентах, для hero width и height, для btn ширина в пикселях.', 'You need three rules: width in percent for bar, width and height for hero, width in pixels for btn.'),
+      L3("Namunada xuddi shu uchta qoida bor, faqat sonlari boshqacha. Siz esa o'lchamlarni o'zingizga yoqqanicha tanlang.", 'Образец под кодом — с другими значениями. Выбери свои размеры.', 'The example under the code uses other values. Pick your own sizes.')
     ],
-    needBar: L3("Yuklanish chizig'i uchun qoida yo'q: bar uchun foizda width yozing.", 'Нет правила для полоски: напиши для bar ширину в процентах.', 'There’s no rule for the bar: write a width in percent for bar.'),
-    barPx: L3("Yuklanish chizig'i pikselda yozilgan. Uni foizda yozing, xuddi yuklanishdagidek.", 'Ширина полоски записана в пикселях. Запиши её в процентах, как у загрузки.', 'The bar’s width is in pixels. Write it in percent, like the loading bar.'),
-    over: L3("Chiziq yo'lakdan chiqib ketdi: yuz foizdan ko'pi bo'lmaydi.", 'Полоска вылезла за дорожку: больше ста процентов не бывает.', 'The bar went past its track: there’s nothing more than one hundred percent.'),
-    needHero: L3("Qahramonga kenglik ham, balandlik ham kerak: hero uchun width va height yozing.", 'Герою нужны и ширина, и высота: напиши для hero width и height.', 'The hero needs both a width and a height: write width and height for hero.'),
-    needBtn: L3("Tugma uchun qoida yo'q: btn uchun width yozing.", 'Нет правила для кнопки: напиши для btn ширину.', 'There’s no rule for the button: write a width for btn.'),
-    btnPct: L3("Tugmaning kengligi foizda. Tugmaga piksel kerak, masalan bir yuz oltmish piksel.", 'Ширина кнопки в процентах. Кнопке нужны пиксели, например сто шестьдесят.', 'The button’s width is in percent. The button needs pixels, for example one hundred sixty.')
+    needBar: L3("Yuklanish chizig'iga hali qoida yozilmabdi. bar uchun foizda width yozing.", 'Нет правила для полоски: напиши для bar ширину в процентах.', 'There’s no rule for the bar: write a width in percent for bar.'),
+    barPx: L3("Chiziqning kengligi pikselda yozilibdi. Uni birinchi sahifadagidek foizda yozing.", 'Ширина полоски записана в пикселях. Запиши её в процентах, как у загрузки.', 'The bar’s width is in pixels. Write it in percent, like the loading bar.'),
+    over: L3("Voy, chiziq yo'lakdan chiqib ketdi-ku! Yuz foizdan ortig'i bo'lmaydi.", 'Полоска вылезла за дорожку: больше ста процентов не бывает.', 'The bar went past its track: there’s nothing more than one hundred percent.'),
+    needHero: L3("Qahramonga kenglik ham, balandlik ham kerak. hero uchun width bilan height yozing.", 'Герою нужны и ширина, и высота: напиши для hero width и height.', 'The hero needs both a width and a height: write width and height for hero.'),
+    needBtn: L3("Tugmaga hali qoida yo'q ekan. btn uchun width yozing.", 'Нет правила для кнопки: напиши для btn ширину.', 'There’s no rule for the button: write a width for btn.'),
+    btnPct: L3("Tugmaning kengligi foizda yozilibdi. Tugmaga esa piksel kerak, masalan, yuz oltmish piksel.", 'Ширина кнопки в процентах. Кнопке нужны пиксели, например сто шестьдесят.', 'The button’s width is in percent. The button needs pixels, for example one hundred sixty.')
   },
   fin: {
     eyebrow: L3("Xulosa", 'Вывод', 'Summary'),
     say: [
-      { k: null, text: L3("Beshta sahifa ham yana o'z o'lchamida! Bularning hammasini sizning CSS kodingiz qildi.", 'Все пять страниц снова нужного размера! И всё это сделал твой CSS.', 'All five pages are the right size again! And your own CSS did all of it.') },
-      { k: 'a', text: L3("width kenglikni, height esa balandlikni beradi.", 'width задаёт ширину, а height — высоту.', 'width sets the width, and height sets the height.') },
-      { k: 'b', text: L3("Piksel o'zgarmaydi, foiz esa butunning bir qismi: ellik foiz yarmi, yuz foiz hammasi.", 'Пиксели не меняются, а проценты — часть целого: пятьдесят процентов — половина, сто — всё.', 'Pixels don’t change, and percent is a part of the whole: fifty percent is half, one hundred is all.') },
-      { k: 'c', text: L3("Kvadrat uchun ikkalasi kerak: kenglik ham, balandlik ham.", 'Для квадрата нужны обе: и ширина, и высота.', 'A square needs both: the width and the height.') },
-      { k: 'd', text: L3("Buzilgan joylarni ham topasiz: px yozilmagan son va son bilan px o'rtasidagi bo'sh joy.", 'И находишь поломки: число без px и пробел между числом и px.', 'And you find broken spots: a number without px and a space between the number and px.') },
-      { k: null, text: L3("Keyingi darsda Box Model: elementlar ichidagi va atrofidagi bo'shliqlar hamda ramkalar. Ko'rishguncha!", 'На следующем уроке — Box Model: отступы внутри и вокруг элементов и рамки. До встречи!', 'Next lesson is the Box Model: space inside and around elements, and borders. See you!') }
+      { k: null, text: L3("O'yinimning beshta sahifasi ham yana joyiga tushdi, har biri o'z o'lchamida! Bularning hammasini siz yozgan CSS qildi.", 'Все пять страниц снова нужного размера! И всё это сделал твой CSS.', 'All five pages are the right size again! And your own CSS did all of it.') },
+      { k: 'a', text: L3("Endi bilasiz: width elementga kenglik beradi, height esa balandlik.", 'width задаёт ширину, а height — высоту.', 'width sets the width, and height sets the height.') },
+      { k: 'b', text: L3("Piksel doim bir xil qoladi, foiz esa butunning bir qismini oladi: ellik foiz yarmi bo'lsa, yuz foiz hammasi bo'ladi.", 'Пиксели не меняются, а проценты — часть целого: пятьдесят процентов — половина, сто — всё.', 'Pixels don’t change, and percent is a part of the whole: fifty percent is half, one hundred is all.') },
+      { k: 'c', text: L3("Qahramonni kvadrat qilganingiz esingizdami? Buning uchun ikkalasi kerak bo'ldi: kenglik ham, balandlik ham.", 'Для квадрата нужны обе: и ширина, и высота.', 'A square needs both: the width and the height.') },
+      { k: 'd', text: L3("Do'kondagi buzilgan joylarni ham topdingiz: px yozilmagan sonni va son bilan px o'rtasidagi bo'sh joyni.", 'И находишь поломки: число без px и пробел между числом и px.', 'And you find broken spots: a number without px and a space between the number and px.') },
+      { k: null, text: L3("Keyingi darsda Box Model bilan tanishamiz: elementning ichidagi va atrofidagi bo'shliqlarni, chegarasini ko'ramiz. Ko'rishguncha!", 'На следующем уроке — Box Model: отступы внутри и вокруг элементов и рамки. До встречи!', 'Next lesson is the Box Model: space inside and around elements, and borders. See you!') }
     ],
     roles: {
       a: L3("width, height", 'width, height', 'width, height'),

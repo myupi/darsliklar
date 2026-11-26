@@ -28,4 +28,7 @@ naborRedaktor(gen);
     'doctype|DOCTYPE|select|option|textarea|button|input|type|placeholder|label|form|text|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z7.src.jsx'), join(root, 'lessons/html/07-formy-vybor.jsx')], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z7.src.jsx'), join(root, 'lessons/html/07-formy-vybor.jsx')], { stdio: 'inherit' });
+}

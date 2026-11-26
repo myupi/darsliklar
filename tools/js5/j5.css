@@ -1,0 +1,91 @@
+/* ── Урок 5 JavaScript «Условия — 1 часть»: ветки, дверь, выбор строк (поверх j1.css … j4.css) ── */
+/* Пропущенная ветка — гаснет и зачёркнута тонко; у строки if — ответ условия справа */
+.r28 .kz-line.j5-skip { opacity: .34; text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); transition: opacity .3s; }
+.r28 .kz-line.j5-ct::after, .r28 .kz-line.j5-cf::after { margin-left: 10px; padding: 1px 7px; border-radius: 6px; font: 700 11.5px/1.5 var(--r-mono); vertical-align: 1px; animation: r28Pop .2s ease-out; }
+.r28 .kz-line.j5-ct::after { content: 'true'; background: rgba(34, 197, 94, .22); color: #86EFAC; }
+.r28 .kz-line.j5-cf::after { content: 'false'; background: rgba(248, 113, 113, .2); color: #FCA5A5; }
+/* Номер запуска в показах */
+.r28 .j5-runs { display: flex; gap: 6px; justify-content: center; }
+.r28 .j5-runs i { padding: 3px 10px; border-radius: 999px; background: #F3F4F6; font: 700 12px/1.3 var(--r-font); font-style: normal; color: #9CA3AF; }
+.r28 .j5-runs i.is-now { background: #FFF1EC; color: #FA4F28; box-shadow: inset 0 0 0 1.5px #FA4F28; }
+.r28 .j5-runs i.is-done { background: #ECFDF3; color: #15803D; }
+/* Правило над кодом */
+.r28 .j5-rule { padding: 6px 12px; border-left: 3px solid #FA4F28; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .06); font: 600 15px/1.35 var(--r-font); color: #1F2937; }
+/* Крючок: дверь, ключ, запуск */
+.r28 .j5-hookbar { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.r28 .j5-door { display: grid; place-items: center; width: 64px; height: 66px; border-radius: 12px; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.r28 .j5-door.is-shut { animation: kzShake .45s ease-in-out; }
+.r28 .j5-door.is-open { box-shadow: 0 0 0 3px rgba(229, 184, 0, .45), 0 0 22px rgba(229, 184, 0, .45); }
+.r28 .j5-door-svg .j5-door-p { transform-origin: 11px 40px; transition: transform .6s cubic-bezier(.2, .7, .2, 1); }
+.r28 .j5-door-svg.is-open .j5-door-p { transform: scaleX(.22); }
+.r28 .j5-keyb, .r28 .j5-runb { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 6px 16px 6px 8px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 2px 0 #E5B800, 0 4px 14px rgba(0, 0, 0, .08); font: 800 15px/1 var(--r-font); color: #111; cursor: pointer; }
+.r28 .j5-keyb i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #FEF9C3; color: #A16207; }
+.r28 .j5-keyb.is-have i { background: #DCFCE7; color: #15803D; }
+.r28 .j5-runb { padding: 6px 18px; background: #FA4F28; color: #fff; box-shadow: 0 3px 0 #C2370F; }
+.r28 .j5-keyb:disabled, .r28 .j5-runb:disabled { opacity: .5; cursor: default; }
+.r28 .j5-keyb.is-have:disabled { opacity: .85; }
+.r28 .j5-keyb.is-led, .r28 .j5-runb.is-led { animation: tlRing 1.4s ease-in-out infinite; }
+/* Сборка if из строк */
+.r28 .j5-lines { display: flex; flex-direction: column; gap: 7px; }
+.r28 .j5-lineb { display: block; width: 100%; min-height: 44px; padding: 8px 12px; border: 2px solid #E5E7EB; border-radius: 10px; background: #1E1E1E; text-align: left; font: 600 15px/1.3 var(--r-mono); color: #D4D4D4; cursor: pointer; transition: transform .15s, border-color .15s; }
+.r28 .j5-lineb:not(:disabled):hover { border-color: #FA4F28; transform: translateY(-1px); }
+.r28 .j5-lineb.is-used { opacity: .2; }
+.r28 .j5-lineb.is-bad { animation: kzShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .j5-lineb.is-led { border-color: #FA4F28; box-shadow: 0 0 0 3px rgba(250, 79, 40, .3); }
+.r28 .j5-lineb code { font: inherit; white-space: pre; }
+/* Выбор условия — варианты кодом */
+.r28 .j5-optc .j1-opt code { font: 700 16px/1.2 var(--r-mono); color: #111; }
+.r28 .j5-optc .j1-opt code .j2-var { color: #0E7490; }
+.r28 .j5-optc .j1-opt code .j1-num { color: #15803D; }
+.r28 .j5-optc .j1-opt code .j1-str { color: #B45309; }
+.r28 .j5-optc .j1-opt code .j1-punc { color: #374151; }
+/* Какие строки выполнятся — отмечаемые строки */
+.r28 .j5-pickcode .kz-line.j5-pickable { cursor: pointer; }
+.r28 .j5-pickcode .kz-line.j5-pickable:not(:disabled):hover { background: rgba(255, 255, 255, .06); }
+.r28 .j5-pickcode .kz-line.j5-sel { background: rgba(250, 79, 40, .22); box-shadow: inset 3px 0 0 #FA4F28; }
+.r28 .j5-pickcode .kz-line.j5-sel::before { content: '✓'; position: absolute; left: 6px; color: #FA4F28; font-weight: 800; }
+.r28 .j5-pickcode .kz-line { position: relative; }
+.r28 .j5-pickcode .kz-line.j5-brace { opacity: .7; }
+
+@media (max-width: 759px) {
+  .r28 .j5-rule { font-size: 13.5px; padding: 5px 10px; }
+  .r28 .j5-door { width: 52px; height: 54px; }
+  .r28 .j5-door svg { width: 44px; height: 50px; }
+  .r28 .j5-keyb, .r28 .j5-runb { min-height: 42px; font-size: 14px; }
+  .r28 .j5-keyb i { width: 30px; height: 30px; }
+  .r28 .j5-lineb { min-height: 40px; padding: 6px 10px; font-size: 13.5px; }
+  .r28 .j5-lines { gap: 5px; }
+  .r28 .kz-line.j5-ct::after, .r28 .kz-line.j5-cf::after { margin-left: 6px; font-size: 10.5px; }
+  .r28 .j5-runs i { font-size: 11px; padding: 2px 8px; }
+}
+@media (max-width: 759px) {
+  .r28 .j5-hook .j4-calc { display: none; }
+  .r28 .j5-optc { grid-template-columns: 1fr !important; gap: 6px; }
+  .r28 .j5-optc .j1-opt { min-height: 40px; padding: 6px 10px; }
+  .r28 .j5-optc .j1-opt code { font-size: 15px; white-space: nowrap; }
+}
+/* Маленький телефон (высота до 680): консоль ниже, без строки фильтра; пустой «Расчёт» не показывается */
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j1-scene .j1-con { min-height: 96px; }
+  .r28 .j1-scene .j1-con-bar { display: none; }
+  .r28 .j4-calc.is-empty { display: none; }
+  .r28 .j2-mem { padding: 4px 7px 6px; }
+  .r28 .j2-mem-h { display: none; }
+  .r28 .j5-optc .j1-opt { min-height: 34px; padding: 4px 10px; }
+  .r28 .j5-optc { gap: 4px; }
+  .r28 .j5-rule { font-size: 13px; padding: 4px 9px; }
+  .r28 .j5-door { width: 46px; height: 48px; }
+  .r28 .j5-door svg { width: 38px; height: 44px; }
+  .r28 .j5-keyb, .r28 .j5-runb { min-height: 38px; }
+  .r28 .j5-hookbar { gap: 8px; }
+}
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j5-optc.is-answered .j1-opt:not(.is-ok) { display: none; }
+  .r28 .j5-hookbar.is-done .j5-keyb, .r28 .j5-hookbar.is-done .j5-runb { display: none; }
+}
+@media (max-width: 759px) {
+  .r28 .j5-optc.is-answered .j1-opt:not(.is-ok) { display: none; }
+}
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j5-fillscene .j2-mem:has(.j2-mem-empty) { display: none; }
+}

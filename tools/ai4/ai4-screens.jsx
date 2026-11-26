@@ -245,7 +245,7 @@ function S14({ p }) {
   }, 'point', K5);
   return <TaskScreen p={p} c={c} T={T} rows={[fieldRow(T, 0, 0, c.phWhat, 60), fieldRow(T, 1, 1, c.phWhy, 90), fieldRow(T, 2, 2, c.phWho, 90), fieldRow(T, 3, 3, c.phIn, 120), fieldRow(T, 4, 4, c.phLook, 120)]} later={5} />;
 }
-const M3none = L3("«Ichida nima?» da blok topilmadi. Masalan: rasmlar, narxlar, aloqa.", 'В «Что внутри?» не найдено блоков. Например: фото, цены, контакты.', 'No blocks found in “What’s inside?”. For example: photos, prices, contact.');
+const M3none = L3("«Ichida nima?» qatorida birorta ham blok topilmadi. Masalan, rasmlar, narxlar, aloqa deb yozing.", 'В «Что внутри?» не найдено блоков. Например: фото, цены, контакты.', 'No blocks found in “What’s inside?”. For example: photos, prices, contact.');
 // Q1. ВЕРНО ИЛИ НЕТ — пять фраз урока.
 function Q1({ p }) {
   const pick = usePick();

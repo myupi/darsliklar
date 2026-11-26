@@ -75,10 +75,10 @@ const sitePage = (pick, file, mine) => {
   if (/^https:\/\//.test(wk)) {
     if (LANGS.some((l) => C.web.url[l] === wk) || wk === C.web.portal) return { title: pick(C.web.title), web: true, blocks: [
       { t: 'h1', parts: [pick(C.web.title)], k: 'h' }, { t: 'p', parts: [pick(C.web.sub)], k: 'p' }] };
-    return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nr)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nrText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
+    return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nr)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nrText, { u: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
   }
   // Честно: такого файла нет — браузер показывает свою страницу ошибки.
-  return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nf)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nfText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
+  return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nf)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nfText, { u: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
 };
 
 // Переходы в браузере экрана: адрес, история, «назад». files — какие файлы есть на «диске».

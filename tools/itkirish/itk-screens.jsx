@@ -375,14 +375,13 @@ function S4({ p }) {
           </div>
           <div className="itk-side">
             <div className="itk-code" translate="no">
-              <div className="itk-cl"><em>1</em><span><b className="v">wall</b> = <b className="n">{wall}</b>;</span><small>// {pick(c.cWall)}</small></div>
+              <div className="itk-cl"><em>1</em><span><b className="v itk-gw is-wall">wall<i>{pick(c.cWall)}</i></b> = <b className="n">{wall}</b>;</span></div>
               <div className="itk-cl is-edit"><em>2</em>
-                <span><b className="v">jump</b> =
+                <span><b className="v itk-gw is-jump">jump<i>{pick(c.cJump)}</i></b> =
                   <button type="button" data-v="minus" className="itk-step" disabled={!canTap || busy || j <= 1} onClick={() => step(-1)} aria-label="−">−</button>
                   <b className="n itk-jv">{j}</b>
                   <button type="button" data-v="plus" className={'itk-step' + (canTap && !busy && !solved && j <= wall ? ' is-led' : '')} disabled={!canTap || busy || j >= RG.J_MAX} onClick={() => step(1)} aria-label="+">+</button>;
                 </span>
-                <small>// {pick(c.cJump)}</small>
               </div>
             </div>
             <button type="button" data-v="play" className={'kz-btn is-coral itk-play' + (canTap && !busy && !solved && j > wall ? ' is-led' : '')} disabled={!canTap || busy} onClick={go}>
@@ -563,14 +562,31 @@ function S5({ p }) {
     }
     tm.current.push(setTimeout(() => { setRun(false); T.miss(c.short, sayNow); }, ms * (prog.length + 1)));
   };
+  // 26.11.2026 (отзыв: «не поняли, что стену нужно обходить»): путь виден до запуска — каждая стрелка ставит на поле
+  // пронумерованную точку; шаг в стену — стена краснеет с крестиком, шаг за край — крестик на последней клетке.
+  const pv = { at: {}, bad: '', out: '' };
+  if (!run && !boom && !win && prog.length) {
+    let [x, y] = M.start;
+    for (let i = 0; i < prog.length; i += 1) {
+      const [dx, dy] = DIRV[prog[i]];
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= M.w || ny >= M.h) { pv.out = x + ',' + y; break; }
+      if (M.walls.includes(nx + ',' + ny)) { pv.bad = nx + ',' + ny; break; }
+      x = nx; y = ny;
+      pv.at[x + ',' + y] = i + 1;
+      if (x === M.apple[0] && y === M.apple[1]) break;
+    }
+  }
   const cells = [];
   for (let y = 0; y < M.h; y += 1) for (let x = 0; x < M.w; x += 1) {
     const wl = M.walls.includes(x + ',' + y);
     const apple = x === M.apple[0] && y === M.apple[1];
     const st0 = x === M.start[0] && y === M.start[1];
     cells.push(
-      <span key={lv + ':' + x + ',' + y} className={'itk-cell' + ((x + y) % 2 ? ' is-alt' : '') + (wl ? ' is-wall' : '')}>
+      <span key={lv + ':' + x + ',' + y} className={'itk-cell' + ((x + y) % 2 ? ' is-alt' : '') + (wl ? ' is-wall' : '') + (pv.bad === x + ',' + y ? ' is-bad' : '')}>
         {wl ? <i className="itk-rock" /> : null}
+        {pv.at[x + ',' + y] && !apple ? <i className="itk-pv">{pv.at[x + ',' + y]}</i> : null}
+        {pv.bad === x + ',' + y || pv.out === x + ',' + y ? <i className="itk-x" /> : null}
         {st0 ? <i className="itk-start" /> : null}
         {trail.includes(x + ',' + y) && !apple ? <i className="itk-dot" /> : null}
         {apple && !win ? <i className="itk-apple"><ItkApple /></i> : null}
@@ -591,6 +607,10 @@ function S5({ p }) {
                 {boom ? <span className="itk-dizzy"><i /><i /><i /></span> : null}
                 {win ? <span className="itk-spark"><i /><i /><i /><i /><i /><i /></span> : null}
               </i>
+            </div>
+            <div className="itk-legend" aria-hidden="true">
+              <span><i className="itk-rock is-mini" />{pick(c.legWall)}</span>
+              <span><i className="itk-leg-apple"><ItkApple /></i>{pick(c.legApple)}</span>
             </div>
           </div>
           <div className="itk-ctl">

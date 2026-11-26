@@ -100,12 +100,12 @@ const C = {
   },
   s1: {
     eyebrow: L3("Sakraydigan tugma", 'Кнопка-прыгун', 'The jumpy button'),
-    say: L3("Salom! Esingizdami, o'tgan darsda tugmamni jonlantirdik? Endi sichqoncha ustiga kelsa, u o'sadi va to'q sariq bo'ladi. Lekin qarang: u birdaniga sakraydi, xuddi kadr tushib qolgandek. Haqiqiy saytlarda tugma silliq o'zgaradi. «Aylantirish» tugmasini bosing.",
+    say: L3("Salom! O'tgan darsda o'yinimdagi tugmani jonlantirganimiz esingizdami? Endi sichqoncha ustiga kelsa, u kattalashib, to'q sariq bo'lib qoladi. Lekin e'tibor bering: tugma birdaniga sakrab ketyapti, xuddi videodan kadr tushib qolgandek. Haqiqiy saytlarda esa tugmalar silliq o'zgaradi. Biznikini ham shunday qilish uchun «Aylantirish» tugmasini bosib ko'ring.",
       'Привет! Помнишь, на прошлом уроке мы оживили кнопку? Теперь под мышкой она растёт и становится оранжевой. Но смотри: она прыгает сразу, будто кадр пропал. На настоящих сайтах кнопка меняется плавно. Нажми «Превратить».',
       'Hi! Remember how we brought the button to life last lesson? Now it grows and turns orange under the mouse. But look: it jumps all at once, as if a frame went missing. On real sites a button changes smoothly. Tap “Transform”.'),
-    magic: L3("Mana! Endi tugma birdaniga emas, asta-sekin o'sadi va rangini o'zgartiradi. Sichqoncha ketganda esa xuddi shunday silliq qaytadi.", 'Вот! Теперь кнопка растёт и меняет цвет не сразу, а постепенно. А когда мышка уходит, так же плавно возвращается.', 'There! Now the button grows and changes color gradually, not all at once. And when the mouse leaves, it goes back just as smoothly.'),
-    magicP: L3("Buni transition qildi, ya'ni silliq o'tish degani. Pastdagi chiziqqa qarang: u o'zgarish qancha vaqt davom etganini ko'rsatadi.", 'Это сделал transition, то есть «плавный переход». Посмотри на полосу внизу: она показывает, сколько времени длится изменение.', 'transition did it, meaning a smooth change. Look at the bar at the bottom: it shows how long the change takes.'),
-    done: L3("Bugun tugmalarni silliq qilishni o'rganasiz. Lekin oldin topishmoq. Men birinchi marta transition qoidasini hover qoidasining ichiga yozgan edim. Menimcha, farqi yo'q: tugma baribir ikki tomonga ham silliq bo'ladi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+    magic: L3("Ana endi boshqa gap! Tugma sakramayapti: asta-sekin o'sib, rangini ham sekin almashtiryapti. Sichqoncha ketsa-chi? U xuddi shunday silliq kichrayib, joyiga qaytadi.", 'Вот! Теперь кнопка растёт и меняет цвет не сразу, а постепенно. А когда мышка уходит, так же плавно возвращается.', 'There! Now the button grows and changes color gradually, not all at once. And when the mouse leaves, it goes back just as smoothly.'),
+    magicP: L3("Tugmani transition degan xususiyat silliq qilib qo'ydi. Bu so'z inglizchada «o'tish» degani: tugma bir holatdan boshqasiga sakramay, silliq o'tadi. Pastdagi vaqt chizig'iga ham bir qarang-chi: u o'zgarish qancha davom etganini ko'rsatib turibdi.", 'Это сделал transition, то есть «плавный переход». Посмотри на полосу внизу: она показывает, сколько времени длится изменение.', 'transition did it, meaning a smooth change. Look at the bar at the bottom: it shows how long the change takes.'),
+    done: L3("Bugun siz ham tugmalarni xuddi shunday silliq qilishni o'rganasiz. Keling, bir garov o'ynaymiz! Men transition qatorini hover qoidasining ichiga yozib qo'ydim. Mening fikrimcha, uning joyi muhim emas: tugma kattalashganda ham, kichrayganda ham silliq bo'laveradi. Siz nima deysiz, garovni men yutamanmi? Dars oxirida sichqonchani tugmadan olib qochamiz-u, kim haq ekanini ko'ramiz.",
       'Сегодня ты научишься делать кнопки плавными. Но сначала загадка. В первый раз я написал transition внутри правила с hover. По-моему, разницы нет: кнопка всё равно будет плавной в обе стороны. Как думаешь, я прав? Ответ найдём вместе в конце урока.',
       'Today you’ll learn to make buttons smooth. But first, a riddle. The first time, I put transition inside the hover rule. I think it makes no difference: the button will still be smooth both ways. What do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
@@ -114,17 +114,17 @@ const C = {
   s2: {
     eyebrow: L3("transition", 'transition', 'transition'),
     help: [
-      L3("Tugmaga va pastdagi chiziqqa qarang: chiziq o'zgarish necha soniya davom etganini ko'rsatadi.", 'Посмотри на кнопку и на полосу внизу: полоса показывает, сколько секунд длится изменение.', 'Look at the button and the bar below: the bar shows how many seconds the change takes.'),
-      L3("transition o'zgarishni silliq qiladi. Unda ikki narsa yoziladi: qaysi xususiyat va necha soniya. Vaqt kam bo'lsa, tez.", 'transition делает изменение плавным. В нём пишут две вещи: какое свойство и сколько секунд. Меньше время — быстрее.', 'transition makes a change smooth. It says two things: which property and how many seconds. Less time means faster.'),
-      L3('Xonadagi chiroqni birdan yoqish va asta-sekin yoritishni solishtiring. transition chiroqni asta yoqqandek ishlaydi.', 'Сравни: свет в комнате включается сразу или разгорается постепенно. transition — как свет, который разгорается.', 'Compare a room light snapping on with one that fades up slowly. transition is like the light that fades up.')
+      L3("Tugmani va pastdagi vaqt chizig'ini birga kuzating. Tugma o'zgarayotganda chiziq to'lib boradi: u o'zgarish necha soniya davom etganini ko'rsatadi.", 'Посмотри на кнопку и на полосу внизу: полоса показывает, сколько секунд длится изменение.', 'Look at the button and the bar below: the bar shows how many seconds the change takes.'),
+      L3("Bu vaqtni transition belgilaydi. transition qatoriga ikki narsani yozamiz: silliq o'zgaradigan xususiyatni va necha soniya ketishini. Vaqt qancha qisqa bo'lsa, tugma shuncha tez o'zgaradi.", 'transition делает изменение плавным. В нём пишут две вещи: какое свойство и сколько секунд. Меньше время — быстрее.', 'transition makes a change smooth. It says two things: which property and how many seconds. Less time means faster.'),
+      L3("Xonadagi chiroqlarni ko'z oldingizga keltiring: biri bosishingiz bilan birdan yonadi, boshqasi esa asta-sekin yorishib boradi. transition tugmani xuddi o'sha ikkinchi chiroqdek o'zgartiradi.", 'Сравни: свет в комнате включается сразу или разгорается постепенно. transition — как свет, который разгорается.', 'Compare a room light snapping on with one that fades up slowly. transition is like the light that fades up.')
     ],
-    say: L3("transition qoidasida ikki narsa yoziladi: qaysi xususiyat silliq o'zgaradi va bu necha soniya davom etadi. Keling, ko'ramiz.",
+    say: L3("Keling, transition qanday yozilishini birga ko'rib chiqamiz. Unga ikki narsa yoziladi: qaysi xususiyat silliq o'zgaradi va bu necha soniya davom etadi. Qani, kuzatib turing!",
       'В правиле transition пишут две вещи: какое свойство меняется плавно и сколько секунд это длится. Давай посмотрим.',
       'A transition rule says two things: which property changes smoothly and how many seconds it takes. Let’s see.'),
-    sayJump: L3("Hozir transition yo'q. Tugma birdaniga sakraydi, chiziqda esa nol soniya: o'zgarish bir zumda bo'ldi.", 'Сейчас transition нет. Кнопка прыгает сразу, а на полосе ноль секунд: изменение случилось мгновенно.', 'Right now there’s no transition. The button jumps at once, and the bar shows zero seconds: the change was instant.'),
-    saySlow: L3("transform bir soniya: o'sish endi bir soniya davom etadi. Sekin va silliq. s harfi soniya degani.", 'transform одна секунда: рост теперь длится одну секунду. Медленно и плавно. Буква s — это секунды.', 'transform one second: growing now takes one second. Slow and smooth. The letter s means seconds.'),
-    sayFast: L3("Nol butun o'ndan uch soniya: tez, lekin baribir silliq. Odatda tugmalar uchun shunday qisqa vaqt tanlanadi. Yarim soniya esa nol butun o'ndan besh va s harfi bilan yoziladi.", "Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время. А полсекунды пишут как ноль целых пять десятых с буквой s.", "Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this. And half a second is written as zero point five with the letter s."),
-    done: L3("Demak, transition o'zgarishni silliq qiladi: oldin xususiyat, keyin vaqt yoziladi.", 'Значит, transition делает изменение плавным: сначала пишут свойство, потом время.', 'So transition makes a change smooth: first you write the property, then the time.'),
+    sayJump: L3("Hozircha kodda transition yo'q. Shuning uchun tugma birdaniga sakraydi, vaqt chizig'ida esa nol soniya turibdi: o'zgarish ko'z ochib-yumguncha bo'lib o'tdi.", 'Сейчас transition нет. Кнопка прыгает сразу, а на полосе ноль секунд: изменение случилось мгновенно.', 'Right now there’s no transition. The button jumps at once, and the bar shows zero seconds: the change was instant.'),
+    saySlow: L3("Endi transition qatoriga transform va bir soniya yozdik. Ko'rdingizmi? Tugma butun bir soniya davomida sekin, silliq o'syapti. Vaqtdan keyingi s harfi soniya degani.", 'transform одна секунда: рост теперь длится одну секунду. Медленно и плавно. Буква s — это секунды.', 'transform one second: growing now takes one second. Slow and smooth. The letter s means seconds.'),
+    sayFast: L3("Endi vaqtni nol butun o'ndan uch soniyaga qisqartiramiz. Tugma tez o'zgaryapti, lekin baribir silliq, sakramayapti. Tugmalar uchun odatda xuddi shunday qisqa vaqt tanlashadi. Yarim soniya-chi? U nol butun o'ndan besh va s harfi bilan yoziladi.", "Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время. А полсекунды пишут как ноль целых пять десятых с буквой s.", "Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this. And half a second is written as zero point five with the letter s."),
+    done: L3("Demak, transition o'zgarishni silliq qiladi. Unga oldin xususiyatni, keyin vaqtni yozamiz: vaqt qancha qisqa bo'lsa, o'zgarish shuncha tez bo'ladi.", 'Значит, transition делает изменение плавным: сначала пишут свойство, потом время.', 'So transition makes a change smooth: first you write the property, then the time.'),
     askStart: L3("Qarang: tugma sakraydi", 'Смотри: кнопка прыгает', 'Watch: the button jumps'),
     askJump: L3("Qarang: transition yo'q — 0s", 'Смотри: нет transition — 0s', 'Watch: no transition — 0s'),
     askSlow: L3("Qarang: 1s — sekin", 'Смотри: 1s — медленно', 'Watch: 1s is slow'),
@@ -133,27 +133,27 @@ const C = {
   },
   s3: {
     eyebrow: L3("Yarim soniya", 'Полсекунды', 'Half a second'),
-    say: L3("Endi navbat sizga. Tugma yarim soniyada silliq o'ssin: transform dan keyin vaqtni yozing.",
+    say: L3("Endi navbat sizga! O'yinimdagi tugma yarim soniyada silliq o'ssin. transform so'zidan keyingi bo'sh joyga vaqtni yozing.",
       'Теперь твоя очередь. Пусть кнопка плавно растёт за полсекунды: впиши время после transform.',
       'Now it’s your turn. Make the button grow smoothly in half a second: type the time after transform.'),
     msgs: {
-      empty: L3("Vaqtni yozing.", 'Впиши время.', 'Type the time.'),
-      comma: L3("Sonda vergul bor. CSS da kasr nuqta bilan yoziladi.", 'В числе запятая. В CSS дробь пишут через точку.', 'There’s a comma in the number. CSS writes decimals with a dot.'),
-      unit: L3("Son bor, lekin birlik yo'q. Soniya uchun s harfini qo'shing.", 'Число есть, а единицы нет. Добавь букву s — секунды.', 'There’s a number but no unit. Add the letter s for seconds.'),
-      bad: L3("Brauzer bu vaqtni tanimadi. Son va s harfini yozing.", 'Браузер не узнал это время. Напиши число и букву s.', 'The browser didn’t recognize that time. Write a number and the letter s.'),
-      other: L3("Bu boshqa vaqt. Yarim soniya kerak.", 'Это другое время. Нужно полсекунды.', 'That’s a different time. We need half a second.')
+      empty: L3("Maydon hali bo'sh turibdi. Bu yerga vaqtni yozing.", 'Впиши время.', 'Type the time.'),
+      comma: L3("Sonda vergul turibdi-ku. CSS kodida kasr son vergul bilan emas, nuqta bilan yoziladi.", 'В числе запятая. В CSS дробь пишут через точку.', 'There’s a comma in the number. CSS writes decimals with a dot.'),
+      unit: L3("Son yozilibdi, lekin birligi yo'q: brauzer bu soniyami yoki boshqa narsami, bilmay qoladi. Son yoniga s harfini qo'shing.", 'Число есть, а единицы нет. Добавь букву s — секунды.', 'There’s a number but no unit. Add the letter s for seconds.'),
+      bad: L3("Bunday vaqt brauzerga notanish ekan. Oldin sonni, keyin bo'sh joysiz s harfini yozib ko'ring.", 'Браузер не узнал это время. Напиши число и букву s.', 'The browser didn’t recognize that time. Write a number and the letter s.'),
+      other: L3("Bu boshqa vaqt chiqdi. Bizga esa roppa-rosa yarim soniya kerak.", 'Это другое время. Нужно полсекунды.', 'That’s a different time. We need half a second.')
     },
     hints: [
-      L3("Yarim soniya bu nol butun o'ndan besh degani.", 'Полсекунды — это ноль целых пять десятых.', 'Half a second is zero point five.'),
-      L3("Son nuqta bilan, oxirida s harfi.", 'Число через точку, в конце буква s.', 'A number with a dot, and the letter s at the end.'),
-      L3("Nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.", 'Впиши ноль, точка, пять и s, потом нажми «Проверить».', 'Type zero, dot, five and s, then tap Check.')
+      L3("Yarim soniya sonda qanday yozilarkin? U nol butun o'ndan besh bo'ladi.", 'Полсекунды — это ноль целых пять десятых.', 'Half a second is zero point five.'),
+      L3("Kasrni nuqta bilan yozing, son oxiriga esa s harfini qo'shing.", 'Число через точку, в конце буква s.', 'A number with a dot, and the letter s at the end.'),
+      L3("Nol, nuqta, besh, keyin s harfini yozing-da, «Tekshirish»ni bosing.", 'Впиши ноль, точка, пять и s, потом нажми «Проверить».', 'Type zero, dot, five and s, then tap Check.')
     ],
-    ok: L3("Zo'r! Tugma yarim soniyada silliq o'sadi. Chiziqqa qarang.", 'Огонь! Кнопка плавно растёт за полсекунды. Посмотри на полосу.', 'Awesome! The button grows smoothly in half a second. Look at the bar.'),
+    ok: L3("Zo'r! Tugma endi yarim soniyada silliq o'syapti. Vaqt chizig'iga qarang: u ham yarim soniyani ko'rsatyapti.", 'Огонь! Кнопка плавно растёт за полсекунды. Посмотри на полосу.', 'Awesome! The button grows smoothly in half a second. Look at the bar.'),
     ask: L3("Tugma yarim soniyada kattalashsin", "Пусть кнопка растёт за полсекунды", "Make the button grow in half a second")
   },
   s4: {
     eyebrow: L3("Qanday o'zgaradi?", 'Как изменится?', 'How will it change?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men qoida ko'rsataman, siz esa tugma qanday o'zgarishini tanlang: birdaniga, tez yoki sekin.",
+    say: L3("Men tugmaga to'rt xil vaqt yozib chiqdim. Har bir qoidani o'qing-da, tugma qanday o'zgarishini tanlang: birdaniga, tez yoki sekin.",
       'Теперь проверь себя. Я покажу правило, а ты выбери, как изменится кнопка: сразу, быстро или медленно.',
       'Now check yourself. I’ll show a rule, and you pick how the button will change: at once, fast or slow.'),
     ask: L3("Tugma qanday o'zgaradi?", 'Как изменится кнопка?', 'How will the button change?'),
@@ -162,31 +162,31 @@ const C = {
       fast: L3("Tez", 'Быстро', 'Fast'),
       slow: L3("Sekin", 'Медленно', 'Slow')
     },
-    hint1: L3("Vaqtga qarang: soniyami yoki millisoniyami?", 'Посмотри на время: секунды или миллисекунды?', 'Look at the time: seconds or milliseconds?'),
-    hint2: L3("Nol bo'lsa birdaniga, bir soniyadan kam bo'lsa tez, bir necha soniya bo'lsa sekin. Ming millisoniya esa bir soniya.", 'Ноль — сразу, меньше секунды — быстро, несколько секунд — медленно. Тысяча миллисекунд — одна секунда.', 'Zero is at once, under a second is fast, a few seconds is slow. A thousand milliseconds is one second.'),
+    hint1: L3("Qoidadagi vaqtni o'qing: u soniyada yozilganmi yoki millisoniyadami?", 'Посмотри на время: секунды или миллисекунды?', 'Look at the time: seconds or milliseconds?'),
+    hint2: L3("Vaqt nol bo'lsa, tugma birdaniga o'zgaradi. Bir soniyadan kam bo'lsa, tez, bir necha soniya bo'lsa, sekin o'zgaradi. Ming millisoniya esa bir soniyaga teng.", 'Ноль — сразу, меньше секунды — быстро, несколько секунд — медленно. Тысяча миллисекунд — одна секунда.', 'Zero is at once, under a second is fast, a few seconds is slow. A thousand milliseconds is one second.'),
     items: [
-      { code: '.tugma { transition: transform 3s; }', right: 'slow', why: L3("Uch soniya bu sekin.", 'Три секунды — это медленно.', 'Three seconds is slow.') },
-      { code: '.tugma { transition: transform 0.2s; }', right: 'fast', why: L3("Soniyaning beshdan biri, demak tez.", 'Одна пятая секунды — быстро.', 'A fifth of a second is fast.') },
-      { code: '.tugma { transition: transform 0s; }', right: 'jump', why: L3("Nol soniyada o'zgarish birdaniga bo'ladi.", 'Ноль секунд — изменение сразу.', 'Zero seconds means the change is instant.') },
-      { code: '.tugma { transition: transform 2000ms; }', right: 'slow', why: L3("Ikki ming millisoniya bu ikki soniya, demak sekin.", 'Две тысячи миллисекунд — это две секунды, то есть медленно.', 'Two thousand milliseconds is two seconds, so it’s slow.') }
+      { code: '.tugma { transition: transform 3s; }', right: 'slow', why: L3("Uch soniya tugma uchun ancha uzoq vaqt, shuning uchun u sekin o'zgaradi.", 'Три секунды — это медленно.', 'Three seconds is slow.') },
+      { code: '.tugma { transition: transform 0.2s; }', right: 'fast', why: L3("Nol butun o'ndan ikki soniya soniyaning beshdan bir qismi bo'ladi, xolos. Shuncha qisqa vaqtda tugma tez o'zgaradi.", 'Одна пятая секунды — быстро.', 'A fifth of a second is fast.') },
+      { code: '.tugma { transition: transform 0s; }', right: 'jump', why: L3("Vaqt nol soniya bo'lsa, silliqlikka joy qolmaydi: tugma birdaniga sakraydi.", 'Ноль секунд — изменение сразу.', 'Zero seconds means the change is instant.') },
+      { code: '.tugma { transition: transform 2000ms; }', right: 'slow', why: L3("Ikki ming millisoniya ikki soniya degani. Tugma shuncha vaqt davomida sekin-asta o'zgaradi.", 'Две тысячи миллисекунд — это две секунды, то есть медленно.', 'Two thousand milliseconds is two seconds, so it’s slow.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Vaqtni ko'rib, tezlikni bilasiz.", 'Всё верно! Ты по времени сразу видишь скорость.', 'All correct! You can tell the speed from the time.')
+    right: L3("To'ppa-to'g'ri!", 'Точно!', 'Exactly!'),
+    ok: L3("Vaqtni o'qib, tezlikni topishni o'rgandingiz! Endi ikki ming millisoniya ham sizni chalg'itolmaydi.", 'Всё верно! Ты по времени сразу видишь скорость.', 'All correct! You can tell the speed from the time.')
   },
   s5: {
     eyebrow: L3("Qaysi xususiyat?", 'Какое свойство?', 'Which property?'),
     help: [
-      L3("Tugmaning o'lchami va rangiga qarang: qaysi biri silliq, qaysi biri birdaniga o'zgaryapti?", 'Посмотри на размер и цвет кнопки: что меняется плавно, а что сразу?', 'Look at the button’s size and color: which changes smoothly, and which changes at once?'),
-      L3("transition faqat siz yozgan xususiyatni silliq qiladi. Hammasi kerak bo'lsa, all yoziladi.", 'transition делает плавным только то свойство, которое написано. Если нужно всё — пишут all.', 'transition only smooths the property you write. If you need everything, you write all.'),
-      L3("Pultda faqat ovozni sekin o'zgartirsangiz, kanal baribir birdaniga almashadi. transition da ham faqat aytilgan narsa silliq bo'ladi.", 'Если на пульте плавно менять только громкость, канал всё равно переключится сразу. В transition так же плавно только то, что названо.', 'If you smoothly change only the volume on a remote, the channel still switches at once. In transition, only what you name is smooth.')
+      L3("Tugmaning o'lchamiga, keyin rangiga alohida qarang-chi. Ulardan qaysi biri silliq o'zgaryapti-yu, qaysi biri birdaniga sakrayapti?", 'Посмотри на размер и цвет кнопки: что меняется плавно, а что сразу?', 'Look at the button’s size and color: which changes smoothly, and which changes at once?'),
+      L3("Nega bunday? Chunki transition faqat o'ziga yozilgan xususiyatni silliq qiladi, qolganlari esa oldingidek sakrayveradi. Hammasi silliq bo'lsin desangiz, all deb yozasiz.", 'transition делает плавным только то свойство, которое написано. Если нужно всё — пишут all.', 'transition only smooths the property you write. If you need everything, you write all.'),
+      L3("Ikki do'stingiz yugurib ketyapti. Siz faqat bittasini ismi bilan chaqirib, «Sekinroq!» dedingiz. Kim sekinlaydi? Faqat ismini aytganingiz-da. transition ham shunday: faqat nomi yozilgan xususiyat silliq o'zgaradi.", 'Если на пульте плавно менять только громкость, канал всё равно переключится сразу. В transition так же плавно только то, что названо.', 'If you smoothly change only the volume on a remote, the channel still switches at once. In transition, only what you name is smooth.')
     ],
-    say: L3("Sichqoncha ustida tugmada ikki narsa o'zgaradi: o'lchami va rangi. transition faqat siz yozgan xususiyatni silliq qiladi. Keling, ko'ramiz.",
+    say: L3("Sichqoncha kelganda tugmada ikkita narsa o'zgaradi: o'lchami va rangi. Lekin transition ikkalasini ham o'zi silliq qilib qo'ymaydi, faqat siz nomini yozgan xususiyatni silliq qiladi. Hozir ularni bittalab sinab ko'ramiz.",
       'Под мышкой у кнопки меняются две вещи: размер и цвет. transition делает плавным только то свойство, которое ты написал. Давай посмотрим.',
       'Under the mouse, two things change on the button: its size and its color. transition only smooths the property you write. Let’s see.'),
-    sayTf: L3("transform bir soniya: o'sish silliq, lekin rang birdaniga sakraydi. Chunki rang yozilmagan.", 'transform одна секунда: рост плавный, а цвет прыгает сразу. Ведь цвет не написан.', 'transform one second: the growing is smooth, but the color jumps at once. Because color isn’t written.'),
-    sayBg: L3("Endi background-color bir soniya: rang silliq, o'sish esa birdaniga.", 'Теперь background-color одна секунда: цвет плавный, а рост сразу.', 'Now background-color one second: the color is smooth, but the growing is instant.'),
-    sayAll: L3("all bir soniya: all ya'ni hammasi degani. Endi o'lcham ham, rang ham silliq o'zgaradi.", 'all одна секунда: all — то есть «всё». Теперь плавно меняются и размер, и цвет.', 'all one second: all means everything. Now both the size and the color change smoothly.'),
-    done: L3("Demak, transition da qaysi xususiyat yozilsa, o'shasi silliq bo'ladi. Hammasi kerak bo'lsa, all yoziladi.", 'Значит, плавным становится то свойство, которое написано в transition. Если нужно всё — пишут all.', 'So whichever property you write in transition becomes smooth. If you need everything, you write all.'),
+    sayTf: L3("Oldin transform va bir soniya yozdik. Ko'ryapsizmi? Tugma silliq o'syapti, rangi esa birdaniga sakrab o'zgaryapti. Chunki rang haqida transition qatorida hech narsa yozilmagan.", 'transform одна секунда: рост плавный, а цвет прыгает сразу. Ведь цвет не написан.', 'transform one second: the growing is smooth, but the color jumps at once. Because color isn’t written.'),
+    sayBg: L3("Endi transform o'rniga background-color qo'yamiz. Ana, endi aksincha: rang asta-sekin almashyapti, tugma esa birdaniga kattalashib ketyapti.", 'Теперь background-color одна секунда: цвет плавный, а рост сразу.', 'Now background-color one second: the color is smooth, but the growing is instant.'),
+    sayAll: L3("Ikkalasi ham silliq bo'lishi uchun bitta so'z yetadi: all, inglizchada «hammasi» degani. Endi o'lcham ham, rang ham birga, silliq o'zgaryapti!", 'all одна секунда: all — то есть «всё». Теперь плавно меняются и размер, и цвет.', 'all one second: all means everything. Now both the size and the color change smoothly.'),
+    done: L3("Xullas, transition qatorida qaysi xususiyat yozilsa, faqat o'shasi silliq o'zgaradi. Hammasi silliq bo'lsin desak, all yozamiz.", 'Значит, плавным становится то свойство, которое написано в transition. Если нужно всё — пишут all.', 'So whichever property you write in transition becomes smooth. If you need everything, you write all.'),
     askStart: L3("Qarang: o'lcham va rang", 'Смотри: размер и цвет', 'Watch: size and color'),
     askTf: L3("Qarang: faqat transform silliq", 'Смотри: плавный только transform', 'Watch: only transform is smooth'),
     askBg: L3("Qarang: faqat rang silliq", 'Смотри: плавный только цвет', 'Watch: only the color is smooth'),
@@ -195,59 +195,59 @@ const C = {
   },
   s6: {
     eyebrow: L3("Silliq rang", 'Плавный цвет', 'A smooth color'),
-    say: L3("Endi siz. Sichqoncha ustida tugmaning foni o'zgaradi. Fon rangi silliq o'zgarsin: o'sha xususiyat nomini yozing.",
+    say: L3("Bu safar tugmada faqat fon rangi o'zgaradi, lekin u birdaniga sakrayapti. Keling, uni silliq qilamiz: transition qatoriga fon rangi xususiyatining nomini yozing.",
       'Теперь ты. Под мышкой у кнопки меняется фон. Пусть цвет фона меняется плавно: впиши имя этого свойства.',
       'Your turn. Under the mouse, the button’s background changes. Make the background color change smoothly: type that property’s name.'),
     msgs: {
-      empty: L3("Xususiyat nomini yozing.", 'Впиши имя свойства.', 'Type the property name.'),
-      all: L3("all ham fon rangini silliq qiladi, boshqa hamma narsa bilan birga. Bu yerda esa faqat fon rangi xususiyatining nomini yozing: hover li qoidaga qarang.", "all тоже сделает цвет плавным — вместе со всем остальным. А здесь впиши только имя свойства цвета фона: посмотри на правило с hover.", "all would make the color smooth too, along with everything else. Here, type just the name of the background color property: look at the hover rule."),
-      color: L3("color bu matn rangi. O'zgarayotgani esa fon.", 'color — это цвет текста. А меняется фон.', 'color is the text color. What’s changing is the background.'),
-      tf: L3("transform bu yerda o'zgarmayapti. Hover qoidasiga qarang.", 'transform здесь не меняется. Посмотри на правило с hover.', 'transform isn’t changing here. Look at the hover rule.'),
-      value: L3("orange bu qiymat. Bu yerga xususiyat nomi kerak.", 'orange — это значение. А нужно имя свойства.', 'orange is a value. We need the property name.'),
-      typo: L3("Brauzer bunday xususiyatni bilmaydi. Yozilishini tekshiring.", 'Браузер не знает такого свойства. Проверь написание.', 'The browser doesn’t know that property. Check the spelling.'),
-      other: L3("Bu boshqa xususiyat. Fon rangi o'zgaryapti.", 'Это другое свойство. Меняется цвет фона.', 'That’s a different property. The background color is changing.')
+      empty: L3("Hali hech narsa yozilmabdi-ku. Bu yerga xususiyatning nomi kerak.", 'Впиши имя свойства.', 'Type the property name.'),
+      all: L3("all ham fon rangini silliq qiladi, lekin u bilan birga boshqa hamma narsa ham silliq bo'lib ketadi. Bu yerda esa faqat fon rangi kerak: hover qoidasiga qarang-da, o'sha xususiyatning nomini yozing.", "all тоже сделает цвет плавным — вместе со всем остальным. А здесь впиши только имя свойства цвета фона: посмотри на правило с hover.", "all would make the color smooth too, along with everything else. Here, type just the name of the background color property: look at the hover rule."),
+      color: L3("Oz qoldi! color harflarning rangini o'zgartiradi, bu tugmada esa matn emas, fon o'zgaryapti-ku.", 'color — это цвет текста. А меняется фон.', 'color is the text color. What’s changing is the background.'),
+      tf: L3("Bu safar tugma o'smayapti, shuning uchun transform hech narsani silliq qilmaydi. hover qoidasida nima o'zgarayotganini ko'ring.", 'transform здесь не меняется. Посмотри на правило с hover.', 'transform isn’t changing here. Look at the hover rule.'),
+      value: L3("Hechqisi yo'q! orange xususiyat emas, qiymat: fon shu rangga bo'yaladi. Bu yerga esa xususiyatning nomi kerak.", 'orange — это значение. А нужно имя свойства.', 'orange is a value. We need the property name.'),
+      typo: L3("CSS bunday xususiyatni bilmaydi. Harfma-harf tekshirib ko'ring, ikki so'z o'rtasidagi chiziqchani ham unutmang.", 'Браузер не знает такого свойства. Проверь написание.', 'The browser doesn’t know that property. Check the spelling.'),
+      other: L3("Bu boshqa xususiyat. Tugmada esa fon rangi o'zgaryapti, uning nomini hover qoidasidan topsa bo'ladi.", 'Это другое свойство. Меняется цвет фона.', 'That’s a different property. The background color is changing.')
     },
     hints: [
-      L3("Hover qoidasida qaysi xususiyat o'zgaryapti?", 'Какое свойство меняется в правиле с hover?', 'Which property changes in the hover rule?'),
-      L3("U yerda background-color yozilgan.", 'Там написано background-color.', 'It says background-color there.'),
-      L3("background-color deb yozing va Tekshirishni bosing.", 'Впиши background-color и нажми «Проверить».', 'Type background-color and tap Check.')
+      L3("hover qoidasini o'qib chiqing-chi: unda qaysi xususiyat o'zgaryapti?", 'Какое свойство меняется в правиле с hover?', 'Which property changes in the hover rule?'),
+      L3("U yerda background-color turibdi. transition qatoriga ham xuddi shu nom kerak.", 'Там написано background-color.', 'It says background-color there.'),
+      L3("background-color deb yozing-da, «Tekshirish»ni bosing.", 'Впиши background-color и нажми «Проверить».', 'Type background-color and tap Check.')
     ],
-    ok: L3("Ajoyib! Endi rang yarim soniyada silliq o'zgaradi.", 'Отлично! Теперь цвет плавно меняется за полсекунды.', 'Great! Now the color changes smoothly in half a second.'),
+    ok: L3("Ajoyib! Endi tugmaning foni yarim soniyada asta-sekin rangini almashtiryapti.", 'Отлично! Теперь цвет плавно меняется за полсекунды.', 'Great! Now the color changes smoothly in half a second.'),
     ask: L3("Fon rangi silliq o'zgarsin", 'Сделай плавным цвет фона', 'Make the background color smooth')
   },
   s7: {
     eyebrow: L3("Qaysi transition?", 'Какой transition?', 'Which transition?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men hover qoidasini ko'rsataman, siz esa uni silliq qiladigan transition ni tanlang.",
+    say: L3("Men tugma uchun uchta hover qoidasini yozdim, har birida boshqa narsa o'zgaradi. Qoidani o'qing-da, shu o'zgarishni silliq qiladigan transition qatorini tanlang.",
       'Теперь проверь себя. Я покажу правило с hover, а ты выбери transition, который сделает его плавным.',
       'Now check yourself. I’ll show a hover rule, and you pick the transition that makes it smooth.'),
     ask: L3("Qaysi transition bu o'zgarishni silliq qiladi?", 'Какой transition сделает это изменение плавным?', 'Which transition makes this change smooth?'),
-    hint1: L3("Hover qoidasida qaysi xususiyat o'zgaryapti?", 'Какое свойство меняется в правиле с hover?', 'Which property changes in the hover rule?'),
-    hint2: L3("transition da xuddi o'sha xususiyat nomi turishi kerak. Qiymat emas, nom.", 'В transition должно стоять имя того же свойства. Не значение, а имя.', 'transition must have the same property name. Not the value, the name.'),
+    hint1: L3("hover qoidasida ikki nuqtadan oldin qaysi so'z turibdi?", 'Какое свойство меняется в правиле с hover?', 'Which property changes in the hover rule?'),
+    hint2: L3("transition qatorida ham xuddi o'sha xususiyatning nomi turishi kerak. Qiymati emas, aynan nomi.", 'В transition должно стоять имя того же свойства. Не значение, а имя.', 'transition must have the same property name. Not the value, the name.'),
     rounds: [
       { hover: '.tugma:hover { transform: rotate(10deg); }', opts: ['color 0.5s', 'transform 0.5s', 'width 0.5s'], want: 'transform 0.5s',
-        why: L3("O'zgarayotgani transform, demak transition da ham transform.", 'Меняется transform — значит, и в transition transform.', 'transform is changing, so transition needs transform too.') },
+        why: L3("hover qoidasida transform o'zgaryapti, shuning uchun transition qatorida ham transform bo'lishi kerak.", 'Меняется transform — значит, и в transition transform.', 'transform is changing, so transition needs transform too.') },
       { hover: '.tugma:hover { color: white; }', opts: ['background-color 1s', 'transform 1s', 'color 1s'], want: 'color 1s',
-        why: L3("Matn rangi o'zgaryapti, uning nomi color.", 'Меняется цвет текста, то есть color.', 'The text color, that is color, is changing.') },
+        why: L3("Harflarning rangi o'zgaryapti, uni esa color xususiyati boshqaradi.", 'Меняется цвет текста, то есть color.', 'The text color, that is color, is changing.') },
       { hover: '.tugma:hover { background-color: gold; }', opts: ['gold 1s', 'background-color 1s', 'transform 1s'], want: 'background-color 1s',
-        why: L3("gold bu qiymat. transition qoidasiga xususiyat nomi kerak: background-color.", 'gold — это значение. В transition нужно имя свойства: background-color.', 'gold is a value. transition needs the property name: background-color.') }
+        why: L3("gold xususiyat emas, fonning yangi rangi. transition qatoriga esa xususiyatning nomi, background-color kerak.", 'gold — это значение. В transition нужно имя свойства: background-color.', 'gold is a value. transition needs the property name: background-color.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Qaysi xususiyatni silliq qilishni aniq bilasiz.", 'Всё верно! Ты точно знаешь, что делать плавным.', 'All correct! You know exactly what to make smooth.')
+    right: L3("Topdingiz!", 'Точно!', 'Exactly!'),
+    ok: L3("Uchala qoidani ham silliq qildingiz! Endi transition qatoriga qiymat emas, xususiyatning nomi yozilishini aniq bilasiz.", 'Всё верно! Ты точно знаешь, что делать плавным.', 'All correct! You know exactly what to make smooth.')
   },
   s8: {
     eyebrow: L3("Vaqt va tezlik", 'Время и скорость', 'Time and speed'),
     help: [
-      L3("Chiziqqa qarang: u bir xil tezlikda to'lyaptimi yoki avval sekin, keyin tez?", 'Посмотри на полосу: она заполняется с одинаковой скоростью или сначала медленно, потом быстро?', 'Look at the bar: does it fill at the same speed, or slow first and then fast?'),
-      L3('Vaqt soniyada yoki millisoniyada yoziladi: ming millisoniya bu bir soniya. linear tekis tezlik beradi, ease esa boshida va oxirida sekin.', 'Время пишут в секундах или миллисекундах: тысяча миллисекунд — одна секунда. linear даёт ровную скорость, ease — медленно в начале и в конце.', 'Time is written in seconds or milliseconds: a thousand milliseconds is one second. linear gives an even speed, ease is slow at the start and end.'),
-      L3("Mashina joyidan sekin qo'zg'aladi, keyin tezlashadi va to'xtashdan oldin sekinlashadi. Bu ease. Eskalator esa bir xil yuradi, bu linear.", 'Машина трогается медленно, разгоняется и тормозит перед остановкой — это ease. А эскалатор едет ровно — это linear.', 'A car starts slowly, speeds up and slows before stopping. That’s ease. An escalator moves evenly. That’s linear.')
+      L3("Vaqt chizig'i qanday to'lyapti: bir xil tezlikdami yoki oldin sekin, keyin tez?", 'Посмотри на полосу: она заполняется с одинаковой скоростью или сначала медленно, потом быстро?', 'Look at the bar: does it fill at the same speed, or slow first and then fast?'),
+      L3("Bunday farqni tezlik so'zi qiladi: linear bilan tugma boshidan oxirigacha bir xil yuradi, ease bilan esa boshida va oxirida sekinlashadi.", 'Время пишут в секундах или миллисекундах: тысяча миллисекунд — одна секунда. linear даёт ровную скорость, ease — медленно в начале и в конце.', 'Time is written in seconds or milliseconds: a thousand milliseconds is one second. linear gives an even speed, ease is slow at the start and end.'),
+      L3("Joyidan jilayotgan mashinani tasavvur qiling: u oldin sekin qo'zg'aladi, keyin tezlashadi, to'xtashdan oldin yana sekinlashadi. ease xuddi shunday yuradi. Eskalator esa boshidan oxirigacha bir xil tezlikda ketadi: linear ham shunday.", 'Машина трогается медленно, разгоняется и тормозит перед остановкой — это ease. А эскалатор едет ровно — это linear.', 'A car starts slowly, speeds up and slows before stopping. That’s ease. An escalator moves evenly. That’s linear.')
     ],
-    say: L3("Vaqtni boshqacha ham yozish mumkin, tezlikni ham tanlash mumkin. Keling, ko'ramiz. Hozir yarim soniya.",
+    say: L3("Topshiriqda ms bilan yozilgan vaqtni ko'rgandingiz, endi uni yaqinroq ko'ramiz. Keyin yana bir sirni ochamiz: tugma qanday tezlikda yurishini ham o'zimiz tanlay olarkanmiz. Hozircha tugmada tanish yarim soniya turibdi, kuzatib turing!",
       'Время можно записать и по-другому, а ещё можно выбрать скорость. Давай посмотрим. Сейчас полсекунды.',
       'You can write the time another way, and you can pick the speed too. Let’s see. Right now it’s half a second.'),
-    sayMs: L3("Besh yuz millisoniya ham xuddi yarim soniya. Millisoniya soniyaning mingdan biri degani. Tugma oldingidek o'zgaryapti.", 'Пятьсот миллисекунд — это те же полсекунды. Миллисекунда — это тысячная доля секунды. Кнопка меняется так же, как раньше.', 'Five hundred milliseconds is the same half a second. A millisecond is a thousandth of a second. The button changes just like before.'),
-    sayLinear: L3("Endi tugma ikki soniyada o'ngga suriladi. linear ya'ni tekis degani: tezlik boshidan oxirigacha bir xil. Chiziq ham tekis to'lyapti.", 'Теперь кнопка за две секунды сдвигается вправо. linear — то есть «ровно»: скорость от начала до конца одинаковая. И полоса заполняется ровно.', 'Now the button slides right over two seconds. linear means even: the speed is the same from start to end. The bar fills evenly too.'),
-    sayEase: L3("ease esa boshqacha: oldin sekin, o'rtada tez, oxirida yana sekin. Xuddi mashina joyidan qo'zg'alib, keyin to'xtagandek. Hech narsa yozmasangiz, brauzer o'zi ease ni oladi.", 'А ease по-другому: сначала медленно, в середине быстро, в конце опять медленно. Как машина, что трогается и останавливается. Если ничего не написать, браузер сам берёт ease.', 'ease is different: slow at first, fast in the middle, slow again at the end. Like a car starting off and then stopping. If you write nothing, the browser uses ease by itself.'),
-    done: L3("Demak, vaqt soniyada yoki millisoniyada yoziladi, tezlikni esa linear yoki ease tanlaydi.", 'Значит, время пишут в секундах или миллисекундах, а скорость выбирают linear или ease.', 'So time is written in seconds or milliseconds, and the speed is chosen with linear or ease.'),
+    sayMs: L3("Endi yarim soniya o'rniga besh yuz ms yozdik. ms bu millisoniya, soniyaning mingdan bir bo'lagi. Sezdingizmi? Tugma oldingidek o'zgaryapti, chunki besh yuz millisoniya xuddi o'sha yarim soniya.", 'Пятьсот миллисекунд — это те же полсекунды. Миллисекунда — это тысячная доля секунды. Кнопка меняется так же, как раньше.', 'Five hundred milliseconds is the same half a second. A millisecond is a thousandth of a second. The button changes just like before.'),
+    sayLinear: L3("Endi tugmani ikki soniyada o'ngga suramiz va oxiriga inglizchada «tekis» degan linear so'zini qo'shamiz. Ko'ryapsizmi? Tugma boshidan oxirigacha bir xil tezlikda yuryapti, vaqt chizig'i ham tekis to'lyapti.", 'Теперь кнопка за две секунды сдвигается вправо. linear — то есть «ровно»: скорость от начала до конца одинаковая. И полоса заполняется ровно.', 'Now the button slides right over two seconds. linear means even: the speed is the same from start to end. The bar fills evenly too.'),
+    sayEase: L3("Endi linear o'rniga ease. Farqini sezdingizmi? Tugma oldin sekin qo'zg'aladi, o'rtada tezlashadi, oxirida yana sekinlashadi, xuddi joyidan jilib, keyin to'xtayotgan mashinadek. Aytgancha, tezlikni umuman yozmasangiz, brauzer o'zi ease so'zini tanlaydi.", 'А ease по-другому: сначала медленно, в середине быстро, в конце опять медленно. Как машина, что трогается и останавливается. Если ничего не написать, браузер сам берёт ease.', 'ease is different: slow at first, fast in the middle, slow again at the end. Like a car starting off and then stopping. If you write nothing, the browser uses ease by itself.'),
+    done: L3("Shunday qilib, vaqtni soniyada ham, millisoniyada ham yozish mumkin. Tezlikni esa linear yoki ease so'zi belgilaydi: biri tekis yuradi, ikkinchisi sekin boshlab, sekin to'xtaydi.", 'Значит, время пишут в секундах или миллисекундах, а скорость выбирают linear или ease.', 'So time is written in seconds or milliseconds, and the speed is chosen with linear or ease.'),
     askStart: L3("Qarang: 0.5s", 'Смотри: 0.5s', 'Watch: 0.5s'),
     askMs: L3("Qarang: 500ms — bu 0.5s", 'Смотри: 500ms — это 0.5s', 'Watch: 500ms is 0.5s'),
     askLinear: L3("Qarang: linear — tekis", 'Смотри: linear — ровно', 'Watch: linear is even'),
@@ -256,56 +256,56 @@ const C = {
   },
   s9: {
     eyebrow: L3("Millisoniyada", 'В миллисекундах', 'In milliseconds'),
-    say: L3("Endi siz. Tugma bir soniyada o'zgarsin, lekin vaqtni millisoniyada yozing. Bir soniyada nechta millisoniya bor?",
+    say: L3("Endi bir sinab ko'ramiz: tugma bir soniyada o'zgarsin, lekin vaqtni millisoniyada yozing. O'ylab ko'ring-chi: bir soniyada nechta millisoniya bor ekan?",
       'Теперь ты. Пусть кнопка меняется за одну секунду, но время напиши в миллисекундах. Сколько миллисекунд в одной секунде?',
       'Your turn. Make the button change in one second, but write the time in milliseconds. How many milliseconds are in a second?'),
     msgs: {
-      empty: L3("Vaqtni yozing.", 'Впиши время.', 'Type the time.'),
-      unit: L3("Son bor, lekin birlik yo'q. Millisoniya uchun ms yoziladi.", 'Число есть, а единицы нет. Миллисекунды пишут ms.', 'There’s a number but no unit. Milliseconds are written ms.'),
-      sec: L3("To'g'ri, bu bir soniya! Lekin vazifa millisoniyada yozish edi.", 'Верно, это одна секунда! Но задание — написать в миллисекундах.', 'Right, that’s one second! But the task is to write it in milliseconds.'),
-      bad: L3("Brauzer bu vaqtni tanimadi. Son va ms yozing.", 'Браузер не узнал это время. Напиши число и ms.', 'The browser didn’t recognize that time. Write a number and ms.'),
-      other: L3("Bu boshqa vaqt. Bir soniya kerak.", 'Это другое время. Нужна одна секунда.', 'That’s a different time. We need one second.')
+      empty: L3("Maydon bo'sh qoldi. Bu yerga vaqtni millisoniyada yozing.", 'Впиши время.', 'Type the time.'),
+      unit: L3("Son bor-u, lekin birligi tushib qolibdi. Millisoniya uchun son yoniga ms harflarini qo'shing.", 'Число есть, а единицы нет. Миллисекунды пишут ms.', 'There’s a number but no unit. Milliseconds are written ms.'),
+      sec: L3("Ha, bu rostdan ham bir soniya! Lekin vazifa boshqacha edi-ku: vaqtni millisoniyada yozish kerak.", 'Верно, это одна секунда! Но задание — написать в миллисекундах.', 'Right, that’s one second! But the task is to write it in milliseconds.'),
+      bad: L3("Bu yozuvni brauzer vaqt deb tushunmadi. Sonni yozing-da, yoniga bo'sh joysiz ms qo'shing.", 'Браузер не узнал это время. Напиши число и ms.', 'The browser didn’t recognize that time. Write a number and ms.'),
+      other: L3("Bu vaqt bir soniyaga teng emas. Bizga esa aynan bir soniya kerak.", 'Это другое время. Нужна одна секунда.', 'That’s a different time. We need one second.')
     },
     hints: [
-      L3("Milli ming degani: soniyada ming millisoniya.", '«Милли» — это тысяча: в секунде тысяча миллисекунд.', 'Milli means thousand: a second has a thousand milliseconds.'),
-      L3("Ming soni va ms harflari.", 'Число тысяча и буквы ms.', 'The number one thousand and the letters ms.'),
-      L3("Bir, uchta nol va ms deb yozing, keyin Tekshirishni bosing.", 'Впиши единицу, три нуля и ms, потом нажми «Проверить».', 'Type one, three zeros and ms, then tap Check.')
+      L3("Bir soniyani mingta mayda bo'lakka bo'lsak, har bir bo'lagi bitta millisoniya bo'ladi.", '«Милли» — это тысяча: в секунде тысяча миллисекунд.', 'Milli means thousand: a second has a thousand milliseconds.'),
+      L3("Bir soniyada ming millisoniya bor. Shuning uchun ming sonini, yoniga esa ms harflarini yozing.", 'Число тысяча и буквы ms.', 'The number one thousand and the letters ms.'),
+      L3("Bir, keyin uchta nol va ms deb yozing-da, «Tekshirish»ni bosing.", 'Впиши единицу, три нуля и ms, потом нажми «Проверить».', 'Type one, three zeros and ms, then tap Check.')
     ],
-    ok: L3("Barakalla! Ming millisoniya bu bir soniya.", 'Молодец! Тысяча миллисекунд — это одна секунда.', 'Well done! A thousand milliseconds is one second.'),
+    ok: L3("Barakalla! Ming millisoniya xuddi bir soniyaning o'zi, tugma ham bir soniyada o'zgaryapti.", 'Молодец! Тысяча миллисекунд — это одна секунда.', 'Well done! A thousand milliseconds is one second.'),
     ask: L3("1 soniya millisoniyada", '1 секунда в миллисекундах', '1 second in milliseconds')
   },
   s10: {
     eyebrow: L3("Nimani o'zgartirish kerak?", 'Что поменять?', 'What to change?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Tugmada transform ikki soniya turibdi. Men vazifani aytaman, siz esa nimani yozish kerakligini tanlang.",
+    say: L3("O'yinchilar tugmam haqida har xil istak yozib yuborishdi. Hozir tugmada transform va ikki soniya turibdi. Har bir istakni o'qing-u, uni bajarish uchun transition qatoriga nima yozish kerakligini tanlang.",
       'Теперь проверь себя. У кнопки стоит transform две секунды. Я скажу задачу, а ты выбери, что нужно написать.',
       'Now check yourself. The button has transform two seconds. I’ll say a task, and you pick what to write.'),
     ask: L3("Buning uchun nima kerak?", 'Что для этого нужно?', 'What does this need?'),
     card: L3('Vazifa', 'Задача', 'Task'),
-    hint1: L3("Vazifa nima haqida: vaqtmi, xususiyatmi yoki tezlikmi?", 'О чём задача: о времени, о свойстве или о скорости?', 'What’s the task about: time, a property or speed?'),
-    hint2: L3("Vaqt kamroq bo'lsa, tezroq. linear bilan tezlik bir xil. all bilan hammasi silliq.", 'Меньше время — быстрее. linear — скорость одинаковая. all — плавное всё.', 'Less time is faster. linear keeps the speed the same. all makes everything smooth.'),
+    hint1: L3("O'yinchi nimani o'zgartirishni so'rayapti: vaqtnimi, xususiyatnimi yoki tezlikni?", 'О чём задача: о времени, о свойстве или о скорости?', 'What’s the task about: time, a property or speed?'),
+    hint2: L3("Vaqt qancha kam bo'lsa, tugma shuncha tez o'zgaradi. linear bilan tezlik boshidan oxirigacha bir xil bo'ladi, all bilan esa hammasi silliq o'zgaradi.", 'Меньше время — быстрее. linear — скорость одинаковая. all — плавное всё.', 'Less time is faster. linear keeps the speed the same. all makes everything smooth.'),
     items: [
-      { t: L3("Tugma tezroq o'zgarsin.", 'Кнопка должна меняться быстрее.', 'The button should change faster.'), right: '0.2s', why: L3("Vaqt kamroq bo'lsa, o'zgarish tezroq.", 'Чем меньше время, тем быстрее изменение.', 'The less time, the faster the change.') },
-      { t: L3("Faqat fon rangi silliq bo'lsin.", 'Плавным должен быть только цвет фона.', 'Only the background color should be smooth.'), right: 'background-color', why: L3("Fon rangi xususiyati background-color deyiladi.", 'Свойство цвета фона — background-color.', 'The background color property is background-color.') },
-      { t: L3("Tezlik boshidan oxirigacha bir xil bo'lsin.", 'Скорость должна быть одинаковой от начала до конца.', 'The speed should be the same from start to end.'), right: 'linear', why: L3("linear tekis tezlik beradi.", 'linear — ровная скорость.', 'linear is an even speed.') },
-      { t: L3("Hamma o'zgarishlar silliq bo'lsin.", 'Плавными должны быть все изменения.', 'All changes should be smooth.'), right: 'all', why: L3("all ya'ni hammasi degani.", 'all — значит «всё».', 'all means everything.') }
+      { t: L3("Tugma tezroq o'zgarsin.", 'Кнопка должна меняться быстрее.', 'The button should change faster.'), right: '0.2s', why: L3("Ikki soniya o'rniga kamroq vaqt yozsak, tugma tezroq o'zgaradi.", 'Чем меньше время, тем быстрее изменение.', 'The less time, the faster the change.') },
+      { t: L3("Faqat fon rangi silliq bo'lsin.", 'Плавным должен быть только цвет фона.', 'Only the background color should be smooth.'), right: 'background-color', why: L3("Fon rangini background-color xususiyati boshqaradi, uni transition qatoriga yozish kerak.", 'Свойство цвета фона — background-color.', 'The background color property is background-color.') },
+      { t: L3("Tezlik boshidan oxirigacha bir xil bo'lsin.", 'Скорость должна быть одинаковой от начала до конца.', 'The speed should be the same from start to end.'), right: 'linear', why: L3("linear tugmani boshidan oxirigacha bir xil, tekis tezlikda yurgizadi.", 'linear — ровная скорость.', 'linear is an even speed.') },
+      { t: L3("Hamma o'zgarishlar silliq bo'lsin.", 'Плавными должны быть все изменения.', 'All changes should be smooth.'), right: 'all', why: L3("all so'zining bitta o'zi hamma o'zgarishni silliq qiladi.", 'all — значит «всё».', 'all means everything.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! transition ni kerakli tomonga sozlay olasiz.", 'Всё верно! Ты умеешь настроить transition как нужно.', 'All correct! You can tune transition just the way you need.')
+    right: L3("Xuddi shunday!", 'Точно!', 'Exactly!'),
+    ok: L3("Hamma o'yinchilarning istagi bajarildi! transition qatorini endi kim nima so'rasa, shunga moslab sozlay olasiz.", 'Всё верно! Ты умеешь настроить transition как нужно.', 'All correct! You can tune transition just the way you need.')
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
     help: [
-      L3("Har safar kodga qarang: vaqtda s bormi, nuqta yoki vergulmi, xususiyat nomi to'g'rimi? Keyin chiziqqa qarang: nol soniyami?", 'Каждый раз смотри на код: есть ли s у времени, точка или запятая, верно ли имя свойства? Потом на полосу: там ноль секунд?', 'Each time, look at the code: does the time have s, a dot or a comma, is the property name right? Then the bar: is it zero seconds?'),
-      L3("Vaqtga s yoki ms kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.", 'Времени нужны s или ms, дробь пишут через точку, а имя свойства — буква в букву.', 'Time needs s or ms, decimals use a dot, and the property name must be right letter for letter.'),
-      L3('Taymerga «besh» deb aytsangiz, u besh soniyami yoki besh daqiqami bilmaydi. CSS ga ham birlikni aniq aytish kerak.', 'Если сказать таймеру просто «пять», он не поймёт: пять секунд или минут. CSS тоже надо точно назвать единицу.', 'Tell a timer just “five” and it won’t know if that’s seconds or minutes. CSS also needs the unit spelled out.')
+      L3("Tugma sakray boshlasa, oldin vaqt chizig'iga qarang: u nol soniyani ko'rsatyaptimi? Ko'rsatsa, transition qatoridagi vaqtni, nuqtani va xususiyat nomini ko'zdan kechiring.", 'Каждый раз смотри на код: есть ли s у времени, точка или запятая, верно ли имя свойства? Потом на полосу: там ноль секунд?', 'Each time, look at the code: does the time have s, a dot or a comma, is the property name right? Then the bar: is it zero seconds?'),
+      L3("Brauzer qoidani so'zma-so'z, harfma-harf o'qiydi. Vaqtda s yoki ms bo'lmasa, kasrda vergul tursa yoki xususiyat nomida bitta harf adashsa, u qoidani tushunmaydi va tugma yana sakraydi.", 'Времени нужны s или ms, дробь пишут через точку, а имя свойства — буква в букву.', 'Time needs s or ms, decimals use a dot, and the property name must be right letter for letter.'),
+      L3("Telefondagi taymerga shunchaki «besh» desangiz, u besh soniyami yoki besh daqiqami, bilmay qoladi. Brauzerga ham vaqtning birligini xuddi shunday aniq aytish kerak.", 'Если сказать таймеру просто «пять», он не поймёт: пять секунд или минут. CSS тоже надо точно назвать единицу.', 'Tell a timer just “five” and it won’t know if that’s seconds or minutes. CSS also needs the unit spelled out.')
     ],
-    say: L3("transition da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: yarim soniya, silliq.",
+    say: L3("O'yinchilar «bag» deydigan narsani bilasizmi? Bu o'yindagi buzilish. Hozir tugmamga ataylab uchta bag qo'yaman: transition qatorini uch xil usulda buzaman. Hozircha tugma yarim soniyada silliq o'syapti. U qachon sakray boshlarkin, kuzatib turing!",
       'И в transition бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: полсекунды, плавно.',
       'transition has mistakes too. Let’s look at three. Right now everything is correct: half a second, smooth.'),
-    sayUnit: L3("Birinchisi: sondan keyin s harfi yo'q. Brauzer qoidani tashlab yubordi, tugma yana sakraydi.", 'Первая: после числа нет буквы s. Браузер выбросил правило, кнопка снова прыгает.', 'The first: there’s no s after the number. The browser threw the rule away, and the button jumps again.'),
-    sayComma: L3("Ikkinchisi: nuqta o'rniga vergul. Biz sonlarni vergul bilan yozishga o'rganganmiz, lekin CSS faqat nuqtani tushunadi.", 'Вторая: запятая вместо точки. Мы привыкли писать дроби через запятую, но CSS понимает только точку.', 'The second: a comma instead of a dot. Some of us write decimals with a comma, but CSS only understands a dot.'),
-    sayTypo: L3("Uchinchisi ayyorroq: transform so'zida harflar almashib qolgan. Brauzer qoidani xato demaydi, lekin bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi.", 'Третья — хитрее: в слове transform переставлены буквы. Браузер не считает правило ошибкой, но такого свойства нет, поэтому плавным не становится ничего.', 'The third is sneakier: letters in the word transform are swapped. The browser doesn’t call the rule a mistake, but there’s no such property, so nothing becomes smooth.'),
-    done: L3("Demak, vaqtga s yoki ms kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.", 'Значит, у времени нужны s или ms, дробь пишут через точку, а имя свойства — буква в букву.', 'So time needs s or ms, decimals use a dot, and the property name must be right letter for letter.'),
+    sayUnit: L3("Birinchi bag: sondan keyin s harfini olib tashladim. Brauzer bu vaqtni tushunmadi va qoidani o'tkazib yubordi. Ana, tugma yana sakrab qoldi!", 'Первая: после числа нет буквы s. Браузер выбросил правило, кнопка снова прыгает.', 'The first: there’s no s after the number. The browser threw the rule away, and the button jumps again.'),
+    sayComma: L3("Ikkinchi bag: s joyida, lekin nuqta o'rniga vergul qo'ydim. Maktabda kasrni vergul bilan yozamiz-ku, CSS esa faqat nuqtani tushunadi. Shuning uchun tugma bu safar ham sakrayapti.", 'Вторая: запятая вместо точки. Мы привыкли писать дроби через запятую, но CSS понимает только точку.', 'The second: a comma instead of a dot. Some of us write decimals with a comma, but CSS only understands a dot.'),
+    sayTypo: L3("Uchinchi bag eng ayyori: transform so'zida ikkita harfning o'rnini almashtirdim. Brauzer qoidani qabul qiladi-yu, lekin bunday nomli xususiyatni topolmaydi. Shuning uchun hech narsa silliq bo'lmaydi.", 'Третья — хитрее: в слове transform переставлены буквы. Браузер не считает правило ошибкой, но такого свойства нет, поэтому плавным не становится ничего.', 'The third is sneakier: letters in the word transform are swapped. The browser doesn’t call the rule a mistake, but there’s no such property, so nothing becomes smooth.'),
+    done: L3("Demak, uchala bag ham transition qatorida yashiringan edi: vaqtning birligida, kasrdagi nuqtada va xususiyatning nomida. Shu uchtasi joyida bo'lsa, tugma sakramaydi.", 'Значит, у времени нужны s или ms, дробь пишут через точку, а имя свойства — буква в букву.', 'So time needs s or ms, decimals use a dot, and the property name must be right letter for letter.'),
     askStart: L3("Qarang: 0.5s — silliq", 'Смотри: 0.5s — плавно', 'Watch: 0.5s is smooth'),
     askUnit: L3("Qarang: s yo'q", 'Смотри: нет s', 'Watch: no s'),
     askComma: L3("Qarang: vergul", 'Смотри: запятая', 'Watch: a comma'),
@@ -314,134 +314,134 @@ const C = {
   },
   s12: {
     eyebrow: L3("Tuzating", 'Исправь', 'Fix it'),
-    say: L3("Voy, men tugmani yarim soniyada silliq qilmoqchi edim, lekin u sakrayapti! Maydonda mening qiymatim turibdi. Xatoni toping va tuzating.",
+    say: L3("Yana bir bag! O'yinchilar tugma hali ham sakrayapti, deb yozishyapti. Maydondagi qiymatni qarab chiqing-chi: bagni topib, tuzatib bering.",
       'Ой, я хотел, чтобы кнопка менялась плавно за полсекунды, а она прыгает! В поле — моё значение. Найди ошибку и исправь.',
       'Oops, I wanted the button to change smoothly in half a second, but it jumps! My value is in the field. Find the mistake and fix it.'),
     msgs: {
-      empty: L3("Qiymatni yozing.", 'Впиши значение.', 'Type the value.'),
-      comma: L3("Sonda hali vergul turibdi. Uni nuqtaga almashtiring.", 'В числе всё ещё запятая. Замени её на точку.', 'There’s still a comma in the number. Change it to a dot.'),
-      unit: L3("Vaqtga s harfi kerak.", 'Времени нужна буква s.', 'The time needs the letter s.'),
-      typo: L3("Xususiyat nomi buzildi. transform deb yozing.", 'Имя свойства сломалось. Напиши transform.', 'The property name broke. Write transform.'),
-      bad: L3("Brauzer bu qiymatni tanimadi. Xususiyat va vaqtni tekshiring.", 'Браузер не узнал это значение. Проверь свойство и время.', 'The browser didn’t recognize that value. Check the property and the time.'),
-      other: L3("Bu boshqa qiymat. Faqat vergulni nuqtaga almashtiring.", 'Это другое значение. Просто замени запятую на точку.', 'That’s a different value. Just change the comma to a dot.')
+      empty: L3("Hech narsa qolmadi-ku! transition qiymatini qaytadan yozing: xususiyat va vaqt.", 'Впиши значение.', 'Type the value.'),
+      comma: L3("Sonda hali ham vergul turibdi. Uni nuqtaga almashtiring, shunda brauzer tushunadi.", 'В числе всё ещё запятая. Замени её на точку.', 'There’s still a comma in the number. Change it to a dot.'),
+      unit: L3("Endi s harfi tushib qolibdi. Son oxiriga s harfini qaytaring.", 'Времени нужна буква s.', 'The time needs the letter s.'),
+      typo: L3("Xususiyatning nomi buzilib qolibdi-ku. Uni harfma-harf transform deb yozing.", 'Имя свойства сломалось. Напиши transform.', 'The property name broke. Write transform.'),
+      bad: L3("Brauzer bu qiymatni tushunmadi. Xususiyat nomini ham, vaqtni ham bir tekshirib ko'ring.", 'Браузер не узнал это значение. Проверь свойство и время.', 'The browser didn’t recognize that value. Check the property and the time.'),
+      other: L3("Qiymat boshqacha bo'lib qoldi. Qolganiga tegmang, faqat vergulni nuqtaga almashtiring.", 'Это другое значение. Просто замени запятую на точку.', 'That’s a different value. Just change the comma to a dot.')
     },
     hints: [
-      L3("Sonning o'rtasiga qarang.", 'Посмотри на середину числа.', 'Look at the middle of the number.'),
-      L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi.", 'В CSS дробь пишут не через запятую, а через точку.', 'In CSS decimals use a dot, not a comma.'),
-      L3("transform, bo'sh joy, nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.", 'Впиши transform, пробел, ноль, точка, пять и s, потом нажми «Проверить».', 'Type transform, space, zero, dot, five and s, then tap Check.')
+      L3("Sonning o'rtasiga diqqat bilan qarang: u yerda qanday belgi turibdi?", 'Посмотри на середину числа.', 'Look at the middle of the number.'),
+      L3("CSS kodida kasr vergul bilan emas, nuqta bilan yoziladi.", 'В CSS дробь пишут не через запятую, а через точку.', 'In CSS decimals use a dot, not a comma.'),
+      L3("transform, bo'sh joy, keyin nol, nuqta, besh va s deb yozing-da, «Tekshirish»ni bosing.", 'Впиши transform, пробел, ноль, точка, пять и s, потом нажми «Проверить».', 'Type transform, space, zero, dot, five and s, then tap Check.')
     ],
-    ok: L3("Ura, ishladi! Tugma yana silliq.", 'Ура, заработало! Кнопка снова плавная.', 'Hooray, it works! The button is smooth again.'),
+    ok: L3("Bag yo'qoldi! Vergul o'rnida endi nuqta, tugma ham yana silliq o'syapti.", 'Ура, заработало! Кнопка снова плавная.', 'Hooray, it works! The button is smooth again.'),
     ask: L3("Qiymatni tuzating", 'Исправь значение', 'Fix the value')
   },
   s13: {
     eyebrow: L3('Xatoni toping', 'Найди ошибку', 'Find the bug'),
-    say: L3("Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasi ishlamayapti. Sahifaga va chiziqqa qarang, keyin o'sha qoidani bosing.",
+    say: L3("O'yinda yana bag paydo bo'ldi! Kodda uchta qoida bor, bag ulardan birida yashiringan. Tugmaga va vaqt chizig'iga qarab, bag qaysi qoidada ekanini toping-da, o'sha qoidani bosing.",
       'Теперь проверь себя. В коде три правила, но одно не работает. Посмотри на страницу и на полосу, потом нажми это правило.',
       'Now check yourself. There are three rules in the code, but one doesn’t work. Look at the page and the bar, then tap that rule.'),
-    say2: L3("Zo'r, birinchisi topildi! Endi boshqa joy buzildi. Qaysi qoida ishlamayapti?", 'Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?', 'Great, the first one is found! Now something else broke. Which rule doesn’t work?'),
+    say2: L3("Bitta bag ushlandi, lekin o'yinchilar yangisini topib kelishdi! Endi bag boshqa qoidaga yashirinibdi. Qani, bu safar qaysi birida ekan?", 'Класс, первая найдена! Теперь сломалось другое. Какое правило не работает?', 'Great, the first one is found! Now something else broke. Which rule doesn’t work?'),
     ask: L3('Ishlamayotgan qoidani bosing', 'Нажми правило, которое не работает', 'Tap the rule that doesn’t work'),
-    fine: L3("Bu qoida ishlayapti: sahifada uning izi bor. Qaysi narsa kod aytgandek emas?", 'Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?', 'This rule works: you can see what it did on the page. What doesn’t match the code?'),
+    fine: L3("Bu qoidada bag yo'q: u nima desa, sahifada shu bo'lyapti. Sahifadagi qaysi narsa kodda yozilgandek emas?", 'Это правило работает: на странице видно, что оно сделало. Что не так, как в коде?', 'This rule works: you can see what it did on the page. What doesn’t match the code?'),
     found: {
-      unit: L3("Topdingiz! Vaqtda s harfi yo'q edi.", 'Есть! У времени не было буквы s.', 'Found it! The time had no s.'),
-      typo: L3("Topdingiz! transform so'zida harflar almashgan edi.", 'Есть! В слове transform были переставлены буквы.', 'Found it! The letters in transform were swapped.')
+      unit: L3("Topdingiz! Vaqtda s harfi tushib qolgan ekan, shuning uchun tugma sakrayotgan edi.", 'Есть! У времени не было буквы s.', 'Found it! The time had no s.'),
+      typo: L3("Ana, ushladingiz! transform so'zida ikkita harf joyini almashtirib olgan ekan.", 'Есть! В слове transform были переставлены буквы.', 'Found it! The letters in transform were swapped.')
     },
-    hint1: L3("Chiziqqa qarang: tugma silliq o'zgaryaptimi?", 'Посмотри на полосу: кнопка меняется плавно?', 'Look at the bar: does the button change smoothly?'),
+    hint1: L3("Oldin vaqt chizig'iga ko'z tashlang: tugma silliq o'zgaryaptimi yoki sakrayaptimi?", 'Посмотри на полосу: кнопка меняется плавно?', 'Look at the bar: does the button change smoothly?'),
     hint2: {
-      unit: L3("Chiziqda nol soniya. transition qatoridagi vaqtni tekshiring.", 'На полосе ноль секунд. Проверь время в строке transition.', 'The bar shows zero seconds. Check the time in the transition line.'),
-      typo: L3("Chiziqda nol soniya. transition qatoridagi xususiyat nomini tekshiring.", 'На полосе ноль секунд. Проверь имя свойства в строке transition.', 'The bar shows zero seconds. Check the property name in the transition line.')
+      unit: L3("Vaqt chizig'ida nol soniya turibdi, demak, silliq o'tish yo'q. transition qatoridagi vaqtga qarang.", 'На полосе ноль секунд. Проверь время в строке transition.', 'The bar shows zero seconds. Check the time in the transition line.'),
+      typo: L3("Vaqt chizig'i yana nol soniyani ko'rsatyapti. Bu safar transition qatoridagi xususiyatning nomini harfma-harf o'qib chiqing.", 'На полосе ноль секунд. Проверь имя свойства в строке transition.', 'The bar shows zero seconds. Check the property name in the transition line.')
     },
     hint3: {
-      unit: L3("Xato ikkinchi qoidada: vaqtda s yo'q. O'sha qatorni bosing.", 'Ошибка во втором правиле: у времени нет s. Нажми эту строку.', 'The bug is in the second rule: the time has no s. Tap that line.'),
-      typo: L3("Xato uchinchi qoidada: transfrom. O'sha qatorni bosing.", 'Ошибка в третьем правиле: transfrom. Нажми эту строку.', 'The bug is in the third rule: transfrom. Tap that line.')
+      unit: L3("Bag ikkinchi qoidada: vaqtda s harfi yo'q. O'sha qatorni bosing.", 'Ошибка во втором правиле: у времени нет s. Нажми эту строку.', 'The bug is in the second rule: the time has no s. Tap that line.'),
+      typo: L3("Bag uchinchi qoidada: u yerda transform o'rniga transfrom yozilgan. O'sha qatorni bosing.", 'Ошибка в третьем правиле: transfrom. Нажми эту строку.', 'The bug is in the third rule: transfrom. Tap that line.')
     },
-    ok: L3("Super! Ikkalasi ham topildi. Siz silliq effektlarni haqiqiy dasturchi kabi tekshiryapsiz.", 'Супер! Обе найдены. Ты проверяешь плавные эффекты как настоящий разработчик.', 'Super! Both found. You check smooth effects like a real developer.')
+    ok: L3("Ikkinchi bag ham qo'lga tushdi! Bundan keyin transition ishlamay qolsa, birinchi navbatda vaqt chizig'iga qaraysiz: nol soniya bo'lsa, bag transition qatorida.", 'Супер! Обе найдены. Ты проверяешь плавные эффекты как настоящий разработчик.', 'Super! Both found. You check smooth effects like a real developer.')
   },
   w1: {
     eyebrow: L3("Qoidani o'zingiz yozing", 'Напиши правило целиком', 'Write the rule yourself'),
-    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Hover qoidasi tayyor. Tugmaning o'zi uchun qoida yozing: transform nol butun o'ndan uch soniyada silliq o'zgarsin.",
+    say: L3("O'yin menyusiga yangi tugma qo'shyapman, uning hover qoidasini yozib qo'ydim. Tugmaning o'z qoidasini esa boshidan oxirigacha siz yozasiz: transform nol butun o'ndan uch soniyada silliq o'zgarsin.",
       'Теперь напиши правило целиком. Правило с hover уже готово. Напиши правило для самой кнопки: пусть transform меняется плавно за ноль целых три десятых секунды.',
       'Now write the whole rule yourself. The hover rule is ready. Write a rule for the button itself: make transform change smoothly in zero point three seconds.'),
     msgs: {
-      empty: L3("Qoidani yozing: oldin selektor, keyin figurali qavslar ichida xususiyat va qiymat.", 'Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.', 'Write the rule: first the selector, then the property and value inside curly braces.'),
-      braces: L3("Qoidaga figurali qavslar kerak: ochuvchi va yopuvchi.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
-      colon: L3("Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", 'Между свойством и значением нет двоеточия.', 'There’s no colon between the property and the value.'),
-      hoverSel: L3("transition ni tugmaning o'z qoidasiga yozamiz, hover siz. Nega bunday, dars oxirida ko'rasiz.", 'transition пишем в правило самой кнопки, без hover. Почему так — увидишь в конце урока.', 'We put transition in the button’s own rule, without hover. You’ll see why at the end of the lesson.'),
-      sel: L3("Selektor: nuqta va tugma klassi.", 'Селектор: точка и класс кнопки.', 'The selector: a dot and the button’s class.'),
-      prop: L3("Silliq o'tishni transition xususiyati beradi.", 'Плавный переход задаёт свойство transition.', 'The transition property makes the change smooth.'),
-      comma: L3("Sonda vergul bor. Kasr nuqta bilan yoziladi.", 'В числе запятая. Дробь пишут через точку.', 'There’s a comma in the number. Decimals use a dot.'),
-      typo: L3("Xususiyat nomini tekshiring: transform.", 'Проверь имя свойства: transform.', 'Check the property name: transform.'),
-      which: L3("Hover da transform o'zgaradi, demak transition da ham transform.", 'Под hover меняется transform, значит, и в transition — transform.', 'transform changes on hover, so transition needs transform too.'),
-      unit: L3("Vaqtga s harfi kerak.", 'Времени нужна буква s.', 'The time needs the letter s.'),
-      bad: L3("Brauzer bu qiymatni tanimadi. Xususiyat va vaqtni tekshiring.", 'Браузер не узнал это значение. Проверь свойство и время.', 'The browser didn’t recognize that value. Check the property and the time.'),
-      other: L3("Vaqt boshqa. Nol butun o'ndan uch soniya kerak.", 'Время другое. Нужно ноль целых три десятых секунды.', 'The time is different. We need zero point three seconds.'),
-      all: L3("all ham ishlaydi, lekin bu yerda aynan transform so'ralgan: uni yozing.", "all тоже сработает, но здесь просили именно transform — напиши его.", "all would work too, but here we asked for transform: write it.")
+      empty: L3("Qoida selektordan boshlanadi, xususiyat bilan qiymat esa jingalak qavslar ichiga yoziladi. Shu tartibda yozib ko'ring.", 'Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.', 'Write the rule: first the selector, then the property and value inside curly braces.'),
+      braces: L3("Jingalak qavslar tushib qolibdi. Selektordan keyin ochuvchisini, qoida oxirida yopuvchisini qo'ying.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
+      colon: L3("Xususiyat bilan qiymat o'rtasida ikki nuqta tushib qolibdi.", 'Между свойством и значением нет двоеточия.', 'There’s no colon between the property and the value.'),
+      hoverSel: L3("Bu safar tugmaning o'z qoidasini yozyapmiz, shuning uchun selektorda hover bo'lmasin.", 'transition пишем в правило самой кнопки, без hover. Почему так — увидишь в конце урока.', 'We put transition in the button’s own rule, without hover. You’ll see why at the end of the lesson.'),
+      sel: L3("Tugmani topish uchun selektorga nuqta va tugma so'zi kerak.", 'Селектор: точка и класс кнопки.', 'The selector: a dot and the button’s class.'),
+      prop: L3("Silliq o'tishni faqat transition xususiyati qila oladi.", 'Плавный переход задаёт свойство transition.', 'The transition property makes the change smooth.'),
+      comma: L3("Yana o'sha vergul! Kasr nuqta bilan yozilishi esingizdami?", 'В числе запятая. Дробь пишут через точку.', 'There’s a comma in the number. Decimals use a dot.'),
+      typo: L3("Xususiyatning nomini harfma-harf tekshiring: u transform bo'lishi kerak.", 'Проверь имя свойства: transform.', 'Check the property name: transform.'),
+      which: L3("hover qoidasiga qarang: u yerda tugmaning transform xususiyati o'zgaradi. transition qatoriga ham aynan shu nom kerak.", 'Под hover меняется transform, значит, и в transition — transform.', 'transform changes on hover, so transition needs transform too.'),
+      unit: L3("Vaqtning oxirida s harfi yo'q ekan, uni qo'shing.", 'Времени нужна буква s.', 'The time needs the letter s.'),
+      bad: L3("Brauzer bu qiymatni o'qiy olmadi. Oldin xususiyat nomi, keyin vaqt turganini tekshiring.", 'Браузер не узнал это значение. Проверь свойство и время.', 'The browser didn’t recognize that value. Check the property and the time.'),
+      other: L3("Vaqt boshqacha chiqdi. Bizga nol butun o'ndan uch soniya kerak edi.", 'Время другое. Нужно ноль целых три десятых секунды.', 'The time is different. We need zero point three seconds.'),
+      all: L3("all bilan ham ishlaydi, lekin vazifada aynan transform so'ralgan. all o'rniga transform yozing.", "all тоже сработает, но здесь просили именно transform — напиши его.", "all would work too, but here we asked for transform: write it.")
     },
     hints: [
-      L3("Selektor tugma klassi, xususiyat transition, qiymat esa transform va vaqt.", 'Селектор — класс кнопки, свойство — transition, значение — transform и время.', 'The selector is the button’s class, the property is transition, the value is transform and the time.'),
-      L3("Selektor nuqta tugma, qiymat transform, bo'sh joy, nol nuqta uch s.", 'Селектор: точка tugma, значение: transform, пробел, ноль точка три s.', 'Selector: dot tugma; value: transform, space, zero point three s.'),
-      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
+      L3("Qoida uch qismdan yig'iladi: selektor tugmaning class nomi bo'ladi, xususiyat transition bo'ladi, qiymatga esa transform bilan vaqt yoziladi.", 'Селектор — класс кнопки, свойство — transition, значение — transform и время.', 'The selector is the button’s class, the property is transition, the value is transform and the time.'),
+      L3("Selektorga nuqta va tugma so'zini yozing. Qiymatga esa transform, bo'sh joy, keyin nol, nuqta, uch va s yozing.", 'Селектор: точка tugma, значение: transform, пробел, ноль точка три s.', 'Selector: dot tugma; value: transform, space, zero point three s.'),
+      L3("Mana, namunani kod ostiga qo'yib qo'ydim. Uni maydonga harfma-harf ko'chiring-da, «Tekshirish»ni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
-    ok: L3("Ajoyib! Tugma endi silliq o'sadi va silliq qaytadi. Qoidani o'zingiz yozdingiz.", 'Отлично! Кнопка плавно растёт и плавно возвращается. Правило написано тобой целиком.', 'Great! The button grows and goes back smoothly. You wrote the whole rule yourself.'),
-    ask: L3("transform 0.3s da silliq bo'lsin", 'Сделай transform плавным за 0.3s', 'Make transform smooth in 0.3s')
+    ok: L3("Qoyil! Butun qoidani o'zingiz yozdingiz: tugma endi silliq o'sib, silliq qaytyapti.", 'Отлично! Кнопка плавно растёт и плавно возвращается. Правило написано тобой целиком.', 'Great! The button grows and goes back smoothly. You wrote the whole rule yourself.'),
+    ask: L3("transform silliq bo'lsin: 0.3s", 'Сделай transform плавным за 0.3s', 'Make transform smooth in 0.3s')
   },
   s14: {
     eyebrow: L3("O'z tugmangiz", 'Своя кнопка', 'Your own button'),
-    say: L3("Endi o'z tugmangizni yarating. Sichqoncha ustida nima o'zgarishini, qancha vaqt davom etishini va tezlikni o'zingiz tanlang. Keyin «Tayyor»ni bosing.",
+    say: L3("Endi o'yin menyusi uchun o'z tugmangizni o'ylab toping! Sichqoncha kelganda u o'ssinmi, aylansinmi yoki siljisinmi? Qancha vaqtda va qanday tezlikda? Tanlab bo'lgach, «Tayyor»ni bosing.",
       'Теперь сделай свою кнопку. Сам выбери, что меняется под мышкой, сколько это длится и какая скорость. Потом нажми «Готово».',
       'Now make your own button. Choose what changes under the mouse, how long it takes and the speed. Then tap “Done”.'),
     msgs: {
-      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan uch.", "Браузер не узнал такое значение: \u2063{w}\u2064. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая три десятых.", "The browser didn’t recognize this value: \u2063{w}\u2064. After scale, rotate or translate you need brackets with a number inside, for example scale with one point three in brackets."),
-      comma: L3("Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
-      unit: L3("Vaqtga s yoki ms kerak.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
-      time: L3("Brauzer bu vaqtni tanimadi: \u2063{w}\u2064. Son va s yoki ms yozing.", 'Браузер не узнал такое время: \u2063{w}\u2064. Напиши число и s или ms.', 'The browser didn’t recognize this time: \u2063{w}\u2064. Write a number and s or ms.'),
-      zero: L3("Nol soniyada o'zgarish birdaniga bo'ladi. Noldan katta vaqt yozing.", 'За ноль секунд изменение будет сразу. Напиши время больше нуля.', 'With zero seconds the change is instant. Write a time greater than zero.'),
-      long: L3("Bu juda uzoq: tugmani kutib charchab qolasiz. Besh soniyadan kam yozing.", 'Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.', 'That’s too long: you’d get tired waiting for the button. Write less than five seconds.'),
-      fn: L3("Brauzer bu tezlikni tanimadi: \u2063{w}\u2064. linear yoki ease yozing.", 'Браузер не узнал такую скорость: \u2063{w}\u2064. Впиши linear или ease.', 'The browser didn’t recognize this speed: \u2063{w}\u2064. Type linear or ease.'),
-      tfComma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta uch.", "Дробь в CSS пишут через точку: одна точка три, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point three.")
+      tf: L3("Brauzer bu qiymatni tanimadi: \u2063{w}\u2064. scale, rotate yoki translate so'zidan keyin qavs ichida son kelishi kerak, masalan, scale va qavs ichida bir butun o'ndan uch.", "Браузер не узнал такое значение: \u2063{w}\u2064. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая три десятых.", "The browser didn’t recognize this value: \u2063{w}\u2064. After scale, rotate or translate you need brackets with a number inside, for example scale with one point three in brackets."),
+      comma: L3("Vaqtda vergul turibdi. Kasrni nuqta bilan yozing.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
+      unit: L3("Vaqtning birligi tushib qolibdi: son yoniga s yoki ms qo'shing.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
+      time: L3("Bunday vaqtni brauzer tushunmaydi: \u2063{w}\u2064. Oldin son, keyin s yoki ms yozing.", 'Браузер не узнал такое время: \u2063{w}\u2064. Напиши число и s или ms.', 'The browser didn’t recognize this time: \u2063{w}\u2064. Write a number and s or ms.'),
+      zero: L3("Nol soniyada tugma silliq bo'lolmaydi, birdaniga sakraydi. Noldan kattaroq vaqt yozing.", 'За ноль секунд изменение будет сразу. Напиши время больше нуля.', 'With zero seconds the change is instant. Write a time greater than zero.'),
+      long: L3("Bu juda uzoq-ku: o'yinchi tugmani kutaverib zerikib qoladi. Besh soniyadan kamroq vaqt yozing.", 'Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.', 'That’s too long: you’d get tired waiting for the button. Write less than five seconds.'),
+      fn: L3("CSS bunday tezlik so'zini bilmaydi: \u2063{w}\u2064. linear yoki ease so'zlaridan birini yozing.", 'Браузер не узнал такую скорость: \u2063{w}\u2064. Впиши linear или ease.', 'The browser didn’t recognize this speed: \u2063{w}\u2064. Type linear or ease.'),
+      tfComma: L3("Qavs ichidagi sonda vergul turibdi. CSS kodida kasr nuqta bilan yoziladi, masalan, bir nuqta uch.", "Дробь в CSS пишут через точку: одна точка три, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point three.")
     },
     hints: [
-      L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),
-      L3("Birinchisiga qavsli va sonli scale, rotate yoki translate, ikkinchisiga vaqt s yoki ms bilan, uchinchisiga linear yoki ease.", "В первое — scale, rotate или translate со скобками и числом, во второе — время с s или ms, в третье — linear или ease.", "In the first, scale, rotate or translate with brackets and a number; in the second, a time with s or ms; in the third, linear or ease."),
-      L3("Masalan: scale bir butun o'ndan uch, nol butun o'ndan to'rt soniya va ease. Keyin «Tayyor»ni bosing.", 'Например: scale одна целая три десятых, ноль целых четыре десятых секунды и ease. Потом нажми «Готово».', 'For example: scale one point three, zero point four seconds and ease. Then tap “Done”.')
+      L3("Har bir maydonga bittadan qiymat kiradi: oldin harakat, keyin vaqt, oxirida tezlik.", 'В каждое поле — одно значение.', 'One value in each field.'),
+      L3("Birinchi maydonga qavs ichida soni bor scale, rotate yoki translate yoziladi. Ikkinchisiga s yoki ms bilan vaqt, uchinchisiga esa linear yoki ease.", "В первое — scale, rotate или translate со скобками и числом, во второе — время с s или ms, в третье — linear или ease.", "In the first, scale, rotate or translate with brackets and a number; in the second, a time with s or ms; in the third, linear or ease."),
+      L3("Masalan, scale va qavs ichida bir butun o'ndan uch, nol butun o'ndan to'rt soniya va ease yozib ko'ring-da, «Tayyor»ni bosing.", 'Например: scale одна целая три десятых, ноль целых четыре десятых секунды и ease. Потом нажми «Готово».', 'For example: scale one point three, zero point four seconds and ease. Then tap “Done”.')
     ],
-    ok: L3("Voy, qanday silliq! Bu sizning o'z tugmangiz.", 'Ого, как плавно! Это твоя собственная кнопка.', 'Wow, how smooth! This is your very own button.'),
+    ok: L3("Voy, qanday silliq! Bunday tugmani o'yin menyusiga bemalol qo'ysa bo'ladi.", 'Ого, как плавно! Это твоя собственная кнопка.', 'Wow, how smooth! This is your very own button.'),
     ask: L3("Uchta qiymatni yozing, «Tayyor»ni bosing", 'Впиши три значения и нажми «Готово»', 'Type three values, tap “Done”')
   },
   q1: {
     eyebrow: L3("To'g'rimi?", 'Верно или нет?', 'True or false?'),
-    say: L3("Endi tezkor tekshiruv. Men gap aytaman, siz esa to'g'rimi yoki noto'g'rimi, shuni tanlang.", 'Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.', 'Now a quick check. I say a sentence, and you choose: true or false.'),
+    say: L3("O'yinlarda tezkor savollar raundi bo'ladi-ku. Bizda ham shunday raund: kartochkada transition haqida bitta gap yozilgan. Rost bo'lsa «To'g'ri»ni, rost bo'lmasa «Noto'g'ri»ni bosing.", 'Теперь быстрая проверка. Я говорю фразу, а ты выбери: верно или неверно.', 'Now a quick check. I say a sentence, and you choose: true or false.'),
     ask: L3("To'g'rimi yoki noto'g'rimi?", 'Верно или неверно?', 'True or false?'),
     card: L3('Gap', 'Фраза', 'Statement'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    hint1: L3("Gap nima haqida: vaqt, yozilish yoki qoidaning joyi?", 'О чём фраза: о времени, о записи или о месте правила?', 'What’s the sentence about: time, spelling or where the rule goes?'),
-    hint2: L3("Esingizdami: transition silliq qiladi, ming millisoniya bir soniya, kasr nuqta bilan yoziladi.", 'Вспомни: transition делает плавно, тысяча миллисекунд — одна секунда, дробь пишут через точку.', 'Remember: transition makes things smooth, a thousand milliseconds is one second, and decimals use a dot.'),
+    hint1: L3("Bu gap vaqt haqidami, yozilish haqidami yoki qoidaning joyi haqida?", 'О чём фраза: о времени, о записи или о месте правила?', 'What’s the sentence about: time, spelling or where the rule goes?'),
+    hint2: L3("Esingizdami: transition o'zgarishni silliq qiladi, ming millisoniya bir soniyaga teng, kasr esa nuqta bilan yoziladi.", 'Вспомни: transition делает плавно, тысяча миллисекунд — одна секунда, дробь пишут через точку.', 'Remember: transition makes things smooth, a thousand milliseconds is one second, and decimals use a dot.'),
     items: [
       { t: L3("transition o'zgarishni silliq qiladi.", 'transition делает изменение плавным.', 'transition makes a change smooth.'), right: true,
-        why: L3("To'g'ri: transition silliq o'tish degani.", 'Верно: transition — это плавный переход.', 'Right: transition means a smooth change.') },
+        why: L3("transition so'zining o'zi silliq o'tish degani: u tugmani asta-sekin o'zgartiradi.", 'Верно: transition — это плавный переход.', 'Right: transition means a smooth change.') },
       { t: L3("Besh yuz millisoniya va yarim soniya bir xil vaqt.", 'Пятьсот миллисекунд и полсекунды — одно и то же время.', 'Five hundred milliseconds and half a second are the same time.'), right: true,
-        why: L3("To'g'ri: soniyada ming millisoniya.", 'Верно: в секунде тысяча миллисекунд.', 'Right: a second has a thousand milliseconds.') },
+        why: L3("Bir soniyada ming millisoniya bor, shuning uchun yarim soniya besh yuz millisoniyaga teng.", 'Верно: в секунде тысяча миллисекунд.', 'Right: a second has a thousand milliseconds.') },
       { t: L3("Bu qoida ishlaydi.", 'Это правило сработает.', 'This rule works.'), right: false, code: 'comma',
-        why: L3("Aslida vergul tufayli brauzer qoidani tashlab yuboradi.", 'На самом деле из-за запятой браузер выбросит правило.', 'Actually the browser throws the rule away because of the comma.') },
+        why: L3("Aslida bu qoida ishlamaydi: sonda vergul turibdi, brauzer uni tushunmaydi va qoidani o'tkazib yuboradi.", 'На самом деле из-за запятой браузер выбросит правило.', 'Actually the browser throws the rule away because of the comma.') },
       { t: L3("Bu qoida tugmaning kattalashishini silliq qiladi.", 'Это правило сделает рост кнопки плавным.', 'This rule makes the button’s growth smooth.'), right: false, code: 'typo',
-        why: L3("Aslida transfrom bu xato yozuv: bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi. To'g'risi transform.", 'На самом деле transfrom — опечатка: такого свойства нет, и плавным не станет ничего. Правильно — transform.', 'Actually transfrom is a typo: there’s no such property, so nothing becomes smooth. It should be transform.') }
+        why: L3("Aslida bunday xususiyat yo'q: to'g'risi transform, bu yerda esa ikki harf o'rin almashgan. Shuning uchun hech narsa silliq bo'lmaydi.", 'На самом деле transfrom — опечатка: такого свойства нет, и плавным не станет ничего. Правильно — transform.', 'Actually transfrom is a typo: there’s no such property, so nothing becomes smooth. It should be transform.') }
     ],
-    ok: L3("Hammasi to'g'ri! Siz transition ni yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь transition.', 'All correct! You know transition really well.')
+    ok: L3("Tezkor raund tugadi! transition qachon ishlashi-yu, qachon ishlamasligini endi yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь transition.', 'All correct! You know transition really well.')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men transition ni hover qoidasining ichiga yozgan edim? Qarang: tugma silliq o'sadi, lekin sichqoncha ketganda birdaniga sakrab qaytadi! Men adashibman. Sichqoncha ketishi bilan hover qoidasi o'chadi, u bilan birga transition ham ketadi.",
+      { text: L3("Mana, garovning vaqti keldi! transition hozir hover qoidasining ichida turibdi. Sichqoncha kelganda tugma silliq o'syapti, lekin ketishi bilan birdaniga sakrab qaytyapti! Yutqazdim, kim «bunday bo'lmaydi» degan bo'lsa, o'sha haq chiqdi. Gap shundaki, sichqoncha ketishi bilan hover qoidasi o'chadi, transition ham u bilan birga ketadi, shuning uchun qaytishda silliqlik qolmaydi.",
         'Вернёмся к загадке. Помнишь, я написал transition внутри правила с hover? Смотри: кнопка плавно растёт, а когда мышка уходит, прыгает обратно сразу! Я ошибся. Как только мышка уходит, правило с hover выключается, и transition уходит вместе с ним.',
         'Back to our riddle. Remember, I put transition inside the hover rule? Look: the button grows smoothly, but when the mouse leaves, it jumps back at once! I was wrong. As soon as the mouse leaves, the hover rule switches off, and transition goes with it.'), k: 'riddle' },
-      { text: L3("transition ni tugmaning o'z qoidasiga ko'chirsak, u doim turadi. Endi ikki tomonga ham silliq. Mana!", 'Перенесём transition в правило самой кнопки — оно действует всегда. Теперь плавно в обе стороны. Вот!', 'Move transition into the button’s own rule, and it’s always there. Now it’s smooth both ways. There!'), k: 'riddle2' },
-      { text: L3("Qarang, bu sizning silliq tugmangiz!", 'Смотри, это твоя плавная кнопка!', 'Look, this is your smooth button!'), k: 'own' },
-      { text: L3("transition o'zgarishni silliq qiladi.", 'transition делает изменение плавным.', 'transition makes a change smooth.'), k: 'tr' },
-      { text: L3("Vaqt soniyada yoki millisoniyada yoziladi.", 'Время пишут в секундах или миллисекундах.', 'Time is written in seconds or milliseconds.'), k: 'time' },
-      { text: L3("Qaysi xususiyat yozilsa, o'shasi silliq bo'ladi, all esa hammasini silliq qiladi.", 'Плавным становится написанное свойство, а all делает плавным всё.', 'The property you write becomes smooth, and all makes everything smooth.'), k: 'prop' },
-      { text: L3("transition esa hover qoidasiga emas, tugmaning o'z qoidasiga yoziladi.", 'А transition пишут не в правило с hover, а в правило самой кнопки.', 'And transition goes in the button’s own rule, not in the hover rule.'), k: 'place' },
-      { text: L3("Tabriklayman! Endi tugmalaringiz silliq. Keyingi darsda yanada qiziqroq narsa bor: sahifadagi narsalar sichqonchasiz, o'zi harakatlanadi. Bu animatsiya deyiladi. Ko'rishguncha!",
+      { text: L3("Endi transition qatorini tugmaning o'z qoidasiga ko'chiramiz. Bu qoida sichqoncha kelsa ham, ketsa ham doim ishlab turadi. Mana, tugma endi ikki tomonga ham silliq!", 'Перенесём transition в правило самой кнопки — оно действует всегда. Теперь плавно в обе стороны. Вот!', 'Move transition into the button’s own rule, and it’s always there. Now it’s smooth both ways. There!'), k: 'riddle2' },
+      { text: L3("Qarang, bu o'zingiz yasagan silliq tugma!", 'Смотри, это твоя плавная кнопка!', 'Look, this is your smooth button!'), k: 'own' },
+      { text: L3("transition tugmadagi o'zgarishni sakratmay, silliq qiladi.", 'transition делает изменение плавным.', 'transition makes a change smooth.'), k: 'tr' },
+      { text: L3("Unga vaqtni soniyada yoki millisoniyada yozamiz.", 'Время пишут в секундах или миллисекундах.', 'Time is written in seconds or milliseconds.'), k: 'time' },
+      { text: L3("Qaysi xususiyatning nomini yozsak, o'shasi silliq bo'ladi, all esa hammasini birga silliq qiladi.", 'Плавным становится написанное свойство, а all делает плавным всё.', 'The property you write becomes smooth, and all makes everything smooth.'), k: 'prop' },
+      { text: L3("transition qatori esa hover qoidasiga emas, tugmaning o'z qoidasiga yoziladi.", 'А transition пишут не в правило с hover, а в правило самой кнопки.', 'And transition goes in the button’s own rule, not in the hover rule.'), k: 'place' },
+      { text: L3("Mana, o'yin menyumdagi tugmalar endi sakramaydi, silliq o'zgaradi! Keyingi darsda bundan ham qiziqrog'i bor: sahifadagi narsalar sichqonchani kutmasdan, o'zi harakatlana boshlaydi. Buni animatsiya deyishadi. Navbatdagi o'yinda ko'rishamiz!",
         'Ура! Теперь твои кнопки плавные. На следующем уроке ещё интереснее: вещи на странице будут двигаться сами, без мышки. Это называется анимация. До встречи!',
         'Hooray! Now your buttons are smooth. Next lesson is even more fun: things on the page will move by themselves, without the mouse. That’s called animation. See you!') }
     ],

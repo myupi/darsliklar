@@ -107,12 +107,12 @@ const C = {
   },
   s1: {
     eyebrow: L3('Anketa chalkash', 'Анкета путается', 'A messy form'),
-    say: L3("Salom! O'tgan darsda klub anketasini yasadik. Lekin javoblar chalkash bo'lib ketdi. Bir kishi Minecraft deb yozibdi, boshqasi mainkraft, uchinchisi esa katta harflar bilan yozibdi. O'zi haqidagi uzun gap bitta qatorga sig'madi. Anketani yuboradigan tugma esa umuman yo'q. Keling, buni to'g'rilaymiz. «Aylantirish» tugmasini bosing.",
+    say: L3("Anketamga birinchi javoblar keldi, o'qib kulgim qistadi: biri Minecraft deb yozibdi, boshqasi mainkraft, uchinchisi esa katta harflar bilan! Kimdir o'zi haqida uzun gap yozibdi, u bitta qatorga sig'mabdi. Anketani yuboradigan tugmaning o'zi esa yo'q! «Aylantirish»ni bosing-da, anketaning yangi ko'rinishini ko'ring.",
       'Привет! На прошлом уроке мы сделали анкету клуба. Но ответы пришли вразнобой. Один написал Minecraft, другой mainkraft, третий большими буквами. Длинный рассказ о себе не влез в одну строку. А кнопки, чтобы отправить анкету, нет совсем. Давай исправим. Нажми «Превратить».',
       'Hi! Last time we made the club form. But the answers came in all over the place. One person wrote Minecraft, another wrote mainkraft, a third wrote it in capitals. A long story about yourself didn’t fit on one line. And there’s no button to send the form at all. Let’s fix this. Tap “Transform”.'),
-    magic: L3("Voy, qarang! O'yinni endi yozish shart emas: uni ro'yxatdan tanlaysiz. O'zingiz haqida yozish uchun katta maydon chiqdi.", 'Ого, смотри! Игру теперь не надо писать: её выбирают из списка. А для рассказа о себе появилось большое поле.', 'Whoa, look! Now you don’t type the game, you pick it from a list. And a big field appeared for writing about yourself.'),
-    magicP: L3("Pastda esa tugma paydo bo'ldi. Uni bosib, anketani yuborish mumkin.", 'А внизу появилась кнопка. Нажмёшь её — и анкета отправится.', 'And a button appeared at the bottom. Tap it to send the form.'),
-    done: L3("Bugun shunday ro'yxat, katta maydon va tugma yasashni o'rganasiz va o'zingizning anketangizni yasaysiz. Lekin oldin kichik topishmoq. Men boshqa sahifada o'yinlar ro'yxatini yasadim: select tegini ochdim va ichiga Minecraft, Futbol, Shaxmat deb yozdim, xolos. Menimcha, endi ro'yxatda uchta o'yin chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+    magic: L3("Endi o'yin nomini yozib o'tirish shart emas: uni ro'yxatdan tanlab qo'ya qolasiz. O'zingiz haqingizda yozish uchun esa katta maydon chiqdi.", 'Ого, смотри! Игру теперь не надо писать: её выбирают из списка. А для рассказа о себе появилось большое поле.', 'Whoa, look! Now you don’t type the game, you pick it from a list. And a big field appeared for writing about yourself.'),
+    magicP: L3("Pastga ham qarang-chi: u yerda tugma paydo bo'ldi! Uni bossangiz, anketa yuboriladi.", 'А внизу появилась кнопка. Нажмёшь её — и анкета отправится.', 'And a button appeared at the bottom. Tap it to send the form.'),
+    done: L3("Bugun ro'yxat, katta maydon va tugma yasaymiz. Lekin oldin sizdan bir narsani so'rayman. Ro'yxat menga oson ko'rindi-yu, uni ikki xil yo'l bilan yozdim. Birinchisida select ichiga Minecraft, Futbol, Shaxmat so'zlarini shunchaki yozdim, ikkinchisida har bir so'zni option tegiga o'radim. Menimcha, ikkalasi bir xil ishlaydi. Sizningcha, qaysi biri ro'yxatni chiqaradi?",
       'Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету. Но сначала маленькая загадка. Я сделал на другой странице список игр: открыл тег select и просто написал внутри Minecraft, Футбол, Шахматы. По-моему, теперь в списке будут три игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
       'Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form. But first, a little riddle. On another page I made a list of games: I opened the select tag and simply wrote Minecraft, Football, Chess inside it. I think the list will now have three games. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
@@ -120,17 +120,17 @@ const C = {
   },
   s2: {
     eyebrow: L3("select va option", 'select и option', 'select and option'),
-    say: L3("Keling, o'yinlar ro'yxatini birga yasaymiz. O'yin yozuvidan keyin yangi teg qo'yamiz.", 'Давай сделаем список игр вместе. После подписи про игру ставим новый тег.', 'Let’s make the list of games together. After the game caption we add a new tag.'),
-    saySel: L3("Bu select tegi. select inglizcha so'z, ya'ni tanlash degani. U ochiladigan ro'yxat yasaydi: yonida kichik strelka bor. Lekin hozir ro'yxat bo'sh, chunki ichida hali hech qanday variant yo'q.",
+    say: L3("Keling, o'yinlar ro'yxatidan boshlaymiz. O'yin haqidagi yozuvdan keyin yangi teg qo'yamiz-u, nima bo'lishini ko'ramiz.", 'Давай сделаем список игр вместе. После подписи про игру ставим новый тег.', 'Let’s make the list of games together. After the game caption we add a new tag.'),
+    saySel: L3("Bu select tegi. select inglizchada «tanlash» degani. U ochiladigan ro'yxat yasaydi, yonidagi kichkina strelkadan tanib olasiz. Lekin ro'yxat hozircha bo'm-bo'sh, chunki ichida hali birorta ham variant yo'q.",
       'Это тег select. select — английское слово, то есть «выбрать». Он делает выпадающий список: справа маленькая стрелка. Но сейчас список пустой, потому что внутри ещё нет ни одного варианта.',
       'This is the select tag. select is an English word for choosing. It makes a drop-down list with a small arrow on the right. But right now the list is empty, because there are no choices inside it yet.'),
-    sayOpt: L3("Har bir variant option tegida yoziladi. option ya'ni variant degani. Uchta o'yinni uchta option ichiga yozdik. Qarang, birinchi variant maydonda o'zi ko'rinib turibdi.",
+    sayOpt: L3("Har bir variant alohida option tegiga yoziladi. Uchta o'yinni uchta option ichiga yozdik. Qarang-chi: birinchi variant maydonda o'zi chiqib turibdi!",
       'Каждый вариант пишут в теге option, то есть «вариант». Три игры — три option. Смотри, первый вариант сам виден в поле.',
       'Each choice goes in an option tag. option means a choice. Three games, three options. Look, the first choice shows up in the field by itself.'),
-    sayPick: L3("Ro'yxatni bosganda u ochiladi va hamma variantlar ko'rinadi. Futbolni tanladik, endi maydonda Futbol turibdi. Endi har kim o'yin nomini bir xil yozadi, harf xatosi bo'lmaydi.",
+    sayPick: L3("Ro'yxatni bossangiz, u ochiladi va hamma variantlar ko'rinadi. Biz Futbolni tanladik, endi maydonda Futbol turibdi. Ko'rdingizmi? Endi o'yin nomi hammada bir xil chiqadi, chunki uni hech kim yozmaydi, ro'yxatdan tanlaydi. Shuning uchun harflar ham chalkashib ketmaydi.",
       'Нажмёшь на список — он раскроется, и видны все варианты. Выбрали Футбол — теперь в поле Футбол. Теперь у всех название игры одинаковое, без опечаток.',
       'Tap the list and it opens, showing all the choices. We picked Football, so now the field shows Football. Now everyone writes the game name the same way, with no typos.'),
-    done: L3("Eslab qoling: select ro'yxat yasaydi, uning ichidagi har bir option esa bitta variant bo'ladi. Ikkalasi ham yopuvchi teg bilan yoziladi.", 'Запомни: select делает список, а каждый option внутри — один вариант. Оба пишут с закрывающим тегом.', 'Remember: select makes the list, and each option inside it is one choice. Both have a closing tag.'),
+    done: L3("Ko'rdingizmi: select butun ro'yxat, option esa uning bitta qatori. Ikkalasini ham yopishni unutmang.", 'Запомни: select делает список, а каждый option внутри — один вариант. Оба пишут с закрывающим тегом.', 'Remember: select makes the list, and each option inside it is one choice. Both have a closing tag.'),
     askSel: L3('Qarang: select tegi', 'Смотри: тег select', 'Watch: the select tag'),
     askOpt: L3('Qarang: option teglari', 'Смотри: теги option', 'Watch: the option tags'),
     askPick: L3("Qarang: ro'yxatdan tanlash", 'Смотри: выбор из списка', 'Watch: picking from the list'),
@@ -138,60 +138,60 @@ const C = {
   },
   s3: {
     eyebrow: L3('Teg nomini yozing', 'Впиши имя тега', 'Type the tag name'),
-    say: L3("Endi navbat sizga. Ro'yxatda faqat ikkita o'yin bor, Shaxmat esa yo'q. Kodga qarang: Shaxmat qatorida ochuvchi teg nomi yo'q. Shuning uchun brauzer uni ro'yxatga qo'shmadi. Teg nomini yozing va «Tekshirish»ni bosing.",
+    say: L3("Endi ro'yxatni o'zingiz tuzatasiz! Unda faqat ikkita o'yin turibdi, Shaxmat esa ko'rinmayapti. Kodga qarasak, Shaxmat qatorida ochuvchi tegning nomi yozilmay qolgan, brauzer esa uni ro'yxatga qo'shmagan. Teg nomini yozing-da, «Tekshirish»ni bosing.",
       'Теперь твоя очередь. В списке только две игры, а Шахмат нет. Посмотри на код: в строке Шахмат у открывающего тега нет имени. Поэтому браузер не добавил её в список. Впиши имя тега и нажми «Проверить».',
       'Now it’s your turn. The list has only two games, and Chess is missing. Look at the code: in the Chess line the opening tag has no name. That’s why the browser didn’t add it to the list. Type the tag name and tap “Check”.'),
     msgs: {
-      empty: L3("Burchakli qavslar o'rtasiga teg nomini yozing.", 'Впиши имя тега между уголками.', 'Type the tag name between the brackets.'),
-      brackets: L3("Qavslar joyida turibdi. Bu yerga faqat teg nomini yozing.", 'Скобки уже на месте. Здесь нужно только имя тега.', 'The brackets are already there. Only the tag name goes here.'),
-      li: L3("li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. select ichida boshqa teg kerak.", 'li — для обычных списков ul и ol. Внутри select нужен другой тег.', 'li is for ordinary ul and ol lists. Inside select you need a different tag.'),
-      other: L3("Bu teg boshqa ish qiladi. Ro'yxatning bitta varianti uchun teg kerak.", 'Этот тег делает другое. Нужен тег для одного варианта списка.', 'That tag does something else. You need the tag for one choice in the list.'),
-      typo: L3("Bunday teg yo'q, shuning uchun Shaxmat ro'yxatga chiqmadi. Nomni harfma-harf yozing.", 'Такого тега нет, поэтому Шахматы не попали в список. Напиши имя буква в букву.', 'There’s no such tag, so Chess didn’t make it into the list. Type the name letter by letter.')
+      empty: L3("Hali bo'sh-ku! Burchakli qavslar o'rtasiga teg nomini yozing.", 'Впиши имя тега между уголками.', 'Type the tag name between the brackets.'),
+      brackets: L3("Burchakli qavslarga tegmang, ular joyida. Bo'sh joyga faqat tegning nomi yoziladi.", 'Скобки уже на месте. Здесь нужно только имя тега.', 'The brackets are already there. Only the tag name goes here.'),
+      li: L3("Oz qoldi! li ham ro'yxat tegi, lekin u oddiy ro'yxatlarda, ul va ol ichida turadi. select ichiga boshqa teg kerak.", 'li — для обычных списков ul и ol. Внутри select нужен другой тег.', 'li is for ordinary ul and ol lists. Inside select you need a different tag.'),
+      other: L3("Bu teg boshqa ish uchun. Bizga ro'yxatning bitta variantini yasaydigan teg kerak.", 'Этот тег делает другое. Нужен тег для одного варианта списка.', 'That tag does something else. You need the tag for one choice in the list.'),
+      typo: L3("Brauzer bunaqa tegni tanimadi, shuning uchun Shaxmat ro'yxatga chiqmadi. Teg nomini bir harfi qolmay o'qib chiqing.", 'Такого тега нет, поэтому Шахматы не попали в список. Напиши имя буква в букву.', 'There’s no such tag, so Chess didn’t make it into the list. Type the name letter by letter.')
     },
     hints: [
-      L3("Boshqa ikkita qatorda qaysi teg bor?", 'Какой тег в двух других строках?', 'What tag is in the other two lines?'),
-      L3("Yopuvchi tegga qarang: nomi o'sha yerda yozilgan.", 'Посмотри на закрывающий тег: имя написано там.', 'Look at the closing tag: the name is written there.'),
-      L3("Teg nomi option bo'ladi. Uni burchakli qavslar o'rtasiga yozing.", 'Имя тега — option. Впиши его между уголками.', 'The tag name is option. Type it between the brackets.')
+      L3("Qo'shni ikkita qatorga qarang-chi: ularda qaysi teg turibdi?", 'Какой тег в двух других строках?', 'What tag is in the other two lines?'),
+      L3("Shaxmat qatorining oxiridagi yopuvchi tegga qarang: kerakli nom o'sha yerda yozilgan.", 'Посмотри на закрывающий тег: имя написано там.', 'Look at the closing tag: the name is written there.'),
+      L3("Bu teg option deyiladi. Uni burchakli qavslar o'rtasiga yozing-da, «Tekshirish»ni bosing.", 'Имя тега — option. Впиши его между уголками.', 'The tag name is option. Type it between the brackets.')
     ],
-    ok: L3("Zo'r! Shaxmat ro'yxatga qo'shildi. Endi ro'yxatda uchta o'yin bor.", 'Огонь! Шахматы попали в список. Теперь в нём три игры.', 'Awesome! Chess is in the list. Now there are three games.'),
+    ok: L3("Shaxmat ham ro'yxatga qo'shildi, endi unda uchala o'yin turibdi!", 'Огонь! Шахматы попали в список. Теперь в нём три игры.', 'Awesome! Chess is in the list. Now there are three games.'),
     ask: L3('Shaxmat qatoriga teg nomini yozing', 'Впиши имя тега в строку Шахмат', 'Type the tag name in the Chess line')
   },
   s4: {
     eyebrow: L3("Kod va ro'yxat", 'Код и список', 'Code and list'),
-    say: L3("Ro'yxat ochiq turibdi. Kodda bitta option qatori yonadi. Siz ro'yxatda shu qator chiqargan variantni bosing.",
+    say: L3("Ro'yxat ochiq turibdi, kodda esa bitta option qatori yonib turibdi. Qani, u ro'yxatda qaysi variant bo'lib chiqqanini topib, ustiga bosing!",
       'Список раскрыт. В коде горит одна строка option. А ты нажми в списке вариант, который она выводит.',
       'The list is open. One option line lights up in the code. Tap the choice in the list that this line shows.'),
-    askQ: L3("Yongan qator qaysi variantni chiqaradi?", 'Какой вариант выводит горящая строка?', 'Which choice does the lit line show?'),
+    askQ: L3("Yonib turgan qator qaysi variantni chiqaradi?", 'Какой вариант выводит горящая строка?', 'Which choice does the lit line show?'),
     rounds: [
       null,
-      L3("Endi men qatorlarni almashtirdim. Qarang, ro'yxatda ham tartib o'zgardi. Yongan qator qaysi variantni chiqaradi?", 'Теперь я поменял строки местами. Смотри, порядок в списке тоже поменялся. Какой вариант выводит горящая строка?', 'Now I swapped the lines. Look, the order in the list changed too. Which choice does the lit line show?'),
-      L3("Oxirgisi. Men yangi qator qo'shdim. U ro'yxatda qayerda chiqdi?", 'Последняя. Я добавил новую строку. Где она появилась в списке?', 'The last one. I added a new line. Where did it show up in the list?')
+      L3("Endi men kodda qatorlarning joyini almashtirdim. Qarang-chi: ro'yxatdagi tartib ham o'zgarib qoldi! Bu safar yonib turgan qator qaysi variantni chiqaradi?", 'Теперь я поменял строки местами. Смотри, порядок в списке тоже поменялся. Какой вариант выводит горящая строка?', 'Now I swapped the lines. Look, the order in the list changed too. Which choice does the lit line show?'),
+      L3("Oxirgisi qoldi: men kodga yana bitta yangi qator qo'shdim. Qani, u ro'yxatning qayerida chiqdi?", 'Последняя. Я добавил новую строку. Где она появилась в списке?', 'The last one. I added a new line. Where did it show up in the list?')
     ],
     ok: [
-      L3("To'g'ri! Bu option qatori Futbol variantini chiqaradi.", 'Верно! Эта строка option выводит вариант Футбол.', 'Right! This option line shows the Football choice.'),
-      L3("To'g'ri! Variantlar kod qatorlari tartibida turadi.", 'Верно! Варианты стоят в порядке строк кода.', 'Right! The choices are in the same order as the code lines.'),
-      L3("To'g'ri! Oxirgi option ro'yxatning oxirida chiqadi.", 'Верно! Последний option — в конце списка.', 'Right! The last option is at the end of the list.')
+      L3("Ana, Futbol variantining qatori! Shu option uni ro'yxatga chiqaradi.", 'Верно! Эта строка option выводит вариант Футбол.', 'Right! This option line shows the Football choice.'),
+      L3("Aynan shunday: ro'yxat kodning tartibini takrorlaydi, variantlar qatorlar kabi turadi.", 'Верно! Варианты стоят в порядке строк кода.', 'Right! The choices are in the same order as the code lines.'),
+      L3("Oxirgi option ro'yxatning ham oxirida chiqdi: tartibni kod belgilaydi.", 'Верно! Последний option — в конце списка.', 'Right! The last option is at the end of the list.')
     ],
-    miss: L3("Bu boshqa variant. Ro'yxatda variantlar kod qatorlari tartibida turadi: yongan qator nechanchi o'rinda turibdi?", 'Это другой вариант. В списке варианты идут в порядке строк кода: какая по счёту горящая строка?', 'That’s a different choice. The choices in the list follow the order of the code lines: which position is the lit line in?'),
+    miss: L3("Oz qoldi, bu boshqa variant. Ro'yxatdagi variantlar kod qatorlari tartibida turadi. Yonib turgan qator kodda nechanchi o'rinda?", 'Это другой вариант. В списке варианты идут в порядке строк кода: какая по счёту горящая строка?', 'That’s a different choice. The choices in the list follow the order of the code lines: which position is the lit line in?'),
     // Ступени подсказки (05.11.2026): 1 — куда смотреть, 2 — правило, 3 — что написано в горящей строке и какой вариант выбрать.
-    hint1: L3("Oldin kodda yongan qatorni toping, keyin ochiq ro'yxatga qarang.", 'Сначала найди горящую строку в коде, потом посмотри на раскрытый список.', 'First find the lit line in the code, then look at the open list.'),
-    hint2: L3("Har bir option qatori ro'yxatda bitta variant bo'ladi. option ichida qaysi so'z yozilgan bo'lsa, ro'yxatda ham o'sha so'z chiqadi.", 'Каждая строка option — один вариант в списке. Какое слово написано внутри option, такое и появится в списке.', 'Each option line is one choice in the list. Whatever word is inside option, that word shows up in the list.'),
-    why3: L3("Yongan qatorda option ichida {a} yozilgan.", 'В горящей строке внутри option написано {a}.', 'The lit line has {a} inside option.'),
-    done: L3("Barakalla! Endi har bir option qatori qaysi variantni chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какой вариант выводит каждая строка option.', 'Well done! Now you know which choice each option line shows.')
+    hint1: L3("Oldin kodda yonib turgan qatorni toping, keyin ochiq ro'yxatga qarang.", 'Сначала найди горящую строку в коде, потом посмотри на раскрытый список.', 'First find the lit line in the code, then look at the open list.'),
+    hint2: L3("option ichidagi so'z ro'yxatda ham aynan shunday ko'rinadi. Yonib turgan qatorda qaysi so'z yozilgan?", 'Каждая строка option — один вариант в списке. Какое слово написано внутри option, такое и появится в списке.', 'Each option line is one choice in the list. Whatever word is inside option, that word shows up in the list.'),
+    why3: L3("Yonib turgan qatorda option ichida {a} deb yozilgan.", 'В горящей строке внутри option написано {a}.', 'The lit line has {a} inside option.'),
+    done: L3("Demak, ro'yxat kodning tartibini aynan takrorlaydi: qaysi option tepada tursa, o'sha variant ro'yxatda ham tepada chiqadi.", 'Молодец! Теперь ты знаешь, какой вариант выводит каждая строка option.', 'Well done! Now you know which choice each option line shows.')
   },
   s5: {
     eyebrow: L3('Katta maydon', 'Большое поле', 'A big field'),
-    say: L3("Endi o'zingiz haqidagi maydonga qaraymiz. Bu yerga odatda bir nechta gap yoziladi.", 'Теперь посмотрим на поле «О себе». Сюда обычно пишут несколько предложений.', 'Now let’s look at the About you field. People usually write several sentences here.'),
-    sayInput: L3("Hozir bu oddiy input. U bitta qator bo'ladi, shuning uchun uzun gap sig'madi: oxiri yashirinib qoldi. O'qish ham, tekshirish ham noqulay.",
+    say: L3("Endi «O'zingiz haqida» maydoniga qaraymiz. Bunaqa joyga odatda bitta so'z emas, bir nechta gap yoziladi.", 'Теперь посмотрим на поле «О себе». Сюда обычно пишут несколько предложений.', 'Now let’s look at the About you field. People usually write several sentences here.'),
+    sayInput: L3("Hozir bu yerda oddiy input turibdi. U faqat bitta qator bo'ladi, shuning uchun uzun gap sig'madi: oxiri yashirinib qolibdi. Bunday javobni o'qish ham, tekshirish ham qiyin-ku.",
       'Сейчас это обычный input. Он в одну строку, поэтому длинное предложение не влезло: конец спрятался. Неудобно ни читать, ни проверять.',
       'Right now it’s an ordinary input. It’s one line, so the long sentence didn’t fit: the end is hidden. It’s hard to read and to check.'),
-    sayTa: L3("Endi input o'rniga textarea qo'yamiz. textarea ya'ni matn maydoni degani. Qarang, maydon katta bo'ldi va gap keyingi qatorga o'tdi. Burchagidagi chiziqlardan tortib, maydonni yana kattalashtirish mumkin.",
+    sayTa: L3("Endi input o'rniga textarea qo'yamiz, u ko'p qatorli matn uchun yaratilgan. Qarang, maydon ancha katta bo'ldi, gap esa keyingi qatorga o'tib, butunligicha ko'rinib qoldi! Burchagidagi chiziqchalardan ushlab cho'zsangiz, maydon yana ham kattalashadi.",
       'Теперь вместо input ставим textarea, то есть «текстовое поле». Смотри, поле стало большим, и предложение перешло на следующую строку. А за уголок в углу поле можно растянуть ещё.',
       'Now we put textarea instead of input. textarea means a text area. Look, the field got bigger and the sentence moved onto the next line. You can drag the little corner to make the field even bigger.'),
-    sayClose: L3("Diqqat qiling: input'dan farqli, textarea yopuvchi teg bilan yoziladi. Teglar o'rtasiga yozilgan matn esa maydon ichida tayyor holda chiqadi. Qarang, Salom degan gap maydonning ichida turibdi.",
+    sayClose: L3("Bir narsani sezdingizmi: textarea input tegiga o'xshamaydi, u yopuvchi teg bilan yoziladi. Ikkita teg o'rtasiga yozilgan matn maydonda darrov chiqib turadi. Ana, Salom degan gap maydon ichida turibdi!",
       'Обрати внимание: в отличие от input, textarea пишут с закрывающим тегом. А текст между тегами сразу появляется внутри поля. Смотри, приветствие уже стоит внутри.',
       'Note: unlike input, textarea has a closing tag. And the text between the tags appears inside the field right away. Look, the greeting is already inside.'),
-    done: L3("Demak, textarea bir nechta qatorli katta maydon yasaydi va doim yopuvchi teg bilan yoziladi.", 'Значит, textarea делает большое поле на несколько строк и всегда пишется с закрывающим тегом.', 'So textarea makes a big field for several lines, and it always has a closing tag.'),
+    done: L3("Katta maydon kerak bo'lsa, textarea yoziladi, yopuvchi tegini esa esdan chiqarmaymiz.", 'Значит, textarea делает большое поле на несколько строк и всегда пишется с закрывающим тегом.', 'So textarea makes a big field for several lines, and it always has a closing tag.'),
     asks: [
       L3("Qarang: input bitta qator", 'Смотри: input — одна строка', 'Watch: input is one line'),
       L3('Qarang: textarea tegi', 'Смотри: тег textarea', 'Watch: the textarea tag'),
@@ -201,27 +201,27 @@ const C = {
   },
   s6: {
     eyebrow: L3("Katta maydonni yig'ing", 'Собери большое поле', 'Build the big field'),
-    say: L3("Endi katta maydonni o'zingiz yig'ing. Kodda to'rtta bo'sh joy bor: teg boshi, kulrang ishora, burchakli qavs va yopuvchi teg. Bitta bo'lak esa ortiqcha.",
+    say: L3("Katta maydonni ham o'zingiz tuzasiz. To'rtta bo'sh joy kutib turibdi: teg boshi, kulrang ishora, burchakli qavs va yopuvchi teg uchun. Lekin bo'laklarning biri adashib kirib qolgan, uni ajrata olasizmi?",
       'Теперь собери большое поле сам. В коде четыре пустых места: начало тега, серая подсказка, уголок и закрывающий тег. А один кусок лишний.',
       'Now build the big field yourself. The code has four empty spots: the start of the tag, the grey hint, the bracket and the closing tag. And one piece isn’t needed.'),
     why: {
-      type: L3("type atributi input uchun bo'ladi. textarea doim katta matn maydoni, unga type kerak emas.", 'Атрибут type — для input. textarea и так большое текстовое поле, type ему не нужен.', 'The type attribute is for input. textarea is always a big text field, so it doesn’t need type.'),
-      open: L3("Teg doim burchakli qavs va nomi bilan boshlanadi. Oldin textarea boshini qo'ying.", 'Тег всегда начинается с уголка и имени. Сначала поставь начало textarea.', 'A tag always starts with a bracket and its name. Put the start of textarea first.'),
-      ph: L3("Teg nomidan keyin atribut keladi: kulrang ishora.", 'После имени тега идёт атрибут — серая подсказка.', 'After the tag name comes the attribute: the grey hint.'),
-      gt: L3("Atributdan keyin ochuvchi teg burchakli qavs bilan yopiladi.", 'После атрибута открывающий тег закрывается уголком.', 'After the attribute, the opening tag ends with a bracket.'),
-      close: L3("Oxirida yopuvchi teg keladi. textarea'ga u albatta kerak bo'ladi.", 'В конце — закрывающий тег. textarea без него нельзя.', 'At the end comes the closing tag. textarea must have it.')
+      type: L3("Bu bo'lak adashib kirgan: type atributi input uchun kerak. textarea o'zi katta matn maydoni, shuning uchun unga type shart emas.", 'Атрибут type — для input. textarea и так большое текстовое поле, type ему не нужен.', 'The type attribute is for input. textarea is always a big text field, so it doesn’t need type.'),
+      open: L3("Oldin tegning o'zi kerak, atribut esa undan keyin. Birinchi bo'lib textarea boshini qo'ying.", 'Тег всегда начинается с уголка и имени. Сначала поставь начало textarea.', 'A tag always starts with a bracket and its name. Put the start of textarea first.'),
+      ph: L3("Endi nima keladi, o'ylab ko'ring-chi: kulrang ishorani beradigan atribut, ya'ni placeholder.", 'После имени тега идёт атрибут — серая подсказка.', 'After the tag name comes the attribute: the grey hint.'),
+      gt: L3("Atribut yozildi, endi qavsni qo'yamiz: shu bilan ochuvchi teg tugaydi, matn esa undan keyin boshlanadi.", 'После атрибута открывающий тег закрывается уголком.', 'After the attribute, the opening tag ends with a bracket.'),
+      close: L3("Eng oxirida yopuvchi teg turishi kerak. Uni qoldirib bo'lmaydi, aks holda tugma yo'qolib qoladi!", 'В конце — закрывающий тег. textarea без него нельзя.', 'At the end comes the closing tag. textarea must have it.')
     },
     hints: [
-      L3('Teg nima bilan boshlanadi?', 'С чего начинается тег?', 'What does a tag start with?'),
-      L3("Birinchi bo'lib textarea boshi, keyin placeholder keladi.", 'Сначала начало textarea, потом placeholder.', 'First the start of textarea, then placeholder.'),
-      L3("Tartib shunday bo'ladi: textarea boshi, placeholder, burchakli qavs va yopuvchi teg. type kerak emas.", 'Порядок такой: начало textarea, placeholder, уголок и закрывающий тег. type не нужен.', 'The order is: the start of textarea, placeholder, the bracket and the closing tag. No type.')
+      L3("Kodning birinchi bo'sh joyiga nima keladi? Teg nimadan boshlanishini o'ylab ko'ring.", 'С чего начинается тег?', 'What does a tag start with?'),
+      L3("textarea boshidan boshlang, placeholder esa undan keyin keladi.", 'Сначала начало textarea, потом placeholder.', 'First the start of textarea, then placeholder.'),
+      L3("Oldin textarea boshi, keyin placeholder, so'ng burchakli qavs, oxirida yopuvchi teg. type bo'lagiga tegmang, u adashib kirgan.", 'Порядок такой: начало textarea, placeholder, уголок и закрывающий тег. type не нужен.', 'The order is: the start of textarea, placeholder, the bracket and the closing tag. No type.')
     ],
-    ok: L3("Ajoyib! Katta maydon tayyor, ichida kulrang ishora turibdi. Ortiqcha bo'lakni ham to'g'ri tashlab ketdingiz.", 'Отлично! Большое поле готово, в нём серая подсказка. И лишний кусок ты правильно не взял.', 'Great! The big field is ready, with a grey hint inside. And you were right to leave the extra piece.'),
+    ok: L3("Katta maydon tayyor, ichida kulrang ishora ham turibdi! type bo'lagi adashib kirganini payqadingiz.", 'Отлично! Большое поле готово, в нём серая подсказка. И лишний кусок ты правильно не взял.', 'Great! The big field is ready, with a grey hint inside. And you were right to leave the extra piece.'),
     ask: L3("Bo'laklarni to'g'ri tartibda qo'ying", 'Поставь куски по порядку', 'Put the pieces in order')
   },
   s7: {
     eyebrow: L3('Juftini toping', 'Найди пару', 'Find the pair'),
-    say: L3("Bugun uchta yangi tegni ko'rdik: select, option va textarea. Har bir tegni sahifada u chiqaradigan narsa bilan juftlang. Oldin tegni bosing, keyin narsani bosing.",
+    say: L3("Uchta yangi teg bilan tanishdik: select, option va textarea. Har birining ishini eslab ko'ring: butun ro'yxatmi, bitta variantmi yoki katta maydonmi? Tegni tanlang, so'ng unga mos kartochkani.",
       'Сегодня у нас три новых тега: select, option и textarea. Соедини каждый тег с тем, что он выводит на странице. Сначала нажми тег, потом вещь.',
       'Today we met three new tags: select, option and textarea. Match each tag with the thing it shows on the page. Tap a tag first, then the thing.'),
     cards: {
@@ -230,111 +230,111 @@ const C = {
       textarea: L3("Bir nechta qatorli katta maydon", 'Большое поле на несколько строк', 'A big field for several lines')
     },
     pairOk: {
-      select: L3("To'g'ri! select ro'yxat yasaydi.", 'Верно! select делает список.', 'Right! select makes the list.'),
-      option: L3("To'g'ri! option ro'yxatdagi bitta variant bo'ladi.", 'Верно! option — один вариант в списке.', 'Right! option is one choice in the list.'),
-      textarea: L3("To'g'ri! textarea katta maydon yasaydi.", 'Верно! textarea делает большое поле.', 'Right! textarea makes a big field.')
+      select: L3("Topdingiz! Ochiladigan strelkali maydon select tegidan chiqadi.", 'Верно! select делает список.', 'Right! select makes the list.'),
+      option: L3("Ro'yxatdagi har bir qator esa option tegidan.", 'Верно! option — один вариант в списке.', 'Right! option is one choice in the list.'),
+      textarea: L3("Bir necha qatorli katta maydonni textarea beradi.", 'Верно! textarea делает большое поле.', 'Right! textarea makes a big field.')
     },
     why: {
-      select: L3("select butun ro'yxatni yasaydi: yonida strelkasi bor maydon.", 'select делает весь список: поле со стрелкой.', 'select makes the whole list: a field with an arrow.'),
-      option: L3("option ro'yxat ichidagi bitta qator bo'ladi.", 'option — одна строка внутри списка.', 'option is one line inside the list.'),
-      textarea: L3("textarea bir nechta qatorli maydon bo'ladi.", 'textarea — поле на несколько строк.', 'textarea is a field for several lines.')
+      select: L3("Hechqisi yo'q! select butun ro'yxatni yasaydi: yonida strelkasi bor maydon aynan o'sha bo'ladi.", 'select делает весь список: поле со стрелкой.', 'select makes the whole list: a field with an arrow.'),
+      option: L3("Unday emas: option butun ro'yxat emas, u ro'yxat ichidagi bitta qator bo'ladi.", 'option — одна строка внутри списка.', 'option is one line inside the list.'),
+      textarea: L3("Yo'q, textarea bir necha qatorli katta maydon yasaydi. Shunaqa maydonni qidiring.", 'textarea — поле на несколько строк.', 'textarea is a field for several lines.')
     },
     hints: [
-      L3("Har bir narsaga qarang: u ro'yxatmi yoki maydonmi?", 'Посмотри на каждую вещь: это список или поле?', 'Look at each thing: is it a list or a field?'),
-      L3("Strelkali maydon butun ro'yxat bo'ladi, ya'ni select degani.", 'Поле со стрелкой — весь список, то есть select.', 'The field with an arrow is the whole list: select.'),
-      L3("Strelkali maydon select, bitta variant option, katta maydon esa textarea bo'ladi.", 'Поле со стрелкой — select, один вариант — option, большое поле — textarea.', 'The field with an arrow is select, one choice is option, and the big field is textarea.')
+      L3("Har bir narsaga bir qarang-chi: bu ro'yxatmi yoki maydonmi?", 'Посмотри на каждую вещь: это список или поле?', 'Look at each thing: is it a list or a field?'),
+      L3("Strelkali maydondan boshlang: u butun ro'yxat bo'ladi, uni select yasaydi.", 'Поле со стрелкой — весь список, то есть select.', 'The field with an arrow is the whole list: select.'),
+      L3("Strelkali maydonni select, bitta variantni option, katta maydonni esa textarea yasaydi. Shunga qarab juftlang.", 'Поле со стрелкой — select, один вариант — option, большое поле — textarea.', 'The field with an arrow is select, one choice is option, and the big field is textarea.')
     ],
-    ok: L3("Qoyil! Uchala tegni ham ko'rib turib ajratyapsiz.", 'Класс! Ты различаешь все три тега с первого взгляда.', 'Brilliant! You can tell all three tags apart at a glance.'),
+    ok: L3("Endi ro'yxat, variant va katta maydonni adashtirmaysiz: kim nima chiqarishini bilib oldingiz.", 'Класс! Ты различаешь все три тега с первого взгляда.', 'Brilliant! You can tell all three tags apart at a glance.'),
     ask: L3("Tegni u chiqaradigan narsa bilan juftlang", 'Соедини тег с тем, что он выводит', 'Match each tag with what it shows'),
     askPlace: L3('Endi narsani bosing', 'Теперь нажми вещь', 'Now tap the thing'),
     pickFirst: L3('Oldin tegni bosing.', 'Сначала нажми тег.', 'Tap a tag first.')
   },
   s8: {
     eyebrow: L3('Tugma', 'Кнопка', 'The button'),
-    say: L3("Anketa deyarli tayyor, faqat uni yuboradigan tugma yo'q. Keling, form ichiga tugma qo'shamiz.", 'Анкета почти готова, не хватает только кнопки, чтобы её отправить. Добавим кнопку внутрь form.', 'The form is almost ready; it only needs a button to send it. Let’s add a button inside form.'),
-    sayBtn: L3("Bu button tegi. button inglizcha so'z, ya'ni tugma degani. Tugmaning yozuvi ochuvchi va yopuvchi teglar o'rtasiga yoziladi: Yuborish. Qarang, anketa ostida kulrang tugma chiqdi.",
+    say: L3("Anketamiz tayyor bo'lishiga oz qoldi, faqat uni yuboradigan tugma yetishmayapti. Keling, form ichiga tugma qo'shamiz.", 'Анкета почти готова, не хватает только кнопки, чтобы её отправить. Добавим кнопку внутрь form.', 'The form is almost ready; it only needs a button to send it. Let’s add a button inside form.'),
+    sayBtn: L3("Bu button tegi: tugmani shu teg yasaydi. Tugmaning yozuvi ochuvchi va yopuvchi teglar o'rtasiga yoziladi. Bizning tugmada «Yuborish» deb yozilgan. Ana, anketaning ostida kulrang tugma chiqdi!",
       'Это тег button, то есть «кнопка». Надпись кнопки пишут между открывающим и закрывающим тегом: Отправить. Смотри, под анкетой появилась серая кнопка.',
       'This is the button tag. button means a button. The button’s label goes between the opening and closing tags: Send. Look, a grey button appeared under the form.'),
-    saySent: L3("Tugmani bosdim. Tugma form ichida turgani uchun anketa yuborildi. Lekin bizda hali server yo'q. Server, ya'ni javoblarni qabul qiladigan kompyuter degani. Shuning uchun sahifa shunchaki qaytadan ochildi va maydonlar tozalandi. Haqiqiy saytlarda bu javoblar serverga boradi.",
+    saySent: L3("Endi tugmani bosdim. Tugma form ichida turgani uchun anketa yuborildi. Lekin bizda hali server, ya'ni javoblarni qabul qiladigan kompyuter yo'q. Shuning uchun sahifa shunchaki qaytadan ochildi-yu, maydonlar tozalanib qoldi. Haqiqiy saytlarda esa javoblar to'ppa-to'g'ri serverga borib tushadi.",
       'Я нажал кнопку. Кнопка стоит внутри form, поэтому анкета отправилась. Но у нас пока нет места, которое принимает ответы, то есть сервера. Поэтому страница просто открылась заново, а поля очистились. На настоящих сайтах ответы уходят на сервер.',
       'I tapped the button. The button is inside form, so the form was sent. But we don’t have a place that receives the answers yet, a server. So the page just opened again and the fields were cleared. On real sites the answers go to a server.'),
-    done: L3("Eslab qoling: button tugma yasaydi, form ichidagi tugma esa anketani yuboradi.", 'Запомни: button делает кнопку, а кнопка внутри form отправляет анкету.', 'Remember: button makes a button, and a button inside form sends the form.'),
+    done: L3("Xullas, button tugma yasaydi, form ichida turgan tugma esa butun anketani yuboradi.", 'Запомни: button делает кнопку, а кнопка внутри form отправляет анкету.', 'Remember: button makes a button, and a button inside form sends the form.'),
     askBtn: L3('Qarang: button tegi', 'Смотри: тег button', 'Watch: the button tag'),
     askSent: L3('Qarang: anketa yuborildi', 'Смотри: анкета отправилась', 'Watch: the form is sent'),
     askDone: L3('button — tugma, form ichida — yuboradi', 'button — кнопка, в form — отправляет', 'button — a button; inside form it sends')
   },
   s9: {
     eyebrow: L3('Maydonni yoping', 'Закрой поле', 'Close the field'),
-    say: L3("Voy, men textarea'ni yopishni unutibman! Qarang, brauzer tugma kodini ham maydon ichidagi matn deb o'yladi. Tugma esa yo'qoldi. textarea'dan keyin yopuvchi tegni yozing va «Tekshirish»ni bosing.",
+    say: L3("Anketaga qarang: tugma g'oyib bo'lgan! Aybi menda: textarea tegini yopishni unutibman, brauzer esa tugmaning kodini maydon ichidagi oddiy matn deb o'ylabdi. Bo'sh joyga yopuvchi textarea tegini yozing-da, «Tekshirish»ni bosing.",
       'Ой, я забыл закрыть textarea! Смотри, браузер решил, что код кнопки — тоже текст внутри поля. А сама кнопка пропала. Напиши закрывающий тег после textarea и нажми «Проверить».',
       'Oops, I forgot to close textarea! Look, the browser thought the button’s code was text inside the field too. And the button itself is gone. Type the closing tag after textarea and tap “Check”.'),
     msgs: {
-      needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda nomdan oldin qiya chiziq «/» turadi.', 'Это открывающий тег. В закрывающем перед именем стоит косая черта «/».', 'That’s the opening tag. The closing one has a slash “/” before the name.'),
-      needLt: L3("Teg chap «<» qavs bilan boshlanadi. Uni boshiga qo'shing.", 'Тег начинается с уголка «<». Добавь его в начало.', 'A tag starts with the bracket “<”. Add it at the start.'),
-      needGt: L3("Teg oxirida o'ng «>» qavs turadi. Uni oxiriga qo'shing.", 'В конце тега нужен уголок «>». Добавь его в конец.', 'A tag ends with the bracket “>”. Add it at the end.'),
-      wrongName: L3("Teg ichida boshqa nom yozilgan. Bu yerda textarea kerak bo'ladi.", 'Внутри тега другое имя. Здесь нужен textarea.', 'There’s a different name inside the tag. Here you need textarea.'),
-      generic: L3('Qiya chiziq «/» birinchi burchakli qavsdan keyin darrov turadi.', 'Косая черта «/» стоит сразу после первого уголка.', 'The slash “/” goes right after the first bracket.')
+      needSlash: L3("Qiya chiziq bo'lmasa, bu yana ochuvchi teg bo'lib qoladi: uni nomdan oldin qo'ying.", 'Это открывающий тег. В закрывающем перед именем стоит косая черта «/».', 'That’s the opening tag. The closing one has a slash “/” before the name.'),
+      needLt: L3("Yopuvchi textarea tegining boshida chap burchakli qavs «<» tushib qolibdi. Uni boshiga qo'shing.", 'Тег начинается с уголка «<». Добавь его в начало.', 'A tag starts with the bracket “<”. Add it at the start.'),
+      needGt: L3("Yopuvchi textarea tegining oxirida o'ng burchakli qavs «>» yetishmayapti. Uni oxiriga qo'shing.", 'В конце тега нужен уголок «>». Добавь его в конец.', 'A tag ends with the bracket “>”. Add it at the end.'),
+      wrongName: L3("Teg ichidagi nomga qarang-chi: bu yerda textarea yopilishi kerak.", 'Внутри тега другое имя. Здесь нужен textarea.', 'There’s a different name inside the tag. Here you need textarea.'),
+      generic: L3("Yopuvchi teg biroz boshqacha yoziladi: qiya chiziq birinchi burchakli qavsdan keyin turadi, undan keyin textarea keladi.", 'Косая черта «/» стоит сразу после первого уголка.', 'The slash “/” goes right after the first bracket.')
     },
     hints: [
-      L3('Maydon qayerda tugashi kerak?', 'Где должно кончаться поле?', 'Where should the field end?'),
-      L3("Yopuvchi teg o'sha nom bo'ladi, faqat qiya chiziq bilan.", 'Закрывающий тег — то же имя, но с косой чертой.', 'The closing tag is the same name with a slash.'),
-      L3("Oldin burchakli qavs, keyin qiya chiziq, keyin textarea va oxirida yana burchakli qavs qo'ying.", 'Сначала уголок, потом косая черта, потом textarea и в конце снова уголок.', 'First a bracket, then the slash, then textarea, and another bracket at the end.')
+      L3("Katta maydon qayerda tugashi kerak? Uni qaysi teg tugatadi?", 'Где должно кончаться поле?', 'Where should the field end?'),
+      L3("Yopuvchi tegda nom o'sha-o'sha qoladi, faqat oldiga qiya chiziq qo'shiladi.", 'Закрывающий тег — то же имя, но с косой чертой.', 'The closing tag is the same name with a slash.'),
+      L3("Ketma-ket yozing: burchakli qavs, qiya chiziq, textarea, keyin yana burchakli qavs.", 'Сначала уголок, потом косая черта, потом textarea и в конце снова уголок.', 'First a bracket, then the slash, then textarea, and another bracket at the end.')
     ],
-    ok: L3("Zo'r! Maydon yopildi va tugma joyiga qaytdi.", 'Огонь! Поле закрыто, и кнопка вернулась на место.', 'Awesome! The field is closed, and the button is back.'),
-    ask: L3("textarea'ni yopuvchi teg bilan yoping", 'Закрой textarea закрывающим тегом', 'Close textarea with its closing tag')
+    ok: L3("Maydon yopildi, tugma ham joyiga qaytib keldi!", 'Огонь! Поле закрыто, и кнопка вернулась на место.', 'Awesome! The field is closed, and the button is back.'),
+    ask: L3("textarea tegini yopuvchi teg bilan yoping", 'Закрой textarea закрывающим тегом', 'Close textarea with its closing tag')
   },
   s10: {
     eyebrow: L3('Oldin va keyin', 'До и после', 'Before and after'),
-    say: L3("Endi ikkita holatga qarang: oldin va keyin. Kodda bitta narsa qo'shildi va anketa boshqacha bo'lib qoldi. Xo'sh, nima qo'shildi?",
+    say: L3("Ikkita kartochkaga qarang: «Oldin» va «Keyin». Kodga bitta yangi narsa qo'shildi, shu bilan anketa ham o'zgarib qoldi. Nima qo'shilganini topa olasizmi?",
       'Теперь посмотри на два состояния: до и после. В код добавили одну вещь, и анкета изменилась. Ну и что добавили?',
       'Now look at two states: before and after. One thing was added to the code, and the form changed. So what was added?'),
     askQ: L3("Kodga nima qo'shildi?", 'Что добавили в код?', 'What was added to the code?'),
     ok: {
-      opt: L3("To'g'ri! Yangi option qo'shildi, ro'yxatda bitta variant ko'paydi.", 'Верно! Добавили option — в списке стало на вариант больше.', 'Right! A new option was added, so the list has one more choice.'),
-      close: L3("To'g'ri! Yopuvchi textarea qo'shildi, tugma maydondan chiqdi.", 'Верно! Добавили закрывающий textarea — кнопка вышла из поля.', 'Right! The closing textarea was added, so the button came out of the field.'),
-      btn: L3("To'g'ri! button qo'shildi, anketa ostida tugma chiqdi.", 'Верно! Добавили button — под анкетой появилась кнопка.', 'Right! button was added, so a button appeared under the form.')
+      opt: L3("Sezdingizmi, ro'yxat bittaga uzaydi! Buni yangi option qildi.", 'Верно! Добавили option — в списке стало на вариант больше.', 'Right! A new option was added, so the list has one more choice.'),
+      close: L3("Tugma maydon ichidan chiqib oldi: yopuvchi textarea tegi qo'shildi-ku!", 'Верно! Добавили закрывающий textarea — кнопка вышла из поля.', 'Right! The closing textarea was added, so the button came out of the field.'),
+      btn: L3("Anketaning ostida tugma paydo bo'ldi! Uni button yasaydi.", 'Верно! Добавили button — под анкетой появилась кнопка.', 'Right! button was added, so a button appeared under the form.')
     },
     miss: {
-      opt: L3("Qarang: oldin ro'yxatda kamroq variant bor edi, keyin bittasi qo'shildi. Variantni option qo'shadi.", 'Смотри: сначала вариантов было меньше, потом добавился ещё один. Вариант добавляет option.', 'Look: first there were fewer choices, then one more appeared. option adds a choice.'),
-      close: L3("Qarang: oldin tugma kodi maydon ichida matn bo'lib turgan edi, keyin tugma chiqdi. Buni yopuvchi textarea qiladi.", 'Смотри: сначала код кнопки был текстом внутри поля, потом появилась кнопка. Это делает закрывающий textarea.', 'Look: first the button’s code was text inside the field, then the button appeared. The closing textarea does that.'),
-      btn: L3("Qarang: oldin anketada tugma yo'q edi, keyin paydo bo'ldi. Tugmani button yasaydi.", 'Смотри: сначала кнопки не было, потом она появилась. Кнопку делает button.', 'Look: first there was no button, then it appeared. button makes a button.')
+      opt: L3("Ro'yxatga qarang: bitta variant ko'paygan. Variantni option qo'shadi.", 'Смотри: сначала вариантов было меньше, потом добавился ещё один. Вариант добавляет option.', 'Look: first there were fewer choices, then one more appeared. option adds a choice.'),
+      close: L3("Tugma oldin maydon ichida matn bo'lib yotardi, endi o'zi chiqdi. Buni yopuvchi textarea tegi qiladi.", 'Смотри: сначала код кнопки был текстом внутри поля, потом появилась кнопка. Это делает закрывающий textarea.', 'Look: first the button’s code was text inside the field, then the button appeared. The closing textarea does that.'),
+      btn: L3("Anketaning ostida tugma yo'q edi, endi bor. Tugmani esa button yasaydi.", 'Смотри: сначала кнопки не было, потом она появилась. Кнопку делает button.', 'Look: first there was no button, then it appeared. button makes a button.')
     },
     // Ступени подсказки (05.11.2026): 1 — сравнить карточки, 2 — что изменилось и какой тег это делает, 3 — причина и какую кнопку выбрать.
-    hint1: L3("Oldin va keyin kartochkalarini solishtiring: anketada nima o'zgardi?", 'Сравни карточки «До» и «После»: что изменилось в анкете?', 'Compare the “Before” and “After” cards: what changed in the form?'),
+    hint1: L3("Ro'yxatga, maydonga va tugmaga bir-bir qarang: qaysi birida o'zgarish bor?", 'Сравни карточки «До» и «После»: что изменилось в анкете?', 'Compare the “Before” and “After” cards: what changed in the form?'),
     hint2: {
-      opt: L3("Ro'yxatda nechta variant bor edi va nechta bo'ldi? Ro'yxatga variantni qaysi teg qo'shadi, esingizdami?", 'Сколько вариантов было в списке и сколько стало? Вспомни, какой тег добавляет вариант в список.', 'How many choices were in the list, and how many are there now? Remember which tag adds a choice to the list.'),
-      close: L3("Oldin tugma kodi maydon ichida matn edi, keyin tugma chiqdi. Maydonni qaysi teg tugatadi, esingizdami?", 'Сначала код кнопки был текстом в поле, потом появилась кнопка. Вспомни, какой тег заканчивает поле.', 'First the button’s code was text in the field, then the button appeared. Remember which tag ends the field.'),
-      btn: L3("Oldin anketa ostida hech narsa yo'q edi, keyin tugma chiqdi. Tugmani qaysi teg yasaydi, esingizdami?", 'Сначала под анкетой ничего не было, потом появилась кнопка. Вспомни, какой тег делает кнопку.', 'First there was nothing under the form, then a button appeared. Remember which tag makes a button.')
+      opt: L3("Ro'yxatda nechta variant bor edi-yu, nechta bo'ldi? Ro'yxatga variantni qaysi teg qo'shardi?", 'Сколько вариантов было в списке и сколько стало? Вспомни, какой тег добавляет вариант в список.', 'How many choices were in the list, and how many are there now? Remember which tag adds a choice to the list.'),
+      close: L3("Tugmaning kodi oldin maydon ichida matn bo'lib turgandi, keyin tugma chiqdi. Katta maydonni qaysi teg tugatishi esingizdami?", 'Сначала код кнопки был текстом в поле, потом появилась кнопка. Вспомни, какой тег заканчивает поле.', 'First the button’s code was text in the field, then the button appeared. Remember which tag ends the field.'),
+      btn: L3("Anketaning ostida oldin hech narsa yo'q edi, keyin tugma paydo bo'ldi. Tugmani qaysi teg yasardi?", 'Сначала под анкетой ничего не было, потом появилась кнопка. Вспомни, какой тег делает кнопку.', 'First there was nothing under the form, then a button appeared. Remember which tag makes a button.')
     },
     pick3: {
-      opt: L3("Demak, option tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом option.', 'So choose the button with the option tag.'),
-      close: L3("Demak, yopuvchi textarea tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с закрывающим тегом textarea.', 'So choose the button with the closing textarea tag.'),
-      btn: L3("Demak, button tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом button.', 'So choose the button with the button tag.')
+      opt: L3("option tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом option.', 'So choose the button with the option tag.'),
+      close: L3("Yopuvchi textarea tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с закрывающим тегом textarea.', 'So choose the button with the closing textarea tag.'),
+      btn: L3("button tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом button.', 'So choose the button with the button tag.')
     },
-    done: L3("Endi anketa nimaga boshqacha ko'rinishini kodga qarab bilasiz. Keyin butun anketani birga o'qib chiqamiz.", 'Теперь ты по коду понимаешь, почему анкета выглядит так. Дальше прочитаем всю анкету вместе.', 'Now you can tell from the code why the form looks the way it does. Next, let’s read the whole form together.'),
+    done: L3("Endi anketada nima o'zgarganini kodga qarab ham topa olasiz. Butun anketani esa boshidan oxirigacha birga o'qib chiqamiz.", 'Теперь ты по коду понимаешь, почему анкета выглядит так. Дальше прочитаем всю анкету вместе.', 'Now you can tell from the code why the form looks the way it does. Next, let’s read the whole form together.'),
     before: L3('Oldin', 'До', 'Before'),
     after: L3('Keyin', 'После', 'After')
   },
   s11: {
     eyebrow: L3('Anketa butunlay', 'Анкета целиком', 'The whole form'),
-    say: L3("Mana, butun anketa tayyor. Keling, brauzer uni qanday o'qishini ko'ramiz. Brauzer kodni har doimgidek tepadan pastga o'qiydi.", 'Вот вся анкета готова. Посмотрим, как браузер её читает: как всегда, сверху вниз.', 'Here’s the whole form, all done. Let’s see how the browser reads it: as always, from top to bottom.'),
-    order1: L3("Oldin o'yin yozuvi va ochiladigan ro'yxat chiqdi. Bu yerda o'yin tanlanadi.", 'Сначала подпись про игру и выпадающий список. Здесь выбирают игру.', 'First the game caption and the drop-down list. This is where you pick the game.'),
-    order2: L3("Keyin o'zingiz haqidagi yozuv va katta maydon chiqdi. Bu yerga bir nechta gap yoziladi.", 'Потом подпись «О себе» и большое поле. Сюда пишут несколько предложений.', 'Then the About you caption and the big field. This is where you write a few sentences.'),
-    order3: L3("Eng oxirida tugma chiqdi. Hammasi form ichida, shuning uchun tugma butun anketani yuboradi.", 'И в самом конце — кнопка. Всё внутри form, поэтому кнопка отправляет всю анкету.', 'And at the very end, the button. Everything is inside form, so the button sends the whole form.'),
+    say: L3("Mana, anketamiz to'liq tayyor! Keling, brauzer uni qanday o'qishini kuzatib turamiz. U kodni har doimgidek tepadan pastga, qatorma-qator o'qiydi.", 'Вот вся анкета готова. Посмотрим, как браузер её читает: как всегда, сверху вниз.', 'Here’s the whole form, all done. Let’s see how the browser reads it: as always, from top to bottom.'),
+    order1: L3("Oldin o'yin haqidagi yozuv va ochiladigan ro'yxat chiqdi. Shu yerda o'yinni tanlaysiz.", 'Сначала подпись про игру и выпадающий список. Здесь выбирают игру.', 'First the game caption and the drop-down list. This is where you pick the game.'),
+    order2: L3("Keyin «O'zingiz haqida» yozuvi bilan katta maydon chiqdi. Bu yerga bemalol bir nechta gap yozsa bo'ladi.", 'Потом подпись «О себе» и большое поле. Сюда пишут несколько предложений.', 'Then the About you caption and the big field. This is where you write a few sentences.'),
+    order3: L3("Eng oxirida tugma chiqdi. Hammasi form ichida turibdi, shuning uchun bitta tugma butun anketani yuboradi.", 'И в самом конце — кнопка. Всё внутри form, поэтому кнопка отправляет всю анкету.', 'And at the very end, the button. Everything is inside form, so the button sends the whole form.'),
     ask: L3("Brauzer qanday o'qishini kuzating", 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3("Ro'yxat, katta maydon, tugma", 'Список, большое поле, кнопка', 'List, big field, button')
   },
   // Своя анкета — два экрана по «Готово»: надпись на кнопке, потом свой вариант в списке.
   s12: {
     eyebrow: L3('Tugmangiz yozuvi', 'Надпись своей кнопки', 'Your button’s label'),
-    say: L3("Endi o'zingizning anketangizni yasang. Kodda form, katta maydon va tugma tayyor turibdi, faqat tugma yozuvi yo'q. Tugmada nima deb yozilsin? Shuni button teglari o'rtasiga yozing. Keyin «Tayyor»ni bosing.",
+    say: L3("Endi o'zingizning anketangizga o'tamiz! Kodda form, katta maydon va tugma tayyor turibdi, faqat tugmaning yozuvi yo'q. Tugmangizda nima deb yozilsin? Shuni button teglarining o'rtasiga yozing-da, «Tayyor»ni bosing.",
       'Теперь сделай свою анкету. В коде уже есть form, большое поле и кнопка, нет только надписи на кнопке. Что на ней написать? Впиши это между тегами button. Потом нажми «Готово».',
       'Now make your own form. The code already has form, a big field and a button; only the button’s label is missing. What should it say? Type it between the button tags. Then tap “Done”.'),
-    ok: L3("Zo'r tugma! Endi ro'yxatingizga o'z variantingizni qo'shamiz.", 'Классная кнопка! Теперь добавим в список свой вариант.', 'Great button! Now let’s add your own choice to the list.'),
+    ok: L3("Ajoyib tugma chiqdi! Endi ro'yxatingizga o'zingizning variantingizni ham qo'shamiz.", 'Классная кнопка! Теперь добавим в список свой вариант.', 'Great button! Now let’s add your own choice to the list.'),
     hints: [
-      L3("Tugmani bosganda nima bo'ladi? Shuni yozing.", 'Что будет, когда нажмут кнопку? Это и напиши.', 'What happens when someone taps the button? Write that.'),
-      L3("Faqat so'z yozing, teglar joyida turibdi.", 'Пиши только слова — теги на месте.', 'Type only words: the tags are in place.'),
-      L3("Masalan: Jo'natish. Keyin «Tayyor»ni bosing.", 'Например: Записаться. Потом нажми «Готово».', 'For example: Sign up. Then tap “Done”.')
+      L3("Tugmani bosganda nima bo'ladi? Shuni bir-ikki so'z bilan yozing.", 'Что будет, когда нажмут кнопку? Это и напиши.', 'What happens when someone taps the button? Write that.'),
+      L3("button teglari tayyor, ularning o'rtasiga yozuvni o'zingiz yozasiz.", 'Пиши только слова — теги на месте.', 'Type only words: the tags are in place.'),
+      L3("Masalan, «Jo'natish» deb yozing, keyin «Tayyor»ni bosing.", 'Например: Записаться. Потом нажми «Готово».', 'For example: Sign up. Then tap “Done”.')
     ],
     ask: L3("Tugma yozuvini yozing va «Tayyor»ni bosing", 'Напиши надпись кнопки и нажми «Готово»', 'Type the button label and tap “Done”'),
     ph: L3("Masalan: Jo'natish", 'Например: Записаться', 'For example: Sign up'),
@@ -342,14 +342,14 @@ const C = {
   },
   s13: {
     eyebrow: L3('Variantingiz', 'Свой вариант', 'Your choice'),
-    say: L3("Endi ro'yxatga o'zingizning variantingizni qo'shing. Sizga qaysi o'yin yoqadi? Uni yangi option ichiga yozing va ro'yxatda u qanday chiqqanini ko'ring. Keyin «Tayyor»ni bosing.",
+    say: L3("Endi ro'yxatga o'zingizning variantingizni qo'shing. Sizga qaysi o'yin ko'proq yoqadi? Uni yangi option ichiga yozing-da, ro'yxatda qanday chiqqanini ko'ring. Keyin «Tayyor»ni bosing.",
       'Теперь добавь в список свой вариант. Какая игра нравится тебе? Впиши её в новый option и посмотри, как она появилась в списке. Потом нажми «Готово».',
       'Now add your own choice to the list. What game do you like? Type it into the new option and see how it shows up in the list. Then tap “Done”.'),
-    ok: L3("Ajoyib! Variantingiz ro'yxatga qo'shildi. Endi anketangizni ochgan odam uni tanlay oladi.", 'Отлично! Твой вариант в списке. Теперь его сможет выбрать любой, кто откроет анкету.', 'Great! Your choice is in the list. Now anyone who opens your form can pick it.'),
+    ok: L3("Qoyil! Variantingiz ro'yxatga qo'shildi. Endi anketangizni ochgan har kim uni tanlay oladi.", 'Отлично! Твой вариант в списке. Теперь его сможет выбрать любой, кто откроет анкету.', 'Great! Your choice is in the list. Now anyone who opens your form can pick it.'),
     hints: [
       L3("Sevimli o'yiningiz qaysi? Shuni yozing.", 'Какая твоя любимая игра? Это и напиши.', 'What’s your favorite game? Write that.'),
-      L3("Faqat so'z yozing, option teglari joyida turibdi.", 'Пиши только слова — теги option на месте.', 'Type only words: the option tags are in place.'),
-      L3("Masalan: Voleybol. Keyin «Tayyor»ni bosing.", 'Например: Волейбол. Потом нажми «Готово».', 'For example: Volleyball. Then tap “Done”.')
+      L3("option teglari allaqachon joyida, ularning o'rtasiga faqat o'yin nomini yozing.", 'Пиши только слова — теги option на месте.', 'Type only words: the option tags are in place.'),
+      L3("Masalan, «Voleybol» deb yozing, keyin «Tayyor»ni bosing.", 'Например: Волейбол. Потом нажми «Готово».', 'For example: Volleyball. Then tap “Done”.')
     ],
     ask: L3("Variantingizni yozing va «Tayyor»ni bosing", 'Напиши свой вариант и нажми «Готово»', 'Type your choice and tap “Done”'),
     ph: L3('Masalan: Voleybol', 'Например: Волейбол', 'For example: Volleyball'),
@@ -357,84 +357,84 @@ const C = {
   },
   s14: {
     eyebrow: L3("Variant yo'qoldi", 'Пропал вариант', 'A choice is missing'),
-    say: L3("Men ro'yxatingizga Basketbolni qo'shmoqchi edim va uni select ichiga shunchaki yozib qo'ydim. Lekin qarang, ro'yxatda u yo'q! To'g'ri qatorni bo'sh joyga olib boring.",
+    say: L3("Voy, men yana o'sha ishni qilibman! Ro'yxatingizga Basketbolni qo'shmoqchi edim-u, uni select ichiga shunchaki yozib qo'yibman. Qarang, ro'yxatda u yo'q-ku! Dars boshidagi sahifamda ham o'yinlarni xuddi shunday yozgandim. Qani, Basketbolni qaysi teg bilan o'rash kerak? Kerakli bo'lakni bo'sh joyga olib boring.",
       'Я хотел добавить в твой список Баскетбол и просто написал его внутри select. Но смотри, в списке его нет! Перетащи правильную строку в пустое место.',
       'I wanted to add Basketball to your list and just wrote it inside select. But look, it’s not in the list! Drag the right line into the empty spot.'),
     why: {
-      li: L3("li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. select ichida u ishlamaydi.", 'li — для обычных списков ul и ol. Внутри select он не работает.', 'li is for ordinary ul and ol lists. It doesn’t work inside select.'),
-      p: L3("p abzas yasaydi. Ochiladigan ro'yxatga u variant qo'shmaydi.", 'p делает абзац. В выпадающий список он вариант не добавит.', 'p makes a paragraph. It won’t add a choice to a drop-down list.')
+      li: L3("Bu yerda li yaramaydi: u oddiy ro'yxatlar uchun, ul va ol ichida yashaydi. select ichida esa u ishlamaydi.", 'li — для обычных списков ul и ol. Внутри select он не работает.', 'li is for ordinary ul and ol lists. It doesn’t work inside select.'),
+      p: L3("Unday emas: p abzas yasaydi, ochiladigan ro'yxatga esa variant qo'sha olmaydi.", 'p делает абзац. В выпадающий список он вариант не добавит.', 'p makes a paragraph. It won’t add a choice to a drop-down list.')
     },
     // Ступени подсказки (05.11.2026): 1 — посмотреть на список, 2 — правило (как строки выше), 3 — какой кусок тащить (он загорается).
     hints: [
-      L3("Brauzerga qarang: Basketbol ro'yxatga chiqdimi? Kodda unga nima yetishmayapti?", 'Посмотри на браузер: Баскетбол попал в список? Чего ему не хватает в коде?', 'Look at the browser: did Basketball make it into the list? What is it missing in the code?'),
+      L3("Ro'yxatga qarang: Basketbol chiqdimi? Kodda unga nima yetishmayapti?", 'Посмотри на браузер: Баскетбол попал в список? Чего ему не хватает в коде?', 'Look at the browser: did Basketball make it into the list? What is it missing in the code?'),
       L3("Ochiladigan ro'yxatga variantni faqat bitta teg qo'sha oladi. Tepadagi qatorlarga qarang: o'yinlar qaysi teg ichida turibdi?", 'Вариант в выпадающий список может добавить только один тег. Посмотри на строки выше: в каком теге стоят игры?', 'Only one tag can add a choice to a drop-down list. Look at the lines above: which tag are the games in?'),
-      L3("Tepadagi qatorlar kabi option tegi bilan yozilgan bo'lakni bo'sh joyga olib boring.", 'Перетащи в пустое место кусок с тегом option — как в строках выше.', 'Drag the piece with the option tag into the empty spot, just like the lines above.')
+      L3("Xuddi tepadagi qatorlardagidek option tegi bilan yozilgan bo'lakni oling-da, bo'sh joyga joylang.", 'Перетащи в пустое место кусок с тегом option — как в строках выше.', 'Drag the piece with the option tag into the empty spot, just like the lines above.')
     ],
-    ok: L3("Ana endi joyida! Basketbol ro'yxatga qo'shildi.", 'Вот теперь порядок! Баскетбол в списке.', 'That’s it! Basketball is in the list.'),
+    ok: L3("Basketbol ham ro'yxatdan joy oldi! Endi u tanlanadi.", 'Вот теперь порядок! Баскетбол в списке.', 'That’s it! Basketball is in the list.'),
     ask: L3("To'g'ri qatorni bo'sh joyga olib boring", 'Перетащи правильную строку в пустое место', 'Drag the right line into the empty spot')
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые случаи без образца; до первой попытки ответ не подсвечен.
   q1: {
     eyebrow: L3('Xatoni toping', 'Найди ошибку', 'Find the bug'),
-    say: L3("Endi o'zingizni sinab ko'ring. Mana, klub anketasi, lekin unda xato bor. Brauzerga qarang: nima noto'g'ri ko'rinyapti? Xato qaysi qatorda ekanini toping va o'sha qatorni bosing.",
+    say: L3("Klubning yangi anketasida bir joy yaxshi emas. Anketani boshdan oyoq ko'rib chiqing: nima o'rnida emas? Buzuq qatorni kodda topib, ustiga bosing.",
       'Теперь проверь себя. Вот анкета клуба, но в ней ошибка. Посмотри на браузер: что выглядит не так? Найди строку с ошибкой и нажми её.',
       'Now check yourself. Here’s the club form, but it has a bug. Look at the browser: what looks wrong? Find the line with the bug and tap it.'),
-    say2: L3("Zo'r, birinchi xato topildi! Endi ro'yxatdan bitta o'yin yo'qoldi. Bu yerda nima buzilgan?", 'Класс, первая ошибка найдена! Теперь из списка пропала одна игра. Что сломано здесь?', 'Great, the first bug is found! Now one game is missing from the list. What’s broken here?'),
+    say2: L3("Tugma qaytdi, ammo ro'yxatdan bitta o'yin g'oyib bo'libdi. Uning sababini ham toping.", 'Класс, первая ошибка найдена! Теперь из списка пропала одна игра. Что сломано здесь?', 'Great, the first bug is found! Now one game is missing from the list. What’s broken here?'),
     ask: L3('Xato bor qatorni bosing', 'Нажми строку с ошибкой', 'Tap the line with the bug'),
-    fine: L3("Bu qator to'g'ri yozilgan. Brauzerga qarang: nima joyida emas?", 'Эта строка в порядке. Посмотри на браузер: что не на месте?', 'This line is fine. Look at the browser: what’s out of place?'),
+    fine: L3("Bu qator joyida, ayb unda emas. Anketani yana ko'zdan kechiring: nima o'z o'rnida emas?", 'Эта строка в порядке. Посмотри на браузер: что не на месте?', 'This line is fine. Look at the browser: what’s out of place?'),
     found: {
-      close: L3("Topdingiz! textarea yopilmagan edi. Shuning uchun tugma kodi maydon ichida matn bo'lib qolgan edi.", 'Есть! textarea не был закрыт. Поэтому код кнопки оказался текстом внутри поля.', 'Found it! textarea wasn’t closed. That’s why the button’s code ended up as text inside the field.'),
-      opt: L3("Topdingiz! option so'zida bitta harf tushib qolgan edi. Brauzer bunday tegni bilmaydi, shuning uchun Futbol ro'yxatga chiqmagan edi.", 'Есть! В слове option пропала буква. Браузер не знает такого тега, поэтому Футбол не попал в список.', 'Found it! A letter was missing from the word option. The browser doesn’t know that tag, so Football didn’t make it into the list.')
+      close: L3("Mana, tugma nega g'oyib bo'lgani! textarea yopilmagan, shuning uchun tugmaning kodi maydon ichidagi matn bo'lib qolgan edi.", 'Есть! textarea не был закрыт. Поэтому код кнопки оказался текстом внутри поля.', 'Found it! textarea wasn’t closed. That’s why the button’s code ended up as text inside the field.'),
+      opt: L3("Yana bittasi! option so'zi bitta harf kam yozilgan. Brauzer bunaqa tegni tanimaydi, shuning uchun Futbol ro'yxatga chiqmagan edi.", 'Есть! В слове option пропала буква. Браузер не знает такого тега, поэтому Футбол не попал в список.', 'Found it! A letter was missing from the word option. The browser doesn’t know that tag, so Football didn’t make it into the list.')
     },
     hints: {
       close: [
-        L3("Brauzerga qarang: tugma qayerda?", 'Посмотри на браузер: где кнопка?', 'Look at the browser: where’s the button?'),
-        L3("Tugma kodi maydon ichida turibdi. Qaysi teg yopilmagan?", 'Код кнопки стоит внутри поля. Какой тег не закрыт?', 'The button’s code is inside the field. Which tag isn’t closed?'),
-        L3("textarea qatoriga qarang: yopuvchi teg bormi?", 'Посмотри на строку textarea: есть закрывающий тег?', 'Look at the textarea line: is there a closing tag?')
+        L3("Anketaga qarang-chi: tugma qayoqqa ketdi?", 'Посмотри на браузер: где кнопка?', 'Look at the browser: where’s the button?'),
+        L3("Tugmaning kodi maydon ichida matn bo'lib turibdi. Unda qaysi teg yopilmay qolgan?", 'Код кнопки стоит внутри поля. Какой тег не закрыт?', 'The button’s code is inside the field. Which tag isn’t closed?'),
+        L3("textarea qatoriga qarang: uning yopuvchi tegi bormi?", 'Посмотри на строку textarea: есть закрывающий тег?', 'Look at the textarea line: is there a closing tag?')
       ],
       opt: [
-        L3("Brauzerga qarang: ro'yxatda qaysi o'yin yo'q?", 'Посмотри на браузер: какой игры нет в списке?', 'Look at the browser: which game is missing from the list?'),
-        L3("Futbol qatoriga qarang va teg nomini harfma-harf o'qing.", 'Посмотри на строку Футбол и прочитай имя тега по буквам.', 'Look at the Football line and read the tag name letter by letter.'),
-        L3("Ikkinchi qatorga qarang: option to'liq yozilganmi?", 'Посмотри на вторую строку: option написан полностью?', 'Look at the second line: is option spelled in full?')
+        L3("Sahifadagi ro'yxatga qarang: qaysi o'yin yetishmayapti?", 'Посмотри на браузер: какой игры нет в списке?', 'Look at the browser: which game is missing from the list?'),
+        L3("Futbol qatoriga qarang-da, teg nomini sekin o'qib chiqing.", 'Посмотри на строку Футбол и прочитай имя тега по буквам.', 'Look at the Football line and read the tag name letter by letter.'),
+        L3("Ikkinchi qatorga qarang: option to'liq yozilganmikan?", 'Посмотри на вторую строку: option написан полностью?', 'Look at the second line: is option spelled in full?')
       ]
     },
-    ok: L3("Ajoyib! Ikkala xato ham topildi. Siz anketalarni haqiqiy dasturchi kabi tekshiryapsiz.", 'Супер! Обе ошибки найдены. Ты проверяешь анкеты как настоящий программист.', 'Super! Both bugs are found. You check forms like a real programmer.')
+    ok: L3("Tugma joyida, Futbol ham ro'yxatga qaytdi! Endi klubning anketasini bemalol yuborsa bo'ladi.", 'Супер! Обе ошибки найдены. Ты проверяешь анкеты как настоящий программист.', 'Super! Both bugs are found. You check forms like a real programmer.')
   },
   q2: {
     eyebrow: L3("To'g'rimi?", 'Верно или нет?', 'True or false?'),
-    say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
-    ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
+    say: L3("Kartochkada select, option, textarea va tugma haqida uchta gap turibdi. Birortasi chalg'itishi mumkin, shuning uchun o'ylab javob bering: «Rost» yoki «Yolg'on».", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
+    ask: L3("Rostmi yoki yolg'onmi?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
     // Ступени подсказки (05.11.2026): 1 — как читать фразу, 2 — правила урока, 3 — причина и ответ (choiceHints).
-    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg haqida? Pastdagi kodga ham qarang.", 'Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.', 'Read the sentence piece by piece: which tag is it about? Look at the code below too.'),
-    hint2: L3("select ichida har bir variant option tegida turadi, esingizdami? textarea va button esa yopuvchi teg bilan yoziladi. Gap shunga mos keladimi?",
+    hint1: L3("Fikrda tegning nomi tilga olingan: u select, textarea yoki button haqidami? Pastdagi kodga ham qarang.", 'Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.', 'Read the sentence piece by piece: which tag is it about? Look at the code below too.'),
+    hint2: L3("Fikrda nima haqida gap ketyapti: ro'yxatmi, katta maydonmi yoki tugmami? Shu tegning yozilish qoidasini eslang-chi, fikr unga mosmi?",
       'Вспомни: в select каждый вариант стоит в теге option. А textarea и button пишут с закрывающим тегом. Фраза с этим совпадает?',
       'Remember: inside select, every choice sits in an option tag. And textarea and button are written with a closing tag. Does the sentence match that?'),
-    yes: L3("To'g'ri", 'Верно', 'True'),
-    no: L3("Noto'g'ri", 'Неверно', 'False'),
+    yes: L3("Rost", 'Верно', 'True'),
+    no: L3("Yolg'on", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     items: [
       { t: L3('textarea yopuvchi teg bilan yoziladi.', 'textarea пишут с закрывающим тегом.', 'textarea is written with a closing tag.'), right: true, code: 'ta',
-        why: L3("Yopuvchi teg bo'lmasa, keyingi kod ham maydon ichidagi matnga aylanadi.", 'Без закрывающего тега и следующий код станет текстом внутри поля.', 'Without the closing tag, the code after it turns into text inside the field.') },
+        why: L3("Yopuvchi tegi bo'lmasa, undan keyingi kod ham maydon ichidagi matnga aylanib qoladi. Tugma bilan shunday bo'lgandi-ku.", 'Без закрывающего тега и следующий код станет текстом внутри поля.', 'Without the closing tag, the code after it turns into text inside the field.') },
       { t: L3('button ham input kabi yopuvchi tegsiz yoziladi.', 'button, как и input, пишут без закрывающего тега.', 'Like input, button has no closing tag.'), right: false, code: 'btn',
-        why: L3("button yopuvchi teg bilan yoziladi: tugma yozuvi teglar o'rtasida turadi.", 'button пишут с закрывающим тегом: надпись кнопки стоит между тегами.', 'button has a closing tag: the button’s label goes between the tags.') },
+        why: L3("button yopuvchi teg bilan yoziladi, chunki tugmaning yozuvi ikki teg o'rtasida turadi.", 'button пишут с закрывающим тегом: надпись кнопки стоит между тегами.', 'button has a closing tag: the button’s label goes between the tags.') },
       { t: L3("select ichiga option tegisiz yozilgan so'z ham ro'yxatda chiqadi.", 'Слово внутри select без тега option тоже появится в списке.', 'A word inside select without an option tag still shows up in the list.'), right: false, code: 'bare',
-        why: L3("option tegisiz so'zni brauzer ro'yxatga qo'shmaydi. Har bir variant option ichida bo'lishi kerak.", 'Без option браузер не добавит слово в список. Каждый вариант должен быть внутри option.', 'Without option the browser won’t add the word to the list. Each choice must be inside option.') }
+        why: L3("Basketbol esingizdami? Unda option tegi yo'q edi, shuning uchun ro'yxatda u ham chiqmagan edi.", 'Без option браузер не добавит слово в список. Каждый вариант должен быть внутри option.', 'Without option the browser won’t add the word to the list. Each choice must be inside option.') }
     ],
-    ok: L3("Hammasi to'g'ri! Siz ro'yxat, katta maydon va tugmani yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь список, большое поле и кнопку.', 'All correct! You know the list, the big field and the button really well.')
+    ok: L3("Hech qaysi fikr sizni chalg'itmadi! Ro'yxat, katta maydon va tugma endi sizga yaxshi tanish.", 'Всё верно! Ты отлично знаешь список, большое поле и кнопку.', 'All correct! You know the list, the big field and the button really well.')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men select ichiga o'yinlar nomini shunchaki yozib qo'ygan edim? Afsuski, men adashibman. option tegisiz so'zlarni brauzer ro'yxatga qo'shmaydi, shuning uchun ro'yxat bo'm-bo'sh qoldi. Demak, har bir variantni option ichiga yozish kerak.",
+      { text: L3("Esingizdami, ikki sahifa yozgan edim? Endi ochdim: birinchisi bo'm-bo'sh turibdi, ikkinchisida uchala o'yin ro'yxatda chiqdi! Qaysi biri ishlashini siz Basketbol misolida allaqachon ko'rgan edingiz: option tegi bo'lmasa, brauzer so'zni ro'yxatga qo'shmaydi. Ikkalasi bir xil ishlaydi, deganim yanglish chiqdi. Har bir variant o'zining option tegi ichida turishi shart.",
         'Вернёмся к загадке. Помнишь, я просто написал названия игр внутри select? Увы, я ошибся. Без тега option браузер не добавляет слова в список, поэтому список остался совсем пустым. Значит, каждый вариант нужно писать внутри option.',
         'Back to our riddle. Remember, I just wrote the game names inside select? Sadly, I was wrong. Without the option tag the browser doesn’t add words to the list, so the list stayed completely empty. So every choice has to go inside option.'), k: 'riddle' },
-      { text: L3("Qarang, bu sizning anketangiz! Unda sizning variantingiz va sizning tugmangiz bor.", 'Смотри, это твоя анкета! В ней твой вариант и твоя кнопка.', 'Look, this is your form! It has your choice and your button.'), k: null },
-      { text: L3("select ochiladigan ro'yxat yasaydi.", 'select делает выпадающий список.', 'select makes a drop-down list.'), k: 'select' },
-      { text: L3("option ro'yxatdagi bitta variant bo'ladi.", 'option — один вариант в списке.', 'option is one choice in the list.'), k: 'option' },
-      { text: L3("textarea bir nechta qatorli katta maydon yasaydi.", 'textarea делает большое поле на несколько строк.', 'textarea makes a big field for several lines.'), k: 'textarea' },
-      { text: L3("button esa tugma yasaydi va form ichida anketani yuboradi.", 'А button делает кнопку, которая внутри form отправляет анкету.', 'And button makes a button that sends the form when it’s inside form.'), k: 'button' },
-      { text: L3("Tabriklayman! Endi sahifangiz savol bera oladi, javob tanlata oladi va anketani yubora oladi. Keyingi darsda haqiqiy saytlar qanday qismlardan tuzilganini ko'ramiz. Ko'rishguncha!", 'Ура! Теперь твоя страница умеет спрашивать, предлагать выбор и отправлять анкету. На следующем уроке посмотрим, из каких частей состоят настоящие сайты. До встречи!', 'Hooray! Now your page can ask questions, offer choices and send a form. Next time we’ll see what parts real websites are made of. See you!'), k: null }
+      { text: L3("Bu esa sizning anketangiz! Ro'yxatda o'zingiz qo'shgan o'yin, pastda esa o'zingiz nom bergan tugma turibdi.", 'Смотри, это твоя анкета! В ней твой вариант и твоя кнопка.', 'Look, this is your form! It has your choice and your button.'), k: null },
+      { text: L3("Esingizdami, bugun nimani o'rgandik? Ochiladigan ro'yxat select tegidan chiqadi.", 'select делает выпадающий список.', 'select makes a drop-down list.'), k: 'select' },
+      { text: L3("Uning ichidagi qatorlarni option yozadi: option bo'lmasa, brauzer so'zni variant deb bilmaydi.", 'option — один вариант в списке.', 'option is one choice in the list.'), k: 'option' },
+      { text: L3("Ko'p qatorli katta maydon kerak bo'lsa, textarea yozamiz va uni yopuvchi teg bilan tugatamiz.", 'textarea делает большое поле на несколько строк.', 'textarea makes a big field for several lines.'), k: 'textarea' },
+      { text: L3("Tugmani button yasaydi, form ichida turgani uchun u butun anketani yuboradi.", 'А button делает кнопку, которая внутри form отправляет анкету.', 'And button makes a button that sends the form when it’s inside form.'), k: 'button' },
+      { text: L3("Barakalla, anketangiz to'liq ishlayapti: savol beradi, variantlar taklif qiladi, javobni bitta tugma bilan yuboradi! Endi klubning haqiqiy anketasini o'zingiz yasay olasiz.", 'Ура! Теперь твоя страница умеет спрашивать, предлагать выбор и отправлять анкету. На следующем уроке посмотрим, из каких частей состоят настоящие сайты. До встречи!', 'Hooray! Now your page can ask questions, offer choices and send a form. Next time we’ll see what parts real websites are made of. See you!'), k: null }
     ],
     roles: {
       select: L3("select — ro'yxat", 'select — список', 'select — list'),

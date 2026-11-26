@@ -750,7 +750,7 @@ const a3Body = (lines) => ['<body>'].concat(lines.map((s) => '  ' + s), ['</body
 // Т1 · поле в строке: слово в пустом li меню (ul уже есть; смесь с уроком 2 — h1 над списком).
 function a3FieldCheck(v, want) {
   const s = a3Squash(v);
-  if (!s) return { ok: false, msg: fillL(L3("Hozircha bo'sh. li ichiga «{want}» deb yozing.", 'Пока пусто. Впиши в li «{want}».', 'It’s empty. Type “{want}” inside li.'), { want }) };
+  if (!s) return { ok: false, msg: fillL(L3("Band hali bo'sh turibdi. li ichiga «{want}» deb yozing.", 'Пока пусто. Впиши в li «{want}».', 'It’s empty. Type “{want}” inside li.'), { want }) };
   if (/[<>]/.test(s)) return { ok: false, msg: UI.noTags };
   if (a3Norm(s) !== a3Norm(want)) return { ok: false, msg: fillL(FB.wrongItem, { got: s, want }) };
   return { ok: true };

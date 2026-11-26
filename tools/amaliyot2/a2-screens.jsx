@@ -659,7 +659,7 @@ const a2Body = (lines) => ['<body>'].concat(lines.map((s) => '  ' + s), ['</body
 // Т1 · поле в строке: слова в h1 (смесь с уроком 1: title — на вкладке, h1 — на странице).
 function a2FieldCheck(v, want) {
   const s = a2Squash(v);
-  if (!s) return { ok: false, msg: fillL(L3("Hozircha bo'sh. h1 ichiga «{want}» deb yozing.", 'Пока пусто. Впиши в h1 «{want}».', 'It’s empty. Type “{want}” inside h1.'), { want }) };
+  if (!s) return { ok: false, msg: fillL(L3("Sarlavha hali bo'sh turibdi. h1 ichiga «{want}» deb yozing.", 'Пока пусто. Впиши в h1 «{want}».', 'It’s empty. Type “{want}” inside h1.'), { want }) };
   if (/[<>]/.test(s)) return { ok: false, msg: UI.noTags };
   if (a2Norm(s) !== a2Norm(want)) return { ok: false, msg: fillL(FB.wrongHead, { got: s, want }) };
   return { ok: true };

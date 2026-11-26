@@ -1,0 +1,180 @@
+/* ══ УРОК 5 МОДУЛЯ TILDA (26.11.2026): тема сайта (цвета и шрифт), «Настройки сайта», «Цвета и стили», «Шрифты»,
+   палитра, «Настройки» → «КНОПКА». Поверх tl1.css, tl1-real.css, tl2.css, tl3.css, tl4.css. Сначала — телефон. */
+.r28 .tl5-page { transition: background .45s ease; }
+.r28 .tl5-page .tl2-b { transition: background .45s ease; }
+.r28 .tl5-cov { height: clamp(120px, 20dvh, 190px); }
+.r28 .tl5-h { transition: color .45s ease; }
+.r28 .tl5-h.is-flash, .r28 .tl5-btn.is-flash { animation: tlPop .5s ease-out both; }
+.r28 .tl5-tx b { color: inherit; }
+.r28 .tl5-btn { transition: background .35s ease, color .35s ease, border-color .35s ease; }
+/* Кружок цвета */
+.r28 .tl5-sw { display: inline-block; flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+.r28 .tl5-sw.is-big { width: 28px; height: 28px; }
+.r28 .tl5-sw.is-none { background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 50% / 8px 8px; }
+.r28 .tl5-msg-pal { display: inline-flex; gap: 6px; }
+/* Слово в шрифте */
+.r28 .tl5-fw { display: block; line-height: 1.1; color: #111; overflow-wrap: anywhere; }
+/* ── Страница проекта ── */
+.r28 .tl5-proj { position: absolute; inset: 0; z-index: 24; display: flex; flex-direction: column; background: #EEEEEE; }
+.r28 .tl5-proj-band { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 14px; background: #fff; }
+.r28 .tl5-proj-band > b { font: 300 clamp(22px, 3.4dvh, 30px)/1.1 var(--tl-f, var(--r-font)); color: #111; }
+.r28 .tl5-proj-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.r28 .tl5-pj-set { min-height: 40px; padding: 0 16px; border: 1px solid #DDD; border-radius: 999px; background: #fff; color: #111; font: 500 13px/1 var(--r-font); cursor: pointer; }
+.r28 .tl5-pj-set:disabled { cursor: default; }
+.r28 .tl5-pj-set.is-led { box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-pj-new { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--tl-or); color: #fff; font: 500 13px/1 var(--r-font); }
+.r28 .tl5-proj-pages { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.r28 .tl5-proj-pages em { font: 500 11px/1 var(--r-font); font-style: normal; color: #888; }
+.r28 .tl5-proj-pages span { display: flex; align-items: center; gap: 8px; padding: 12px; background: #fff; font: 500 14px/1 var(--r-font); }
+.r28 .tl5-proj-pages i { font-style: normal; }
+/* ── «Настройки сайта» ── */
+.r28 .tl5-set { position: absolute; inset: 0; z-index: 25; display: flex; flex-direction: column; background: #F2F2F2; }
+.r28 .tl5-set-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #F2F2F2; }
+.r28 .tl5-set-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 13px/1.2 var(--tl-f, var(--r-font)); color: #555; }
+.r28 .tl5-set-path b { font-weight: 400; color: #AAA; }
+.r28 .tl5-set-btns { flex: none; display: flex; gap: 6px; }
+.r28 .tl5-set-close { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; background: #fff; font: 500 12px/1 var(--r-font); color: #111; }
+.r28 .tl5-set-save { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--tl-or); color: #fff; font: 500 12px/1 var(--r-font); cursor: pointer; }
+.r28 .tl5-set-save:disabled { cursor: default; opacity: .75; }
+.r28 .tl5-set-save.is-led { opacity: 1; animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-set-in { flex: 1 1 auto; min-height: 0; display: flex; gap: 0; margin: 0 10px 10px; background: #fff; border-radius: 6px; overflow: hidden; }
+.r28 .tl5-set-menu { flex: none; width: 170px; display: flex; flex-direction: column; gap: 2px; padding: 10px; background: #F7F7F7; overflow-y: auto; }
+.r28 .tl5-set-mi { min-height: 34px; padding: 0 10px; border: 0; border-radius: 4px; background: none; text-align: left; font: 500 13px/1.1 var(--r-font); color: #222; cursor: pointer; }
+.r28 .tl5-set-mi:disabled { cursor: default; }
+.r28 .tl5-set-mi.is-on { background: var(--tl-or); color: #fff; }
+.r28 .tl5-set-mi.is-led { background: #FFF1EC; box-shadow: inset 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-set-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px; overflow-y: auto; }
+.r28 .tl5-set-back { display: none; font: 600 13px/1 var(--r-font); color: #111; }
+.r28 .tl5-note { margin: 0; padding: 10px 12px; border-left: 3px solid #5BC0DE; background: #F5FBFD; font: 400 12px/1.4 var(--r-font); color: #333; }
+.r28 .tl5-h3 { font: 500 17px/1.2 var(--tl-f, var(--r-font)); color: #111; }
+.r28 .tl5-crows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.r28 .tl5-crow, .r28 .tl5-brow { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.r28 .tl5-crow.is-open { grid-column: 1 / -1; }
+.r28 .tl5-lab { font: 600 9.5px/1.2 var(--r-font); letter-spacing: .03em; color: #777; }
+.r28 .tl5-cfield { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 0; border: 0; border-bottom: 1px solid #CCC; background: none; color: #555; font: 400 13px/1 var(--r-font); text-align: left; cursor: pointer; }
+.r28 .tl5-cfield:disabled { cursor: default; }
+.r28 .tl5-cfield.is-led { background: #FFF1EC; box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; border-radius: 4px; padding-left: 4px; }
+/* Палитра */
+.r28 .tl5-pick { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 10px; border-radius: 6px; background: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.r28 .tl5-pick-sq { display: block; height: 62px; border-radius: 3px; }
+.r28 .tl5-pick-hue { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.r28 .tl5-pick-hex { display: flex; gap: 10px; font: 500 12px/1 var(--r-font); color: #333; }
+.r28 .tl5-pick-hex em { font-style: normal; color: #888; }
+.r28 .tl5-pick-sv { font: 500 11px/1 var(--r-font); color: #555; }
+.r28 .tl5-pick-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.r28 .tl5-pick-c { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 58px; padding: 6px 4px; border: 1.5px solid transparent; border-radius: 8px; background: #FAFAFA; cursor: pointer; }
+.r28 .tl5-pick-c span { font: 500 10.5px/1.1 var(--r-font); color: #333; text-align: center; }
+.r28 .tl5-pick-c:disabled { cursor: default; }
+.r28 .tl5-pick-c:not(:disabled):hover { border-color: #000; }
+.r28 .tl5-pick-c.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .tl5-pick-plus { display: grid; place-items: center; width: 28px; height: 28px; margin-top: 6px; border: 1px dashed #BBB; border-radius: 50%; color: #999; }
+/* «Шрифты» */
+.r28 .tl5-fonts { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.r28 .tl5-fcar { display: flex; align-items: center; gap: 6px; width: 100%; }
+.r28 .tl5-farr { flex: none; width: 34px; height: 34px; border: 1px solid #DDD; border-radius: 50%; background: #fff; color: #333; font: 400 20px/1 var(--r-font); cursor: pointer; }
+.r28 .tl5-farr:disabled { cursor: default; }
+.r28 .tl5-farr.is-led { box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-fcard { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 6px; overflow: hidden; }
+.r28 .tl5-fcard.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .tl5-fprev { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: #fff; }
+.r28 .tl5-fprev b { font-size: clamp(24px, 4dvh, 34px); line-height: 1.1; color: #111; }
+.r28 .tl5-fprev span { font-size: 12.5px; line-height: 1.4; color: #333; }
+.r28 .tl5-fbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: #F2F2F2; }
+.r28 .tl5-fnames { display: flex; flex-direction: column; gap: 3px; min-width: 0; font: 400 12px/1.2 var(--r-font); color: #333; }
+.r28 .tl5-fnames b { font-weight: 600; }
+.r28 .tl5-fchoose { flex: none; min-height: 34px; padding: 0 14px; border: 1px solid #BBB; border-radius: 4px; background: #fff; color: #111; font: 500 12px/1 var(--r-font); cursor: pointer; }
+.r28 .tl5-fchoose.is-on { border-color: #DDD; color: #999; }
+.r28 .tl5-fchoose:disabled { cursor: default; }
+.r28 .tl5-fchoose.is-led { border-color: var(--tl-or); background: #FFF1EC; animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-fdots { display: flex; gap: 5px; }
+.r28 .tl5-fdots i { width: 6px; height: 6px; border-radius: 50%; background: #111; opacity: .25; }
+.r28 .tl5-fdots i.is-on { opacity: 1; }
+/* «Настройки» блока → «КНОПКА» */
+.r28 .tl5-sec { display: flex; justify-content: space-between; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid #E5E5E5; border-radius: 4px; background: #fff; font: 600 11px/1 var(--r-font); letter-spacing: .03em; color: #111; cursor: pointer; }
+.r28 .tl5-sec i { font-style: normal; font-size: 14px; color: #999; }
+.r28 .tl5-sec:disabled { cursor: default; }
+.r28 .tl5-sec.is-on { border-color: var(--tl-or); }
+.r28 .tl5-sec.is-led { background: #FFF1EC; border-color: var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl5-bbox { display: flex; flex-direction: column; gap: 10px; padding: 10px; border-radius: 6px; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
+.r28 .tl5-bbox-h { display: flex; align-items: center; gap: 6px; }
+.r28 .tl5-bbox-h b { flex: 1; font: 600 11px/1 var(--r-font); letter-spacing: .03em; }
+.r28 .tl5-bbox-h em { padding: 3px 6px; border: 1px solid #F5C2D0; border-radius: 3px; font: 500 9px/1 var(--r-font); font-style: normal; color: #C0547A; }
+.r28 .tl5-brow.is-dim { flex-direction: row; justify-content: space-between; opacity: .55; }
+.r28 .tl5-brow.is-dim b { font: 400 12px/1 var(--r-font); }
+/* ── Экраны ── */
+.r28 .tl5-why { gap: 10px; }
+.r28 .tl5-why .tl5-why-ed { flex: 1 1 auto; min-height: 0; max-width: 560px; }
+.r28 .tl5-vdots { display: flex; justify-content: center; gap: 6px; }
+.r28 .tl5-vdots i { width: 26px; height: 6px; border-radius: 3px; background: #E5E7EB; transition: background .3s; }
+.r28 .tl5-vdots i.is-on { background: var(--tl-or); }
+.r28 .tl5-cq { padding: 30px 10px 12px; }
+.r28 .tl5-cq-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: clamp(86px, 15dvh, 130px); padding: 12px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); text-align: center; }
+.r28 .tl5-cq-card b { font: 800 clamp(20px, 3.2dvh, 28px)/1.1 var(--r-font); }
+.r28 .tl5-cq-card span { font: 500 13px/1.3 var(--r-font); }
+.r28 .tl5-mini { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 200px; padding: 6px; border-radius: 6px; background: #fff; box-shadow: inset 0 0 0 1px #E5E7EB; }
+.r28 .tl5-mini i { display: block; height: 5px; border-radius: 3px; background: #C9C9C9; }
+.r28 .tl5-mini i.is-cov { height: 34px; border-radius: 3px; background: linear-gradient(135deg, #3B3B3B, #6B6B6B); }
+.r28 .tl5-mini-b { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 3px; }
+.r28 .tl5-mini-b i.is-h { width: 70%; height: 10px; margin: 0 auto; }
+.r28 .tl5-mini-b i.is-s { width: 60%; }
+.r28 .tl5-mini-b i.is-btn { align-self: center; width: 46%; height: 14px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1); }
+.r28 .tl5-fshow { gap: 8px; }
+.r28 .tl5-fs-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 560px !important; padding: 10px 16px; border-radius: 12px; background: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, .05); transition: opacity .3s, transform .3s, box-shadow .3s; }
+.r28 .tl5-fs-row .tl5-fw { font-size: clamp(24px, 4.2dvh, 36px); }
+.r28 .tl5-fs-row em { font: 500 11px/1 var(--r-font); font-style: normal; color: #888; white-space: nowrap; }
+.r28 .tl5-fs-row.is-on { box-shadow: 0 0 0 2px var(--tl-or); transform: scale(1.02); }
+.r28 .tl5-fs-row.is-dim { opacity: .35; }
+.r28 .tl5-fit { gap: 12px; }
+.r28 .tl5-fit-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 620px !important; }
+.r28 .tl5-fit-o { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 96px; padding: 12px 6px; border: 2px solid #E5E7EB; border-radius: 14px; background: #fff; cursor: pointer; }
+.r28 .tl5-fit-o .tl5-fw { font-size: clamp(18px, 3dvh, 26px); text-align: center; }
+.r28 .tl5-fit-o em { font: 500 10.5px/1.1 var(--r-font); font-style: normal; color: #888; text-align: center; }
+.r28 .tl5-fit-o:disabled { cursor: default; }
+.r28 .tl5-fit-o:not(:disabled):hover { border-color: #000; }
+.r28 .tl5-fit-o.is-ok { border-color: #16A34A; background: #F0FDF4; }
+.r28 .tl5-fit-o.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+/* Сайт друга с ошибками */
+.r28 .tl5-fixs { gap: 10px; }
+.r28 .tl5-fcount { display: flex; justify-content: center; gap: 6px; }
+.r28 .tl5-fcount i { width: 26px; height: 6px; border-radius: 3px; background: #E5E7EB; }
+.r28 .tl5-fcount i.is-on { background: #16A34A; }
+.r28 .tl5-fix { display: flex; flex-direction: column; gap: 10px; max-width: 520px !important; padding: 0 0 14px; border-radius: 10px; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .08); overflow: hidden; }
+.r28 .tl5-fix-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; color: #fff; font-size: 16px; }
+.r28 .tl5-fx { border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; transition: background .4s, color .4s; }
+.r28 .tl5-fx:not(:disabled):hover { border-color: rgba(250, 79, 40, .4); }
+.r28 .tl5-fx.is-flash { animation: tlPop .5s ease-out both; box-shadow: 0 0 0 3px #86EFAC; }
+.r28 .tl5-fix-h { margin: 0 12px; padding: 4px 8px; font-size: clamp(24px, 3.8dvh, 32px); line-height: 1.15; color: #1E3A8A; text-align: center; }
+.r28 .tl5-fix-sub { margin: 0 12px; padding: 2px 8px; font: 500 15px/1.3 var(--r-font); text-align: center; }
+.r28 .tl5-fix-blocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 12px; }
+.r28 .tl5-fix-b { min-height: 62px; padding: 8px 4px; color: #111; font-size: 13px; }
+.r28 .tl5-fix-btn { align-self: center; min-height: 40px; padding: 0 24px; border-radius: 6px; background: #F97316; color: #fff; font-size: 14px; font-weight: 700; }
+/* Телефон: настройки сайта — либо разделы, либо раздел; панели — снизу. */
+@media (max-width: 759px) {
+  .r28 .tl5-set-path span { display: none; }
+  .r28 .tl5-set-in { margin: 0 6px 6px; }
+  .r28 .tl5-set-menu { width: auto; flex: 1 1 auto; }
+  .r28 .tl5-set.is-tab .tl5-set-menu { display: none; }
+  .r28 .tl5-set:not(.is-tab) .tl5-set-body { display: none; }
+  .r28 .tl5-set-back { display: block; }
+  .r28 .tl5-set-body { padding: 10px; }
+  .r28 .tl5-crows { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .r28 .tl5-note { display: none; }
+  .r28 .tl5-hide-s { display: none; }
+  .r28 .tl5-pick-sq { height: 40px; }
+  .r28 .tl5-fprev { padding: 12px; }
+  .r28 .tl5-fbar { flex-wrap: wrap; }
+  .r28 .tl5-fit-opts { grid-template-columns: minmax(0, 1fr); }
+  .r28 .tl5-fit-o { flex-direction: row; justify-content: space-between; min-height: 60px; padding: 10px 16px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .tl5-fs-row { padding: 6px 14px; }
+  .r28 .tl5-fs-row .tl5-fw { font-size: 22px; }
+  .r28 .tl5-cq-card { min-height: 74px; }
+  .r28 .tl5-fix-b { min-height: 48px; }
+}
+/* Телефон: панель «Настройки» снизу — у последнего блока (кнопки) запас, чтобы он вставал над панелью; лишние строки «КНОПКА» скрыты. */
+@media (max-width: 759px) {
+  .r28 .tl-ed.tl4-panon .tl5-page > .tl2-b:last-child { margin-bottom: 58dvh; }
+  .r28 .tl5-bbox .tl4-hide-s { display: none; }
+  .r28 .tl5-bbox { padding: 8px; gap: 8px; }
+}

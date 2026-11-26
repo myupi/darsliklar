@@ -552,7 +552,7 @@ function A1TaskScreen({ p, cfg }) {
 // Т1 · поле в строке: название между тегами title.
 function a1FieldCheck(v, want) {
   const s = a1Squash(v);
-  if (!s) return { ok: false, msg: fillL(L3("Hozircha bo'sh. title ichiga «{want}» so'zini yozing.", 'Пока пусто. Впиши в title слово «{want}».', 'It’s empty. Type “{want}” inside title.'), { want }) };
+  if (!s) return { ok: false, msg: fillL(L3("Hali hech narsa yozilmabdi-ku. title ichiga «{want}» so'zini yozing.", 'Пока пусто. Впиши в title слово «{want}».', 'It’s empty. Type “{want}” inside title.'), { want }) };
   if (/[<>]/.test(s)) return { ok: false, msg: UI.noTags };
   if (a1Norm(s) !== a1Norm(want)) return { ok: false, msg: fillL(FB.wrongName, { got: s, want }) };
   return { ok: true };

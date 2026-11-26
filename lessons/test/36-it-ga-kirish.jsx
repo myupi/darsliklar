@@ -988,7 +988,9 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
   // voiceGender от LMS голос курса не меняет.
   const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  // 26.11.2026: невидимый знак в конце — новая запись у сервиса (swapTtsFresh в tools/build-canon.mjs).
+  const fresh = String(text).slice(0, 999);
+  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(fresh.slice(-1) === '\u200B' ? fresh : fresh + '\u200B') + '&g=' + g;
   const meta = typeof META !== 'undefined' && META ? META : null;
   if (meta && meta.lessonId) {
     url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
@@ -6893,13 +6895,13 @@ const C = {
   },
   s2: {
     eyebrow: L3('IT nima?', 'Что такое IT?', 'What is IT?'),
-    say: L3("IT ikki inglizcha so'zdan iborat. Har bir harfni bosing va nima ekanini ko'ring.",
+    say: L3("IT so'zi ikki inglizcha so'zdan iborat. Har bir harfni bosing va nima ekanini ko'ring.",
       'IT — это два английских слова. Нажми на каждую букву и посмотри, что она значит.',
       'IT is made of two English words. Tap each letter and see what it means.'),
     sayI: L3("I bu Information, ya'ni axborot degani. Matn, rasm, video, ovoz, hatto siz turgan joy, hammasi axborot.",
       'I — это Information, то есть информация. Текст, фото, видео, голос, даже место, где ты находишься, — всё это информация.',
       'I is for Information. Text, photos, videos, voice, even the place where you are: all of it is information.'),
-    sayT: L3("T bu Technology, ya'ni texnologiya degani. Telefon, kompyuter, internet va ilovalar axborot bilan ishlaydi.",
+    sayT: L3("Ti harfi bu Technology, ya'ni texnologiya degani. Telefon, kompyuter, internet va ilovalar axborot bilan ishlaydi.",
       'T — это Technology, то есть технологии. Телефон, компьютер, интернет и приложения работают с информацией.',
       'T is for Technology. Phones, computers, the internet and apps all work with information.'),
     ok: L3("Endi ikkalasini qo'shamiz. Siz do'stingizga rasm yubordingiz: telefon uni saqladi, internet bir soniyada uzatdi, ilova ko'rsatdi. Mana shu IT, ya'ni axborot texnologiyalari degani!",
@@ -6916,14 +6918,14 @@ const C = {
   },
   s4: {
     eyebrow: L3("O'yin buzildi", 'Игра сломалась', 'Broken game'),
-    say: L3("Endi o'zingiz dasturchi bo'lib ko'ring! Mana o'yin, lekin u buzilgan: qahramon har safar devorga urilyapti. Uni faqat kod tuzata oladi. Sakrash sonini o'zgartiring va «O'ynash» ni bosing.",
-      'А теперь побудь программистом сам! Вот игра, но она сломана: герой каждый раз врезается в стену. Починить её может только код. Измени число прыжка и нажми «Играть».',
-      'Now try being a programmer yourself! Here’s a game, but it’s broken: the hero keeps crashing into the wall. Only code can fix it. Change the jump number and tap “Play”.'),
+    say: L3("Endi o'zingiz dasturchi bo'lib ko'ring! Mana o'yin, lekin u buzilgan: qahramon har safar devorga urilyapti. Uni faqat kod tuzata oladi. Kod inglizcha so'zlar bilan yoziladi: wall bu devor, jump esa sakrash degani. Jump yonidagi sonni o'zgartiring va «O'ynash» ni bosing.",
+      'А теперь побудь программистом сам! Вот игра, но она сломана: герой каждый раз врезается в стену. Починить её может только код. Код пишут английскими словами: wall значит стена, а jump значит прыжок. Измени число у jump и нажми «Играть».',
+      'Now try being a programmer yourself! Here’s a game, but it’s broken: the hero keeps crashing into the wall. Only code can fix it. Code is written with English words: wall is the wall, and jump is how high the hero jumps. Change the number next to jump and tap “Play”.'),
     ask: L3("Qahramon devordan sakrab o'tsin", 'Пусть герой перепрыгнет стену', 'Make the hero jump over the wall'),
     play: L3("O'ynash", 'Играть', 'Play'),
     lvl: L3('{n}-daraja', 'Уровень {n}', 'Level {n}'),
-    cWall: L3('devor balandligi', 'высота стены', 'wall height'),
-    cJump: L3('sakrash balandligi', 'высота прыжка', 'jump height'),
+    cWall: L3('devor', 'стена', 'wall height'),
+    cJump: L3('sakrash', 'прыжок', 'jump height'),
     low: L3("Bum! Sakrash devordan past. Qahramon unga urildi. Sonni kattaroq qiling.",
       'Бум! Прыжок ниже стены. Герой в неё врезался. Сделай число больше.',
       'Bump! The jump is lower than the wall. The hero crashed into it. Make the number bigger.'),
@@ -6973,13 +6975,15 @@ const C = {
   },
   s5: {
     eyebrow: L3('Robot', 'Робот', 'Robot'),
-    say: L3("Endi topishmoqni tekshiramiz. Mana, robot. U olmani olishi kerak. Strelkalar bilan yo'l yozing va «Ishga tushirish» ni bosing.",
-      'А теперь проверим загадку. Вот робот. Ему нужно взять яблоко. Составь путь стрелками и нажми «Запустить».',
-      'Now let’s test the riddle. Here’s a robot. It needs to get the apple. Build its path with arrows and tap “Run”.'),
+    say: L3("Endi topishmoqni tekshiramiz. Mana, robot. U olmani olishi kerak. Kulrang devordan o'tib bo'lmaydi, uni aylanib o'tish kerak. Strelkalar bilan yo'l yozing va «Ishga tushirish» ni bosing.",
+      'А теперь проверим загадку. Вот робот. Ему нужно взять яблоко. Через серые стены пройти нельзя, их нужно обходить. Составь путь стрелками и нажми «Запустить».',
+      'Now let’s test the riddle. Here’s a robot. It needs to get the apple. It can’t go through the grey walls, so go around them. Build its path with arrows and tap “Run”.'),
     lvl: L3('{n}-daraja', 'Уровень {n}', 'Level {n}'),
     lvlOk: L3("Ishladi! Endi labirint kattaroq, olma esa uzoqroqda.", 'Сработало! Теперь лабиринт больше, а яблоко дальше.', 'It worked! Now the maze is bigger and the apple is farther away.'),
     run: L3('Ishga tushirish', 'Запустить', 'Run'),
     clear: L3('Tozalash', 'Очистить', 'Clear'),
+    legWall: L3("devor: o'tib bo'lmaydi", 'стена: не пройти', 'wall: can’t pass'),
+    legApple: L3('olma: maqsad', 'яблоко: цель', 'apple: goal'),
     prog: L3('Dastur', 'Программа', 'Program'),
     empty: L3("Oldin strelkalarni bosing, keyin ishga tushiring.", 'Сначала нажми стрелки, потом запускай.', 'Tap the arrows first, then run.'),
     bump: L3("Bum! Robot devorga urildi. U siz yozgan narsani aynan bajardi, o'zi o'ylamadi. Yo'lni tuzating.",
@@ -9684,14 +9688,13 @@ function S4({ p }) {
           </div>
           <div className="itk-side">
             <div className="itk-code" translate="no">
-              <div className="itk-cl"><em>1</em><span><b className="v">wall</b> = <b className="n">{wall}</b>;</span><small>// {pick(c.cWall)}</small></div>
+              <div className="itk-cl"><em>1</em><span><b className="v itk-gw is-wall">wall<i>{pick(c.cWall)}</i></b> = <b className="n">{wall}</b>;</span></div>
               <div className="itk-cl is-edit"><em>2</em>
-                <span><b className="v">jump</b> =
+                <span><b className="v itk-gw is-jump">jump<i>{pick(c.cJump)}</i></b> =
                   <button type="button" data-v="minus" className="itk-step" disabled={!canTap || busy || j <= 1} onClick={() => step(-1)} aria-label="−">−</button>
                   <b className="n itk-jv">{j}</b>
                   <button type="button" data-v="plus" className={'itk-step' + (canTap && !busy && !solved && j <= wall ? ' is-led' : '')} disabled={!canTap || busy || j >= RG.J_MAX} onClick={() => step(1)} aria-label="+">+</button>;
                 </span>
-                <small>// {pick(c.cJump)}</small>
               </div>
             </div>
             <button type="button" data-v="play" className={'kz-btn is-coral itk-play' + (canTap && !busy && !solved && j > wall ? ' is-led' : '')} disabled={!canTap || busy} onClick={go}>
@@ -9872,14 +9875,31 @@ function S5({ p }) {
     }
     tm.current.push(setTimeout(() => { setRun(false); T.miss(c.short, sayNow); }, ms * (prog.length + 1)));
   };
+  // 26.11.2026 (отзыв: «не поняли, что стену нужно обходить»): путь виден до запуска — каждая стрелка ставит на поле
+  // пронумерованную точку; шаг в стену — стена краснеет с крестиком, шаг за край — крестик на последней клетке.
+  const pv = { at: {}, bad: '', out: '' };
+  if (!run && !boom && !win && prog.length) {
+    let [x, y] = M.start;
+    for (let i = 0; i < prog.length; i += 1) {
+      const [dx, dy] = DIRV[prog[i]];
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= M.w || ny >= M.h) { pv.out = x + ',' + y; break; }
+      if (M.walls.includes(nx + ',' + ny)) { pv.bad = nx + ',' + ny; break; }
+      x = nx; y = ny;
+      pv.at[x + ',' + y] = i + 1;
+      if (x === M.apple[0] && y === M.apple[1]) break;
+    }
+  }
   const cells = [];
   for (let y = 0; y < M.h; y += 1) for (let x = 0; x < M.w; x += 1) {
     const wl = M.walls.includes(x + ',' + y);
     const apple = x === M.apple[0] && y === M.apple[1];
     const st0 = x === M.start[0] && y === M.start[1];
     cells.push(
-      <span key={lv + ':' + x + ',' + y} className={'itk-cell' + ((x + y) % 2 ? ' is-alt' : '') + (wl ? ' is-wall' : '')}>
+      <span key={lv + ':' + x + ',' + y} className={'itk-cell' + ((x + y) % 2 ? ' is-alt' : '') + (wl ? ' is-wall' : '') + (pv.bad === x + ',' + y ? ' is-bad' : '')}>
         {wl ? <i className="itk-rock" /> : null}
+        {pv.at[x + ',' + y] && !apple ? <i className="itk-pv">{pv.at[x + ',' + y]}</i> : null}
+        {pv.bad === x + ',' + y || pv.out === x + ',' + y ? <i className="itk-x" /> : null}
         {st0 ? <i className="itk-start" /> : null}
         {trail.includes(x + ',' + y) && !apple ? <i className="itk-dot" /> : null}
         {apple && !win ? <i className="itk-apple"><ItkApple /></i> : null}
@@ -9900,6 +9920,10 @@ function S5({ p }) {
                 {boom ? <span className="itk-dizzy"><i /><i /><i /></span> : null}
                 {win ? <span className="itk-spark"><i /><i /><i /><i /><i /><i /></span> : null}
               </i>
+            </div>
+            <div className="itk-legend" aria-hidden="true">
+              <span><i className="itk-rock is-mini" />{pick(c.legWall)}</span>
+              <span><i className="itk-leg-apple"><ItkApple /></i>{pick(c.legApple)}</span>
             </div>
           </div>
           <div className="itk-ctl">
@@ -14117,4 +14141,43 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (min-width: 1024px) and (min-height: 680px) { .r28 .kz-scene.itk-scene.itk-end2 { zoom: 1; } }
 @media (min-width: 1280px) and (min-height: 840px) { .r28 .kz-scene.itk-scene.itk-end2 { zoom: 1.15; } }
 @media (max-height: 760px) and (min-width: 760px) { .r28 .itk-award { padding: 12px 16px 10px; } .r28 .itk-medal2 { width: 70px; } }
+
+/* 26.11.2026 (заказчик: «либо объяснить, что такое jump»): у слов кода — перевод под словом, цвет слова — как его вещь в игре:
+   wall — серая стена, jump — оранжевый пунктир прыжка. */
+.r28 .itk-run .itk-cl { padding-bottom: 19px; }
+.r28 .itk-gw { position: relative; display: inline-block; }
+.r28 .itk-gw > i { position: absolute; left: 50%; top: calc(100% + 2px); transform: translateX(-50%); padding: 2px 7px; border-radius: 999px;
+  font: 700 11px/1.15 var(--r-font, system-ui, sans-serif); font-style: normal; white-space: nowrap; letter-spacing: 0; }
+.r28 .itk-code .itk-gw.is-wall { color: #475569; }
+.r28 .itk-gw.is-wall > i { background: #E2E8F0; color: #334155; }
+.r28 .itk-code .itk-gw.is-jump { color: var(--or); }
+.r28 .itk-gw.is-jump > i { background: #FFEDD5; color: #C2410C; }
+@media (max-width: 759px) and (max-height: 700px) { .r28 .itk-run .itk-cl { padding-bottom: 17px; } }
+
+
+/* 26.11.2026 (отзыв: «не поняли, что стену нужно обходить»): препятствия — кирпичные стены, как в игре на экране 4;
+   подпись под полем; путь виден до запуска (точки с номерами), шаг в стену — красная стена с крестиком. */
+.r28 .itk-rock { inset: 7%; border-radius: 5px; box-shadow: 0 0 0 1.5px #64748B, 0 3px 0 #475569;
+  background:
+    linear-gradient(#64748B 0 0) 0 33% / 100% 1.5px no-repeat,
+    linear-gradient(#64748B 0 0) 0 66% / 100% 1.5px no-repeat,
+    linear-gradient(#64748B 0 0) 50% 0 / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 25% 50% / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 75% 50% / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 50% 100% / 1.5px 34% no-repeat,
+    linear-gradient(180deg, #B7C2D0, #94A3B8); }
+.r28 .itk-rock::after { content: none; }
+.r28 .itk-cell.is-bad .itk-rock { box-shadow: 0 0 0 2.5px #DC2626, 0 3px 0 #991B1B; animation: itkShake .4s ease-in-out 1; }
+.r28 .itk-pv { position: absolute; z-index: 1; left: 33%; top: 33%; right: auto; bottom: auto; width: 34%; height: 34%; display: grid; place-items: center; border-radius: 50%;
+  background: rgba(250, 79, 40, .85); color: #fff; font: 800 12px/1 var(--r-font); font-style: normal;
+  animation: itkPop .25s ease-out both; }
+.r28 .itk-x { position: absolute; z-index: 2; right: 6%; top: 6%; display: grid; place-items: center; width: 34%; aspect-ratio: 1; border-radius: 50%; background: #DC2626;
+  box-shadow: 0 0 0 2px #fff; animation: itkPop .25s ease-out both; }
+.r28 .itk-x::before, .r28 .itk-x::after { content: ''; position: absolute; width: 52%; height: 3px; border-radius: 2px; background: #fff; transform: rotate(45deg); }
+.r28 .itk-x::after { transform: rotate(-45deg); }
+.r28 .itk-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; color: var(--ink); font: 700 12.5px/1.2 var(--r-font); }
+.r28 .itk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.r28 .itk-rock.is-mini { position: relative; inset: auto; display: inline-block; flex: none; width: 20px; height: 20px; }
+.r28 .itk-leg-apple { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; }
+.r28 .itk-leg-apple svg { width: 100%; height: 100%; }
 `;

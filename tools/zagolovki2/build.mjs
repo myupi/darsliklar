@@ -27,4 +27,7 @@ naborRedaktor(gen);
   writeFileSync(f, must(readFileSync(f, 'utf8'), 'doctype|DOCTYPE|H (?:one|', 'doctype|DOCTYPE|heading|paragraph|bold|italic|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z2r.src.jsx'), join(root, 'lessons/html/02-zagolovki-i-tekst.jsx')], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z2r.src.jsx'), join(root, 'lessons/html/02-zagolovki-i-tekst.jsx')], { stdio: 'inherit' });
+}

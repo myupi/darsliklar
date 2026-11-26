@@ -1,0 +1,51 @@
+/* ── Урок 3 JavaScript «Типы данных»: коробки «Памяти» по типу, кнопки типов (поверх j1.css и j2.css) ── */
+/* Цвета типов: string — оранжевый, number — зелёный, boolean — синий, undefined — серый. */
+.r28 .j3-box { --t: #9CA3AF; --tt: #fff; border-color: var(--t); padding-bottom: 14px; }
+.r28 .j3-box .j2-box-n { background: var(--t); color: var(--tt); }
+.r28 .j3-box.is-t-string { --t: #EA7A2B; }
+.r28 .j3-box.is-t-number { --t: #16A34A; }
+.r28 .j3-box.is-t-boolean { --t: #2563EB; }
+.r28 .j3-box.is-t-emp { --t: #E5B800; --tt: #1F1A00; }
+.r28 .j3-box.is-const { border-color: var(--t); }
+.r28 .j3-box.is-const .j2-box-n { background: var(--t); color: var(--tt); }
+.r28 .j3-box .j2-box-v.is-str { color: #B4501A; }
+.r28 .j3-box .j2-box-v.is-num { color: #15803D; }
+.r28 .j3-box .j2-box-v.is-bool { color: #1D4ED8; }
+.r28 .j3-type { position: absolute; left: 6px; bottom: 1px; font: 700 9px/1 var(--r-mono); color: var(--t); letter-spacing: .02em; }
+.r28 .j3-box em { color: #B6B6B6; }
+.r28 .j3-box.is-lit .j2-box-n { background: #FA4F28; color: #fff; }
+
+/* «Какой тип?» */
+.r28 .j3-val { font: 800 clamp(26px, 4.4dvh, 36px)/1.2 var(--r-mono) !important; padding: 4px 16px; border-radius: 10px; background: #1E1E1E; }
+.r28 .j3-val .j1-str { color: #CE9178; }
+.r28 .j3-val.is-t-string { box-shadow: 0 0 0 3px #EA7A2B; }
+.r28 .j3-val.is-t-number { box-shadow: 0 0 0 3px #16A34A; }
+.r28 .j3-val.is-t-boolean { box-shadow: 0 0 0 3px #2563EB; }
+.r28 .j3-tb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.r28 .j3-tb b { font: 800 clamp(15px, 2.2dvh, 18px)/1 var(--r-mono); }
+.r28 .j3-tb span { font: 600 12px/1 var(--r-font); color: #6B7280; }
+.r28 .j3-tb.is-t-string b { color: #C2410C; }
+.r28 .j3-tb.is-t-number b { color: #15803D; }
+.r28 .j3-tb.is-t-boolean b { color: #1D4ED8; }
+@media (max-width: 759px) {
+  .r28 .j3-box { padding-bottom: 12px; }
+  .r28 .j3-tb span { font-size: 11px; }
+}
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j1-endpair .kz-code { font-size: 12px; }
+  .r28 .j1-endpair .j3-box { padding-bottom: 11px; }
+}
+/* Вывод на телефоне: плашки «что умеем» в две колонки */
+@media (max-width: 759px) {
+  .r28 .j1-endroles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; }
+  .r28 .j1-endroles .kz-role { justify-content: flex-start; min-width: 0; padding: 5px 8px; font-size: 12.5px; line-height: 1.2; text-align: left; }
+}
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j1-endpair { gap: 6px; }
+  .r28 .j1-endpair .j2-mem { padding: 5px 7px 6px; }
+  .r28 .j1-endpair .j1-con-bar { display: none; }
+}
+@media (max-width: 759px) and (max-height: 680px) {
+  .r28 .j1-endpair .j1-con-row { padding-top: 2px; padding-bottom: 2px; }
+  .r28 .j1-endpair .j1-con-prompt { display: none; }
+}

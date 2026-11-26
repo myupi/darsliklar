@@ -121,53 +121,53 @@ const XTRA = {
 // В звучащих узбекских фразах нет тире и символов (= " /): движок делает из тире точку.
 // ─────────────────────────────────────────────────────────────────────────────
 const FB = {
-  empty: L3("Hozircha bo'sh. Kodni shu yerga yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
-  backslash: L3("Bu teskari chiziq «\\». Yopuvchi tegda oddiy qiya chiziq «/» turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
-  noGt: L3("Bu tegning oxirida o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
-  noLt: L3("Teg chap burchakli qavs «<» bilan boshlanadi, bu yerda esa u yo'q: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
-  typo: L3("Bunday teg yo'q: \u2063«{bad}»\u2064. Balki «{near}» demoqchisiz?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
-  unknown: L3("Bunday teg bizning sahifamizda yo'q: \u2063«{bad}»\u2064. Havola uchun bizda a tegi bor.", 'Такого тега на нашей странице нет: \u2063«{bad}»\u2064. Для ссылки у нас есть тег a.', 'Our page has no such tag: \u2063“{bad}”\u2064. For a link we have the a tag.'),
-  noLevel: L3("Bunday sarlavha yo'q: \u2063«{bad}»\u2064. Sarlavhalar h1 tegidan h6 tegigacha bo'ladi.", 'Такого заголовка нет: \u2063«{bad}»\u2064. Заголовки бывают от h1 до h6.', 'There’s no such heading: \u2063“{bad}”\u2064. Headings go from h1 to h6.'),
-  emptyTag: L3("Burchakli qavslar ichida teg nomi bo'lishi kerak.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
-  inBody: L3("Bu yerga faqat body ichidagi qismni yozing: qolgani allaqachon bor.", 'Здесь пишется только то, что внутри body: остальное уже есть.', 'Write only what goes inside body here: the rest is already there.'),
-  hasBody: L3("body allaqachon bor: tepada va pastda. Uning ichiga yozing.", 'body уже есть: сверху и снизу. Пиши внутри него.', 'body is already there, at the top and bottom. Write inside it.'),
-  needOpenText: L3("Matndan oldin ochuvchi {tag} tegi kerak.", 'Перед текстом нужен открывающий тег {tag}.', 'Before the text you need the opening {tag} tag.'),
-  closeFirst: L3("Bu yopuvchi {got} tegi. Bu yerda oldin ochuvchi {tag} tegi kerak.", 'Это закрывающий тег {got}. Здесь сначала нужен открывающий тег {tag}.', 'That’s the closing {got} tag. First you need the opening {tag} tag here.'),
-  closeStray: L3("Bu yopuvchi {got} tegi, lekin {got} ochilmagan.", 'Это закрывающий тег {got}, но {got} не открыт.', 'That’s the closing {got} tag, but {got} was never opened.'),
-  wrongOpen: L3("Bu yerda {tag} tegi kerak, {got} emas.", 'Здесь нужен тег {tag}, а не {got}.', 'You need the {tag} tag here, not {got}.'),
-  needText: L3("{tag} ichiga matn yozing.", 'Напиши текст внутри {tag}.', 'Write some text inside {tag}.'),
-  needSlash: L3("Bu ochuvchi teg. Yopuvchi tegda {tag} so'zidan oldin qiya chiziq «/» turadi.", 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
-  needClose: L3("{tag} qismi yopilmadi: oxiriga yopuvchi {tag} tegini yozing.", 'Часть {tag} не закрыта: в конце напиши закрывающий тег {tag}.', 'The {tag} part isn’t closed: add the closing {tag} tag at the end.'),
-  headOpen: L3("{tag} yopilmadi, shuning uchun pastdagi hamma narsa ham katta bo'lib ketdi. Sarlavhadan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт, поэтому всё ниже тоже стало крупным. После заголовка напиши закрывающий тег {tag}.', '{tag} isn’t closed, so everything below got big too. Add the closing {tag} tag after the heading.'),
-  textAfter: L3("Yopuvchi {tag} tegidan keyin matn qolib ketdi. Uni teglar ichiga o'tkazing.", 'После закрывающего тега {tag} остался текст. Перенеси его внутрь тегов.', 'There’s text left after the closing {tag} tag. Move it inside the tags.'),
+  empty: L3("Yo'l hali boshlanmagan: kodni shu yerdan yozing.", 'Пока пусто. Пиши код здесь.', 'It’s empty so far. Write the code here.'),
+  backslash: L3("«\\» emas, «/» kerak: yopuvchi tegda o'ngga qiyshaygan chiziq turadi.", 'Это обратная черта «\\». В закрывающем теге стоит обычная косая черта «/».', 'That’s a backslash “\\”. A closing tag uses a normal slash “/”.'),
+  noGt: L3("Tegning oxiri ochiq qolibdi, unda o'ng burchakli qavs «>» yo'q: \u2063«{bad}»\u2064.", 'В конце тега не хватает уголка «>»: \u2063«{bad}»\u2064.', 'This tag is missing the bracket “>” at the end: \u2063“{bad}”\u2064.'),
+  noLt: L3("Tegning boshida chap burchakli qavs «<» yo'q. Teglar doim shu belgidan boshlanadi: \u2063«{bad}»\u2064.", 'Тег начинается с уголка «<», а здесь его нет: \u2063«{bad}»\u2064.', 'A tag starts with the bracket “<”, but it’s missing here: \u2063“{bad}”\u2064.'),
+  typo: L3("Brauzer bu so'zni teg deb tanimadi: \u2063«{bad}»\u2064. «{near}» bo'lsa kerak, to'g'rimi?", 'Такого тега нет: \u2063«{bad}»\u2064. Может быть, «{near}»?', 'There’s no such tag: \u2063“{bad}”\u2064. Did you mean “{near}”?'),
+  unknown: L3("Bunaqa teg sayohat saytimizda yo'q: \u2063«{bad}»\u2064. Havola uchun bizga a tegi kerak.", 'Такого тега на нашей странице нет: \u2063«{bad}»\u2064. Для ссылки у нас есть тег a.', 'Our page has no such tag: \u2063“{bad}”\u2064. For a link we have the a tag.'),
+  noLevel: L3("Sarlavha yasash uchun h1, h2 yoki h3 yetadi, bu esa boshqa narsa: \u2063«{bad}»\u2064.", 'Такого заголовка нет: \u2063«{bad}»\u2064. Заголовки бывают от h1 до h6.', 'There’s no such heading: \u2063“{bad}”\u2064. Headings go from h1 to h6.'),
+  emptyTag: L3("Qavslar yo'lda adashib qolibdi: ichida teg nomi yo'q. Nomni yozing.", 'Внутри уголков должно быть имя тега.', 'There should be a tag name between the brackets.'),
+  inBody: L3("Yo'lning qolgan qismi tayyor, shuning uchun faqat body ichiga yozasiz.", 'Здесь пишется только то, что внутри body: остальное уже есть.', 'Write only what goes inside body here: the rest is already there.'),
+  hasBody: L3("Ochuvchi body ham, yopuvchi body ham bor. Yangisini qo'shmasdan, o'rtasiga yozing.", 'body уже есть: сверху и снизу. Пиши внутри него.', 'body is already there, at the top and bottom. Write inside it.'),
+  needOpenText: L3("Bu matn tegsiz qolibdi: oldiga ochuvchi {tag} tegini qo'ying.", 'Перед текстом нужен открывающий тег {tag}.', 'Before the text you need the opening {tag} tag.'),
+  closeFirst: L3("Yopuvchi \u2063{got}\u2064 tegi ochuvchisidan oldin chiqib qolibdi. Bu yerga ochuvchi {tag} tegi kerak.", 'Это закрывающий тег \u2063{got}\u2064. Здесь сначала нужен открывающий тег {tag}.', 'That’s the closing \u2063{got}\u2064 tag. First you need the opening {tag} tag here.'),
+  closeStray: L3("Bu yopuvchi \u2063{got}\u2064 tegi-ku, lekin u hali ochilmagan. Oldin uni ochuvchi teg bilan oching yoki bunisini o'chiring.", 'Это закрывающий тег \u2063{got}\u2064, но открывающего тега нет.', 'That’s the closing \u2063{got}\u2064 tag, but it was never opened.'),
+  wrongOpen: L3("Bu yerda siz yozgan teg ishlamaydi: \u2063{got}\u2064. O'rniga {tag} tegi kerak.", 'Здесь нужен тег {tag}, другой не подойдёт: \u2063{got}\u2064.', 'You need the {tag} tag here, not another one: \u2063{got}\u2064.'),
+  needText: L3("Bu {tag} tegida hali so'z yo'q: matn qo'shing.", 'Напиши текст внутри {tag}.', 'Write some text inside {tag}.'),
+  needSlash: L3("Bu teg hali yopilmagan: {tag} so'zidan oldin qiya chiziq «/» qo'ysangiz, yopuvchi bo'ladi.", 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
+  needClose: L3("Yo'l boshida {tag} ochilgan-u, yopilmagan. Oxiriga yopuvchi {tag} tegi kerak.", 'Часть {tag} не закрыта: в конце напиши закрывающий тег {tag}.', 'The {tag} part isn’t closed: add the closing {tag} tag at the end.'),
+  headOpen: L3("{tag} yopilmagan, shuning uchun pastdagi hamma narsa ham kattalashib ketdi. Sarlavhadan keyin yopuvchi {tag} tegini qo'ying.", '{tag} не закрыт, поэтому всё ниже тоже стало крупным. После заголовка напиши закрывающий тег {tag}.', '{tag} isn’t closed, so everything below got big too. Add the closing {tag} tag after the heading.'),
+  textAfter: L3("Yopuvchi {tag} tegidan keyin matn yolg'iz qolib ketibdi. Uni teg ichiga qaytaring.", 'После закрывающего тега {tag} остался текст. Перенеси его внутрь тегов.', 'There’s text left after the closing {tag} tag. Move it inside the tags.'),
   extra: L3("Oxirida ortiqcha teg qolibdi: \u2063{got}\u2064.", 'В конце остался лишний тег: \u2063{got}\u2064.', 'There’s an extra tag at the end: \u2063{got}\u2064.'),
-  short: L3("Matn juda qisqa: kamida ikki harf yozing.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
-  inlineOpen: L3("{tag} yopilmadi. Ajratilgan so'zlardan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт. После выделенных слов напиши закрывающий тег {tag}.', '{tag} isn’t closed. After the marked words, add the closing {tag} tag.'),
-  inlineStray: L3("Bu yopuvchi {tag} tegi, lekin {tag} ochilmagan. Oldin ochuvchi {tag} tegini yozing.", 'Это закрывающий тег {tag}, но {tag} не открыт. Сначала напиши открывающий тег {tag}.', 'That’s the closing {tag} tag, but {tag} was never opened. Write the opening {tag} tag first.'),
-  inlineEmpty: L3("{tag} ichida kamida bitta so'z bo'lsin.", 'Внутри {tag} должно быть хотя бы одно слово.', 'Put at least one word inside {tag}.'),
-  h1First: L3("Sahifa sarlavhadan boshlanadi: eng tepaga h1 tegini yozing.", 'Страница начинается с заголовка: в самом верху напиши h1.', 'The page starts with a heading: write h1 at the very top.'),
-  mainH1: L3("Asosiy sarlavha uchun h1 kerak, {got} emas.", 'Для главного заголовка нужен h1, а не {got}.', 'The main heading needs h1, not {got}.'),
-  oneH1: L3("h1 sahifada bitta bo'ladi. Keyingi sarlavhalar uchun h2 bor.", 'h1 на странице один. Для следующих заголовков есть h2.', 'A page has just one h1. Use h2 for the next headings.'),
-  textNoLi: L3("Bu matn li ichida emas, shuning uchun oldida nuqta yoki raqam yo'q. Har bir bandni li ichiga yozing.", 'Этот текст не внутри li, поэтому у него нет точки или номера. Каждый пункт пиши внутри li.', 'This text isn’t inside li, so it has no bullet or number. Write each item inside li.'),
-  liOut: L3("li ro'yxat ichida yashaydi: oldin ochuvchi ul yoki ol tegini yozing.", 'li живёт внутри списка: сначала напиши открывающий тег ul или ol.', 'li lives inside a list: write the opening ul or ol tag first.'),
-  listMismatch: L3("Ro'yxat {tag} bilan ochilgan, demak u {tag} bilan yopiladi.", 'Список открыт тегом {tag}, значит, и закрывается тегом {tag}.', 'The list opens with {tag}, so it closes with {tag}.'),
+  short: L3("Bu juda qisqa. Kamida ikkita harf yozib ko'ring.", 'Текст слишком короткий: хотя бы две буквы.', 'The text is too short: at least two letters.'),
+  inlineOpen: L3("{tag} tegi yopilmay qolibdi. Matndan keyin yopuvchi {tag} tegini yozing.", '{tag} не закрыт. После выделенных слов напиши закрывающий тег {tag}.', '{tag} isn’t closed. After the marked words, add the closing {tag} tag.'),
+  inlineStray: L3("Yopuvchi {tag} tegi bor, ochuvchi {tag} tegi esa yo'q ekan. Oldin ochuvchi {tag} tegini yozing.", 'Это закрывающий тег {tag}, но {tag} не открыт. Сначала напиши открывающий тег {tag}.', 'That’s the closing {tag} tag, but {tag} was never opened. Write the opening {tag} tag first.'),
+  inlineEmpty: L3("{tag} ichida so'z yo'q: hech bo'lmasa bittasini yozing.", 'Внутри {tag} должно быть хотя бы одно слово.', 'Put at least one word inside {tag}.'),
+  h1First: L3("Sayohat sahifasi sarlavhadan boshlanadi: eng tepaga h1 tegini yozing.", 'Страница начинается с заголовка: в самом верху напиши h1.', 'The page starts with a heading: write h1 at the very top.'),
+  mainH1: L3("Asosiy sarlavha uchun h1 tegini oling, boshqasini emas: \u2063{got}\u2064.", 'Для главного заголовка нужен h1, другой не подойдёт: \u2063{got}\u2064.', 'The main heading needs h1, not another tag: \u2063{got}\u2064.'),
+  oneH1: L3("Yo'lda bitta bosh sarlavha yetadi: h1 faqat bitta bo'ladi, keyingilariga h2 tegini qo'ying.", 'h1 на странице один. Для следующих заголовков есть h2.', 'A page has just one h1. Use h2 for the next headings.'),
+  textNoLi: L3("Bu matn li tegisiz qolgan, shuning uchun nuqta ham, raqam ham chiqmadi. Har bir bandni li ichiga yozing.", 'Этот текст не внутри li, поэтому у него нет точки или номера. Каждый пункт пиши внутри li.', 'This text isn’t inside li, so it has no bullet or number. Write each item inside li.'),
+  liOut: L3("li bandi ro'yxatsiz yashamaydi: ul yoki ol tegini yozing, li uning ichida bo'lsin.", 'li живёт внутри списка: сначала напиши открывающий тег ul или ol.', 'li lives inside a list: write the opening ul or ol tag first.'),
+  listMismatch: L3("Ro'yxat {tag} bilan ochilgan bo'lsa, {tag} bilan ham yopiladi, boshqa teg bilan emas.", 'Список открыт тегом {tag}, значит, и закрывается тегом {tag}.', 'The list opens with {tag}, so it closes with {tag}.'),
   // Ссылки и атрибуты (урок 4).
-  noHref: L3("Bu a tegida href yo'q, shuning uchun so'z oddiy matn bo'lib qoldi. Ochuvchi a tegiga href qo'shing.", 'У этого тега a нет href, поэтому слово осталось простым текстом. Добавь href в открывающий тег a.', 'This a tag has no href, so the word stayed plain text. Add href to the opening a tag.'),
-  noQuote: L3("href qiymatini qo'shtirnoq ichiga yozing.", 'Значение href пиши в кавычках.', 'Put the href value in quotes.'),
-  noEq: L3("href so'zidan keyin teng belgisi, keyin qo'shtirnoq ichida fayl nomi keladi.", 'После href идёт знак равенства, а потом имя файла в кавычках.', 'After href comes an equals sign, then the file name in quotes.'),
-  attrTypo: L3("Bunday atribut yo'q: \u2063«{bad}»\u2064. Balki href demoqchisiz?", 'Такого атрибута нет: \u2063«{bad}»\u2064. Может быть, href?', 'There’s no such attribute: \u2063“{bad}”\u2064. Did you mean href?'),
-  attrNone: L3("{tag} tegiga atribut kerak emas, uni olib tashlang.", 'Тегу {tag} атрибут не нужен, убери его.', 'The {tag} tag doesn’t need an attribute, remove it.'),
-  emptyHref: L3("href bo'sh: qo'shtirnoq ichiga fayl nomini yozing.", 'href пустой: впиши в кавычки имя файла.', 'href is empty: write the file name in the quotes.'),
-  fileNo: L3("Bunday fayl yo'q: \u2063«{got}»\u2064. Fayl nomini harfma-harf yozing: ro'yxatga qarang.", 'Такого файла нет: \u2063«{got}»\u2064. Пиши имя файла буква в букву: посмотри на список.', 'There’s no such file: \u2063“{got}”\u2064. Write the file name letter by letter: look at the list.'),
-  fileOther: L3("Bu havola boshqa sahifaga olib boradi: \u2063{got}\u2064. Bizga {want} kerak.", 'Эта ссылка ведёт на другую страницу: \u2063{got}\u2064. А нужно {want}.', 'This link goes to a different page: \u2063{got}\u2064. We need {want}.'),
-  aOpen: L3("a yopilmadi, shuning uchun keyingi matn ham havola bo'lib qoldi. Havola so'zlaridan keyin yopuvchi a tegini yozing.", 'a не закрыт, поэтому и текст дальше стал ссылкой. После слов ссылки напиши закрывающий тег a.', 'a isn’t closed, so the text after it became a link too. Add the closing a tag after the link words.'),
-  linkText: L3("Havola matni «{got}» bo'lib qoldi. Bizga «{want}» kerak.", 'Текст ссылки вышел «{got}». А нужно «{want}».', 'The link text says “{got}”. We need “{want}”.'),
-  pWords: L3("Abzasda «{want}» so'zlari bo'lsin, havola esa ularning oxirida.", 'В абзаце должны быть слова «{want}», а ссылка — в их конце.', 'The paragraph should say “{want}”, with the link at the end.'),
-  keepWords: L3("So'zlar o'zgarmasin: «{want}». Faqat href qo'shing.", 'Пусть слова останутся прежними: «{want}». Просто добавь href.', 'Keep the words as they were: “{want}”. Just add href.'),
-  needLinkIn: L3("Abzas tayyor! Endi uning ichiga havola qo'shing: a tegi va href.", 'Абзац готов! Теперь добавь в него ссылку: тег a и href.', 'The paragraph is ready! Now add a link inside it: the a tag and href.'),
-  needP: L3("Sarlavha tayyor! Endi uning ostiga abzas yozing, ichida havola bo'lsin.", 'Заголовок готов! Теперь под ним напиши абзац со ссылкой внутри.', 'The heading is ready! Now write a paragraph under it with a link inside.'),
-  onePara: L3("Bitta abzas yetarli. Ortiqchasini olib tashlang.", 'Хватит одного абзаца. Лишнее убери.', 'One paragraph is enough. Remove the extra part.'),
-  next: L3("Endi {tag} qismini yozing.", 'Теперь напиши часть {tag}.', 'Now write the {tag} part.')
+  noHref: L3("Bu a tegida href yo'q ekan, shuning uchun so'z oddiy matn bo'lib qoldi. Ochuvchi a tegiga href qo'shib qo'ying.", 'У этого тега a нет href, поэтому слово осталось простым текстом. Добавь href в открывающий тег a.', 'This a tag has no href, so the word stayed plain text. Add href to the opening a tag.'),
+  noQuote: L3("Fayl nomi qo'shtirnoqsiz qolibdi. href qiymatini qo'shtirnoq ichiga yozing.", 'Значение href пиши в кавычках.', 'Put the href value in quotes.'),
+  noEq: L3("href so'zidan keyin teng belgisi turishi kerak, u esa tushib qolibdi. Undan keyin fayl nomi qo'shtirnoq ichida keladi.", 'После href идёт знак равенства, а потом имя файла в кавычках.', 'After href comes an equals sign, then the file name in quotes.'),
+  attrTypo: L3("Brauzer bunday atributni bilmaydi: \u2063«{bad}»\u2064. Balki href demoqchimisiz?", 'Такого атрибута нет: \u2063«{bad}»\u2064. Может быть, href?', 'There’s no such attribute: \u2063“{bad}”\u2064. Did you mean href?'),
+  attrNone: L3("Bu {tag} tegiga atribut yozish shart emas, uni olib tashlang.", 'Тегу {tag} атрибут не нужен, убери его.', 'The {tag} tag doesn’t need an attribute, remove it.'),
+  emptyHref: L3("href hali bo'sh, havola qayoqqa borishni bilmaydi. Qo'shtirnoq ichiga fayl nomini yozing.", 'href пустой: впиши в кавычки имя файла.', 'href is empty: write the file name in the quotes.'),
+  fileNo: L3("Brauzer bunday faylni topolmadi: \u2063«{got}»\u2064. Fayllar ro'yxatidagi nomni harfma-harf ko'chirib qo'ying.", 'Такого файла нет: \u2063«{got}»\u2064. Пиши имя файла буква в букву: посмотри на список.', 'There’s no such file: \u2063“{got}”\u2064. Write the file name letter by letter: look at the list.'),
+  fileOther: L3("Bu havola bizni boshqa sahifaga olib ketadi: \u2063{got}\u2064. Bizga esa {want} kerak.", 'Эта ссылка ведёт на другую страницу: \u2063{got}\u2064. А нужно {want}.', 'This link goes to a different page: \u2063{got}\u2064. We need {want}.'),
+  aOpen: L3("a tegi yopilmay qolibdi, shuning uchun undan keyingi matn ham havolaga aylanib ketdi. Havola so'zlaridan keyin yopuvchi a tegini yozing.", 'a не закрыт, поэтому и текст дальше стал ссылкой. После слов ссылки напиши закрывающий тег a.', 'a isn’t closed, so the text after it became a link too. Add the closing a tag after the link words.'),
+  linkText: L3("Havolaning so'zi boshqacha chiqibdi: ⁣«{got}»⁤. Bizga esa «{want}» kerak edi.", 'Текст ссылки вышел другой: ⁣«{got}»⁤. А нужно «{want}».', 'The link text came out different: ⁣“{got}”⁤. We need “{want}”.'),
+  pWords: L3("Abzasda «{want}» degan so'zlar tursin, havola esa ularning eng oxirida bo'lsin.", 'В абзаце должны быть слова «{want}», а ссылка — в их конце.', 'The paragraph should say “{want}”, with the link at the end.'),
+  keepWords: L3("So'zlarni o'zgartirmang, «{want}» shundayligicha qolsin. Bu yerga faqat href qo'shsangiz bo'ldi.", 'Пусть слова останутся прежними: «{want}». Просто добавь href.', 'Keep the words as they were: “{want}”. Just add href.'),
+  needLinkIn: L3("Abzas joyida! Endi uning ichiga havola qo'shing: a tegi va href kerak bo'ladi.", 'Абзац готов! Теперь добавь в него ссылку: тег a и href.', 'The paragraph is ready! Now add a link inside it: the a tag and href.'),
+  needP: L3("Sarlavha joyida turibdi! Endi uning tagiga abzas yozing, ichida havola ham bo'lsin.", 'Заголовок готов! Теперь под ним напиши абзац со ссылкой внутри.', 'The heading is ready! Now write a paragraph under it with a link inside.'),
+  onePara: L3("Yo'l uchun bitta abzasning o'zi yetadi, ortiqchasini olib tashlang.", 'Хватит одного абзаца. Лишнее убери.', 'One paragraph is enough. Remove the extra part.'),
+  next: L3("Qani, endi {tag} qismini yozing.", 'Теперь напиши часть {tag}.', 'Now write the {tag} part.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,13 +177,13 @@ const FB = {
 const C = {
   s1: {
     eyebrow: L3("Sayohat", 'Путешествие', 'Trip'),
-    say: L3("Salom! Men sayohat sayti tayyorladim: bosh sahifa va shaharlar sahifalari. Sahifalar bir-biriga havolalar bilan ulangan: shahar nomini bossangiz, uning sahifasi ochiladi. Faqat saytni saqlash qoldi. «Saqlash» tugmasini bosing.",
+    say: L3("Xaritada O'zbekiston, saytimda esa shahar sahifalari: Toshkent, Samarqand, Buxoro, Xiva. Ularni havolalar bir-biriga ulab turadi: shahar nomini bossangiz, o'sha shaharning sahifasi ochiladi. Sayohatga ikki kun qoldi. Oxirgi ish: «Saqlash» tugmasi, uni siz bosasiz.",
       'Привет! Я сделал сайт о путешествии: главная и страницы городов. Страницы связаны ссылками: нажмёшь на город, и откроется его страница. Осталось только сохранить сайт. Нажми «Сохранить».',
       'Hi! I made a website about a trip: a home page and pages for the cities. The pages are connected with links: tap a city, and its page opens. I just need to save the site. Tap “Save”.'),
-    broke: L3("Voy! Saqlash paytida havolalar uzilib ketdi. Shahar nomlari endi oddiy matn: bossangiz, hech narsa bo'lmaydi.",
+    broke: L3("Ko'k havolalar qani? Shahar nomlari oddiy matn bo'lib qolibdi, bossangiz hech qayoqqa olib bormaydi. Saytni boshqa kompyuterdan nusxalaganimda teglar ko'chmay qolgan shekilli.",
       'Ой! При сохранении ссылки оборвались. Названия городов теперь простой текст: нажмёшь, и ничего не будет.',
       'Oh no! The links broke while saving. The city names are plain text now: tap them, and nothing happens.'),
-    done: L3("O'tgan darsda havolalar bilan tanishdik: a tegi va href atributi. Endi shu bilim bilan beshta sahifani birma-bir tuzatamiz. Kodni o'zingiz yozasiz, men esa yoningizdaman. Beshinchi sahifa esa sizniki bo'ladi!",
+    done: L3("Bu ahvolda yo'lga chiqib bo'lmaydi! Ko'p yo'llarni o'zim qayta ulab chiqdim, lekin har bir sahifada bittadan uzilgan joy qolibdi. Ularni a tegi bilan href atributi ulaydi. Rulga siz o'tirasiz, men esa xaritaga qarab turaman.",
       'На прошлом уроке мы познакомились со ссылками: тег a и атрибут href. Теперь с этими знаниями починим пять страниц по одной. Код пишешь ты, а я рядом. А пятая страница будет твоей!',
       'Last lesson we met links: the a tag and the href attribute. Now let’s use that to fix the five pages one by one. You write the code, and I’ll be right here. And the fifth page will be yours!'),
     ask: L3("«Saqlash» tugmasini bosing", 'Нажми «Сохранить»', 'Tap “Save”'),
@@ -191,95 +191,95 @@ const C = {
   },
   t1: {
     eyebrow: L3("Bosh sahifa", 'Главная', 'Home'),
-    say: L3("Birinchi sahifa: bosh sahifa. Bu yerda shaharlar menyusi bor. Toshkent havolasi ishlayapti, bosib ko'ring. Samarqand havolasida esa manzil yo'q: href qiymati bo'sh qolgan. Qo'shtirnoq ichiga fayl nomini yozing: samarqand.html.",
+    say: L3("Sayohat bosh sahifadan boshlanadi, u yerda shaharlar menyusi turibdi. Toshkent havolasi omon qolgan, bosib ko'ring-chi! Samarqandniki esa uzilib qolibdi: href qiymati bo'sh turibdi. Qo'shtirnoq ichiga fayl nomini yozing: samarqand.html.",
       'Первая страница: главная. Здесь меню городов. Ссылка на Ташкент работает, нажми её. А у ссылки на Самарканд нет адреса: значение href пустое. Впиши в кавычки имя файла: samarqand.html.',
       'The first page is the home page. It has a menu of cities. The Tashkent link works, tap it. But the Samarkand link has no address: the href value is empty. Type the file name inside the quotes: samarqand.html.'),
     ask: L3("href ichiga yozing: samarqand.html", 'Впиши в href: samarqand.html', 'Type in href: samarqand.html'),
-    ok: L3("Ajoyib! Endi Samarqand havolasi ishlaydi. Bosib ko'ring!", 'Отлично! Теперь ссылка на Самарканд работает. Нажми её!', 'Great! Now the Samarkand link works. Tap it!'),
+    ok: L3("Yo'l ochiq! Samarqand havolasi ishlayapti. Bosib, Registonni ko'rib keling!", 'Отлично! Теперь ссылка на Самарканд работает. Нажми её!', 'Great! Now the Samarkand link works. Tap it!'),
     hints: [
-      L3("Havola qayerga olib borishini href aytadi. Samarqand qatoridagi bo'sh qo'shtirnoqni toping.", 'Куда ведёт ссылка, говорит href. Найди пустые кавычки в строке Самарканда.', 'href says where a link goes. Find the empty quotes in the Samarkand line.'),
-      L3("Qo'shtirnoq ichiga fayl nomini harfma-harf yozing. Fayllar ro'yxati yonida turibdi.", 'Впиши в кавычки имя файла буква в букву. Список файлов рядом.', 'Type the file name in the quotes, letter by letter. The list of files is right there.'),
-      L3("Masalan, Xiva havolasi shunday bo'ladi. Siz esa samarqand.html deb yozing.", 'Например, ссылка на Хиву выглядит так. А ты впиши samarqand.html.', 'For example, a Khiva link looks like this. You type samarqand.html.')
+      L3("Havola qayerga olib borishini href aytadi. Samarqand qatoridagi bo'sh qo'shtirnoqni ko'ryapsizmi?", 'Куда ведёт ссылка, говорит href. Найди пустые кавычки в строке Самарканда.', 'href says where a link goes. Find the empty quotes in the Samarkand line.'),
+      L3("O'sha qo'shtirnoq ichiga fayl nomini harfma-harf yozasiz. Fayllar ro'yxati shundoq yoningizda turibdi.", 'Впиши в кавычки имя файла буква в букву. Список файлов рядом.', 'Type the file name in the quotes, letter by letter. The list of files is right there.'),
+      L3("Xiva havolasida fayl nomi qayerda turibdi? Qo'shtirnoq ichida. Samarqand uchun ham o'sha joyga fayl nomini yozasiz, uni yoningizdagi ro'yxatdan oling.", 'Например, ссылка на Хиву выглядит так. А ты впиши samarqand.html.', 'For example, a Khiva link looks like this. You type samarqand.html.')
     ],
     drill: L3("Endi Buxoro havolasini ulang: buxoro.html", 'Теперь подключи ссылку на Бухару: buxoro.html', 'Now connect the Bukhara link: buxoro.html')
   },
   t2: {
     eyebrow: L3("Toshkent", 'Ташкент', 'Tashkent'),
-    say: L3("Bosh sahifa tayyor, endi Toshkent. Bu sahifadan bosh sahifaga qaytish yo'li yo'q. Pastdagi bo'sh qatorga havola yozing: href atributi bor ochuvchi a tegi, «Bosh sahifa» so'zlari va yopuvchi a tegi. Manzil esa index.html bo'ladi.",
+    say: L3("Registonni ko'rib bo'ldik, endi poytaxtga, Toshkentga yo'l olamiz! Lekin bu sahifadan bosh sahifaga qaytadigan yo'l yo'q ekan. Pastdagi bo'sh qatorga havola yozing: href atributli ochuvchi a tegi, «Bosh sahifa» so'zlari va yopuvchi a tegi. Manzili index.html bo'ladi.",
       'Главная готова, теперь Ташкент. С этой страницы нельзя вернуться на главную. Напиши в пустой строке ссылку: открывающий тег a с атрибутом href, слово «Главная» и закрывающий тег a. А адрес будет index.html.',
       'The home page is done, now Tashkent. There’s no way back to the home page from here. Write a link in the empty line: the opening a tag with the href attribute, the word “Home” and the closing a tag. The address is index.html.'),
     ask: L3("Havola yozing: index.html, matni «Bosh sahifa»", 'Напиши ссылку: index.html, текст «Главная»', 'Write a link: index.html, text “Home”'),
-    ok: L3("Barakalla! Endi Toshkentdan bosh sahifaga qaytsa bo'ladi. Bosib ko'ring!", 'Вот это да! Теперь из Ташкента можно вернуться на главную. Нажми!', 'Wow! Now you can get back home from Tashkent. Tap it!'),
+    ok: L3("Toshkentdan bosh sahifaga qaytadigan yo'l ham tayyor! Bosib ko'ring-chi.", 'Вот это да! Теперь из Ташкента можно вернуться на главную. Нажми!', 'Wow! Now you can get back home from Tashkent. Tap it!'),
     hints: [
-      L3("Havola a tegida yoziladi, manzil esa href atributida.", 'Ссылку пишут в теге a, а адрес — в атрибуте href.', 'A link goes in the a tag, and the address in the href attribute.'),
-      L3("Qator uch qismdan iborat: href atributi bor ochuvchi a tegi, so'zlar va yopuvchi a tegi.", 'В строке три части: открывающий тег a с href, слова и закрывающий тег a.', 'The line has three parts: the opening a tag with href, the words and the closing a tag.'),
-      L3("Mana, Xivaga havola. Siz ham shunday yozing, faqat index.html va «Bosh sahifa» bilan.", 'Вот ссылка на Хиву. Напиши так же, только с index.html и словом «Главная».', 'Here’s a link to Khiva. Write yours the same way, with index.html and “Home”.')
+      L3("Havola a tegiga yoziladi, uning manzili esa href atributida turadi.", 'Ссылку пишут в теге a, а адрес — в атрибуте href.', 'A link goes in the a tag, and the address in the href attribute.'),
+      L3("Havola ochuvchi a tegidan boshlanadi, href atributi o'sha tegning ichiga tushadi. Undan keyin «Bosh sahifa» so'zlari, eng oxirida yopuvchi a tegi keladi.", 'В строке три части: открывающий тег a с href, слова и закрывающий тег a.', 'The line has three parts: the opening a tag with href, the words and the closing a tag.'),
+      L3("Xiva havolasida uchta narsa bor: href bilan ochuvchi a, so'z va yopuvchi a. Sizning havolangiz ham shunday, faqat index.html bilan «Bosh sahifa».", 'Вот ссылка на Хиву. Напиши так же, только с index.html и словом «Главная».', 'Here’s a link to Khiva. Write yours the same way, with index.html and “Home”.')
     ],
     drill: L3("Endi Samarqandga havola: samarqand.html, matni «Samarqand»", 'Теперь ссылка на Самарканд: samarqand.html, текст «Самарканд»', 'Now a link to Samarkand: samarqand.html, text “Samarkand”')
   },
   t3: {
     eyebrow: L3("Samarqand", 'Самарканд', 'Samarkand'),
-    say: L3("Ikki sahifa tayyor! Uchinchisi: Samarqand. Bu yerda keyingi shaharga yo'l yo'q. Abzas yozing: oldin «Keyingi shahar» so'zlari, keyin Buxoro. Buxoro so'zi esa buxoro.html sahifasiga havola bo'lsin. Havola abzas ichida turadi.",
+    say: L3("Endi Samarqand sahifasidamiz, lekin bu yerdan keyingi shaharga yo'l yo'q. Uni abzasning ichiga joylaymiz, chunki havola gap ichida ham turaveradi. Abzas yozing: «Keyingi shahar» so'zlari, undan keyin Buxoro. Buxoro so'zining o'zi buxoro.html sahifasiga havola bo'lsin.",
       'Две страницы готовы! Третья: Самарканд. Здесь нет пути в следующий город. Напиши абзац: сначала слова «Следующий город», потом Бухара. А слово Бухара пусть будет ссылкой на buxoro.html. Ссылка стоит внутри абзаца.',
       'Two pages are done! The third is Samarkand. There’s no way to the next city here. Write a paragraph: first the words “Next city”, then Bukhara. And let the word Bukhara be a link to buxoro.html. The link sits inside the paragraph.'),
     ask: L3("p: «Keyingi shahar: Buxoro», Buxoro havola", 'p: «Следующий город: Бухара», Бухара — ссылка', 'p: “Next city: Bukhara”, Bukhara is a link'),
-    ok: L3("Zo'r! Havola abzas ichida ishlayapti. Bosib ko'ring!", 'Огонь! Ссылка работает прямо внутри абзаца. Нажми!', 'Awesome! The link works right inside the paragraph. Tap it!'),
+    ok: L3("Havola gap ichida ham ishlayapti! Bosing-chi, Buxoroga jo'naymiz.", 'Огонь! Ссылка работает прямо внутри абзаца. Нажми!', 'Awesome! The link works right inside the paragraph. Tap it!'),
     hints: [
-      L3("Havola abzas ichida ham bo'lishi mumkin: p ichida oldin matn, keyin a tegi.", 'Ссылка может стоять и внутри абзаца: в p сначала текст, потом тег a.', 'A link can sit inside a paragraph too: inside p, first the text, then the a tag.'),
-      L3("Oldin ochuvchi p tegi va «Keyingi shahar» so'zlari, keyin Buxoro havolasi, oxirida yopuvchi p tegi.", 'Сначала открывающий тег p и слова «Следующий город», потом ссылка на Бухару, в конце закрывающий тег p.', 'First the opening p tag and the words “Next city”, then the Bukhara link, and the closing p tag at the end.'),
-      L3("Mana, Xivaga olib boradigan abzas. Siz ham shunday yozing, faqat Buxoro bilan.", 'Вот абзац, который ведёт в Хиву. Напиши так же, только с Бухарой.', 'Here’s a paragraph that leads to Khiva. Write yours the same way, just with Bukhara.')
+      L3("Havola abzasning ichida ham tura oladi: p ichida oldin matn, keyin a tegi keladi.", 'Ссылка может стоять и внутри абзаца: в p сначала текст, потом тег a.', 'A link can sit inside a paragraph too: inside p, first the text, then the a tag.'),
+      L3("Tartibi bunday: ochuvchi p tegi bilan «Keyingi shahar» so'zlari, keyin Buxoro havolasi, eng oxirida yopuvchi p tegi.", 'Сначала открывающий тег p и слова «Следующий город», потом ссылка на Бухару, в конце закрывающий тег p.', 'First the opening p tag and the words “Next city”, then the Bukhara link, and the closing p tag at the end.'),
+      L3("Xivaga olib boradigan abzasda havola gap oxirida turibdi. Sizning Buxoro havolangiz ham shu joyda bo'lsin.", 'Вот абзац, который ведёт в Хиву. Напиши так же, только с Бухарой.', 'Here’s a paragraph that leads to Khiva. Write yours the same way, just with Bukhara.')
     ],
     drill: L3("Endi abzas: «Keyingi shahar: Xiva», Xiva — havola", 'Теперь абзац: «Следующий город: Хива», Хива — ссылка', 'Now a paragraph: “Next city: Khiva”, Khiva is a link')
   },
   t4: {
     eyebrow: L3("Buxoro", 'Бухара', 'Bukhara'),
-    say: L3("Uchta sahifa tayyor! To'rtinchisi: Buxoro. Qarang, Xiva so'zi oddiy matn bo'lib turibdi: bossangiz, hech qayerga olib bormaydi. Demak, bir qator buzilgan. Oldin o'sha qatorni toping va ustiga bosing.",
+    say: L3("Buxoroga ham keldik, sayohat oxiriga yaqinlashyapti! Xiva so'zini bossam, hech qayoqqa olib bormaydi, nega ekan, bilmayman. Shu so'zning qatorini kodda topib, ustiga bosing-chi, birga qarab ko'raylik.",
       'Три страницы готовы! Четвёртая: Бухара. Смотри, слово Хива стоит простым текстом: нажмёшь, и никуда не ведёт. Значит, одна строка сломана. Сначала найди эту строку и нажми на неё.',
       'Three pages are done! The fourth is Bukhara. Look, the word Khiva is plain text: tap it, and it goes nowhere. So one line is broken. First find that line and tap it.'),
     ask: L3("Buzilgan qatorni bosing", 'Нажми сломанную строку', 'Tap the broken line'),
     ask2: L3("Shu qatorni tuzating", 'Почини эту строку', 'Fix this line'),
-    found: L3("Topdingiz! a tegi bor, lekin href yo'q. href bo'lmasa, brauzer qayerga borishni bilmaydi. Ochuvchi a tegiga href qo'shing.",
+    found: L3("Xivaning yo'li aynan shu yerda uzilgan: a tegi bor-u, href yo'q! href bo'lmasa, brauzer qayoqqa borishni bilmaydi. Ochuvchi a tegiga href qo'shing.",
       'Нашлась! Тег a есть, а href нет. Без href браузер не знает, куда вести. Добавь href в открывающий тег a.',
       'Found it! The a tag is there, but there’s no href. Without href, the browser doesn’t know where to go. Add href to the opening a tag.'),
-    ok: L3("Ura, ishladi! Endi bu so'z havola. Bosib ko'ring! Buzilgan joyni xuddi haqiqiy dasturchidek topdingiz!", 'Ура, заработало! Теперь это слово — ссылка. Нажми! Поломка найдена, как у настоящего программиста!', 'Yes, it works! Now the word is a link. Tap it! You found the bug like a real developer!'),
+    ok: L3("Xivaga ham yo'l ochildi, bosib ko'ring! Uzilgan yo'lni qidirsangiz, bosilmaydigan so'zdan boshlang.", 'Ура, заработало! Теперь это слово — ссылка. Нажми! Поломка найдена, как у настоящего программиста!', 'Yes, it works! Now the word is a link. Tap it! You found the bug like a real developer!'),
     why: {
-      0: L3("body shu yerda ochiladi, bu qator joyida. Oddiy matn bo'lib qolgan so'zga qarang.", 'Здесь открывается body, строка в порядке. Посмотри на слово, которое осталось простым текстом.', 'body opens here, this line is fine. Look at the word that stayed plain text.'),
-      1: L3("Sarlavha h1 to'g'ri ochilgan va yopilgan. Bu qator joyida.", 'Заголовок h1 открыт и закрыт как надо. Строка в порядке.', 'The h1 heading opens and closes just right. This line is fine.'),
-      2: L3("Bu abzasda havola yo'q va bo'lishi ham shart emas. Pastroqdagi so'zga qarang.", 'В этом абзаце нет ссылки, и она здесь не нужна. Посмотри на слово ниже.', 'This paragraph has no link, and it doesn’t need one. Look at the word below.'),
-      4: L3("body shu yerda yopiladi, bu qator joyida.", 'Здесь закрывается body, строка в порядке.', 'body closes here, this line is fine.')
+      0: L3("Bu body qatori, uning havolaga aloqasi yo'q. Bosib bo'lmaydigan so'zni qidiring.", 'Здесь открывается body, строка в порядке. Посмотри на слово, которое осталось простым текстом.', 'body opens here, this line is fine. Look at the word that stayed plain text.'),
+      1: L3("Sarlavha havola bo'lmasa ham bo'laveradi. Bosib bo'lmaydigan so'z pastroqda turibdi.", 'Заголовок h1 открыт и закрыт как надо. Строка в порядке.', 'The h1 heading opens and closes just right. This line is fine.'),
+      2: L3("Bu abzasda havola yo'q, unga havola kerak ham emas. Pastroqdagi so'zga qarang-chi.", 'В этом абзаце нет ссылки, и она здесь не нужна. Посмотри на слово ниже.', 'This paragraph has no link, and it doesn’t need one. Look at the word below.'),
+      4: L3("Bu sahifaning oxiri, body shu yerda yopiladi. Aybdor so'z undan yuqorida.", 'Здесь закрывается body, строка в порядке.', 'body closes here, this line is fine.')
     },
     hints: [
-      L3("Bu so'z nega havola emas? Havolaga nima kerak edi?", 'Почему это слово не ссылка? Что нужно ссылке?', 'Why isn’t this word a link? What does a link need?'),
-      L3("Oddiy matn bo'lib qolgan so'z yozilgan qatorga qarang: ochuvchi a tegida href bormi?", 'Посмотри на строку со словом, которое осталось текстом: есть ли href в открывающем теге a?', 'Look at the line with the word that stayed plain text: is there href in the opening a tag?'),
-      L3("Mana, ishlaydigan havola. Siz ham ochuvchi a tegiga href qo'shing.", 'Вот рабочая ссылка. Добавь и ты href в открывающий тег a.', 'Here’s a working link. Add href to the opening a tag too.')
+      L3("Bu so'z nega havola bo'lmay qoldi? Havolaga nima kerak edi, esingizdami?", 'Почему это слово не ссылка? Что нужно ссылке?', 'Why isn’t this word a link? What does a link need?'),
+      L3("Oddiy matn bo'lib qolgan so'zning qatoriga qarang: ochuvchi a tegida href bormi?", 'Посмотри на строку со словом, которое осталось текстом: есть ли href в открывающем теге a?', 'Look at the line with the word that stayed plain text: is there href in the opening a tag?'),
+      L3("Bosiladigan havola bilan bosilmaydigani o'rtasida bitta farq bor. Ishlaydigan havolada ochuvchi a tegi ichida nima bor? Buzilgan qatorda o'sha narsa yo'q.", 'Вот рабочая ссылка. Добавь и ты href в открывающий тег a.', 'Here’s a working link. Add href to the opening a tag too.')
     ],
-    drill: L3("Bu sahifada ham xuddi shunday: buzilgan qatorni toping va tuzating", 'Здесь то же самое: найди сломанную строку и почини', 'Same thing here: find the broken line and fix it')
+    drill: L3("Bu sahifada ham yo'l uzilgan: qatorni topib tuzating", 'Здесь то же самое: найди сломанную строку и почини', 'Same thing here: find the broken line and fix it')
   },
   t5: {
     eyebrow: L3("Mening sahifam", 'Моя страница', 'My page'),
-    say: L3("To'rtta sahifa yonib turibdi! Endi beshinchisi: sizning sahifangiz. Bu yerda faqat body bor. Eng tepada h1 tegida sarlavha yozing. Keyin abzas yozing, abzas ichida esa saytdagi biror sahifaga havola bo'lsin, masalan bosh sahifaga. Fayl nomlari yonida turibdi.",
+    say: L3("Shaharlar o'rtasidagi yo'llar tiklandi! Sizning yo'lingiz esa qaysi shaharga ketadi? Shu haqida yozing: sarlavha h1 tegida, tagida esa abzas bo'lsin. Abzas ichiga saytdagi biror sahifaga havola qo'ying, masalan, bosh sahifaga. Fayl nomlari yoningizda turibdi.",
       'Четыре страницы горят! Теперь пятая: твоя страница. Здесь есть только body. В самом верху напиши заголовок в теге h1. Потом абзац, а в нём ссылку на любую страницу сайта, например на главную. Имена файлов рядом.',
       'Four pages are lit! Now the fifth: your page. There’s only body here. At the very top, write a heading in the h1 tag. Then a paragraph with a link inside it to any page of the site, for example the home page. The file names are right there.'),
     ask: L3("body ichiga: h1, p va ichida havola", 'В body: h1, p и в нём ссылка', 'Inside body: h1, p with a link inside'),
-    ok: L3("Bu juda zo'r chiqdi! Sahifangiz saytga ulandi. Havolani bosib ko'ring!", 'Это было мощно! Твоя страница подключена к сайту. Нажми ссылку!', 'That was awesome! Your page is connected to the site. Tap the link!'),
+    ok: L3("Sahifangiz ham sayohat saytiga ulandi! Havolani bosib, qayoqqa olib borishini ko'ring.", 'Это было мощно! Твоя страница подключена к сайту. Нажми ссылку!', 'That was awesome! Your page is connected to the site. Tap the link!'),
     hints: [
-      L3("Chizmaga qarang: oldin h1, keyin p, p ichida esa a tegi.", 'Посмотри на схему: сначала h1, потом p, а в p — тег a.', 'Look at the plan: first h1, then p, with the a tag inside p.'),
-      L3("Havolaning ochuvchi a tegida href bo'lsin, qiymati esa ro'yxatdagi fayl nomi.", 'В открывающем теге a должен быть href, а его значение — имя файла из списка.', 'The opening a tag needs href, and its value is a file name from the list.'),
-      L3("Mana, sayohat haqidagi sahifa. Xuddi shunday yozing, faqat o'z so'zlaringiz bilan.", 'Вот страница о поездке. Напиши так же, только своими словами.', 'Here’s a page about a trip. Write yours the same way, in your own words.')
+      L3("Chizma yo'lni ko'rsatib turibdi: oldin h1, keyin p, p ichida esa a tegi.", 'Посмотри на схему: сначала h1, потом p, а в p — тег a.', 'Look at the plan: first h1, then p, with the a tag inside p.'),
+      L3("Havolaning ochuvchi a tegida href bo'lishi kerak. Uning qiymatiga esa ro'yxatdagi fayl nomlaridan birini yozasiz.", 'В открывающем теге a должен быть href, а его значение — имя файла из списка.', 'The opening a tag needs href, and its value is a file name from the list.'),
+      L3("«Mening sayohatim» sahifasida sarlavha, abzas va havola bor. Sizniki shu tuzilishda bo'lsin, so'zlari esa o'zingizniki.", 'Вот страница о поездке. Напиши так же, только своими словами.', 'Here’s a page about a trip. Write yours the same way, in your own words.')
     ]
   },
   drill: {
-    say: L3("Zo'r! Endi yana bir kichik mashq: qoida o'sha, so'zlar boshqa.", 'Здорово! Теперь ещё одно маленькое задание: правило то же, слова другие.', 'Nice! Now one more small task: same rule, different words.'),
-    done: L3("Mana, endi bu qoida sizniki! Davom etamiz.", 'Вот, теперь это правило твоё! Идём дальше.', 'There — now this rule is yours! Let’s keep going.')
+    say: L3("Yo'lda yana bir bekat chiqdi. Xaritasiz, o'zingiz ulab ko'rasizmi?", 'Здорово! Теперь ещё одно маленькое задание: правило то же, слова другие.', 'Nice! Now one more small task: same rule, different words.'),
+    done: L3("Xaritasiz ham adashmadingiz, sayohatchi!", 'Вот, теперь это правило твоё! Идём дальше.', 'There — now this rule is yours! Let’s keep going.')
   },
   fin: {
     eyebrow: L3("Xulosa", 'Вывод', 'Summary'),
     say: [
-      { k: 'all', text: L3("Qarang, sayohat saytining beshta sahifasi ham tayyor va hammasi bir-biriga ulangan!", 'Смотри, все пять страниц сайта о путешествии готовы и связаны друг с другом!', 'Look, all five pages of the trip site are ready and connected to each other!') },
-      { k: 'a', text: L3("Havolani a tegiga yozdingiz.", 'Ссылка стояла в теге a.', 'You put the link in the a tag.') },
-      { k: 'href', text: L3("href atributi brauzerga qayerga borishni aytdi.", 'Атрибут href говорил браузеру, куда вести.', 'The href attribute told the browser where to go.') },
-      { k: 'val', text: L3("Qo'shtirnoq ichiga fayl nomini harfma-harf yozdingiz, shuning uchun sahifalar ochildi.", 'Имя файла в кавычках написано буква в букву, поэтому страницы открылись.', 'You wrote the file name in quotes letter by letter, so the pages opened.') },
-      { k: 'own', text: L3("Oxirida esa o'z sahifangizni saytga uladingiz. Bu juda kuchli bo'ldi! Keyingi darsda sahifaga rasm qo'yamiz.", 'А в конце твоя страница подключена к сайту. Это было мощно! На следующем уроке добавим на страницу картинку.', 'And at the end you connected your own page to the site. That was awesome! Next lesson we’ll add a picture to the page.') }
+      { k: 'all', text: L3("Qarang, endi hamma shaharlar bir-biriga ulanib turibdi! Yo'lga chiqsak ham bo'ladi.", 'Смотри, все пять страниц сайта о путешествии готовы и связаны друг с другом!', 'Look, all five pages of the trip site are ready and connected to each other!') },
+      { k: 'a', text: L3("Shahar nomlari a tegiga o'ralgach, ko'k havolaga aylandi, endi ularni bossa bo'ladi.", 'Ссылка стояла в теге a.', 'You put the link in the a tag.') },
+      { k: 'href', text: L3("Qayoqqa borishni esa href atributi brauzerga aytib turdi.", 'Атрибут href говорил браузеру, куда вести.', 'The href attribute told the browser where to go.') },
+      { k: 'val', text: L3("Fayl nomlarini qo'shtirnoq ichiga harfma-harf yozganingiz uchun hamma sahifalar ochildi.", 'Имя файла в кавычках написано буква в букву, поэтому страницы открылись.', 'You wrote the file name in quotes letter by letter, so the pages opened.') },
+      { k: 'own', text: L3("Sahifangiz ham yo'lga ulandi, endi sayohatimiz birga! Shaharlar yo'lda bo'sh turmasin: ularga rasm kerak, buni ham o'rganamiz.", 'А в конце твоя страница подключена к сайту. Это было мощно! На следующем уроке добавим на страницу картинку.', 'And at the end you connected your own page to the site. That was awesome! Next lesson we’ll add a picture to the page.') }
     ],
     roles: {
       a: L3("a — havola", 'a — ссылка', 'a — link'),

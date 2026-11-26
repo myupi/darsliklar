@@ -17,7 +17,7 @@ const cssOk = (p, v) => {
 };
 // Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
 // своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
-const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS kodi lotin harflarida yoziladi: klaviaturada EN tilini tanlang-da, qayta yozing.",
   'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
   'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
 const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);

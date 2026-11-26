@@ -1,0 +1,198 @@
+/* ══ УРОК 1 КУРСА JAVASCRIPT (26.11.2026): раскраска JS, вкладка script.js, страница Коди, консоль Chrome, задания.
+   Поверх облика «Редактор» (gen/r28.css) и ../css1/c1.css. Сначала — телефон. */
+.r28 .j1-sheet { --j-yel: #E5B800; }
+/* ── Раскраска кода (как VS Code Dark+) ── */
+.r28 .j1-obj, .r28 .j1-id { color: #9CDCFE; }
+.r28 .j1-fn { color: #DCDCAA; }
+.r28 .j1-str { color: #CE9178; }
+.r28 .j1-num { color: #B5CEA8; }
+.r28 .j1-punc { color: #D4D4D4; }
+.r28 .j1-cm { color: #6A9955; font-style: italic; }
+.r28 .j1-bad { color: #F87171; text-decoration: underline wavy #F87171; }
+.r28 .j1-tb { color: #808080; }
+.r28 .j1-tn { color: #569CD6; }
+.r28 .j1-an { color: #9CDCFE; }
+.r28 .j1-av { color: #CE9178; }
+.r28 .kz-code .is-cur { background: rgba(250, 79, 40, .25); border-radius: 3px; box-shadow: 0 0 0 2px rgba(250, 79, 40, .35); }
+.r28 .kz-code.j1-js::before { content: 'script.js'; }
+.r28 .kz-code.j1-js::after { background: var(--j-yel); }
+.r28 .kz-line.is-run { box-shadow: inset 3px 0 0 #22C55E; }
+.r28 .kz-line.is-err-line { box-shadow: inset 3px 0 0 #EF4444; background: rgba(239, 68, 68, .12); }
+.r28 .kz-line.is-found { animation: tlPop .45s ease-out both; }
+.r28 .kz-line.is-bad { animation: kzShake .45s ease-in-out; }
+.r28 .j1-slotline { opacity: .9; }
+.r28 .j1-slot { display: inline-block; padding: 1px 10px; border: 1.5px dashed rgba(255, 255, 255, .45); border-radius: 6px; color: rgba(255, 255, 255, .65); font-size: .9em; }
+.r28 .j1-slotline.is-hl .j1-slot, .r28 .j1-slotline:not(:disabled):hover .j1-slot { border-color: var(--j-yel); color: var(--j-yel); }
+.r28 .j1-slotline.is-bad .j1-slot { border-color: #F87171; color: #F87171; }
+.r28 .j1-wide .tk-input { min-width: 12em; }
+/* ── Страница Коди ── */
+.r28 .j1-page { display: flex; flex-direction: column; align-items: flex-start; gap: .45em; padding: .8em 1em; font-size: clamp(12px, 1.9dvh, 16px); color: #111; }
+.r28 .j1-page h1 { margin: 0; font-size: 1.6em; line-height: 1.15; }
+.r28 .j1-page p { margin: 0; font-size: .95em; line-height: 1.35; }
+.r28 .j1-page.is-html { font-family: 'Times New Roman', Times, serif; }
+.r28 .j1-page.is-html h1 { font-weight: 700; }
+.r28 .j1-page.is-html .j1-pbtn { padding: 2px 8px; border: 1px solid #767676; border-radius: 3px; background: #EFEFEF; color: #000; font: 400 13px/1.3 Arial, sans-serif; }
+.r28 .j1-page.is-css { font-family: var(--r-font); background: #FFF7ED; min-height: 100%; }
+.r28 .j1-page.is-css h1 { color: #C2410C; font-weight: 800; }
+.r28 .j1-page.is-css .j1-pbtn { position: relative; padding: .5em 1.4em; border: 0; border-radius: 999px; background: #F97316; color: #fff; font: 700 1em/1.2 var(--r-font); box-shadow: 0 3px 0 #C2410C; cursor: pointer; }
+.r28 .j1-pbtn:disabled { cursor: default; }
+.r28 .j1-pbtn:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1px 0 #C2410C; }
+.r28 .j1-pbtn.is-led { animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .j1-count { padding: 2px 10px; border-radius: 999px; background: #DCFCE7; color: #15803D !important; font-weight: 700; }
+.r28 .j1-br .kz-br-page { overflow: hidden; }
+/* ── Окно браузера с консолью снизу (DevTools) ── */
+.r28 .kz-col > .kz-br.j1-br.has-con, .r28 .kz-br.j1-br.has-con { aspect-ratio: auto; max-height: none; }
+.r28 .j1-win { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.r28 .j1-pagearea { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.r28 .j1-br.has-con .j1-pagearea { flex: none; height: clamp(64px, 12dvh, 130px); }
+.r28 .j1-br.has-con .j1-page { padding: .5em .8em; gap: .3em; font-size: clamp(11px, 1.6dvh, 14px); }
+/* Консоль Chrome */
+.r28 .j1-con { flex: none; display: flex; flex-direction: column; min-height: clamp(120px, 22dvh, 240px); border-top: 1px solid #D0D0D0; background: #fff; font: 400 12.5px/1.4 Menlo, Consolas, ui-monospace, monospace; color: #1F1F1F; }
+.r28 .j1-con-tabs { display: flex; align-items: center; gap: 14px; padding: 0 10px; height: 28px; border-bottom: 1px solid #E0E0E0; background: #F3F3F3; font: 500 12px/1 var(--r-font); color: #5F6368; }
+.r28 .j1-con-tabs b { height: 100%; display: flex; align-items: center; color: #1A73E8; box-shadow: inset 0 -2px 0 #1A73E8; font-weight: 600; }
+.r28 .j1-con-tabs i { margin-left: auto; font-style: normal; }
+.r28 .j1-con-bar { display: flex; align-items: center; gap: 10px; padding: 0 10px; height: 26px; border-bottom: 1px solid #E8E8E8; font: 400 11.5px/1 var(--r-font); color: #5F6368; }
+.r28 .j1-con-bar i { font-style: normal; }
+.r28 .j1-con-bar em { font-style: normal; color: #9AA0A6; }
+.r28 .j1-con-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.r28 .j1-con-row { display: flex; align-items: flex-start; gap: 6px; padding: 4px 10px; border-bottom: 1px solid #F0F0F0; }
+.r28 .j1-con-row em { margin-left: auto; flex: none; font-style: normal; color: #5F6368; text-decoration: underline; font-size: 11px; }
+.r28 .j1-con-t { flex: 1 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.r28 .j1-con-t.is-num { color: #1A1AA6; }
+.r28 .j1-con-row.is-err { background: #FFF0F0; border-color: #FAD2CF; color: #C5221F; }
+.r28 .j1-con-x { flex: none; display: grid; place-items: center; width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; background: #E81123; color: #fff; font: 700 11px/1 var(--r-font); font-style: normal; }
+.r28 .j1-con-row.is-hl:not(.is-err) { background: #FFFBE6; }
+.r28 .j1-con-empty { padding: 8px 10px; color: #9AA0A6; font: 400 12px/1.3 var(--r-font); }
+.r28 .j1-con-prompt { padding: 4px 10px; color: #1A73E8; font-weight: 700; }
+/* ── Значки и подписи ── */
+.r28 .j1-chip { align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, .08); font: 600 13px/1 var(--r-mono); }
+.r28 .j1-chip i { width: 10px; height: 10px; border-radius: 2px; background: var(--j-yel); }
+.r28 .j1-runchip { align-self: flex-start; padding: 6px 14px; border-radius: 8px; background: #E5E7EB; color: #6B7280; font: 700 13px/1 var(--r-font); transition: background .3s, color .3s; }
+.r28 .j1-runchip.is-on { background: #22C55E; color: #fff; }
+.r28 .j1-f12 { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; background: #fff; box-shadow: 0 0 0 2px var(--r-pri, #FA4F28); font: 600 13px/1 var(--r-font); }
+.r28 .j1-f12 b { padding: 3px 7px; border-radius: 4px; background: #111; color: #fff; font: 700 12px/1 var(--r-mono); }
+.r28 .j1-files .j1-file i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; background: #E34F26; }
+.r28 .j1-files .j1-file.is-css i { background: #7C3AED; }
+.r28 .j1-files .j1-file.is-js i { background: var(--j-yel); }
+.r28 .j1-files .j1-file.is-hl { box-shadow: 0 0 0 2px var(--j-yel); }
+/* ── Раскладка экранов ── */
+.r28 .j1-scene { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; width: 100%; }
+.r28 .j1-pair > .kz-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.r28 .j1-hook { align-items: center; justify-content: center; }
+.r28 .j1-hook > .kz-br, .r28 .j1-three > .kz-br { width: min(100%, 560px); }
+.r28 .j1-roles { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.r28 .j1-role { padding: 6px 12px; border-radius: 999px; background: #F3F4F6; color: #9CA3AF; font: 700 13px/1 var(--r-font); transition: all .3s; }
+.r28 .j1-role.is-on.is-html { background: #FDE7E1; color: #C2410C; }
+.r28 .j1-role.is-on.is-css { background: #EDE9FE; color: #6D28D9; }
+.r28 .j1-role.is-on.is-js { background: #FEF3C7; color: #92400E; }
+.r28 .j1-role.is-cur { transform: scale(1.08); box-shadow: 0 0 0 2px currentColor; }
+.r28 .j1-quiz { align-items: center; justify-content: center; gap: 14px; }
+.r28 .j1-qcard { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(100%, 560px); padding: 16px 18px; border-radius: 14px; background: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, .06); text-align: center; }
+.r28 .j1-qcard b { font: 700 clamp(17px, 2.6dvh, 22px)/1.3 var(--r-font); color: #111; }
+.r28 .j1-dots { display: flex; justify-content: center; gap: 6px; }
+.r28 .j1-dots i { width: 22px; height: 5px; border-radius: 3px; background: #E5E7EB; }
+.r28 .j1-dots i.is-now { background: #FDBA9F; }
+.r28 .j1-dots i.is-done { background: #16A34A; }
+.r28 .j1-langs, .r28 .j1-tf { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(100%, 560px); }
+.r28 .j1-tf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.r28 .j1-lang, .r28 .j1-tfb, .r28 .j1-opt { min-height: 54px; padding: 8px 10px; border: 2px solid #E5E7EB; border-radius: 12px; background: #fff; color: #111; font: 800 clamp(15px, 2.2dvh, 18px)/1.1 var(--r-font); cursor: pointer; transition: border-color .15s, transform .15s; }
+.r28 .j1-lang.is-html { color: #C2410C; } .r28 .j1-lang.is-css { color: #6D28D9; } .r28 .j1-lang.is-js { color: #92400E; }
+.r28 .j1-lang:not(:disabled):hover, .r28 .j1-tfb:not(:disabled):hover, .r28 .j1-opt:not(:disabled):hover { border-color: #111; transform: translateY(-2px); }
+.r28 .j1-lang:disabled, .r28 .j1-tfb:disabled, .r28 .j1-opt:disabled { cursor: default; }
+.r28 .j1-lang.is-ok, .r28 .j1-tfb.is-ok, .r28 .j1-opt.is-ok { border-color: #16A34A; background: #F0FDF4; }
+.r28 .j1-lang.is-bad, .r28 .j1-tfb.is-bad, .r28 .j1-opt.is-bad { animation: kzShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .j1-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.r28 .j1-opt { font: 700 clamp(14px, 2dvh, 17px)/1.1 var(--r-mono); }
+.r28 .j1-opt.is-err { color: #C5221F; font-family: var(--r-font); }
+.r28 .j1-runbar { justify-content: center; }
+.r28 .j1-runbar .key-go { min-width: 180px; }
+.r28 .j1-end { align-items: center; gap: 12px; }
+.r28 .j1-endpair { display: flex; flex-direction: column; gap: 8px; width: min(100%, 720px); }
+.r28 .j1-endpair .j1-con { min-height: 0; border: 1px solid #E0E0E0; border-radius: 10px; overflow: hidden; }
+.r28 .j1-endroles { justify-content: center; }
+/* Ноутбук: код слева, браузер справа. */
+@media (min-width: 760px) {
+  .r28 .j1-pair { flex-direction: row; align-items: stretch; justify-content: center; gap: clamp(14px, 2vw, 26px); }
+  .r28 .j1-pair > .kz-col { flex: 1 1 0; max-width: 560px; justify-content: center; }
+  .r28 .j1-br.has-con .j1-pagearea { height: clamp(90px, 16dvh, 150px); }
+  .r28 .j1-con { min-height: clamp(150px, 26dvh, 280px); }
+  .r28 .j1-endpair { flex-direction: row; align-items: stretch; }
+  .r28 .j1-endpair > * { flex: 1 1 0; min-width: 0; }
+}
+/* Телефон: окно со страницей ниже; без пустого места. */
+@media (max-width: 759px) {
+  .r28 .j1-pair > .kz-col { flex: none; }
+  .r28 .j1-pair > .kz-col:last-child { flex: 1 1 auto; min-height: 0; }
+  .r28 .j1-pair > .kz-col:last-child > .kz-br.has-con { flex: 1 1 auto; }
+  .r28 .j1-opts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .j1-br.has-con .j1-pagearea { height: 54px; }
+  .r28 .j1-con { min-height: 104px; }
+  .r28 .j1-lang, .r28 .j1-tfb, .r28 .j1-opt { min-height: 46px; }
+}
+/* Крючок и показ «три языка»: окно повыше, чтобы счётчик под кнопкой был виден. */
+.r28 .j1-hook > .kz-br, .r28 .j1-three > .kz-br { max-height: none; aspect-ratio: 4 / 3; }
+@media (max-width: 759px) {
+  .r28 .j1-sheet .kz-code.j1-js { font-size: 13px; }
+  .r28 .j1-pair .j1-br:not(.has-con) .j1-page { padding: .5em .8em; gap: .3em; }
+}
+/* Телефон: окно без консоли — по высоте страницы (не сжимается в полоску); код компактнее. */
+.r28 .j1-pair .j1-br:not(.has-con) .j1-pagearea { flex: none; }
+@media (max-width: 759px) {
+  .r28 .j1-sheet .kz-code { font-size: 13px; }
+  .r28 .j1-sheet .kz-line { min-height: 0; }
+  .r28 .j1-pair .j1-br:not(.has-con) .j1-page { font-size: 12px; }
+  .r28 .j1-pair .j1-br:not(.has-con) .j1-page h1 { font-size: 1.35em; }
+  .r28 .j1-pair .j1-br:not(.has-con) .kz-br-bar { display: none; }
+}
+/* Низкий телефон: страница над консолью — только заголовок, у консоли нет строки фильтра — больше места сообщениям. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .j1-br.has-con .j1-pagearea { height: 34px; }
+  .r28 .j1-br.has-con .j1-page p, .r28 .j1-br.has-con .j1-page .j1-pbtn { display: none; }
+  .r28 .j1-br.has-con .j1-page h1 { font-size: 1.25em; }
+  .r28 .j1-con-bar { display: none; }
+  .r28 .j1-con-row { padding: 3px 8px; }
+}
+
+/* ── Высота окна браузера (страница внутри окна стоит абсолютно и своей высоты не даёт) ── */
+.r28 .kz-col > .kz-br.j1-br.has-con { height: clamp(300px, 56dvh, 540px); }
+@media (max-width: 759px) {
+  .r28 .kz-col > .kz-br.j1-br.has-con { flex: 1 1 auto; height: auto; min-height: 190px; }
+  .r28 .j1-pair .kz-col > .kz-br.j1-br:not(.has-con) { aspect-ratio: auto; max-height: none; height: 132px; }
+}
+/* ── JavaScript без страницы: редактор и консоль; строки загораются по очереди при выполнении ── */
+.r28 .kz-line.is-exec { background: rgba(229, 184, 0, .22); box-shadow: inset 3px 0 0 #E5B800; transition: background .2s; }
+.r28 .kz-line.is-past { box-shadow: inset 3px 0 0 rgba(34, 197, 94, .7); }
+.r28 .j1-concard { display: flex; flex-direction: column; min-height: 0; height: clamp(230px, 46dvh, 460px); border: 1px solid #DADCE0; border-radius: 10px; background: #fff; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .06); }
+.r28 .j1-concard .j1-con { flex: 1 1 auto; min-height: 0; border-top: 0; }
+.r28 .j1-pair > .kz-col:only-child { flex: 1 1 auto; max-width: 620px; margin: 0 auto; }
+@media (max-width: 759px) {
+  .r28 .j1-pair > .kz-col:last-child > .j1-concard { flex: 1 1 auto; height: auto; min-height: 150px; }
+}
+/* Вывод: консоль по содержимому — три строки программы, без пустой высоты */
+.r28 .j1-endpair .j1-concard { height: auto; min-height: 0; }
+.r28 .j1-endpair .j1-concard .j1-con { min-height: 118px; }
+@media (max-width: 759px) {
+  .r28 .j1-end { gap: 8px; }
+  .r28 .j1-endroles { gap: 6px; }
+  .r28 .j1-endroles .kz-role { padding: 5px 10px; font-size: 14px; }
+}
+/* Телефон: окна во всю ширину и без пустот (заказчик, 26.11.2026: «есть пустые места») */
+@media (max-width: 759px) {
+  .r28 .j1-pair > .kz-col:only-child { align-self: stretch; width: 100%; max-width: none; margin: 0; }
+  .r28 .j1-pair.j1-solo { justify-content: safe center; }
+  .r28 .j1-solo > .kz-col:only-child .kz-code { font-size: 15px; }
+  .r28 .j1-solo > .kz-col:only-child .kz-code .kz-line { min-height: 2em; }
+  .r28 .j1-hook .kz-br.j1-br, .r28 .j1-three .kz-br.j1-br { --brh: min(54dvh, 460px); height: min(54dvh, 460px); aspect-ratio: auto; max-height: none; }
+  .r28 .j1-hook .j1-page, .r28 .j1-three .j1-page { font-size: 18px; gap: .8em; padding: 1.2em 1.1em; }
+}
+@media (max-width: 759px) {
+  .r28 .j1-pair.j1-solo > .kz-col { flex: none; }
+  .r28 .j1-hook .kz-br.j1-br, .r28 .j1-three .kz-br.j1-br { --brh: min(46dvh, 400px); height: min(46dvh, 400px); }
+}
+/* Окно Chrome как настоящее (заказчик, 26.11.2026: «странно выглядит»): сайт и консоль прилегают к краям окна, без белых полей */
+.r28 .kz-br.j1-br .kz-br-page, .is-kbd .r28 .kz-br.j1-br .kz-br-page { inset: 0 !important; border-radius: 0 0 6px 6px; }
+.r28 .j1-br .j1-pagearea { display: flex; flex-direction: column; }
+.r28 .j1-br .j1-pagearea > .j1-page { flex: 1 1 auto; min-height: 100%; }
+.r28 .j1-br.has-con .j1-con { flex: 1 1 auto; border-top: 1px solid #CACACA; }

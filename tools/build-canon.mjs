@@ -146,6 +146,9 @@ swapTtsPlain();
 // же сделать все уроки»). Пометка языка в начале реплики остаётся, язык ещё и параметром language_code; узбекское «HTML» — «eych-ti-em-el»;
 // темп 1,0 (0,9 было поправкой на быстрый v3). См. swapTtsV4Turbo.
 swapTtsV4Turbo();
+// НОВЫЕ ЗАПИСИ ВСЕХ РЕПЛИК (заказчик, 26.11.2026: «во всех существующих уроках добавить невидимый знак, чтобы платформа
+// не думала что такая реплика уже есть»; все три языка). См. swapTtsFresh.
+swapTtsFresh();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -224,6 +227,9 @@ writeFileSync(root + 'canon/bootstrap/canon-v1.jsx', text);
 // Модуль Tilda — копия канона Bootstrap (24.11.2026: голос по языку урока; модуль идёт после Bootstrap).
 mkdirSync(root + 'canon/tilda', { recursive: true });
 writeFileSync(root + 'canon/tilda/canon-v1.jsx', text);
+// Модуль JavaScript — тот же канон (26.11.2026: облик «Редактор», как HTML и CSS; голос по языку урока).
+mkdirSync(root + 'canon/javascript', { recursive: true });
+writeFileSync(root + 'canon/javascript/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
@@ -915,6 +921,17 @@ const sanitizeForTts = (text, lang) =>
 //   · model_id=eleven_v4_turbo — подсказка сервису (модель выбирает сервер платформы; лишний параметр он не читает);
 //   · в узбекском «HTML» — «eych-ti-em-el» (как в разборе), «teg» — уже в swapTtsPlain;
 //   · TTS_RATE 1,0 — браузер больше не растягивает запись (0,9 было поправкой на быстрый v3).
+// 26.11.2026: в конец каждой реплики, которая уходит в сервис озвучки, — невидимый пробел нулевой ширины (U+200B).
+// На экране ничего нет, а для сервиса это новый текст: старые записи (v3) не берутся из кэша, реплики записываются
+// заново (v4 turbo). Если реплика уже кончается этим знаком (урок 36 ставит его сам), второй не добавляется.
+// Знак не убирать: без него сервис снова отдаст старые записи.
+function swapTtsFresh() {
+  swap(`  let url = base.replace(/\\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;`,
+    `  // 26.11.2026: невидимый знак в конце — новая запись у сервиса (swapTtsFresh в tools/build-canon.mjs).
+  const fresh = String(text).slice(0, 999);
+  let url = base.replace(/\\/+$/, '') + '/api/tts?text=' + ttsEnc(fresh.slice(-1) === '\\u200B' ? fresh : fresh + '\\u200B') + '&g=' + g;`);
+}
+
 function swapTtsV4Turbo() {
   swap(`  if (TTS_AUTH.k) url += '&k=' + encodeURIComponent(TTS_AUTH.k);
   return url;`, `  // 25.11.2026 (v4 turbo): язык — параметром, модель — подсказкой сервису.

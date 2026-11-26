@@ -784,3 +784,42 @@
 @media (min-width: 1024px) and (min-height: 680px) { .r28 .kz-scene.itk-scene.itk-end2 { zoom: 1; } }
 @media (min-width: 1280px) and (min-height: 840px) { .r28 .kz-scene.itk-scene.itk-end2 { zoom: 1.15; } }
 @media (max-height: 760px) and (min-width: 760px) { .r28 .itk-award { padding: 12px 16px 10px; } .r28 .itk-medal2 { width: 70px; } }
+
+/* 26.11.2026 (заказчик: «либо объяснить, что такое jump»): у слов кода — перевод под словом, цвет слова — как его вещь в игре:
+   wall — серая стена, jump — оранжевый пунктир прыжка. */
+.r28 .itk-run .itk-cl { padding-bottom: 19px; }
+.r28 .itk-gw { position: relative; display: inline-block; }
+.r28 .itk-gw > i { position: absolute; left: 50%; top: calc(100% + 2px); transform: translateX(-50%); padding: 2px 7px; border-radius: 999px;
+  font: 700 11px/1.15 var(--r-font, system-ui, sans-serif); font-style: normal; white-space: nowrap; letter-spacing: 0; }
+.r28 .itk-code .itk-gw.is-wall { color: #475569; }
+.r28 .itk-gw.is-wall > i { background: #E2E8F0; color: #334155; }
+.r28 .itk-code .itk-gw.is-jump { color: var(--or); }
+.r28 .itk-gw.is-jump > i { background: #FFEDD5; color: #C2410C; }
+@media (max-width: 759px) and (max-height: 700px) { .r28 .itk-run .itk-cl { padding-bottom: 17px; } }
+
+
+/* 26.11.2026 (отзыв: «не поняли, что стену нужно обходить»): препятствия — кирпичные стены, как в игре на экране 4;
+   подпись под полем; путь виден до запуска (точки с номерами), шаг в стену — красная стена с крестиком. */
+.r28 .itk-rock { inset: 7%; border-radius: 5px; box-shadow: 0 0 0 1.5px #64748B, 0 3px 0 #475569;
+  background:
+    linear-gradient(#64748B 0 0) 0 33% / 100% 1.5px no-repeat,
+    linear-gradient(#64748B 0 0) 0 66% / 100% 1.5px no-repeat,
+    linear-gradient(#64748B 0 0) 50% 0 / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 25% 50% / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 75% 50% / 1.5px 33% no-repeat,
+    linear-gradient(#64748B 0 0) 50% 100% / 1.5px 34% no-repeat,
+    linear-gradient(180deg, #B7C2D0, #94A3B8); }
+.r28 .itk-rock::after { content: none; }
+.r28 .itk-cell.is-bad .itk-rock { box-shadow: 0 0 0 2.5px #DC2626, 0 3px 0 #991B1B; animation: itkShake .4s ease-in-out 1; }
+.r28 .itk-pv { position: absolute; z-index: 1; left: 33%; top: 33%; right: auto; bottom: auto; width: 34%; height: 34%; display: grid; place-items: center; border-radius: 50%;
+  background: rgba(250, 79, 40, .85); color: #fff; font: 800 12px/1 var(--r-font); font-style: normal;
+  animation: itkPop .25s ease-out both; }
+.r28 .itk-x { position: absolute; z-index: 2; right: 6%; top: 6%; display: grid; place-items: center; width: 34%; aspect-ratio: 1; border-radius: 50%; background: #DC2626;
+  box-shadow: 0 0 0 2px #fff; animation: itkPop .25s ease-out both; }
+.r28 .itk-x::before, .r28 .itk-x::after { content: ''; position: absolute; width: 52%; height: 3px; border-radius: 2px; background: #fff; transform: rotate(45deg); }
+.r28 .itk-x::after { transform: rotate(-45deg); }
+.r28 .itk-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; color: var(--ink); font: 700 12.5px/1.2 var(--r-font); }
+.r28 .itk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.r28 .itk-rock.is-mini { position: relative; inset: auto; display: inline-block; flex: none; width: 20px; height: 20px; }
+.r28 .itk-leg-apple { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; }
+.r28 .itk-leg-apple svg { width: 100%; height: 100%; }

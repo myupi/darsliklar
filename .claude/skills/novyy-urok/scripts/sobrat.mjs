@@ -74,6 +74,15 @@ if (src.indexOf('/*@L2_HELPERS@*/') >= 0 || src.indexOf('/*@L2_CSS@*/') >= 0) {
   put('/*@L2_HELPERS@*/', helpers);
   put('/*@L2_CSS@*/', css);
 }
+// Защита (26.11.2026, заказчик: «впредь не хочу, чтобы ввод ученика уходил в озвучку»): в исходниках курса HTML каждый
+// плейсхолдер {имя} озвучиваемой строки либо в метках U+2063…U+2064 (слово ученика), либо записан в реестр безопасных
+// tools/say-hide-safe/*.json (правильный ответ, выбор из набора). Иначе сборка падает. См. tools/say-hide-guard.mjs.
+if (course === 'html') {
+  const incl = [...src.matchAll(/\/\*@FILE:([^@]+)@\*\//g)].map((m) => resolve(srcDir, m[1].trim()));
+  const { checkSources } = await import(new URL('../../../../tools/say-hide-guard.mjs', import.meta.url).href);
+  const bad = checkSources([resolve(srcArg), ...incl, join(root, 'tools/l2-helpers/urok2-robofutbol.jsx'), join(root, 'tools/redaktor28/r28-skin.jsx')]);
+  if (bad.length) throw new Error('Ввод ученика может попасть в озвучку:\n' + bad.join('\n'));
+}
 src = src.replace(/\/\*@FILE:([^@]+)@\*\//g, (m, p) => read(resolve(srcDir, p.trim())).trim());
 
 let out;
@@ -102,7 +111,7 @@ writeFileSync(resolve(outArg), out);
 // Шрифт Inter — ресурсы урока для CRM (15.11.2026; канон грузит их по ключу, useLmsPlatform → loadFont):
 // lessons/<курс>/assets/<урок>/<ключ>.woff2 — их загружают в CRM вместе с уроком (блок WOFF2).
 {
-  const m = /lessons\/(html|css|ai|bootstrap|tilda)\/(\d\d(?:p|q\d)?-[^/]+)\.jsx$/.exec(resolve(outArg));   // bootstrap — 19.11.2026; части урока q1/q2, tilda — 25.11.2026
+  const m = /lessons\/(html|css|ai|bootstrap|tilda|javascript)\/(\d\d(?:p|q\d)?-[^/]+)\.jsx$/.exec(resolve(outArg));   // bootstrap — 19.11.2026; части урока q1/q2, tilda — 25.11.2026
   if (m && out.indexOf('const LMS_FONTS = [') >= 0) {
     const fonts = new URL('../../../../tools/redaktor28/fonts/', import.meta.url);
     const dir = resolve(dirname(resolve(outArg)), 'assets', m[2]);

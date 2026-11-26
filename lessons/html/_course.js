@@ -25,13 +25,41 @@ export default {
         { k: 1, title: 'Структура HTML-документа. Часть 1', topics: ['тег', 'html', 'head', 'title'] },
         { k: 2, title: 'Структура HTML-документа. Часть 2', topics: ['body', 'порядок документа'] },
       ] },
-    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'], practiceTitle: 'Газета Коди' },
-    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'], practiceTitle: 'Праздник Коди' },
-    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'], practiceTitle: 'Путешествие Коди' },
-    { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'], practiceTitle: 'Зоопарк Коди' },
-    { n: 6, slug: 'formy-vvod', title: 'Формы, часть 1: ввод данных', topics: ['form', 'label', 'input', 'type', 'placeholder'], practiceTitle: 'Анкеты Коди' },
-    { n: 7, slug: 'formy-vybor', title: 'Формы, часть 2: выбор и отправка', topics: ['select', 'option', 'textarea', 'button'], practiceTitle: 'Лагерь Коди' },
-    { n: 8, slug: 'struktura-sajta', title: 'Структура настоящего сайта', topics: ['header', 'nav', 'main', 'section', 'footer'], practiceTitle: 'Сайт школы Коди' },
+    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'], practiceTitle: 'Газета Коди',
+      parts: [
+        { k: 1, title: 'Заголовки и текст. Часть 1', topics: ['h1–h6', 'p'] },
+        { k: 2, title: 'Заголовки и текст. Часть 2', topics: ['b', 'i', 'своя страница'] },
+      ] },
+    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'], practiceTitle: 'Праздник Коди',
+      parts: [
+        { k: 1, title: 'Списки. Часть 1', topics: ['ul', 'li', 'ol'] },
+        { k: 2, title: 'Списки. Часть 2', topics: ['ul или ol', 'свой список'] },
+      ] },
+    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'], practiceTitle: 'Путешествие Коди',
+      parts: [
+        { k: 1, title: 'Ссылки и атрибуты. Часть 1', topics: ['a', 'href', 'атрибут'] },
+        { k: 2, title: 'Ссылки и атрибуты. Часть 2', topics: ['своя ссылка', 'сайты в интернете'] },
+      ] },
+    { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'], practiceTitle: 'Зоопарк Коди',
+      parts: [
+        { k: 1, title: 'Изображения. Часть 1', topics: ['img', 'src', 'alt'] },
+        { k: 2, title: 'Изображения. Часть 2', topics: ['своя картинка', 'картинки из интернета'] },
+      ] },
+    { n: 6, slug: 'formy-vvod', title: 'Формы, часть 1: ввод данных', topics: ['form', 'label', 'input', 'type', 'placeholder'], practiceTitle: 'Анкеты Коди',
+      parts: [
+        { k: 1, title: 'Формы: ввод данных. Часть 1', topics: ['input', 'type'] },
+        { k: 2, title: 'Формы: ввод данных. Часть 2', topics: ['placeholder', 'label', 'form'] },
+      ] },
+    { n: 7, slug: 'formy-vybor', title: 'Формы, часть 2: выбор и отправка', topics: ['select', 'option', 'textarea', 'button'], practiceTitle: 'Лагерь Коди',
+      parts: [
+        { k: 1, title: 'Формы: выбор и отправка. Часть 1', topics: ['select', 'option', 'textarea'] },
+        { k: 2, title: 'Формы: выбор и отправка. Часть 2', topics: ['button', 'своя анкета'] },
+      ] },
+    { n: 8, slug: 'struktura-sajta', title: 'Структура настоящего сайта', topics: ['header', 'nav', 'main', 'section', 'footer'], practiceTitle: 'Сайт школы Коди',
+      parts: [
+        { k: 1, title: 'Структура сайта. Часть 1', topics: ['header', 'main', 'footer', 'nav'] },
+        { k: 2, title: 'Структура сайта. Часть 2', topics: ['section', 'свой сайт'] },
+      ] },
     { n: 9, slug: 'final-proekt', title: 'Финальный HTML-проект', topics: [], final: true, practiceTitle: 'Мой сайт от и до' },
   ],
 };

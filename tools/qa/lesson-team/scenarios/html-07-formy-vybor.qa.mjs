@@ -134,7 +134,7 @@ const STEPS = [
   { name: 'q1: найти строку с ошибкой', shot: 'q1-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    qa.expect(!qa.q('.kz-code .kz-line .led'), 'до первой попытки ответ не подсвечен');
+    qa.expect(!qa.qa('.kz-code .kz-line.kz-tap')[3].querySelector('.led'), 'до первой попытки ответ не подсвечен');   // огонёк по бездействию (7 с) бывает, но не на строке-ответе
     qa.expect(!qa.q('.kz-br-page .z7-btn'), 'честно: без </textarea> кнопки нет');
     await qa.clickNth('.kz-code .kz-line.kz-tap', 3, 'textarea без закрывающего');
     await qa.waitFor(() => /2\/2/.test(qa.text('.kz-ask-n')) && qa.q('.kz-code .kz-line.kz-tap:not(:disabled)'), 30000, 'второй раунд');

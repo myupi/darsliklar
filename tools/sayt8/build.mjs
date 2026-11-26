@@ -28,4 +28,7 @@ naborRedaktor(gen);
     'doctype|DOCTYPE|header|nav|main|section|footer|head|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z8.src.jsx'), join(root, 'lessons/html/08-struktura-sajta.jsx')], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'z8.src.jsx'), join(root, 'lessons/html/08-struktura-sajta.jsx')], { stdio: 'inherit' });
+}

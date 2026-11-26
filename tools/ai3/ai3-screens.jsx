@@ -265,8 +265,8 @@ function S14({ p }) {
 }
 // Ответы проверки «Kim uchun?» (из урока 2) — для своего сайта.
 const M2 = {
-  all: L3("«Hamma uchun» desangiz, sun'iy intellekt saytni hech kimga moslamaydi. Aynan kimlar uchun?", 'Если написать «для всех», ИИ ни под кого сайт не подстроит. Для кого именно?', 'If you write “for everyone”, the AI won’t tailor the site to anyone. Who exactly?'),
-  gen: L3("Sun'iy intellekt bu so'zdan kimligini tushunmadi. Yoshini yoki kimligini yozing.", 'ИИ не понял по этому слову, кто это. Напиши возраст или кто они.', 'The AI couldn’t tell who that is. Write their age or who they are.')
+  all: L3("«Hamma uchun» deb yozsangiz, sun'iy intellekt saytni hech kimga moslamaydi. Aynan kimlar uchun ekanini yozing.", 'Если написать «для всех», ИИ ни под кого сайт не подстроит. Для кого именно?', 'If you write “for everyone”, the AI won’t tailor the site to anyone. Who exactly?'),
+  gen: L3("Sun'iy intellekt bu so'zdan saytni kim ko'rishini tushunmadi. Ularning yoshini yoki kimligini yozing.", 'ИИ не понял по этому слову, кто это. Напиши возраст или кто они.', 'The AI couldn’t tell who that is. Write their age or who they are.')
 };
 // Q1. ВЕРНО ИЛИ НЕТ — пять фраз урока.
 function Q1({ p }) {

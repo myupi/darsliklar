@@ -1,0 +1,67 @@
+{
+  "tools/bdizayn16/b16-texts.jsx": {
+    "w": "слово раунда «вкладка или окно» из данных экрана (c.rounds[].word/extra: Kosmos, Musiqa, Juma kuni final!…) или подпись перетаскиваемой карточки (c.tabWord/c.winWord) — набор конечный, ввода ученика нет"
+  },
+  "tools/bdizayn16/b16-screens.jsx": {
+    "w": "слово раунда «вкладка или окно» из данных экрана (c.rounds[].word/extra: Kosmos, Musiqa, Juma kuni final!…) или подпись перетаскиваемой карточки (c.tabWord/c.winWord) — набор конечный, ввода ученика нет"
+  },
+  "tools/kollazh/kollazh.src.jsx": {
+    "w": "слово раунда «вкладка или окно» из данных экрана (c.rounds[].word/extra: Kosmos, Musiqa, Juma kuni final!…) или подпись перетаскиваемой карточки (c.tabWord/c.winWord) — набор конечный, ввода ученика нет"
+  },
+  "tools/kollazh/kollazh-screens.jsx": {
+    "w": "слово раунда «вкладка или окно» из данных экрана (c.rounds[].word/extra: Kosmos, Musiqa, Juma kuni final!…) или подпись перетаскиваемой карточки (c.tabWord/c.winWord) — набор конечный, ввода ученика нет"
+  },
+  "tools/redaktor28/r28-skin.jsx": {
+    "a": "правильный ответ задания на выбор (choiceHints: ответ из данных экрана, не выбор ученика)"
+  },
+  "tools/l2-helpers/urok2-robofutbol.jsx": {
+    "tag": "tagTypingIssue(typed, tag, msgs): tag — ожидаемый тег задания (литералы html, a, textarea, h1), набранное учеником в фразу не попадает"
+  },
+  "tools/zagolovki2/z2r.src.jsx": {
+    "tag": "WRAP_MSGS: ожидаемый тег задания (wrapIssue вызывается только с литералом 'b'), набранное учеником в фразу не попадает",
+    "n": "порядковое слово верного абзаца раунда (c.nth[R.want] — первый/второй/третий из данных раунда)",
+    "w": "слово образца из данных экрана (c.parts: «juda», «мой», «очень»…), не ввод ученика"
+  },
+  "tools/zagolovki2/z2r-screens.jsx": {
+    "tag": "wrapIssue(a, b, 'b'): ожидаемый тег задания, литерал",
+    "n": "c.nth[R.want] — слово по верному ответу раунда",
+    "w": "слово образца из c.parts"
+  },
+  "tools/royxat3/z3.src.jsx": {
+    "tag": "WRAP_MSGS: ожидаемый тег задания (wrapIssue вызывается только с литералами 'li' и 'ol'), набранное учеником в фразу не попадает",
+    "w": "слово-ингредиент из фиксированного набора (ing(pick)[2]: Sabzi / Морковь / Carrots), не ввод ученика"
+  },
+  "tools/royxat3/z3-screens.jsx": {
+    "tag": "wrapIssue(a, b, 'li' | 'ol', msgs): ожидаемый тег задания, литерал",
+    "w": "слово-ингредиент из фиксированного набора ing(pick)[2]"
+  },
+  "tools/havola4/z4.src.jsx": {
+    "f": "c.s4.why: файл из лотка S4_TRAY — выбор из трёх фиксированных имён (index.html, osh.html, oyinlar.html), 3 варианта фразы; набранный учеником адрес идёт в отдельный плейсхолдер u (в метках, на экране в окне браузера)",
+    "page": "название страницы по фиксированной карте файлов (label(S4_LINKS…)), конечный набор",
+    "h": "имя сайта из задания (C.web.host: uz/ru/en.wikipedia.org) — ожидаемый ответ, не ввод ученика"
+  },
+  "tools/havola4/z4-screens.jsx": {
+    "f": "place(): файл из лотка S4_TRAY — выбор из трёх фиксированных имён",
+    "page": "label(S4_LINKS…) — фиксированное название страницы",
+    "h": "C.web.host — ожидаемое имя сайта из задания"
+  },
+  "tools/rasm5/z5.src.jsx": {},
+  "tools/rasm5/z5-screens.jsx": {},
+  "tools/forma6/z6.src.jsx": {},
+  "tools/forma6/z6-screens.jsx": {},
+  "tools/forma7/z7.src.jsx": {
+    "a": "c.why3: правильный вариант списка (s.games4[l][gi], gi по номеру раунда) — ответ из задания, не выбор ученика"
+  },
+  "tools/forma7/z7-screens.jsx": {
+    "a": "ansL: верный вариант раунда из s.games4 (choiceHints / why3)"
+  },
+  "tools/sayt8/z8.src.jsx": {
+    "t": "ожидаемый тег раунда (want = S4_ROUNDS[ri] / R.want в hint3 и pick3) — верный ответ задания"
+  },
+  "tools/sayt8/z8-screens.jsx": {
+    "t": "fillL(c.hint3 | c.pick3, { t: want }): ожидаемый тег раунда"
+  },
+  "tools/final9/z9.src.jsx": {},
+  "tools/final9/z9-screens.jsx": {},
+  "tools/redaktor28/build-qism.mjs": {}
+}

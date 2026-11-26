@@ -96,10 +96,15 @@ const STEPS = [
     await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'все раунды');
   } },
   { name: 's11: по сайту (показ)', shot: 's11-done', run: async (qa) => {
+    // В быстром режиме браузер заходит на osh.html на 1–2 секунды — следим за адресом с самого перехода, не опрашиваем.
+    const d = qa.doc(); let sawOsh = false;
+    const mo = new d.defaultView.MutationObserver(() => { const el = d.querySelector('.kz-br-url'); if (el && /osh\.html/.test(el.textContent)) sawOsh = true; });
+    mo.observe(d.body, { subtree: true, childList: true, characterData: true });
     await qa.platform.next();
     await qa.platform.ready();
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
-    await qa.waitFor(() => /osh\.html/.test(qa.text('.kz-br-url')), 40000, 'браузер сам открыл рецепт');
+    await qa.waitFor(() => sawOsh || /osh\.html/.test(qa.text('.kz-br-url')), 40000, 'браузер сам открыл рецепт');
+    mo.disconnect();
     await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
     qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS11).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
   } },
@@ -163,7 +168,7 @@ const STEPS = [
   { name: 'q1: найти строку с ошибкой', shot: 'q1-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    qa.expect(!qa.q('.kz-code .kz-line .led'), 'до первой попытки ответ не подсвечен');
+    qa.expect(!qa.qa('.kz-code .kz-line.kz-tap')[1].querySelector('.led'), 'до первой попытки ответ не подсвечен');   // огонёк по бездействию (7 с) бывает, но не на строке-ответе
     await qa.clickNth('.kz-code .kz-line.kz-tap', 1, 'ссылка без href');
     await qa.waitFor(() => /2\/2/.test(qa.text('.kz-ask-n')) && qa.q('.kz-code .kz-line.kz-tap:not(:disabled)'), 30000, 'второй раунд');
     await qa.platform.ready(30000);

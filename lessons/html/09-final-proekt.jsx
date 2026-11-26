@@ -987,7 +987,9 @@ const buildTtsUrl = (base, text, gender, lang) => {
   // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
   // voiceGender от LMS голос курса не меняет.
   const g = 'm';
-  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  // 26.11.2026: невидимый знак в конце — новая запись у сервиса (swapTtsFresh в tools/build-canon.mjs).
+  const fresh = String(text).slice(0, 999);
+  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(fresh.slice(-1) === '\u200B' ? fresh : fresh + '\u200B') + '&g=' + g;
   const meta = typeof META !== 'undefined' && META ? META : null;
   if (meta && meta.lessonId) {
     url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
@@ -6939,11 +6941,11 @@ const C = {
   },
   s1: {
     eyebrow: L3('Glitch!', 'Глитч!', 'Glitch!'),
-    say: L3("Voy! Saytimga glitch kelib, hammasini buzib ketdi! Qarang: sarlavha juda kichkina, rasm o'rnida faqat so'z, ro'yxatda raqam yo'q, havola bosilmaydi, parol esa ochiq ko'rinib turibdi. Bu saytni biz sakkiz dars davomida birga yasagan edik. Yordam bering, uni ta'mirlaymiz! «Ta'mirlash» tugmasini bosing.",
+    say: L3("Falokat: saytimga glitch tushibdi! Bu kompyuterdagi g'alati buzilishning nomi. U hammasini ag'dar-to'ntar qilib ketibdi! Qarang-chi: sarlavha mittigina bo'lib qolgan, rasm o'rnida bitta so'z turibdi, ro'yxatda raqamlar yo'q, havola bosilmaydi, parol esa hammaga ochiq ko'rinib turibdi. Axir bu saytni sakkiz dars davomida birga qurgan edik-ku! Qani, yordam bering, birga tuzatamiz: «Ta'mirlash» tugmasini bosing.",
       'Ой! На мой сайт налетел глитч и всё сломал! Смотри: заголовок крошечный, вместо картинки одно слово, в списке нет номеров, ссылка не нажимается, а пароль виден всем. Этот сайт мы строили вместе восемь уроков. Помоги его починить! Нажми «Починить».',
       'Oh no! A glitch hit my site and broke everything! Look: the heading is tiny, there’s just a word instead of the picture, the list has no numbers, a link doesn’t work, and the password is visible to everyone. We built this site together over eight lessons. Help me repair it! Tap “Repair”.'),
-    magic: L3("Mana, kurs xaritasi: sakkizta bekat, har bir darsga bitta. Har bir bekatda bitta buzuqlikni tuzatamiz va bekat yonadi.", 'Вот карта курса: восемь станций, по одной на урок. На каждой станции чиним одну поломку — и станция загорается.', 'Here’s the course map: eight stations, one per lesson. At each station we fix one break, and the station lights up.'),
-    done: L3("Lekin oldin kichik topishmoq. Menimcha, glitch hammasini buzgani uchun saytni butunlay o'chirib, boshidan yozish kerak. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni oxirida birga topamiz. Birinchi bekatga o'tamiz!",
+    magic: L3("Mana, glitchdan qutulish yo'li xaritada: xuddi metro liniyasidagidek, sakkizta bekat bor, har bir darsimizga bittadan. Har bir bekatda bitta buzilgan joyni tuzatamiz, shunda o'sha bekatda chiroq yonadi.", 'Вот карта курса: восемь станций, по одной на урок. На каждой станции чиним одну поломку — и станция загорается.', 'Here’s the course map: eight stations, one per lesson. At each station we fix one break, and the station lights up.'),
+    done: L3("Do'stlarimga sayt kechgacha tayyor bo'ladi, deb va'da berganman, vaqt esa juda oz. Shuning uchun eng tez yo'lni o'yladim: hammasini o'chirib, boshidan yozaman, chunki glitch hammasini buzib tashlagan-ku! Siz mening o'rnimda nima qilardingiz? Javobni sakkizta bekatdan o'tgach birga ko'ramiz. Qani, birinchi bekatga!",
       'Но сначала маленькая загадка. По-моему, раз глитч сломал всё, сайт надо целиком стереть и написать заново. Ну как думаешь, я прав? Ответ найдём вместе в конце. Вперёд, к первой станции!',
       'But first, a little riddle. I think that since the glitch broke everything, we should delete the whole site and write it again from scratch. So what do you think, am I right? We’ll find the answer together at the end. On to the first station!'),
     ask: L3('«Ta\'mirlash» tugmasini bosing', 'Нажми «Починить»', 'Tap “Repair”'),
@@ -6951,109 +6953,109 @@ const C = {
   },
   s2: {
     eyebrow: L3('1-bekat · Tuzilish', 'Станция 1 · Каркас', 'Station 1 · Structure'),
-    say: L3("Birinchi bekat. Glitch sahifaning karkasini sochib yubordi. Esingizdami: html ichida oldin head keladi, uning ichida sahifa nomi bo'ladi, keyin esa body keladi. Bo'laklarni to'g'ri tartibda qo'ying. Bitta bo'lak esa ortiqcha.",
+    say: L3("Birinchi bekat, birinchi darsimiz! Glitch sahifaning asosini sochib yuboribdi. Esingizdami, html ichida nima birinchi keladi-yu, nima keyin? Bo'laklarni tartibi bilan joylab chiqing. Ehtiyot bo'ling: bittasining bu yerda umuman ishi yo'q.",
       'Первая станция. Глитч рассыпал каркас страницы. Помнишь: внутри html сначала head, в нём название страницы, а потом body. Поставь куски по порядку. А один кусок лишний.',
       'First station. The glitch scattered the page’s frame. Remember: inside html, head comes first with the page title in it, and then body. Put the pieces in order. And one piece isn’t needed.'),
     why: {
-      header: L3("header sahifaning ko'rinadigan tepasi bo'ladi va body ichida turadi. Bu yerda boshqa teg kerak.", 'header — видимый верх страницы, он внутри body. Здесь нужен другой тег.', 'header is the visible top of the page, and it goes inside body. A different tag goes here.'),
-      head: L3("html ichida birinchi bo'lib head ochiladi.", 'Внутри html сначала открывается head.', 'Inside html, head opens first.'),
-      title: L3("head ichida sahifa nomi turadi: title.", 'Внутри head — название страницы: title.', 'Inside head goes the page title: title.'),
-      headc: L3("Sahifa nomidan keyin head yopiladi.", 'После названия страницы head закрывается.', 'After the page title, head closes.'),
-      body: L3("Oxirida sahifaning ko'rinadigan qismi keladi: body.", 'В конце — видимая часть страницы: body.', 'At the end comes the visible part of the page: body.')
+      header: L3("Bu bo'lak bizni aldamoqchi! header sayt boshini o'raydi, u body ichida yashaydi. Bu yerga boshqa teg kerak.", 'header — видимый верх страницы, он внутри body. Здесь нужен другой тег.', 'header is the visible top of the page, and it goes inside body. A different tag goes here.'),
+      head: L3("Shoshilmang! html ichida eng birinchi bo'lib head ochiladi.", 'Внутри html сначала открывается head.', 'Inside html, head opens first.'),
+      title: L3("head ochilgandan keyin uning ichiga sahifaning nomi keladi, u title tegiga yoziladi.", 'Внутри head — название страницы: title.', 'Inside head goes the page title: title.'),
+      headc: L3("Sahifaning nomi yozildi, endi head yopilishi kerak.", 'После названия страницы head закрывается.', 'After the page title, head closes.'),
+      body: L3("Eng oxirida sahifaning ko'rinadigan qismi, body keladi.", 'В конце — видимая часть страницы: body.', 'At the end comes the visible part of the page: body.')
     },
     hints: [
-      L3('html ichida nima birinchi keladi?', 'Что идёт первым внутри html?', 'What comes first inside html?'),
-      L3("Oldin head va uning ichida title, keyin body.", 'Сначала head и в нём title, потом body.', 'First head with title inside it, then body.'),
-      L3("Tartib shunday bo'ladi: head, title, yopuvchi head va body. header kerak emas.", 'Порядок такой: head, title, закрывающий head и body. header не нужен.', 'The order is: head, title, closing head and body. No header.')
+      L3("html ochilgandan keyin eng birinchi nima keladi?", 'Что идёт первым внутри html?', 'What comes first inside html?'),
+      L3("Oldin head keladi, uning ichida title turadi, keyin esa body.", 'Сначала head и в нём title, потом body.', 'First head with title inside it, then body.'),
+      L3("Oldin head ochiladi, ichida title turadi, so'ng head yopilib, body boshlanadi. header bu yerga kerak emas.", 'Порядок такой: head, title, закрывающий head и body. header не нужен.', 'The order is: head, title, closing head and body. No header.')
     ],
-    ok: L3("Zo'r! Karkas joyida: yorliqda sahifa nomi, oynada esa sahifa chiqdi. Birinchi bekat yondi!", 'Огонь! Каркас на месте: на вкладке название, в окне страница. Первая станция горит!', 'Awesome! The frame is in place: the title is on the tab, and the page is in the window. The first station is lit!'),
+    ok: L3("Sahifaning asosi joy-joyiga tushdi: yorliqda sahifaning nomi, oynada esa sahifaning o'zi chiqdi. Birinchi bekat yondi!", 'Огонь! Каркас на месте: на вкладке название, в окне страница. Первая станция горит!', 'Awesome! The frame is in place: the title is on the tab, and the page is in the window. The first station is lit!'),
     ask: L3("Bo'laklarni to'g'ri tartibda qo'ying", 'Поставь куски по порядку', 'Put the pieces in order')
   },
   s3: {
     eyebrow: L3('2-bekat · Sarlavha', 'Станция 2 · Заголовок', 'Station 2 · Heading'),
-    say: L3("Ikkinchi bekat. Retsept sarlavhasi juda kichkina bo'lib qoldi, chunki glitch uni h6 qilib qo'ydi. Esingizdami: eng katta, asosiy sarlavha qaysi teg bo'ladi? Teg nomini yozing va «Tekshirish»ni bosing.",
+    say: L3("Ikkinchi bekatga keldik. Retseptning sarlavhasi juda kichkina bo'lib qolibdi, chunki glitch uni h6 qilib qo'ygan. Eng katta, asosiy sarlavha qaysi teg bilan yozilardi? Uning nomini yozing-da, «Tekshirish»ni bosing.",
       'Вторая станция. Заголовок рецепта стал крошечным: глитч сделал его h6. Помнишь, какой тег у самого большого, главного заголовка? Впиши имя тега и нажми «Проверить».',
       'Second station. The recipe heading became tiny: the glitch turned it into h6. Remember which tag is the biggest, main heading? Type the tag name and tap “Check”.'),
     msgs: {
-      empty: L3('Burchakli qavslar o\'rtasiga teg nomini yozing.', 'Впиши имя тега между уголками.', 'Type the tag name between the brackets.'),
-      brackets: L3("Qavslar joyida turibdi. Bu yerga faqat teg nomini yozing.", 'Скобки уже на месте. Здесь нужно только имя тега.', 'The brackets are already there. Only the tag name goes here.'),
-      small: L3("Bu ham sarlavha, lekin eng kattasi emas. Raqam qancha kichik bo'lsa, sarlavha shuncha katta bo'ladi.", 'Это тоже заголовок, но не самый большой. Чем меньше цифра, тем больше заголовок.', 'That’s a heading too, but not the biggest. The smaller the number, the bigger the heading.'),
-      p: L3("p abzas yasaydi. Bizga sarlavha kerak.", 'p делает абзац. А нам нужен заголовок.', 'p makes a paragraph. We need a heading.'),
-      other: L3("Bunday sarlavha tegi yo'q. Sarlavhalar h harfi va raqam bilan yoziladi.", 'Такого тега заголовка нет. Заголовки пишут буквой h и цифрой.', 'There’s no such heading tag. Headings are the letter h and a number.')
+      empty: L3("Qavslarning ichi bo'sh qolibdi: sarlavha tegining nomini yozing.", 'Впиши имя тега между уголками.', 'Type the tag name between the brackets.'),
+      brackets: L3("Qavslar tayyor, ularni qaytadan yozmang: faqat nom kerak.", 'Скобки уже на месте. Здесь нужно только имя тега.', 'The brackets are already there. Only the tag name goes here.'),
+      small: L3("Oz qoldi! Bu ham sarlavha, lekin eng kattasi emas: raqam qancha kichik bo'lsa, sarlavha shuncha katta chiqadi.", 'Это тоже заголовок, но не самый большой. Чем меньше цифра, тем больше заголовок.', 'That’s a heading too, but not the biggest. The smaller the number, the bigger the heading.'),
+      p: L3("Unday emas: p abzas yasaydi. Bizga esa sarlavha kerak.", 'p делает абзац. А нам нужен заголовок.', 'p makes a paragraph. We need a heading.'),
+      other: L3("Brauzer bunday sarlavha tegini bilmaydi. Sarlavhalar h harfi bilan raqamdan yasaladi.", 'Такого тега заголовка нет. Заголовки пишут буквой h и цифрой.', 'There’s no such heading tag. Headings are the letter h and a number.')
     },
     hints: [
-      L3('Sarlavhalar qaysi harf bilan boshlanadi?', 'С какой буквы начинаются заголовки?', 'What letter do headings start with?'),
-      L3("Raqam qancha kichik bo'lsa, sarlavha shuncha katta bo'ladi.", 'Чем меньше цифра, тем больше заголовок.', 'The smaller the number, the bigger the heading.'),
-      L3("Asosiy sarlavha h1 bo'ladi. Shuni yozing.", 'Главный заголовок — h1. Впиши его.', 'The main heading is h1. Type it.')
+      L3("Sarlavha teglari qaysi harf bilan boshlanardi?", 'С какой буквы начинаются заголовки?', 'What letter do headings start with?'),
+      L3("Raqami qancha kichik bo'lsa, sarlavha shuncha katta bo'ladi. Eng kichik raqam qaysi?", 'Чем меньше цифра, тем больше заголовок.', 'The smaller the number, the bigger the heading.'),
+      L3("Asosiy sarlavha h1 bo'ladi. Shuni yozing-da, «Tekshirish»ni bosing.", 'Главный заголовок — h1. Впиши его.', 'The main heading is h1. Type it.')
     ],
-    ok: L3("Barakalla! Sarlavha yana katta bo'ldi. Ikkinchi bekat yondi!", 'Молодец! Заголовок снова большой. Вторая станция горит!', 'Well done! The heading is big again. The second station is lit!'),
+    ok: L3("Retseptning sarlavhasi yana kap-katta bo'lib qoldi. Xaritada yana bitta chiroq qo'shildi!", 'Молодец! Заголовок снова большой. Вторая станция горит!', 'Well done! The heading is big again. The second station is lit!'),
     ask: L3('Asosiy sarlavha tegini yozing', 'Впиши тег главного заголовка', 'Type the main heading tag')
   },
   s4: {
     eyebrow: L3("3-bekat · Ro'yxat", 'Станция 3 · Список', 'Station 3 · List'),
-    say: L3("Uchinchi bekat. Osh pishirish qadamlari ketma-ket bajariladi, lekin ro'yxatda raqam o'rniga nuqtalar turibdi. Esingizdami: qaysi teg ro'yxatni raqamlaydi? To'g'ri tegni tanlang.",
+    say: L3("Uchinchi bekat, osh pishirish! Bu yerda qadamlar bittalab, tartib bilan keladi, lekin ro'yxatda raqam o'rniga nuqtalar turibdi. Ro'yxatni raqamlaydigan teg qaysi edi? Shu tegni tanlang.",
       'Третья станция. Шаги готовки плова идут по порядку, а в списке вместо номеров точки. Помнишь, какой тег нумерует список? Выбери нужный тег.',
       'Third station. The steps for cooking plov go in order, but the list has dots instead of numbers. Remember which tag numbers a list? Choose the right tag.'),
     why: {
-      ul: L3("Hozir ro'yxat aynan shu teg bilan yozilgan, shuning uchun nuqtalar turibdi.", 'Список сейчас как раз с этим тегом — поэтому точки.', 'The list already uses this tag; that’s why there are dots.'),
-      li: L3("li ro'yxatdagi bitta band bo'ladi. Butun ro'yxat uchun boshqa teg kerak.", 'li — один пункт списка. Для всего списка нужен другой тег.', 'li is one item in a list. The whole list needs a different tag.')
+      ul: L3("Yo'q, ro'yxat hozir aynan shu teg bilan yozilgan-ku, nuqtalar ham shundan.", 'Список сейчас как раз с этим тегом — поэтому точки.', 'The list already uses this tag; that’s why there are dots.'),
+      li: L3("Bu li-ku: u ro'yxatdagi bittagina band. Butun ro'yxat uchun esa boshqa teg kerak.", 'li — один пункт списка. Для всего списка нужен другой тег.', 'li is one item in a list. The whole list needs a different tag.')
     },
-    ok: L3("Ajoyib! Qadamlar raqamlandi. Uchinchi bekat yondi!", 'Отлично! Шаги пронумерованы. Третья станция горит!', 'Great! The steps are numbered. The third station is lit!'),
+    ok: L3("Osh qadamlari bir, ikki, uch deb raqamlanib chiqdi. Uchinchi bekatda ham chiroq yondi!", 'Отлично! Шаги пронумерованы. Третья станция горит!', 'Great! The steps are numbered. The third station is lit!'),
     ask: L3("Raqamli ro'yxat tegini tanlang", 'Выбери тег нумерованного списка', 'Choose the numbered list tag'),
     // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и какой тег выбрать.
-    hint1: L3("Brauzerga qarang: qadamlar oldida nima turibdi, nuqtami yoki raqam?", 'Посмотри на браузер: что стоит перед шагами — точки или номера?', 'Look at the browser: what is in front of the steps, dots or numbers?'),
-    hint2: L3("Butun ro'yxatni tashqi teg belgilaydi: biri nuqta qo'yadi, boshqasi raqam. li esa faqat bitta band bo'ladi.", 'Весь список задаёт внешний тег: один ставит точки, другой — номера. А li — только один пункт.', 'The outer tag sets the whole list: one adds dots, the other numbers. And li is just one item.'),
-    why3: L3("Qadamlar ketma-ket bajariladi, shuning uchun ularga raqam kerak. Raqamni ol tegi qo'yadi.", 'Шаги идут по порядку, значит, им нужны номера. Номера ставит тег ol.', 'The steps go in order, so they need numbers. The ol tag adds numbers.')
+    hint1: L3("Brauzerdagi qadamlarga bir qarang-chi: ularning oldida nuqta turibdimi yoki raqam?", 'Посмотри на браузер: что стоит перед шагами — точки или номера?', 'Look at the browser: what is in front of the steps, dots or numbers?'),
+    hint2: L3("Nuqta yoki raqam qo'yishni butun ro'yxatni o'rab turgan teg hal qiladi. li esa faqat bitta bandning tegi.", 'Весь список задаёт внешний тег: один ставит точки, другой — номера. А li — только один пункт.', 'The outer tag sets the whole list: one adds dots, the other numbers. And li is just one item.'),
+    why3: L3("Osh qadamlari ketma-ket bajariladi, shuning uchun ularga raqam kerak. Raqamlarni esa ol tegi qo'yadi.", 'Шаги идут по порядку, значит, им нужны номера. Номера ставит тег ol.', 'The steps go in order, so they need numbers. The ol tag adds numbers.')
   },
   s5: {
     eyebrow: L3('4-bekat · Havola', 'Станция 4 · Ссылка', 'Station 4 · Link'),
-    say: L3("To'rtinchi bekat. Menyuda bitta so'z bosilmaydi: u ko'k emas, tagida chiziq ham yo'q. Esingizdami: havolaga manzil kerak. Kodda qaysi qatorda manzil yo'q? O'sha qatorni bosing.",
+    say: L3("To'rtinchi bekatda menyu buzilibdi. Undagi bitta so'z bosilmayapti: u ko'k ham emas, tagida chizig'i ham yo'q. Havola ishlashi uchun unga nima kerak edi? Qaysi qatorda shu narsa tushib qolgan? Topib, ustiga bosing.",
       'Четвёртая станция. В меню одно слово не нажимается: оно не синее и не подчёркнуто. Помнишь: ссылке нужен адрес. В какой строке кода нет адреса? Нажми эту строку.',
       'Fourth station. One word in the menu doesn’t work: it isn’t blue or underlined. Remember: a link needs an address. Which line of code has no address? Tap that line.'),
-    fine: L3("Bu havola ko'k, demak, u ishlaydi. Qaysi so'z oddiy matn bo'lib qolgan?", 'Эта ссылка синяя — значит, работает. Какое слово осталось простым текстом?', 'This link is blue, so it works. Which word is still plain text?'),
-    ok: L3("Topdingiz! Unda href yo'q edi. Endi O'yinlar ham havola bo'ldi. To'rtinchi bekat yondi!", 'Есть! У неё не было href. Теперь «Игры» тоже ссылка. Четвёртая станция горит!', 'Found it! It had no href. Now Games is a link too. The fourth station is lit!'),
+    fine: L3("Bu havola ko'k rangda-ku, demak, u ishlayapti. Bosilmayotgani esa boshqa so'z: uni toping-da, o'sha qatorni bosing.", 'Эта ссылка синяя — значит, работает. Какое слово осталось простым текстом?', 'This link is blue, so it works. Which word is still plain text?'),
+    ok: L3("Topdingiz! O'sha qatorda href yo'q edi. Endi «O'yinlar» ham bosiladigan havolaga aylandi. To'rtinchi bekat tayyor!", 'Есть! У неё не было href. Теперь «Игры» тоже ссылка. Четвёртая станция горит!', 'Found it! It had no href. Now Games is a link too. The fourth station is lit!'),
     ask: L3("Manzili yo'q qatorni bosing", 'Нажми строку без адреса', 'Tap the line with no address')
   },
   s6: {
     eyebrow: L3('5-bekat · Rasm', 'Станция 5 · Картинка', 'Station 5 · Picture'),
-    say: L3("Beshinchi bekat. Galereyada rasm o'rnida faqat Mushuk degan so'z turibdi. Glitch fayl atributining nomini o'chirib yuboribdi. Esingizdami: rasm faylini qaysi atribut aytadi? Uni bo'sh joyga olib boring.",
+    say: L3("Beshinchi bekatda bizni galereya kutib turibdi. Rasm o'rnida faqat «Mushuk» degan so'z qolibdi, chunki glitch rasm faylini ko'rsatadigan atributning nomini o'chirib yuboribdi. Qaysi atribut tushib qolgan, eslay olasizmi? Uni bo'sh joyga olib boring.",
       'Пятая станция. В галерее вместо картинки только слово «Кот». Глитч стёр имя атрибута файла. Помнишь, какой атрибут задаёт файл картинки? Перетащи его в пустое место.',
       'Fifth station. In the gallery there’s only the word Cat instead of the picture. The glitch erased the name of the file attribute. Remember which attribute gives the picture file? Drag it into the empty spot.'),
     why: {
-      href: L3("href havola manzili uchun bo'ladi. Rasm uchun boshqa atribut kerak.", 'href — для адреса ссылки. Картинке нужен другой атрибут.', 'href is for a link’s address. A picture needs a different attribute.'),
-      alt: L3("alt kodda bor, u rasmni so'z bilan tasvirlaydi. Faylni boshqa atribut aytadi.", 'alt в коде уже есть, он описывает картинку словами. Файл задаёт другой атрибут.', 'alt is already in the code; it describes the picture in words. Another attribute gives the file.')
+      href: L3("Shoshilmang! href havolaning manzilini ko'rsatadi. Rasm uchun esa boshqa atribut kerak.", 'href — для адреса ссылки. Картинке нужен другой атрибут.', 'href is for a link’s address. A picture needs a different attribute.'),
+      alt: L3("alt kodda allaqachon bor-ku, u rasmni so'z bilan tasvirlaydi. Faylni esa boshqa atribut ko'rsatadi.", 'alt в коде уже есть, он описывает картинку словами. Файл задаёт другой атрибут.', 'alt is already in the code; it describes the picture in words. Another attribute gives the file.')
     },
-    ok: L3("Qoyil! Mushuk rasmi qaytdi. Beshinchi bekat yondi!", 'Класс! Кот вернулся. Пятая станция горит!', 'Brilliant! The cat is back. The fifth station is lit!'),
+    ok: L3("Mushukcha galereyaga qaytib keldi. Yo'lning yarmidan o'tib oldik!", 'Класс! Кот вернулся. Пятая станция горит!', 'Brilliant! The cat is back. The fifth station is lit!'),
     ask: L3("Fayl atributini bo'sh joyga olib boring", 'Перетащи атрибут файла в пустое место', 'Drag the file attribute into the empty spot'),
     // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей нужный кусок загорается.
     hints: [
-      L3("Brauzerga qarang: rasm o'rnida faqat so'z turibdi. Kodda qaysi atributning nomi yo'q?", 'Посмотри на браузер: вместо картинки только слово. Имени какого атрибута не хватает в коде?', 'Look at the browser: there’s only a word instead of the picture. Which attribute’s name is missing in the code?'),
-      L3("Bo'sh joydan keyin fayl nomi turibdi: mushuk.jpg. Rasm faylini qaysi atribut aytardi, esingizdami?", 'После пустого места стоит имя файла mushuk.jpg. Помнишь, какой атрибут задаёт файл картинки?', 'Right after the empty spot is the file name mushuk.jpg. Remember which attribute gives the picture file?'),
-      L3("Rasm faylini src atributi aytadi. Yonib turgan src bo'lagini bo'sh joyga olib boring.", 'Файл картинки задаёт атрибут src. Перетащи горящий src в пустое место.', 'The src attribute gives the picture file. Drag the glowing src into the empty spot.')
+      L3("Brauzerda rasm o'rnida faqat so'z turibdi. Kodda qaysi atributning nomi tushib qolgan?", 'Посмотри на браузер: вместо картинки только слово. Имени какого атрибута не хватает в коде?', 'Look at the browser: there’s only a word instead of the picture. Which attribute’s name is missing in the code?'),
+      L3("Bo'sh joydan keyin fayl nomi turibdi: mushuk.jpg. Fayl nomidan oldin qaysi atribut yozilardi?", 'После пустого места стоит имя файла mushuk.jpg. Помнишь, какой атрибут задаёт файл картинки?', 'Right after the empty spot is the file name mushuk.jpg. Remember which attribute gives the picture file?'),
+      L3("Rasmning faylini src atributi ko'rsatadi. Yonib turgan src bo'lagini bo'sh joyga qo'ying.", 'Файл картинки задаёт атрибут src. Перетащи горящий src в пустое место.', 'The src attribute gives the picture file. Drag the glowing src into the empty spot.')
     ]
   },
   s7: {
     eyebrow: L3('6-bekat · Parol', 'Станция 6 · Пароль', 'Station 6 · Password'),
-    say: L3("Oltinchi bekat. Klub anketasida parol hammaga ochiq ko'rinib turibdi, chunki maydon turi o'chib ketgan. Esingizdami: parolni nuqtalar ortiga qaysi tur yashiradi? Uni qo'shtirnoq ichiga yozing.",
+    say: L3("Oltinchi bekat bizni klub anketasiga olib keldi. Bu yerda parol hammaga ochiq ko'rinib turibdi, chunki maydonning turi o'chib ketibdi. Parolni nuqtalar ortiga yashiradigan tur qaysi edi? Uni qo'shtirnoq ichiga yozing.",
       'Шестая станция. В анкете клуба пароль виден всем: стёрся вид поля. Помнишь, какой вид прячет пароль за точками? Впиши его в кавычки.',
       'Sixth station. In the club form the password is visible to everyone, because the field’s kind was erased. Remember which kind hides a password behind dots? Type it in the quotes.'),
     msgs: {
-      empty: L3("Qo'shtirnoq ichiga maydon turini yozing.", 'Впиши вид поля в кавычки.', 'Type the field’s kind in the quotes.'),
-      text: L3("text bilan maydon oddiy bo'ladi va parol ochiq qoladi.", 'С text поле обычное, и пароль остаётся виден.', 'With text the field is ordinary, and the password stays visible.'),
-      number: L3("number faqat son uchun bo'ladi. U parolni yashirmaydi.", 'number — только для числа. Пароль он не прячет.', 'number is only for numbers. It doesn’t hide the password.'),
-      typo: L3("Bunday tur yo'q, shuning uchun brauzer oddiy maydon qildi. So'zni harfma-harf yozing.", 'Такого вида нет, поэтому браузер сделал обычное поле. Напиши слово буква в букву.', 'There’s no such kind, so the browser made an ordinary field. Type the word letter by letter.')
+      empty: L3("Qo'shtirnoq ichi hali bo'sh. U yerga maydonning turini yozing.", 'Впиши вид поля в кавычки.', 'Type the field’s kind in the quotes.'),
+      text: L3("Hali parol yashirinmadi: text bo'lsa maydon oddiy bo'lib qoladi, harflar hammaga ochiq ko'rinaveradi.", 'С text поле обычное, и пароль остаётся виден.', 'With text the field is ordinary, and the password stays visible.'),
+      number: L3("number faqat son yozish uchun kerak. U parolni yashira olmaydi.", 'number — только для числа. Пароль он не прячет.', 'number is only for numbers. It doesn’t hide the password.'),
+      typo: L3("Brauzer bunday turni tanimadi va oddiy maydon yasab qo'ydi. So'zni harfma-harf tekshirib yozing.", 'Такого вида нет, поэтому браузер сделал обычное поле. Напиши слово буква в букву.', 'There’s no such kind, so the browser made an ordinary field. Type the word letter by letter.')
     },
     hints: [
-      L3('Maydon turi parolni qanday yashiradi?', 'Какой вид поля прячет пароль?', 'Which field kind hides a password?'),
-      L3("U inglizcha, ya'ni parol degani.", 'Это английское слово, то есть «пароль».', 'It’s the English word for password.'),
-      L3("Tur password bo'ladi. Uni qo'shtirnoq ichiga yozing.", 'Вид — password. Впиши его в кавычки.', 'The kind is password. Type it in the quotes.')
+      L3("Qaysi tur parolni nuqtalar ortiga yashirar edi?", 'Какой вид поля прячет пароль?', 'Which field kind hides a password?'),
+      L3("Bu so'z inglizchada «parol» degani.", 'Это английское слово, то есть «пароль».', 'It’s the English word for password.'),
+      L3("Kerakli tur password bo'ladi. Uni qo'shtirnoq ichiga yozing-da, «Tekshirish»ni bosing.", 'Вид — password. Впиши его в кавычки.', 'The kind is password. Type it in the quotes.')
     ],
-    ok: L3("Zo'r! Parol yana nuqtalar ortida. Oltinchi bekat yondi!", 'Огонь! Пароль снова за точками. Шестая станция горит!', 'Awesome! The password is behind dots again. The sixth station is lit!'),
+    ok: L3("Parol yana nuqtalar ortiga yashirindi. Oltinchi bekatni ham ortda qoldirdik!", 'Огонь! Пароль снова за точками. Шестая станция горит!', 'Awesome! The password is behind dots again. The sixth station is lit!'),
     ask: L3('Parol maydonining turini yozing', 'Впиши вид поля пароля', 'Type the password field’s kind')
   },
   s8: {
     eyebrow: L3('7-bekat · Anketa', 'Станция 7 · Анкета', 'Station 7 · Form'),
-    say: L3("Yettinchi bekat. Glitch anketa qismlarining nomlarini aralashtirib yubordi. Har bir tegni sahifadagi o'z narsasi bilan juftlang: ro'yxat, variant, katta maydon va tugma. Oldin tegni bosing, keyin narsani bosing.",
+    say: L3("Yettinchi bekatda yana anketa bor, lekin bu safar glitch undagi teglarni aralashtirib yuboribdi. Sahifadan har bir tegning o'z narsasini topib bering: ro'yxat, variant, katta maydon yoki tugma. Oldin tegni, keyin sahifadagi narsani bosing.",
       'Седьмая станция. Глитч перепутал названия частей анкеты. Соедини каждый тег с его вещью на странице: список, вариант, большое поле и кнопка. Сначала нажми тег, потом вещь.',
       'Seventh station. The glitch mixed up the names of the form’s parts. Match each tag with its thing on the page: the list, a choice, the big field and the button. Tap a tag first, then the thing.'),
     cards: {
@@ -7063,123 +7065,123 @@ const C = {
       button: L3('Tugma', 'Кнопка', 'A button')
     },
     pairOk: {
-      select: L3("To'g'ri! select ro'yxat yasaydi.", 'Верно! select делает список.', 'Right! select makes the list.'),
-      option: L3("To'g'ri! option bitta variant bo'ladi.", 'Верно! option — один вариант.', 'Right! option is one choice.'),
-      textarea: L3("To'g'ri! textarea katta maydon yasaydi.", 'Верно! textarea делает большое поле.', 'Right! textarea makes a big field.'),
-      button: L3("To'g'ri! button tugma yasaydi.", 'Верно! button делает кнопку.', 'Right! button makes a button.')
+      select: L3("Ana, ro'yxat ham joyiga tushdi! select ochiladigan ro'yxat yasaydi.", 'Верно! select делает список.', 'Right! select makes the list.'),
+      option: L3("Variant ham topildi: option ro'yxatdagi bitta qatorni yasaydi.", 'Верно! option — один вариант.', 'Right! option is one choice.'),
+      textarea: L3("Katta maydon joyida, to'g'ri topdingiz: textarea katta matn maydonini yasaydi.", 'Верно! textarea делает большое поле.', 'Right! textarea makes a big field.'),
+      button: L3("Tugma ham bosildi-ku: button bosiladigan tugma yasaydi.", 'Верно! button делает кнопку.', 'Right! button makes a button.')
     },
     why: {
-      select: L3("select butun ro'yxatni yasaydi: yonida strelkasi bor maydon.", 'select делает весь список: поле со стрелкой.', 'select makes the whole list: a field with an arrow.'),
-      option: L3("option ro'yxat ichidagi bitta qator bo'ladi.", 'option — одна строка внутри списка.', 'option is one line inside the list.'),
-      textarea: L3("textarea bir nechta qatorli maydon bo'ladi.", 'textarea — поле на несколько строк.', 'textarea is a field for several lines.'),
-      button: L3("button bosiladigan tugma bo'ladi.", 'button — кнопка, которую нажимают.', 'button is a button you tap.')
+      select: L3("select butun ro'yxatni yasaydi: yonida strelkasi bor maydonni qidiring.", 'select делает весь список: поле со стрелкой.', 'select makes the whole list: a field with an arrow.'),
+      option: L3("Hechqisi yo'q! option ro'yxat ichidagi bittagina qator bo'ladi.", 'option — одна строка внутри списка.', 'option is one line inside the list.'),
+      textarea: L3("Unday emas: textarea bir necha qatorga yoziladigan katta maydon bo'ladi.", 'textarea — поле на несколько строк.', 'textarea is a field for several lines.'),
+      button: L3("button bosiladigan tugmani yasaydi. Sahifadan tugmani qidiring.", 'button — кнопка, которую нажимают.', 'button is a button you tap.')
     },
     hints: [
-      L3("Har bir narsaga qarang: u ro'yxatmi, maydonmi yoki tugmami?", 'Посмотри на каждую вещь: это список, поле или кнопка?', 'Look at each thing: is it a list, a field or a button?'),
-      L3("Strelkali maydon select, uning ichidagi bitta qator esa option bo'ladi.", 'Поле со стрелкой — select, а одна строка в нём — option.', 'The field with an arrow is select, and one line inside it is option.'),
-      L3("Strelkali maydon select, bitta qator option, katta maydon textarea, tugma esa button bo'ladi.", 'Поле со стрелкой — select, строка — option, большое поле — textarea, кнопка — button.', 'The field with an arrow is select, a line is option, the big field is textarea, and the button is button.')
+      L3("Sahifadagi har bir narsani bittalab ko'rib chiqing: u ro'yxatmi, maydonmi yoki tugmami?", 'Посмотри на каждую вещь: это список, поле или кнопка?', 'Look at each thing: is it a list, a field or a button?'),
+      L3("Strelkali maydon select bo'ladi. Uning ichidagi har bir qatorni esa option yasaydi.", 'Поле со стрелкой — select, а одна строка в нём — option.', 'The field with an arrow is select, and one line inside it is option.'),
+      L3("Strelkali maydonni select, undagi qatorni option yasaydi. Katta maydonni textarea, tugmani esa button yasaydi.", 'Поле со стрелкой — select, строка — option, большое поле — textarea, кнопка — button.', 'The field with an arrow is select, a line is option, the big field is textarea, and the button is button.')
     ],
-    ok: L3("Barakalla! Anketa yana tartibda. Yettinchi bekat yondi!", 'Молодец! Анкета снова в порядке. Седьмая станция горит!', 'Well done! The form is in order again. The seventh station is lit!'),
+    ok: L3("Anketa yana o'z holiga qaytdi. Oxirigacha bittagina qadam qoldi!", 'Молодец! Анкета снова в порядке. Седьмая станция горит!', 'Well done! The form is in order again. The seventh station is lit!'),
     ask: L3("Tegni o'z narsasi bilan juftlang", 'Соедини тег с его вещью', 'Match each tag with its thing'),
     askPlace: L3('Endi narsani bosing', 'Теперь нажми вещь', 'Now tap the thing'),
     pickFirst: L3('Oldin tegni bosing.', 'Сначала нажми тег.', 'Tap a tag first.')
   },
   s9: {
     eyebrow: L3('8-bekat · Sayt qismlari', 'Станция 8 · Части сайта', 'Station 8 · Site parts'),
-    say: L3("Oxirgi bekat. Inspektorga qarang: asosiy qism va sayt oxiri ramkada, tepasida esa ramka yo'q. Glitch sayt tepasini head tegiga o'rab qo'yibdi. Esingizdami: sayt tepasi qaysi teg bo'ladi? To'g'ri tegni tanlang.",
+    say: L3("Oxirgi bekatga ham yetib keldik! Inspektorga qarang: asosiy qism bilan sayt oxiri ramkada, sayt boshida esa ramka yo'q. Glitch uni head tegiga o'rab qo'yibdi. Sayt boshiga qaysi teg kerak edi? To'g'ri tegni tanlang.",
       'Последняя станция. Посмотри на Инспектор: главная часть и низ сайта в рамках, а у верха рамки нет. Глитч обернул верх сайта в тег head. Помнишь, какой тег у верха сайта? Выбери нужный тег.',
       'Last station. Look at the Inspector: the main part and the bottom of the site have frames, but the top doesn’t. The glitch wrapped the top of the site in the head tag. Remember which tag the top of the site uses? Choose the right tag.'),
     why: {
-      head: L3("head sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi. Hozir aynan u xato turibdi.", 'head — для невидимых сведений о странице. Сейчас как раз он стоит по ошибке.', 'head is for invisible information about the page. It’s exactly what’s wrongly there now.'),
-      h1: L3("h1 bu sarlavha, u ichkarida allaqachon bor. Butun sayt tepasi uchun boshqa teg kerak.", 'h1 — это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.', 'h1 is a heading, and it’s already inside. The whole top of the site needs a different tag.')
+      head: L3("Yo'q, glitch aynan shu tegni qo'yib ketgan-ku! head sahifa haqidagi ko'rinmas ma'lumotlar uchun kerak, sayt boshi uchun emas.", 'head — для невидимых сведений о странице. Сейчас как раз он стоит по ошибке.', 'head is for invisible information about the page. It’s exactly what’s wrongly there now.'),
+      h1: L3("Oz qoldi! h1 bitta sarlavha yasaydi, u esa ichkarida allaqachon turibdi. Butun sayt boshini o'rash uchun boshqa teg kerak.", 'h1 — это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.', 'h1 is a heading, and it’s already inside. The whole top of the site needs a different tag.')
     },
-    ok: L3("Ajoyib! Inspektor sayt tepasini yana ko'rdi. Sakkizinchi bekat ham yondi!", 'Отлично! Инспектор снова видит верх сайта. Горит и восьмая станция!', 'Great! The Inspector sees the top of the site again. The eighth station is lit too!'),
-    ask: L3('Sayt tepasi tegini tanlang', 'Выбери тег верха сайта', 'Choose the tag for the top of the site'),
+    ok: L3("Inspektor sayt boshini yana ko'rib qoldi. Sakkizinchi bekat ham yondi, xaritamiz to'liq yorishdi!", 'Отлично! Инспектор снова видит верх сайта. Горит и восьмая станция!', 'Great! The Inspector sees the top of the site again. The eighth station is lit too!'),
+    ask: L3("Sayt boshi tegini tanlang", 'Выбери тег верха сайта', 'Choose the tag for the top of the site'),
     // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и какой тег выбрать.
-    hint1: L3("Inspektorga qarang: qaysi qismda ramka yo'q?", 'Посмотри на Инспектор: у какой части нет рамки?', 'Look at the Inspector: which part has no frame?'),
-    hint2: L3("head ko'rinmas ma'lumot uchun, h1 esa bitta sarlavha. Bizga sayt tepasini butunligicha o'raydigan qism tegi kerak.", 'head — для невидимых сведений, а h1 — один заголовок. Нужен тег части, который обнимает весь верх сайта.', 'head is for invisible information, and h1 is one heading. We need the part tag that wraps the whole top of the site.'),
-    why3: L3("Sayt tepasi header tegi bo'ladi: unda sarlavha va menyu turadi.", 'Верх сайта — это тег header: в нём заголовок и меню.', 'The top of the site is the header tag: it holds the heading and the menu.')
+    hint1: L3("Inspektordagi ramkalarni sanab ko'ring: qaysi qismda ramka yo'q?", 'Посмотри на Инспектор: у какой части нет рамки?', 'Look at the Inspector: which part has no frame?'),
+    hint2: L3("head ko'rinmas ma'lumotlar uchun kerak, h1 esa bittagina sarlavha yasaydi. Bizga sayt boshini butunligicha o'raydigan teg kerak.", 'head — для невидимых сведений, а h1 — один заголовок. Нужен тег части, который обнимает весь верх сайта.', 'head is for invisible information, and h1 is one heading. We need the part tag that wraps the whole top of the site.'),
+    why3: L3("Sayt boshini header tegi o'raydi: sarlavha bilan menyu shuning ichida turadi.", 'Верх сайта — это тег header: в нём заголовок и меню.', 'The top of the site is the header tag: it holds the heading and the menu.')
   },
   s10: {
     eyebrow: L3('Aralash vazifa', 'Смешанное задание', 'Mixed task'),
-    say: L3("Hamma bekatlar yondi! Endi qiyinroq vazifa: ikkita bilimni birlashtiramiz. Mushuk rasmini havolaga aylantiring: rasmni bossangiz, galereya ochilsin. Buning uchun rasmni a tegi ichiga qo'yish kerak. Bo'laklarni tartib bilan qo'ying.",
+    say: L3("Hamma bekatlar yondi! Endi biroz qiyinroq ish: ikki darsni birlashtiramiz. Rasm ham havola bo'la oladi: rasmni bossangiz, galereya ochilsin. Buning uchun rasmni a tegining ichiga qo'yamiz. Qani, bo'laklarni tartib bilan joylang.",
       'Все станции горят! Теперь задание посложнее: соединим два умения. Сделай картинку с котом ссылкой — нажмёшь на картинку, и откроется галерея. Для этого картинку ставят внутрь тега a. Поставь куски по порядку.',
       'All the stations are lit! Now a harder task: let’s combine two skills. Turn the cat picture into a link, so tapping the picture opens the gallery. To do that, you put the picture inside the a tag. Put the pieces in order.'),
     why: {
-      imgc: L3("img tegida yopuvchi teg bo'lmaydi. Bu bo'lak ortiqcha.", 'У img нет закрывающего тега. Этот кусок лишний.', 'img has no closing tag. This piece isn’t needed.'),
-      aopen: L3("Oldin havola ochiladi: a tegi va uning manzili.", 'Сначала открывается ссылка: тег a и её адрес.', 'First the link opens: the a tag with its address.'),
-      img: L3("Havola ichida rasm turadi.", 'Внутри ссылки стоит картинка.', 'The picture goes inside the link.'),
-      aclose: L3("Oxirida havola yopiladi.", 'В конце ссылка закрывается.', 'At the end the link closes.')
+      imgc: L3("Bu bo'lak ortiqcha: img tegining yopuvchi jufti bo'lmaydi.", 'У img нет закрывающего тега. Этот кусок лишний.', 'img has no closing tag. This piece isn’t needed.'),
+      aopen: L3("Oldin havolaning o'zi ochilishi kerak: manzili bilan birga a tegi keladi.", 'Сначала открывается ссылка: тег a и её адрес.', 'First the link opens: the a tag with its address.'),
+      img: L3("Havola ochildimi? Endi uning ichiga rasm keladi.", 'Внутри ссылки стоит картинка.', 'The picture goes inside the link.'),
+      aclose: L3("Rasm joyiga tushdi, endi eng oxirida havola yopiladi.", 'В конце ссылка закрывается.', 'At the end the link closes.')
     },
     hints: [
-      L3('Rasm nimaning ichida turishi kerak?', 'Внутри чего должна стоять картинка?', 'What should the picture be inside?'),
-      L3("Oldin a ochiladi, keyin rasm keladi.", 'Сначала открывается a, потом картинка.', 'First a opens, then the picture.'),
-      L3("Tartib shunday bo'ladi: ochuvchi a, img va yopuvchi a. Yopuvchi img kerak emas.", 'Порядок такой: открывающий a, img и закрывающий a. Закрывающий img не нужен.', 'The order is: the opening a, img and the closing a. No closing img.')
+      L3("Rasm bosiladigan bo'lishi uchun u nimaning ichida turishi kerak?", 'Внутри чего должна стоять картинка?', 'What should the picture be inside?'),
+      L3("Oldin a tegi ochiladi, keyin uning ichiga rasm keladi.", 'Сначала открывается a, потом картинка.', 'First a opens, then the picture.'),
+      L3("Bo'laklarni shu tartibda qo'ying: ochuvchi a, img, keyin yopuvchi a. Yopuvchi img bu yerga kerak emas.", 'Порядок такой: открывающий a, img и закрывающий a. Закрывающий img не нужен.', 'The order is: the opening a, img and the closing a. No closing img.')
     ],
-    ok: L3("Vau, zo'r! Rasm havolaga aylandi. Bosib ko'ring: galereya ochiladi.", 'Вау, класс! Картинка стала ссылкой. Нажми на неё — откроется галерея.', 'Wow, awesome! The picture is now a link. Tap it and the gallery opens.'),
+    ok: L3("Qoyilmaqom! Mushuk rasmi endi havolaga aylandi. Qani, ustiga bosib ko'ring-chi, galereya ochilarmikan?", 'Вау, класс! Картинка стала ссылкой. Нажми на неё — откроется галерея.', 'Wow, awesome! The picture is now a link. Tap it and the gallery opens.'),
     ask: L3("Bo'laklarni to'g'ri tartibda qo'ying", 'Поставь куски по порядку', 'Put the pieces in order'),
     askTap: L3('Rasmni bosib ko\'ring', 'Нажми на картинку', 'Tap the picture'),
     askOpened: L3('Galereya ochildi!', 'Галерея открылась!', 'The gallery opened!')
   },
   s11: {
     eyebrow: L3('Katta sinov', 'Большое испытание', 'The big test'),
-    say: L3("Endi katta sinov! Glitch bitta sahifada beshta xato qoldirdi. Brauzerga qarang va har bir xatoni toping. Xato bor qatorni bosing, u o'zi tuzaladi. Qaysi tartibda topishingiz muhim emas.",
+    say: L3("Endi glitch bilan katta jang! U bitta sahifaga beshta nosozlikni yashirib ketibdi. Sahifaga diqqat bilan qarang-da, har birini toping. Buzilgan qatorni bossangiz, u o'zi tuzaladi. Qaysi biridan boshlashingiz muhim emas.",
       'А теперь большое испытание! Глитч оставил на одной странице пять ошибок. Посмотри на браузер и найди каждую. Нажми строку с ошибкой — она починится сама. Порядок не важен.',
       'Now the big test! The glitch left five bugs on one page. Look at the browser and find each one. Tap a line with a bug and it fixes itself. The order doesn’t matter.'),
-    fine: L3("Bu qator to'g'ri yozilgan. Brauzerga qarang: yana nima noto'g'ri ko'rinyapti?", 'Эта строка в порядке. Посмотри на браузер: что ещё выглядит не так?', 'This line is fine. Look at the browser: what else looks wrong?'),
+    fine: L3("Bu qator sog'-salomat, glitch unga tegmabdi. Sahifaga yana tikilib ko'ring: yana nima g'alati?", 'Эта строка в порядке. Посмотри на браузер: что ещё выглядит не так?', 'This line is fine. Look at the browser: what else looks wrong?'),
     found: {
-      h: L3("Topdingiz! h6 o'rniga h1 bo'lishi kerak edi.", 'Есть! Вместо h6 должен быть h1.', 'Found it! It should be h1, not h6.'),
-      img: L3("Topdingiz! Rasmga href emas, src kerak edi.", 'Есть! Картинке нужен не href, а src.', 'Found it! A picture needs src, not href.'),
-      li: L3("Topdingiz! Sabzi qadamida li yo'q edi, shuning uchun raqami ham yo'q edi.", 'Есть! У шага про морковь не было li, поэтому не было и номера.', 'Found it! The carrot step had no li, so it had no number either.'),
-      a: L3("Topdingiz! Havolada href yo'q edi.", 'Есть! У ссылки не было href.', 'Found it! The link had no href.'),
-      pass: L3("Topdingiz! Parol maydonining turi password bo'lishi kerak edi.", 'Есть! У поля пароля вид должен быть password.', 'Found it! The password field’s kind should be password.')
+      h: L3("Glitch sarlavhani mitti qilib qo'ygan: h6 emas, h1 turishi kerak edi.", 'Есть! Вместо h6 должен быть h1.', 'Found it! It should be h1, not h6.'),
+      img: L3("Glitch rasmga href yozib ketibdi, uning o'rniga src kerak edi.", 'Есть! Картинке нужен не href, а src.', 'Found it! A picture needs src, not href.'),
+      li: L3("Glitch osh qadamlaridan birining li tegini olib tashlagan, shuning uchun raqami ham chiqmagan edi.", 'Есть! У шага про морковь не было li, поэтому не было и номера.', 'Found it! The carrot step had no li, so it had no number either.'),
+      a: L3("Havoladan href ham g'oyib bo'libdi! Manzil qaytarildi, endi u bosiladi.", 'Есть! У ссылки не было href.', 'Found it! The link had no href.'),
+      pass: L3("Parol maydonining turini glitch o'zgartirgan: u password bo'lishi kerak edi, endi parol ko'rinmaydi.", 'Есть! У поля пароля вид должен быть password.', 'Found it! The password field’s kind should be password.')
     },
     hints: [
-      L3("Brauzerga qarang: nima kichkina, nima yo'q, nima ochiq turibdi?", 'Посмотри на браузер: что крошечное, чего нет, что видно всем?', 'Look at the browser: what’s tiny, what’s missing, what’s visible to everyone?'),
-      L3("Sarlavha, rasm, ro'yxat, havola va parolni birma-bir tekshiring.", 'Проверь по очереди заголовок, картинку, список, ссылку и пароль.', 'Check the heading, the picture, the list, the link and the password one by one.'),
-      L3("Yonib turgan qatorga qarang: xato o'sha yerda.", 'Посмотри на горящую строку: ошибка там.', 'Look at the lit line: the bug is there.')
+      L3("Brauzerdagi sahifani boshdan-oyoq ko'zdan kechiring: nima mitti, nima yo'q, nima ochiq turibdi?", 'Посмотри на браузер: что крошечное, чего нет, что видно всем?', 'Look at the browser: what’s tiny, what’s missing, what’s visible to everyone?'),
+      L3("Sarlavhani, rasmni, ro'yxatni, havolani va parolni birma-bir tekshirib chiqing.", 'Проверь по очереди заголовок, картинку, список, ссылку и пароль.', 'Check the heading, the picture, the list, the link and the password one by one.'),
+      L3("Yonib turgan qatorni ko'ryapsizmi? Nosozlik aynan o'sha yerda yashiringan.", 'Посмотри на горящую строку: ошибка там.', 'Look at the lit line: the bug is there.')
     ],
-    ok: L3("Ajoyib! Beshala xato ham topildi. Siz haqiqiy dasturchi kabi ishladingiz!", 'Супер! Все пять ошибок найдены. Ты работаешь как настоящий программист!', 'Super! All five bugs are found. You worked like a real programmer!'),
+    ok: L3("Beshala nosozlik ham topildi, glitch yengildi! Endi sahifada uning izi ham qolmadi.", 'Супер! Все пять ошибок найдены. Ты работаешь как настоящий программист!', 'Super! All five bugs are found. You worked like a real programmer!'),
     ask: L3('Xato bor qatorlarni bosing', 'Нажимай строки с ошибками', 'Tap the lines with bugs')
   },
   q1: {
     eyebrow: L3('Tezkor savollar', 'Быстрый раунд', 'Quick round'),
-    say: L3("Oxirgi sinov: tezkor savollar. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание — быстрый раунд. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test: a quick round. I’ll say something, and you choose: true or false.'),
-    ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
+    say: L3("Bekatlarni tez bir aylanib chiqamiz: har bir bekat haqida bitta fikr aytaman. Siz esa «Rost» yoki «Yolg'on» tugmasini bosasiz.", 'Последнее испытание — быстрый раунд. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test: a quick round. I’ll say something, and you choose: true or false.'),
+    ask: L3("Rostmi yoki yolg'onmi?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
     // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — общая, 2 — своя у каждой фразы (h), 3 — причина и ответ.
-    hint1: L3("Kartochkadagi bekat nomiga qarang: gap kursning qaysi mavzusi haqida?", 'Посмотри на название станции на карточке: о какой теме курса эта фраза?', 'Look at the station name on the card: which topic of the course is the sentence about?'),
-    yes: L3("To'g'ri", 'Верно', 'True'),
-    no: L3("Noto'g'ri", 'Неверно', 'False'),
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
+    hint1: L3("Kartochkadagi bekat nomini o'qing-chi: bu fikr kursning qaysi mavzusi haqida ekan?", 'Посмотри на название станции на карточке: о какой теме курса эта фраза?', 'Look at the station name on the card: which topic of the course is the sentence about?'),
+    yes: L3("Rost", 'Верно', 'True'),
+    no: L3("Yolg'on", 'Неверно', 'False'),
+    right: L3("Xuddi shunday!", 'Точно!', 'Exactly!'),
     items: [
       { st: 0, t: L3("title ichidagi yozuv sahifaning o'zida katta sarlavha bo'lib chiqadi.", 'Текст в title появляется на самой странице большим заголовком.', 'The text in title shows on the page itself as a big heading.'), right: false,
-        why: L3("title yozuvi brauzer yorlig'ida ko'rinadi. Sahifadagi sarlavhani h1 yasaydi.", 'Текст title виден на вкладке браузера. Заголовок на странице делает h1.', 'The title text shows on the browser tab. h1 makes the heading on the page.'),
-          h: L3("title yozuvi qayerda ko'rinardi, esingizdami: sahifaning o'zidami yoki brauzer yorlig'idami?", 'Помнишь, где виден текст title: на самой странице или на вкладке браузера?', 'Remember where the title text shows: on the page itself or on the browser tab?') },
+        why: L3("title yozuvi sahifada emas, brauzer yorlig'ida chiqadi. Sahifadagi katta sarlavhani esa h1 yasaydi.", 'Текст title виден на вкладке браузера. Заголовок на странице делает h1.', 'The title text shows on the browser tab. h1 makes the heading on the page.'),
+          h: L3("title yozuvini sahifadan izlab ko'ring: u oynadami yoki tepadagi yorliqdami?", 'Помнишь, где виден текст title: на самой странице или на вкладке браузера?', 'Remember where the title text shows: on the page itself or on the browser tab?') },
       { st: 2, t: L3("ol tegi ro'yxatni raqamlaydi.", 'Тег ol нумерует список.', 'The ol tag numbers a list.'), right: true,
-        why: L3("ol tartibli ro'yxat bo'ladi: har bir bandga raqam qo'yiladi.", 'ol — нумерованный список: у каждого пункта номер.', 'ol is an ordered list: each item gets a number.'),
-          h: L3("Ro'yxatning ikki turi bor edi: biri nuqta qo'yadi, boshqasi raqam. ol qaysi biri edi?", 'Списков было два вида: один ставит точки, другой — номера. Какой из них ol?', 'There were two kinds of lists: one adds dots, the other numbers. Which one is ol?') },
+        why: L3("ol raqamli ro'yxat yasaydi: har bir bandning oldiga raqam qo'yadi.", 'ol — нумерованный список: у каждого пункта номер.', 'ol is an ordered list: each item gets a number.'),
+          h: L3("Ro'yxatning ikki turi bor: biri nuqta qo'yadi, boshqasi raqam. Raqamni qaysi biri qo'yadi?", 'Списков было два вида: один ставит точки, другой — номера. Какой из них ol?', 'There were two kinds of lists: one adds dots, the other numbers. Which one is ol?') },
       { st: 4, t: L3('img yopuvchi teg bilan yoziladi.', 'img пишут с закрывающим тегом.', 'img is written with a closing tag.'), right: false,
-        why: L3("img tegining yopuvchi tegi bo'lmaydi.", 'У img нет закрывающего тега.', 'img has no closing tag.'),
-          h: L3("Ba'zi teglar ichiga matn yozilmaydi, ular faqat ochuvchi bo'ladi. img ichiga biror narsa yoziladimi?", 'Внутрь некоторых тегов ничего не пишут — они бывают только открывающими. В img что-то пишут внутри?', 'Some tags hold no text inside, so they are opening tags only. Do you write anything inside img?') },
+        why: L3("img tegining yopuvchi jufti bo'lmaydi, u bitta o'zi turadi.", 'У img нет закрывающего тега.', 'img has no closing tag.'),
+          h: L3("Ba'zi teglar ichiga matn yozilmaydi. img ichiga biror narsa yoziladimi?", 'Внутрь некоторых тегов ничего не пишут — они бывают только открывающими. В img что-то пишут внутри?', 'Some tags hold no text inside, so they are opening tags only. Do you write anything inside img?') },
       { st: 5, t: L3("label yozuvini bossangiz, maydon yozishga tayyor bo'ladi.", 'Если нажать на подпись в label, поле готово к вводу.', 'If you tap the caption in label, the field is ready for typing.'), right: true,
-        why: L3("label yozuvni maydonga bog'laydi.", 'label связывает подпись с полем.', 'label ties the caption to the field.'),
-          h: L3("label maydonning yozuvi bo'ladi. Yozuv maydonga bog'langan bo'lsa, uni bossangiz nima bo'lardi?", 'label — подпись поля. Что будет, если нажать на подпись, связанную с полем?', 'label is a field’s caption. What happens if you tap a caption tied to the field?') },
+        why: L3("label yozuvni maydonga bog'lab qo'yadi, shuning uchun yozuvni bosish ham maydonni bosish bilan barobar.", 'label связывает подпись с полем.', 'label ties the caption to the field.'),
+          h: L3("label yozuvni maydonga bog'laydi. Yozuvni bossangiz, nima bo'lardi?", 'label — подпись поля. Что будет, если нажать на подпись, связанную с полем?', 'label is a field’s caption. What happens if you tap a caption tied to the field?') },
       { st: 7, t: L3('footer sayt oxirini bildiradi.', 'footer — это низ сайта.', 'footer marks the bottom of the site.'), right: true,
-        why: L3("footer sayt oxiri bo'ladi: unda odatda mualliflik va aloqa turadi.", 'footer — низ сайта: там обычно авторство и контакты.', 'footer is the bottom of the site: it usually holds the copyright and contacts.'),
-          h: L3("Saytning uch qismi bor edi: tepasi, asosiy qismi va oxiri. footer qaysi biri edi?", 'У сайта три части: верх, главная часть и низ. Какая из них footer?', 'A site has three parts: the top, the main part and the bottom. Which one is footer?') }
+        why: L3("footer sayt oxirini o'raydi: u yerda odatda saytni kim yasagani, telefon yoki pochta, yana bir-ikkita havola turadi.", 'footer — низ сайта: там обычно авторство и контакты.', 'footer is the bottom of the site: it usually holds the copyright and contacts.'),
+          h: L3("Saytning uch qismi: boshi, o'rtasi, oxiri. footer shulardan qaysi biri?", 'У сайта три части: верх, главная часть и низ. Какая из них footer?', 'A site has three parts: the top, the main part and the bottom. Which one is footer?') }
     ],
-    ok: L3("Hammasi to'g'ri! Siz butun kursni yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь весь курс.', 'All correct! You know the whole course really well.')
+    ok: L3("Har bir bekatni yaxshi eslab qolibsiz! Demak, sakkiz dars bekorga ketmabdi.", 'Всё верно! Ты отлично знаешь весь курс.', 'All correct! You know the whole course really well.')
   },
   s12: {
     eyebrow: L3('Kurs tugadi', 'Курс пройден', 'Course complete'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men saytni o'chirib, boshidan yozish kerak deb o'ylagan edim? Afsuski, men adashibman. Siz har bir sahifada faqat bitta kichik xatoni tuzatdingiz: bitta teg, bitta atribut yoki bitta qiymatni. Dasturchilar ham shunday ishlaydi: xatoni topib, aynan uni tuzatadi.",
+      { text: L3("Yo'lning boshida men saytni o'chirib, boshidan yozmoqchi edim. Siz esa har bir bekatda bittagina kichik nosozlikni tuzatdingiz: bitta tegni, bitta atributni yoki bitta qiymatni. Sayt butunligicha saqlanib qoldi, sakkiz darslik ishimiz ham yo'qolmadi, do'stlarimga ham kechgacha ulguramiz. Demak, eng qisqa yo'l o'chirib tashlash emas ekan: nosozlikni topib, aynan o'shani tuzatish kerak.",
         'Вернёмся к загадке. Помнишь, я думал, что сайт надо стереть и написать заново? Увы, я ошибся. Ты на каждой странице поправил всего одну маленькую ошибку: один тег, один атрибут или одно значение. Программисты так и работают: находят ошибку и чинят именно её.',
         'Back to our riddle. Remember, I thought we had to delete the site and write it again? Sadly, I was wrong. On each page you fixed just one small bug: one tag, one attribute or one value. That’s how programmers work: they find the bug and fix exactly that.'), k: 'riddle' },
-      { text: L3("Qarang, saytim yana ishlayapti: sarlavha katta, rasm joyida, qadamlar raqamlangan, havola bosiladi, parol esa yashiringan.", 'Смотри, мой сайт снова работает: заголовок большой, картинка на месте, шаги пронумерованы, ссылка нажимается, а пароль спрятан.', 'Look, my site works again: the heading is big, the picture is in place, the steps are numbered, the link works, and the password is hidden.'), k: null },
-      { text: L3("Siz HTML kursini tugatdingiz! Endi sahifa tuzilishi, sarlavhalar, ro'yxatlar, havolalar, rasmlar, formalar va sayt qismlarini bilasiz.", 'Ты прошёл курс HTML! Теперь ты знаешь структуру страницы, заголовки, списки, ссылки, картинки, формы и части сайта.', 'You’ve finished the HTML course! Now you know page structure, headings, lists, links, pictures, forms and the parts of a site.'), k: 'cert' },
-      { text: L3("Keyingi kursda CSS bilan saytlarni chiroyli qilamiz: rang, shrift va joylashuv qo'shamiz. Ko'rishguncha!", 'В следующем курсе сделаем сайты красивыми с помощью CSS: добавим цвет, шрифты и расположение. До встречи!', 'In the next course we’ll make sites beautiful with CSS: colors, fonts and layout. See you!'), k: null }
+      { text: L3("Mana, saytim yana jonlandi: sarlavha kap-katta, mushuk joyida, osh qadamlari raqamlangan, havola bosiladi, parol esa yashirin turibdi.", 'Смотри, мой сайт снова работает: заголовок большой, картинка на месте, шаги пронумерованы, ссылка нажимается, а пароль спрятан.', 'Look, my site works again: the heading is big, the picture is in place, the steps are numbered, the link works, and the password is hidden.'), k: null },
+      { text: L3("Siz uddaladingiz: HTML kursi tugadi! Birinchi darsda bitta oddiy sahifa yasagan edik, hozir esa sarlavhasi, ro'yxatlari, havolalari, rasmlari va anketasi bor saytlar turibdi. Sakkizta bekatning hammasidan o'zingiz o'tdingiz. Endi glitch ham sizdan qo'rqadi!", 'Ты прошёл курс HTML! Теперь ты знаешь структуру страницы, заголовки, списки, ссылки, картинки, формы и части сайта.', 'You’ve finished the HTML course! Now you know page structure, headings, lists, links, pictures, forms and the parts of a site.'), k: 'cert' },
+      { text: L3("Endi har qanday sahifaning asosini o'zingiz qura olasiz, xuddi haqiqiy veb-dasturchidek. Lekin hozircha saytlarimiz oq-qora, rang ham, shrift ham yo'q. Keyingi kursda CSS bilan ularga rang va shrift beramiz, hamma narsani joy-joyiga chiroyli qo'yamiz. Sizni o'sha yerda intiqib kutaman!", 'В следующем курсе сделаем сайты красивыми с помощью CSS: добавим цвет, шрифты и расположение. До встречи!', 'In the next course we’ll make sites beautiful with CSS: colors, fonts and layout. See you!'), k: null }
     ],
     certH: L3('HTML kursi', 'Курс HTML', 'HTML course'),
     certT: L3("Sakkizta bekat — hammasi tuzatildi!", 'Восемь станций — всё починено!', 'Eight stations, all repaired!'),
