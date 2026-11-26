@@ -1,0 +1,138 @@
+/* ══ УРОК 4 МОДУЛЯ TILDA (25.11.2026): «фото», блок картинки IM01, обложка с фоном и фильтром, «Контент» и «Настройки»,
+   «Библиотека изображений». Поверх tl1.css, tl1-real.css, tl2.css и tl3.css. Сначала — телефон. */
+.r28 .tl4-foto { display: block; width: 100%; height: 100%; }
+/* ── Обложка: фото во весь блок, фильтр сверху и снизу, полупрозрачная плашка ── */
+.r28 .tl4-cov { position: relative; display: flex; align-items: center; justify-content: center; height: clamp(150px, 26dvh, 240px); overflow: hidden; color: #fff; text-align: center; background: #222; }
+.r28 .tl4-cov-bg { position: absolute; inset: 0; }
+.r28 .tl4-cov-f { position: absolute; inset: 0; transition: background .45s ease; }
+.r28 .tl4-plate { position: relative; z-index: 1; max-width: 86%; padding: 10px 16px; }
+.r28 .tl4-h { margin: 0 0 4px; font: 700 clamp(22px, 3.6dvh, 32px)/1.15 var(--tl-f, var(--r-font)); color: #fff; overflow-wrap: anywhere; }
+.r28 .tl4-p { margin: 0; font: 400 clamp(13px, 1.8dvh, 15px)/1.35 var(--tl-f, var(--r-font)); color: #fff; }
+.r28 .tl4-cov.is-long .tl4-h { font-size: 12px; line-height: 1.25; font-weight: 600; }
+.r28 .tl4-tx { padding-top: 40px; }
+.r28 .tl4-tx b { font-weight: 800; color: #000; }
+/* ── Блок картинки IM01 ── */
+.r28 .tl4-imgw { padding: 40px 14px 14px; }
+.r28 .tl4-img { width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: 2px; }
+.r28 .tl4-img.is-flash { animation: tlPop .5s ease-out both; }
+.r28 .tl4-ph { display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 10; background: #E3E3E3; color: #C4C4C4; }
+.r28 .tl4-ph-ico { width: clamp(44px, 14%, 72px); height: auto; }
+.r28 .tl4-ph.is-mini { aspect-ratio: auto; height: 100%; }
+.r28 .tl4-ph.is-mini .tl4-ph-ico { width: 22px; }
+/* «Настройки» в панели блока — настоящая кнопка. */
+.r28 .tl4-sbtn.is-led { animation: tlRing 1.4s ease-in-out infinite; border-color: var(--tl-or); }
+.r28 .tl2-plus.is-led { animation: tlPop .25s ease-out both, tlRing 1.4s ease-in-out .3s infinite; }
+/* ── Библиотека блоков: карточки раздела «Изображение» ── */
+.r28 .tl4-th { position: relative; display: block; height: clamp(54px, 8.5dvh, 78px); border-radius: 4px; overflow: hidden; background: #F4F4F4; box-shadow: inset 0 0 0 1px #EAEAEA; }
+.r28 .tl4-th i, .r28 .tl4-th b { position: absolute; display: block; }
+.r28 .tl4-th.is-IM01 i { left: 22%; right: 22%; top: 14%; bottom: 14%; background: #D9D9D9; }
+.r28 .tl4-th.is-IM04 i { left: 8%; width: 50%; top: 14%; bottom: 14%; background: #CFCFCF; }
+.r28 .tl4-th.is-IM04 b { left: 64%; width: 26%; top: 34%; height: 4px; background: #999; box-shadow: 0 9px 0 #999, 0 18px 0 #BBB; }
+.r28 .tl4-th.is-IM08 i { left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: #CFCFCF; }
+.r28 .tl4-lib-none { align-items: center; justify-content: center; }
+/* ── Панели «Контент» и «Настройки» (основа — tl3-cnt) ── */
+.r28 .tl4-pan { z-index: 22; }
+.r28 .tl4-sc { border: 0; cursor: pointer; font: inherit; }
+.r28 .tl4-sc:disabled { cursor: default; }
+.r28 .tl4-sc.is-led { box-shadow: inset 0 0 0 3px #fff; animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl4-pan-body { gap: 12px; }
+.r28 .tl4-uprow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.r28 .tl4-upload { padding: 9px 14px; background: #000; color: #fff; font: 600 12px/1 var(--r-font); }
+.r28 .tl4-opt { font: 400 9.5px/1.25 var(--r-font); color: #888; }
+.r28 .tl4-libbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 4px; background: none; color: #111; font: 600 12px/1.2 var(--r-font); cursor: pointer; }
+.r28 .tl4-libbtn:disabled { cursor: default; }
+.r28 .tl4-libbtn.is-led { background: #FFF1EC; box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl4-file { display: flex; align-items: center; gap: 8px; }
+.r28 .tl4-file-th { flex: none; width: 64px; height: 40px; overflow: hidden; background: #EEE; }
+.r28 .tl4-file-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 11px/1.2 var(--r-font); color: #555; }
+.r28 .tl4-file-b { flex: none; display: inline-flex; align-items: center; gap: 6px; color: #222; }
+.r28 .tl4-file-b svg { width: 14px; height: 14px; }
+.r28 .tl4-dots { width: 34px; height: 30px; padding: 0 0 6px; border: 0; border-radius: 4px; background: none; color: #111; font: 800 18px/1 var(--r-font); letter-spacing: 1px; cursor: pointer; }
+.r28 .tl4-dots:disabled { cursor: default; }
+.r28 .tl4-dots.is-led { background: #FFF1EC; box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl4-pen { font-style: normal; font-size: 13px; }
+.r28 .tl4-alt > span { color: #111; }
+.r28 .tl3-opt.is-ok { border-color: #16A34A; background: #F0FDF4; }
+.r28 .tl4-bgtabs { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+.r28 .tl4-bgtabs b { font: 700 10px/1.2 var(--r-font); letter-spacing: .03em; color: #111; }
+.r28 .tl4-bgtabs em { font: 500 10px/1.2 var(--r-font); font-style: normal; color: #888; border-bottom: 1px dashed #BBB; }
+/* «Настройки»: фильтр в начале и в конце */
+.r28 .tl4-frow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; }
+.r28 .tl4-fcol { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.r28 .tl4-lab { font: 700 9.5px/1.2 var(--r-font); letter-spacing: .03em; color: #666; }
+.r28 .tl4-color { display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #DDD; font: 500 13px/1 var(--r-font); color: #111; }
+.r28 .tl4-color i { width: 18px; height: 18px; border-radius: 50%; background: #000; }
+.r28 .tl4-sel { display: flex; justify-content: space-between; align-items: center; min-height: 34px; padding: 4px 2px; border: 0; border-bottom: 1px solid #BBB; background: none; color: #111;
+  font: 600 14px/1 var(--r-font); text-align: left; cursor: pointer; }
+.r28 .tl4-sel:disabled { cursor: default; }
+.r28 .tl4-sel i { font-style: normal; color: #999; font-size: 11px; }
+.r28 .tl4-sel.is-open { border-bottom-color: var(--tl-or); }
+.r28 .tl4-sel.is-led { background: #FFF1EC; box-shadow: 0 0 0 2px var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl4-opas { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.r28 .tl4-opa { min-height: 40px; border: 1.5px solid #DDD; background: #fff; color: #111; font: 600 14px/1 var(--r-font); cursor: pointer; }
+.r28 .tl4-opa:disabled { cursor: default; }
+.r28 .tl4-opa:not(:disabled):hover { border-color: #000; }
+.r28 .tl4-opa.is-on { border-color: #000; background: #F5F5F5; }
+.r28 .tl4-opa.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+/* ── «Библиотека изображений» ── */
+.r28 .tl4-lib { position: absolute; inset: 8px; z-index: 26; display: flex; flex-direction: column; background: #fff; border-radius: 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, .28); overflow: hidden; }
+.r28 .tl4-lib-h { flex: none; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #EEE; font: 400 14px/1 var(--r-font); color: #444; }
+.r28 .tl4-lib-h b { font: 600 13px/1.2 var(--r-font); color: #111; }
+.r28 .tl4-lib-in { flex: 1 1 auto; min-height: 0; display: flex; }
+.r28 .tl4-lib-l { flex: none; width: 150px; display: flex; flex-direction: column; gap: 7px; padding: 12px; border-right: 1px solid #EEE; font: 500 12px/1.2 var(--r-font); color: #222; overflow: hidden; }
+.r28 .tl4-lib-l em { margin-top: 6px; font: 500 10px/1 var(--r-font); font-style: normal; color: #999; }
+.r28 .tl4-lib-l b { padding: 5px 6px; background: #F2F2F2; font: 600 12px/1 var(--r-font); }
+.r28 .tl4-lib-l .is-sub { padding-left: 8px; color: #555; }
+.r28 .tl4-lib-r { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 10px; overflow-y: auto; }
+.r28 .tl4-lib-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.r28 .tl4-us { display: inline-flex; align-items: center; gap: 5px; font: 700 13px/1 var(--r-font); color: #111; }
+.r28 .tl4-us i { width: 11px; height: 11px; background: linear-gradient(#111, #111) 0 0 / 100% 45% no-repeat, linear-gradient(#111, #111) 25% 100% / 50% 40% no-repeat; }
+.r28 .tl4-q { flex: 1 1 110px; min-width: 100px; display: flex; justify-content: space-between; gap: 6px; padding: 8px 10px; background: #F3F3F3; font: 400 13px/1.1 var(--r-font); color: #999; }
+.r28 .tl4-q.is-full { color: #111; }
+.r28 .tl4-q i { font-style: normal; color: #555; }
+.r28 .tl4-q.is-typing i { display: none; }
+.r28 .tl4-q.is-typing::after { content: '|'; color: var(--tl-or); animation: tlBlink .8s steps(1) infinite; }
+.r28 .tl4-cats { font: 500 12px/1 var(--r-font); color: #333; }
+.r28 .tl4-shapes { display: inline-flex; align-items: center; gap: 4px; padding: 4px; background: #F3F3F3; }
+.r28 .tl4-shapes i { display: block; border: 1.5px solid #999; }
+.r28 .tl4-shapes .is-w { width: 18px; height: 12px; } .r28 .tl4-shapes .is-t { width: 10px; height: 15px; } .r28 .tl4-shapes .is-s { width: 13px; height: 13px; }
+.r28 .tl4-shapes .is-on { border-color: #222; background: #DDD; }
+.r28 .tl4-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.r28 .tl4-gi { display: block; padding: 0; border: 2px solid transparent; background: #F3F4F6; aspect-ratio: 4 / 3; overflow: hidden; cursor: pointer; transition: border-color .15s; }
+.r28 .tl4-gi:disabled { cursor: default; }
+.r28 .tl4-gi:not(:disabled):hover { border-color: var(--tl-or); }
+.r28 .tl4-gi.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .tl4-gi.is-ok { border-color: #16A34A; }
+/* ── Крючок, проверка, вывод ── */
+.r28 .tl4-hook .tl2-mini .tl2-page { max-height: clamp(170px, 30dvh, 280px); }
+.r28 .tl4-qo { padding: 30px 8px 10px; }
+.r28 .tl4-qcov { display: block; width: 100%; border-radius: 6px; overflow: hidden; }
+.r28 .tl4-qcov .tl4-cov { height: clamp(96px, 17dvh, 150px); }
+.r28 .tl4-qcov .tl4-h { font-size: clamp(16px, 2.6dvh, 22px); }
+.r28 .tl4-qcov .tl4-p { font-size: 11px; }
+.r28 .tl4-qcov .tl4-cov.is-long .tl4-h { font-size: 10.5px; }
+.r28 .tl2-live .tl4-cov { height: clamp(130px, 22dvh, 200px); }
+/* ── Телефон: панели — снизу, чтобы над ними был виден результат; библиотека — во всё окно ── */
+@media (max-width: 759px) {
+  .r28 .tl4-pan { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 12px 12px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, .2); }
+  .r28 .tl4-hide-s { display: none; }
+  .r28 .tl4-pan-body { gap: 10px; padding: 10px 12px; }
+  .r28 .tl4-lib { inset: 0; border-radius: 0; }
+  .r28 .tl4-lib-l, .r28 .tl4-cats { display: none; }
+  .r28 .tl4-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .r28 .tl4-qcov .tl4-plate { padding: 6px 8px; }
+  .r28 .tl4-alt .tl3-cnt-opts { gap: 6px; }
+  .r28 .tl4-alt .tl3-opt { min-height: 40px; padding: 6px 12px; font-size: 14px; }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .tl4-cov { height: 140px; }
+  .r28 .tl4-qcov .tl4-cov { height: 88px; }
+  .r28 .tl4-opa { min-height: 36px; }
+}
+/* Ноутбук: в проверке обложки крупнее. */
+@media (min-width: 760px) {
+  .r28 .tl4-qopts { max-width: 760px !important; }
+  .r28 .tl4-qcov .tl4-cov { height: clamp(140px, 26dvh, 230px); }
+  .r28 .tl4-qcov .tl4-h { font-size: clamp(20px, 3dvh, 28px); }
+  .r28 .tl4-qcov .tl4-cov.is-long .tl4-h { font-size: 14px; }
+}

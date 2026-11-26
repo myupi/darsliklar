@@ -1,0 +1,191 @@
+/* ══ УРОК 3 МОДУЛЯ TILDA (25.11.2026): виды текста, абзацы, панель стиля над словом, кнопка BF101, «Контент» кнопки.
+   Поверх tl1.css, tl1-real.css и tl2.css. Сначала — телефон. */
+/* ── Блоки текста ── */
+.r28 .tl3-h { font-size: clamp(20px, 3.2dvh, 30px); }
+.r28 .tl3-lead { padding-top: 34px; padding-bottom: 10px; color: #333; }
+.r28 .tl3-tx { display: flex; flex-direction: column; gap: 10px; }
+.r28 .tl3-tx p { margin: 0; }
+.r28 .tl3-tx b { font-weight: 800; color: #000; }
+.r28 .tl3-tx.is-wall { font-weight: 800; font-size: clamp(15px, 2.2dvh, 17px); line-height: 1.35; letter-spacing: -.01em; }
+.r28 .tl3-w { display: inline; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: inherit; border-radius: 3px; }
+button.tl3-w { cursor: pointer; }
+.r28 button.tl3-w:hover { background: #FFF1EC; }
+.r28 .tl3-w.is-sel { background: #CDE4FF; box-shadow: 0 0 0 2px #CDE4FF; }
+.r28 .tl3-qt { display: flex; align-items: center; gap: 12px; padding: 36px 18px 18px; }
+.r28 .tl3-qava { flex: none; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #F2C9A6 0 30%, transparent 31%), radial-gradient(circle at 50% 100%, #4B6EA8 0 45%, transparent 46%), #DDE6F3; }
+.r28 .tl3-qt span { display: flex; flex-direction: column; gap: 4px; }
+.r28 .tl3-qt b { font: 500 italic clamp(15px, 2.2dvh, 18px)/1.35 var(--tl-f, var(--r-font)); color: #111; }
+.r28 .tl3-qt em { font: 400 13px/1.2 var(--r-font); font-style: normal; color: #888; }
+/* Кнопка BF101 — по центру, лососевая, со скруглением. */
+.r28 .tl3-btnw { display: flex; justify-content: center; padding: 38px 16px 20px; }
+.r28 .tl3-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 28px; border-radius: 30px; background: var(--tl-or); color: #fff;
+  font: 600 15px/1.2 var(--tl-f, var(--r-font)); text-align: center; box-shadow: 0 2px 0 rgba(0, 0, 0, .08); }
+.r28 .tl3-btn.is-flash { animation: tlPop .45s ease-out both; }
+.r28 .tl3-btn.is-mini { min-height: 40px; padding: 0 18px; font-size: 14px; }
+/* Подпись вида текста у блока (показ s2). */
+.r28 .tl3-name { position: absolute; right: 8px; bottom: 6px; z-index: 4; padding: 4px 10px; border-radius: 999px; background: #111; color: #fff; font: 700 12px/1.2 var(--r-font); }
+/* «Контент» в панели блока — настоящая кнопка. */
+.r28 .tl3-cbtn { border: 0; cursor: pointer; font: inherit; }
+.r28 .tl3-cbtn:disabled { cursor: default; }
+.r28 .tl3-cbtn.is-led { animation: tlRing 1.4s ease-in-out infinite; }
+/* ── Панель стиля над текстом (правка на месте) ── */
+.r28 .tl3-fmt { position: absolute; left: 50%; top: 4px; z-index: 6; display: flex; gap: 2px; padding: 4px; transform: translateX(-50%); border-radius: 6px; background: #222; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.r28 .tl3-f { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: none; color: #fff;
+  font: 700 15px/1 Georgia, 'Times New Roman', serif; cursor: pointer; }
+.r28 .tl3-f.is-b { font-weight: 900; font-family: var(--r-font); }
+.r28 .tl3-f.is-i { font-style: italic; }
+.r28 .tl3-f.is-u { text-decoration: underline; }
+.r28 .tl3-f.is-s { text-decoration: line-through; }
+.r28 .tl3-f.is-color { color: #FA876B; }
+.r28 .tl3-f.is-size { font: 600 12px/1 var(--r-font); width: 30px; }
+.r28 .tl3-f:not(:disabled):hover { background: #444; }
+.r28 .tl3-f:disabled { cursor: default; }
+.r28 .tl3-f.is-led { background: var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl2-b.is-text .tl3-tx { padding-top: 46px; }
+/* ── Библиотека: карточки кнопок и текста ── */
+.r28 .tl3-th { position: relative; display: block; height: clamp(54px, 8.5dvh, 78px); border-radius: 4px; overflow: hidden; background: #F4F4F4; box-shadow: inset 0 0 0 1px #EAEAEA; }
+.r28 .tl3-th i, .r28 .tl3-th b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: block; }
+.r28 .tl3-th.is-button i { width: 46%; height: 18px; border-radius: 9px; background: var(--tl-or); }
+.r28 .tl3-th.is-button.is-arrow b { left: 64%; width: 8px; height: 8px; border: solid #fff; border-width: 2px 2px 0 0; transform: translate(-50%, -50%) rotate(45deg); }
+.r28 .tl3-th.is-button.is-two i { left: 32%; width: 34%; }
+.r28 .tl3-th.is-button.is-two b { left: 68%; width: 34%; height: 18px; border-radius: 9px; box-shadow: inset 0 0 0 2px var(--tl-or); }
+.r28 .tl3-th.is-text i { top: 30%; width: 72%; height: 4px; background: #999; box-shadow: 0 9px 0 #999, 0 18px 0 #999; transform: translateX(-50%); }
+.r28 .tl3-th.is-lead i { top: 38%; width: 66%; height: 7px; background: #777; box-shadow: 0 12px 0 #777; transform: translateX(-50%); }
+.r28 .tl3-th.is-quote i { left: 26%; width: 18px; height: 18px; border-radius: 50%; background: #9CA3AF; }
+.r28 .tl3-th.is-quote b { left: 62%; width: 46%; height: 4px; background: #999; box-shadow: 0 9px 0 #999; }
+.r28 .tl3-paid { display: block; margin-top: 2px; font: 500 11px/1.2 var(--r-font); color: #777; }
+/* ── «Контент» кнопки: панель поверх редактора ── */
+.r28 .tl3-cnt { position: absolute; left: 0; top: 0; bottom: 0; z-index: 20; display: flex; flex-direction: column; gap: 12px; width: min(100%, 340px); padding: 12px; background: #fff;
+  box-shadow: 6px 0 24px rgba(0, 0, 0, .18); overflow-y: auto; }
+.r28 .tl3-cnt-top { display: flex; justify-content: flex-end; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid #EEE; }
+.r28 .tl3-cnt-top span { padding: 7px 12px; border-radius: 4px; font: 600 12px/1 var(--r-font); }
+.r28 .tl3-cnt-s { border: 1px solid #DDD; color: #111; }
+.r28 .tl3-cnt-sc { background: var(--tl-or); color: #fff; }
+.r28 .tl3-cnt-f { display: flex; flex-direction: column; gap: 6px; }
+.r28 .tl3-cnt-f > span { font: 700 11px/1 var(--r-font); letter-spacing: .04em; color: #888; }
+.r28 .tl3-cnt-f > b { min-height: 38px; padding: 9px 10px; border: 1px solid #DDD; border-radius: 4px; font: 500 15px/1.3 var(--r-font); color: #111; }
+.r28 .tl3-cnt-f > b.is-typing::after { content: '|'; margin-left: 1px; color: var(--tl-or); animation: tlBlink .8s steps(1) infinite; }
+@keyframes tlBlink { 50% { opacity: 0; } }
+.r28 .tl3-cnt-f.is-dim { opacity: .5; }
+.r28 .tl3-cnt-opts { display: flex; flex-direction: column; gap: 8px; }
+.r28 .tl3-opt { min-height: 44px; padding: 8px 12px; border: 2px solid #E5E7EB; border-radius: 22px; background: #fff; color: #111; font: 600 15px/1.2 var(--r-font); cursor: pointer; text-align: left; }
+.r28 .tl3-opt:not(:disabled):hover { border-color: var(--tl-or); }
+.r28 .tl3-opt.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+/* ── s3: какой блок ── */
+.r28 .tl3-kinds { gap: 12px; }
+.r28 .tl3-kinds .tl2-qn { padding: 10px 14px; }
+.r28 .tl3-piece { max-width: 560px !important; padding: 14px 16px; border-radius: 12px; background: #fff; border: 2px dashed #D6D6D6; color: #111;
+  font: 500 clamp(14px, 2.2dvh, 17px)/1.45 var(--r-font); text-align: center; }
+.r28 .tl3-kb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 560px !important; }
+.r28 .tl3-kind { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 84px; padding: 10px 6px; border: 1.5px solid #DDD; border-radius: 10px; background: #fff; color: #111; cursor: pointer; }
+.r28 .tl3-kind b { font: 700 14px/1.2 var(--r-font); }
+.r28 .tl3-kind em { padding: 1px 6px; border-radius: 999px; background: #B5B5B5; color: #fff; font: 800 10px/1.5 var(--r-font); font-style: normal; }
+.r28 .tl3-kind:not(:disabled):hover { border-color: #000; }
+.r28 .tl3-kind:disabled { cursor: default; }
+.r28 .tl3-kind.is-ok { border-color: #16A34A; background: #F0FDF4; }
+.r28 .tl3-kind.is-bad { animation: tlShake .45s ease-in-out; }
+.r28 .tl3-ki { position: relative; display: block; width: 54px; height: 24px; }
+.r28 .tl3-ki i { position: absolute; left: 0; display: block; height: 4px; border-radius: 2px; background: #999; }
+.r28 .tl3-ki.is-title i:nth-child(1) { top: 7px; width: 100%; height: 9px; background: #222; } .r28 .tl3-ki.is-title i:nth-child(n+2) { display: none; }
+.r28 .tl3-ki.is-lead i:nth-child(1) { top: 3px; width: 100%; height: 6px; background: #666; } .r28 .tl3-ki.is-lead i:nth-child(2) { top: 14px; width: 70%; height: 6px; background: #666; } .r28 .tl3-ki.is-lead i:nth-child(3) { display: none; }
+.r28 .tl3-ki.is-text i:nth-child(1) { top: 2px; width: 100%; } .r28 .tl3-ki.is-text i:nth-child(2) { top: 10px; width: 100%; } .r28 .tl3-ki.is-text i:nth-child(3) { top: 18px; width: 64%; }
+.r28 .tl3-ki.is-quote i:nth-child(1) { top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #9CA3AF; } .r28 .tl3-ki.is-quote i:nth-child(2) { top: 6px; left: 26px; width: 28px; } .r28 .tl3-ki.is-quote i:nth-child(3) { top: 14px; left: 26px; width: 18px; background: #555; }
+/* ── s4: ножницы между предложениями ── */
+.r28 .tl3-split p { line-height: 1.9; }
+.r28 .tl3-split.is-wall { font-weight: 800; }
+.r28 .tl3-cut { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px; margin: 0 4px; padding: 0; vertical-align: middle; border: 1.5px dashed #F59E0B;
+  border-radius: 13px; background: #FFFBEB; color: #B45309; cursor: pointer; }
+.r28 .tl3-cut:not(:disabled):hover { background: #FEF3C7; }
+.r28 .tl3-cut:disabled { opacity: .5; cursor: default; }
+.r28 .tl3-cut.is-bad { animation: tlShake .45s ease-in-out; border-color: #DC2626; color: #DC2626; }
+.r28 .tl3-split p + p { padding-top: 10px; border-top: 1px dashed #E5E7EB; }
+/* ── s7 и s12: сравнение ── */
+.r28 .tl3-cmp { flex-direction: row !important; align-items: stretch; justify-content: center; gap: 12px; }
+.r28 .tl3-cmp > * { max-width: 260px !important; }
+.r28 .tl3-cmp-c, .r28 .tl3-qo { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: 1 1 0; min-width: 0; padding: 30px 12px 14px;
+  border: 2px solid #E5E7EB; border-radius: 14px; background: #fff; cursor: pointer; transition: border-color .15s, transform .15s; }
+.r28 .tl3-cmp-c:not(:disabled):hover, .r28 .tl3-qo:not(:disabled):hover { border-color: #000; transform: translateY(-2px); }
+.r28 .tl3-cmp-c:disabled, .r28 .tl3-qo:disabled { cursor: default; }
+.r28 .tl3-cmp-c.is-ok, .r28 .tl3-qo.is-ok { border-color: #16A34A; background: #F0FDF4; }
+.r28 .tl3-cmp-c.is-bad, .r28 .tl3-qo.is-bad { animation: tlShake .45s ease-in-out; border-color: #F59E0B; }
+.r28 .tl3-cmp-l { position: absolute; left: 10px; top: 8px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #111; color: #fff; font: 800 12px/1 var(--r-font); }
+.r28 .tl3-sch { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 190px; padding: 10px; border-radius: 6px; background: #fff; box-shadow: inset 0 0 0 1px #E5E7EB; }
+.r28 .tl3-sch i { display: block; height: 5px; border-radius: 3px; background: #C9C9C9; }
+.r28 .tl3-sch i.is-s { width: 60%; }
+.r28 .tl3-sch.is-wall i.is-fat { height: 7px; background: #111; }
+.r28 .tl3-sch.is-good i.is-h { width: 70%; height: 11px; margin: 0 auto 2px; background: #111; }
+.r28 .tl3-sch.is-good i.is-lead { width: 84%; height: 6px; margin: 0 auto 6px; background: #777; }
+.r28 .tl3-sch-p { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.r28 .tl3-sch-p i.is-b { width: 30%; height: 6px; background: #111; }
+.r28 .tl3-sch i.is-btn { align-self: center; width: 46%; height: 14px; border-radius: 7px; background: var(--tl-or); margin-top: 4px; }
+.r28 .tl3-sch.is-mini { max-width: 120px; padding: 8px; }
+.r28 .tl3-sch.is-btn-top i.is-btn { margin: 2px 0 6px; }
+/* s12 */
+.r28 .tl3-quiz { gap: 14px; }
+.r28 .tl3-qopts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 560px !important; }
+.r28 .tl3-qo { min-height: 120px; }
+.r28 .tl3-qtx { font: 500 15px/1.4 var(--r-font); color: #111; text-align: center; }
+.r28 .tl3-qtx b { font-weight: 900; }
+.r28 .tl3-qh { font: 800 clamp(14px, 2.2dvh, 18px)/1.25 var(--r-font); color: #000; text-align: center; }
+.r28 .tl3-qpos { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.r28 .tl3-qpos em { font: 600 13px/1.2 var(--r-font); font-style: normal; color: #444; }
+/* Крючок: стена текста не помещается — видно начало. */
+.r28 .tl3-hook .tl2-mini .tl2-page { max-height: clamp(170px, 30dvh, 280px); }
+/* Ноутбук: сравнение и проверка шире. */
+@media (min-width: 760px) {
+  .r28 .tl3-cmp > * { max-width: 300px !important; }
+  .r28 .tl3-kb { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .tl3-kind { min-height: 70px; padding: 8px 4px; }
+  .r28 .tl3-qo { min-height: 96px; padding-top: 28px; }
+  .r28 .tl3-piece { padding: 10px 12px; }
+}
+/* Панель стиля: по центру блока без transform (анимация появления kz-a-drop двигает transform и сдвигала панель вправо). */
+.r28 .tl3-fmt { left: 0; right: 0; width: max-content; max-width: calc(100% - 12px); margin: 0 auto; transform: none; flex-wrap: wrap; justify-content: center; }
+
+/* ── Сверка с настоящей Tilda (25.11.2026) ── */
+/* Панель стиля — белая полоса на месте верхней полосы редактора; кнопки по 40 px; справа — шрифт (на широком). */
+.r28 .tl-ed.tl3-fmton > .tl-canvas { position: static; }
+.r28 .tl3-fmt { position: absolute; left: 0; right: 0; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: auto; max-width: none;
+  height: 44px; margin: 0; padding: 0; transform: none; border-radius: 0; background: #fff; box-shadow: 0 1px 0 #E5E5E5; overflow: hidden; animation: tlFade .2s ease-out both; flex-wrap: nowrap; }
+.r28 .tl3-fmt-row { display: flex; flex: none; height: 100%; }
+.r28 .tl3-f { width: 40px; height: 44px; border-radius: 0; background: #fff; color: #111; }
+.r28 .tl3-f:not(:disabled):hover { background: #F2F2F2; }
+.r28 .tl3-f.is-led { background: #FFF1EC; box-shadow: inset 0 -3px 0 var(--tl-or); animation: tlRing 1.4s ease-in-out infinite; }
+.r28 .tl3-fi { font: 700 15px/1 Georgia, 'Times New Roman', serif; font-style: normal; color: #111; }
+.r28 .tl3-fi.is-i { font-style: italic; font-weight: 400; }
+.r28 .tl3-fi.is-u { text-decoration: underline; font-weight: 400; }
+.r28 .tl3-fi.is-s { text-decoration: line-through; font-weight: 400; }
+.r28 .tl3-fi.is-font { font-weight: 400; font-size: 16px; }
+.r28 .tl3-fi.is-size { font: 600 12px/1 var(--r-font); letter-spacing: -.02em; }
+.r28 .tl3-f svg.is-ai { color: #9B5CF6; }
+.r28 .tl3-fmt-info { flex: none; padding-right: 12px; font: 500 10px/1.2 var(--r-font); color: #999; white-space: nowrap; }
+@media (max-width: 759px) { .r28 .tl3-fmt-info { display: none; } }
+.r28 .tl2-b.is-text .tl3-tx { padding-top: 40px; }
+/* Кнопка BF101 по умолчанию — белая, прямоугольная, чёрная рамка. */
+.r28 .tl3-btn { border-radius: 0; background: #fff; color: #000; border: 2px solid #000; box-shadow: none; font-weight: 600; }
+.r28 .tl3-sch i.is-btn { background: #fff; border: 2px solid #111; border-radius: 0; height: 14px; }
+.r28 .tl3-th.is-button i { border-radius: 0; background: #fff; border: 2px solid #111; }
+.r28 .tl3-th.is-button.is-two i { left: 32%; } .r28 .tl3-th.is-button.is-two b { border-radius: 0; box-shadow: inset 0 0 0 2px #111; }
+.r28 .tl3-th.is-button.is-mob i { top: auto; bottom: 6px; width: 88%; transform: translateX(-50%); background: #111; }
+/* «Контент» кнопки — как в Tilda. */
+.r28 .tl3-cnt { gap: 0; padding: 0; width: min(100%, 360px); background: #fff; }
+.r28 .tl3-cnt-top { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0; border: 0; }
+.r28 .tl3-cnt-top span { display: grid; place-items: center; height: 40px; padding: 0; border-radius: 0; font: 500 12px/1 var(--r-font); }
+.r28 .tl3-cnt-s { border: 0; background: #000; color: #fff; }
+.r28 .tl3-cnt-sc { background: var(--tl-or); color: #fff; }
+.r28 .tl3-cnt-body { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px; }
+.r28 .tl3-cnt-h { font: 600 10px/1 var(--r-font); letter-spacing: .04em; color: #555; }
+.r28 .tl3-cnt-card { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; background: #EEEEEE; }
+.r28 .tl3-cnt-ch { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.r28 .tl3-cnt-ch b { font: 700 10px/1 var(--r-font); letter-spacing: .03em; color: #111; }
+.r28 .tl3-cnt-ch i { display: inline-flex; gap: 4px; color: #333; }
+.r28 .tl3-cnt-ch i svg { width: 13px; height: 13px; }
+.r28 .tl3-cnt-f > span { font-size: 10px; color: #666; }
+.r28 .tl3-cnt-f > b { min-height: 30px; padding: 6px 0; border: 0; border-bottom: 1px solid #BBB; border-radius: 0; background: none; font-size: 14px; }
+.r28 .tl3-cnt-chk { display: flex; align-items: center; gap: 8px; font: 500 10px/1.2 var(--r-font); color: #444; }
+.r28 .tl3-cnt-chk i { width: 10px; height: 10px; border: 1px solid #F59E0B; }
+.r28 .tl3-cnt-chk em { font-style: normal; color: #666; }
+.r28 .tl3-cnt-add { display: grid; place-items: center; height: 38px; background: #000; color: #fff; font: 700 11px/1 var(--r-font); letter-spacing: .04em; }
+.r28 .tl3-opt { border-radius: 0; background: #fff; border-width: 1.5px; }
