@@ -1,0 +1,36 @@
+/* ── Практика 8 частями (tools/qism/pconf): хук части 2 и вывод части 1 ── */
+
+/* Хук части 2 на телефоне: код спрятан (как в выводе), в окне шапка, две темы и низ — окно выше, чем у вывода (16 : 9),
+   иначе страница мельчает до нечитаемой. */
+@media (max-width: 759px) {
+  .r28 .a8-fin.a8-h2 .a8-br { aspect-ratio: 16 / 11.5 !important; }
+}
+
+/* Вывод части 1: в окне шапка с меню, главная часть и низ — на телефоне окно чуть выше обычного вывода. */
+@media (max-width: 759px) {
+  .r28 .a8-fin.a8-e1 .a8-br { aspect-ratio: 16 / 9.5 !important; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a8-fin.a8-e1 .a8-br { aspect-ratio: 16 / 7.6 !important; }
+}
+
+/* Часть 2, задание 1 («Maktab haqida»): в окне шапка, две темы и низ, а в редакторе четырнадцать строк — на ноутбуке окно выше
+   (страница крупнее), на планшете стоя ниже (иначе лист выходит за экран). */
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .a8-x1 .a8-br.is-short { aspect-ratio: 16 / 8.6; }
+}
+@media (min-width: 760px) and (orientation: portrait) and (max-width: 999px) {
+  .r28 .a8-x1 .a8-br.is-short { aspect-ratio: 16 / 5.4; }
+}
+
+/* Часть 1, задание 1 на низком телефоне (360 × 640): страница без section чуть выше — низ сайта виден целиком. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a8-sheet.a8-t1 .a8-br.is-short { aspect-ratio: 16 / 7.4; }
+}
+
+/* Телефон, «Kod» при длинном коде (задание 1 части 2 — четырнадцать строк): окна браузера нет, редактор берёт больше высоты,
+   чтобы все строки с пустыми местами под section были на виду; при открытой клавиатуре — прежняя высота над ней. */
+@media (max-width: 759px) {
+  .r28 .a8-work.has-vt.is-v-code .a8-ed:not(.a8-static) { max-height: max(150px, calc(100dvh - 460px)); }
+}
+.is-kbd .r28 .a8-work.has-vt.is-v-code .a8-ed:not(.a8-static) { max-height: max(70px, calc(var(--vvh, 330px) - 222px)); }

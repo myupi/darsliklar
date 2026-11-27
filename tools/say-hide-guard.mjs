@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SAFE_DIR = join(ROOT, 'tools/say-hide-safe');
 // Файлы, на которые распространяется защита: уроки, практики и общие наборы курса HTML.
-const SCOPE = /^tools\/(amaliyot[1-9]|zagolovki2|royxat3|havola4|rasm5|forma6|forma7|sayt8|final9|redaktor28|bdizayn16|kollazh|l2-helpers|qism\/conf)\/[^/]+\.(jsx|mjs)$/;
+const SCOPE = /^tools\/(amaliyot[1-9]|zagolovki2|royxat3|havola4|rasm5|forma6|forma7|sayt8|final9|redaktor28|bdizayn16|kollazh|l2-helpers|qism\/conf|qism\/pconf)\/[^/]+\.(jsx|mjs)$/;
 const SKIP = /(^|\/)(build[^/]*\.mjs|nabor\.mjs)$/;
 
 // ── Разбор строк исходника ──────────────────────────────────────────────────

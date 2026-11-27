@@ -29,13 +29,26 @@ const h2Step = {
   }
 };
 
-export function qismPair(BASE, { k, split, file, title }) {
+// patch — правки шагов целого урока для части (когда разгадка загадки перенесена в вывод части 1, шаг s15 части 2
+// не должен её ждать): [{ step: 'имя шага', from: 'фрагмент кода', to: '' }] — замена в тексте функции шага.
+const patchStep = (st, patches) => {
+  const ps = (patches || []).filter((x) => st.name === x.step);
+  if (!ps.length) return st;
+  let src = String(st.run);
+  for (const x of ps) {
+    if (!src.includes(x.from)) throw new Error('qismPair: в шаге «' + st.name + '» нет фрагмента: ' + x.from);
+    src = src.replace(x.from, x.to || '');
+  }
+  return { ...st, run: (0, eval)('(' + src + ')') };
+};
+
+export function qismPair(BASE, { k, split, file, title, patch }) {
   const total = BASE.screens;
   const inPart = (s) => (k === 1 ? s < split : s >= split);
   const shift = (s) => (k === 1 ? s : s - split + 1);
   const steps = k === 1
     ? BASE.steps.slice(0, split).concat(e1Steps)
-    : [h2Step].concat(BASE.steps.slice(split));
+    : [h2Step].concat(BASE.steps.slice(split).map((st) => patchStep(st, patch)));
   const flows = (BASE.flows || []).filter((f) => inPart(f.start)).map((f) => ({ ...f, start: shift(f.start) }));
   const inputScreens = (BASE.inputScreens || []).filter(inPart).map(shift);
   return {

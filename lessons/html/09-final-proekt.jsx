@@ -6858,9 +6858,9 @@ const META = {
   lessonId: 'html-09-final-proekt',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '9-dars. Yakuniy HTML loyiha',
-    ru: 'Урок 9. Финальный HTML-проект',
-    en: 'Lesson 9. The final HTML project'
+    uz: '17-dars. Yakuniy HTML loyiha',
+    ru: 'Урок 17. Финальный HTML-проект',
+    en: 'Lesson 17. The final HTML project'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -6941,15 +6941,15 @@ const C = {
   },
   s1: {
     eyebrow: L3('Glitch!', 'Глитч!', 'Glitch!'),
-    say: L3("Falokat: saytimga glitch tushibdi! Bu kompyuterdagi g'alati buzilishning nomi. U hammasini ag'dar-to'ntar qilib ketibdi! Qarang-chi: sarlavha mittigina bo'lib qolgan, rasm o'rnida bitta so'z turibdi, ro'yxatda raqamlar yo'q, havola bosilmaydi, parol esa hammaga ochiq ko'rinib turibdi. Axir bu saytni sakkiz dars davomida birga qurgan edik-ku! Qani, yordam bering, birga tuzatamiz: «Ta'mirlash» tugmasini bosing.",
-      'Ой! На мой сайт налетел глитч и всё сломал! Смотри: заголовок крошечный, вместо картинки одно слово, в списке нет номеров, ссылка не нажимается, а пароль виден всем. Этот сайт мы строили вместе восемь уроков. Помоги его починить! Нажми «Починить».',
-      'Oh no! A glitch hit my site and broke everything! Look: the heading is tiny, there’s just a word instead of the picture, the list has no numbers, a link doesn’t work, and the password is visible to everyone. We built this site together over eight lessons. Help me repair it! Tap “Repair”.'),
-    magic: L3("Mana, glitchdan qutulish yo'li xaritada: xuddi metro liniyasidagidek, sakkizta bekat bor, har bir darsimizga bittadan. Har bir bekatda bitta buzilgan joyni tuzatamiz, shunda o'sha bekatda chiroq yonadi.", 'Вот карта курса: восемь станций, по одной на урок. На каждой станции чиним одну поломку — и станция загорается.', 'Here’s the course map: eight stations, one per lesson. At each station we fix one break, and the station lights up.'),
+    say: L3("Falokat: saytimga glitch tushibdi! Bu kompyuterdagi g'alati buzilishning nomi. U hammasini ag'dar-to'ntar qilib ketibdi! Qarang-chi: sarlavha mittigina bo'lib qolgan, rasm o'rnida bitta so'z turibdi, ro'yxatda raqamlar yo'q, havola bosilmaydi, parol esa hammaga ochiq ko'rinib turibdi. Axir bu saytni bu kurs davomida birga qurgan edik-ku! Qani, yordam bering, birga tuzatamiz: «Ta'mirlash» tugmasini bosing.",
+      'Ой! На мой сайт налетел глитч и всё сломал! Смотри: заголовок крошечный, вместо картинки одно слово, в списке нет номеров, ссылка не нажимается, а пароль виден всем. Этот сайт мы строили вместе весь курс. Помоги его починить! Нажми «Починить».',
+      'Oh no! A glitch hit my site and broke everything! Look: the heading is tiny, there’s just a word instead of the picture, the list has no numbers, a link doesn’t work, and the password is visible to everyone. We built this site together throughout the whole course. Help me repair it! Tap “Repair”.'),
+    magic: L3("Mana, glitchdan qutulish yo'li xaritada: xuddi metro liniyasidagidek, sakkizta bekat bor, har bir mavzumizga bittadan. Har bir bekatda bitta buzilgan joyni tuzatamiz, shunda o'sha bekatda chiroq yonadi.", 'Вот карта курса: восемь станций, по одной на тему. На каждой станции чиним одну поломку — и станция загорается.', 'Here’s the course map: eight stations, one per lesson. At each station we fix one break, and the station lights up.'),
     done: L3("Do'stlarimga sayt kechgacha tayyor bo'ladi, deb va'da berganman, vaqt esa juda oz. Shuning uchun eng tez yo'lni o'yladim: hammasini o'chirib, boshidan yozaman, chunki glitch hammasini buzib tashlagan-ku! Siz mening o'rnimda nima qilardingiz? Javobni sakkizta bekatdan o'tgach birga ko'ramiz. Qani, birinchi bekatga!",
       'Но сначала маленькая загадка. По-моему, раз глитч сломал всё, сайт надо целиком стереть и написать заново. Ну как думаешь, я прав? Ответ найдём вместе в конце. Вперёд, к первой станции!',
       'But first, a little riddle. I think that since the glitch broke everything, we should delete the whole site and write it again from scratch. So what do you think, am I right? We’ll find the answer together at the end. On to the first station!'),
     ask: L3('«Ta\'mirlash» tugmasini bosing', 'Нажми «Починить»', 'Tap “Repair”'),
-    askDone: L3("Sakkizta bekat — sakkizta dars", 'Восемь станций — восемь уроков', 'Eight stations, eight lessons')
+    askDone: L3("Sakkizta bekat — sakkizta mavzu", 'Восемь станций — восемь тем', 'Eight stations, eight topics')
   },
   s2: {
     eyebrow: L3('1-bekat · Tuzilish', 'Станция 1 · Каркас', 'Station 1 · Structure'),
@@ -7104,7 +7104,7 @@ const C = {
   },
   s10: {
     eyebrow: L3('Aralash vazifa', 'Смешанное задание', 'Mixed task'),
-    say: L3("Hamma bekatlar yondi! Endi biroz qiyinroq ish: ikki darsni birlashtiramiz. Rasm ham havola bo'la oladi: rasmni bossangiz, galereya ochilsin. Buning uchun rasmni a tegining ichiga qo'yamiz. Qani, bo'laklarni tartib bilan joylang.",
+    say: L3("Hamma bekatlar yondi! Endi biroz qiyinroq ish: ikki mavzuni birlashtiramiz. Rasm ham havola bo'la oladi: rasmni bossangiz, galereya ochilsin. Buning uchun rasmni a tegining ichiga qo'yamiz. Qani, bo'laklarni tartib bilan joylang.",
       'Все станции горят! Теперь задание посложнее: соединим два умения. Сделай картинку с котом ссылкой — нажмёшь на картинку, и откроется галерея. Для этого картинку ставят внутрь тега a. Поставь куски по порядку.',
       'All the stations are lit! Now a harder task: let’s combine two skills. Turn the cat picture into a link, so tapping the picture opens the gallery. To do that, you put the picture inside the a tag. Put the pieces in order.'),
     why: {
@@ -7171,12 +7171,12 @@ const C = {
         why: L3("footer sayt oxirini o'raydi: u yerda odatda saytni kim yasagani, telefon yoki pochta, yana bir-ikkita havola turadi.", 'footer — низ сайта: там обычно авторство и контакты.', 'footer is the bottom of the site: it usually holds the copyright and contacts.'),
           h: L3("Saytning uch qismi: boshi, o'rtasi, oxiri. footer shulardan qaysi biri?", 'У сайта три части: верх, главная часть и низ. Какая из них footer?', 'A site has three parts: the top, the main part and the bottom. Which one is footer?') }
     ],
-    ok: L3("Har bir bekatni yaxshi eslab qolibsiz! Demak, sakkiz dars bekorga ketmabdi.", 'Всё верно! Ты отлично знаешь весь курс.', 'All correct! You know the whole course really well.')
+    ok: L3("Har bir bekatni yaxshi eslab qolibsiz! Demak, bu kurs bekorga ketmabdi.", 'Всё верно! Ты отлично знаешь весь курс.', 'All correct! You know the whole course really well.')
   },
   s12: {
     eyebrow: L3('Kurs tugadi', 'Курс пройден', 'Course complete'),
     say: [
-      { text: L3("Yo'lning boshida men saytni o'chirib, boshidan yozmoqchi edim. Siz esa har bir bekatda bittagina kichik nosozlikni tuzatdingiz: bitta tegni, bitta atributni yoki bitta qiymatni. Sayt butunligicha saqlanib qoldi, sakkiz darslik ishimiz ham yo'qolmadi, do'stlarimga ham kechgacha ulguramiz. Demak, eng qisqa yo'l o'chirib tashlash emas ekan: nosozlikni topib, aynan o'shani tuzatish kerak.",
+      { text: L3("Yo'lning boshida men saytni o'chirib, boshidan yozmoqchi edim. Siz esa har bir bekatda bittagina kichik nosozlikni tuzatdingiz: bitta tegni, bitta atributni yoki bitta qiymatni. Sayt butunligicha saqlanib qoldi, butun kurs davomidagi ishimiz ham yo'qolmadi, do'stlarimga ham kechgacha ulguramiz. Demak, eng qisqa yo'l o'chirib tashlash emas ekan: nosozlikni topib, aynan o'shani tuzatish kerak.",
         'Вернёмся к загадке. Помнишь, я думал, что сайт надо стереть и написать заново? Увы, я ошибся. Ты на каждой странице поправил всего одну маленькую ошибку: один тег, один атрибут или одно значение. Программисты так и работают: находят ошибку и чинят именно её.',
         'Back to our riddle. Remember, I thought we had to delete the site and write it again? Sadly, I was wrong. On each page you fixed just one small bug: one tag, one attribute or one value. That’s how programmers work: they find the bug and fix exactly that.'), k: 'riddle' },
       { text: L3("Mana, saytim yana jonlandi: sarlavha kap-katta, mushuk joyida, osh qadamlari raqamlangan, havola bosiladi, parol esa yashirin turibdi.", 'Смотри, мой сайт снова работает: заголовок большой, картинка на месте, шаги пронумерованы, ссылка нажимается, а пароль спрятан.', 'Look, my site works again: the heading is big, the picture is in place, the steps are numbered, the link works, and the password is hidden.'), k: null },

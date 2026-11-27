@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-03q1-spiski',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "3-dars. 1-qism: ul, li va ol",
-    ru: "Урок 3. Часть 1: ul, li и ol",
-    en: "Lesson 3. Part 1: ul, li and ol"
+    uz: "5-dars. Ro'yxatlar: ul, ol va li",
+    ru: "Урок 5. Списки: ul, ol и li",
+    en: "Lesson 5. Lists: ul, ol and li"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10678,7 +10678,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Retsept sahifasi tayyor", "Страница рецепта готова", "The recipe page is ready"),
-    next: L3("Keyingi qism: ul yoki ol va o'z ro'yxatingiz", "Следующая часть: ul или ol и свой список", "Next part: ul or ol, and your own list"),
+    next: L3("Keyingi dars: ul yoki ol va o'z ro'yxatingiz", "Следующий урок: ul или ol и свой список", "Next lesson: ul or ol, and your own list"),
     roles: C.s15.roles,
     say: [
       { text: L3("Endi sirni ochamiz. Esingizdami, men qadamlarning oldiga raqamlarni qo'lda yozgan edim? Sahifaga qarang: birinchi qadam oldida ikkita raqam turibdi, bir va yana bir! Ol raqamni o'zi qo'yar ekan, men yozganim uning yoniga qo'shilib ketibdi. Demak, ol ichida raqamni qo'lda yozmaymiz.", "Вернёмся к загадке. Помнишь, я сам вписал номер перед каждым шагом? Смотри, что вышло: перед первым шагом два номера, один и ещё раз один. ol ставит номера сам, а мои встали рядом с ними. Значит, в ol номера руками не пишут.", "Back to our riddle. Remember, I typed a number in front of each step myself? Look what happened: the first step has two numbers, one and one again. ol adds numbers by itself, and mine landed right next to them. So you never type numbers by hand in ol."), k: "riddle" },
@@ -10686,14 +10686,14 @@ Object.assign(C, {
       { text: L3("Mahsulotlar ul ichida turibdi: har birining oldida nuqta bor, tartibi esa muhim emas.", "Продукты лежат в ul: у каждого точка, а порядок не важен.", "The ingredients sit in ul: each has a dot, and the order doesn’t matter."), k: "ul" },
       { text: L3("Qadamlar esa ol ichida: ularning tartibi muhim, shuning uchun raqamlarni brauzerning o'zi qo'yadi.", "А шаги лежат в ol: порядок у них важен, поэтому номера ставит браузер.", "The steps are in ol: their order matters, so the browser adds the numbers."), k: "ol" },
       { text: L3("Har bir band esa li ichida yashaydi. li doim ul yoki ol ichida turadi.", "А каждый пункт живёт в li. li всегда стоит внутри ul или ol.", "And each item lives in li. li always sits inside ul or ol."), k: "li" },
-      { text: L3("Lekin bitta savol qoldi: ul va ol teglarini almashtirib qo'ysak, sahifa nima bo'ladi? Keyingi qismda buni sinab ko'ramiz, undan keyin o'z ro'yxatingizni ham yasaymiz!", "Но остался вопрос: что будет, если поменять ul и ol местами? Проверим это в следующей части, а потом соберём твой собственный список!", "But one question is left: what happens if we swap ul and ol? We’ll test it in the next part, and then build your own list!"), k: null }
+      { text: L3("Lekin bitta savol qoldi: ul va ol teglarini almashtirib qo'ysak, sahifa nima bo'ladi? Keyingi darsda buni sinab ko'ramiz, undan keyin o'z ro'yxatingizni ham yasaymiz!", "Но остался вопрос: что будет, если поменять ul и ol местами? Проверим это на следующем уроке, а потом соберём твой собственный список!", "But one question is left: what happens if we swap ul and ol? We’ll test it in the next lesson, and then build your own list!"), k: null }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Bu darsda ro'yxat tuzishni o'rganamiz, oxirida esa o'zingiz ham ro'yxat yasaysiz.","Bu qismda ro'yxat tuzishni o'rganamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такие списки и соберёшь свой.","В этой части ты научишься делать такие списки."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to make lists like these and build your own.","In this part you’ll learn to make lists like these."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Bu darsda ro'yxat tuzishni o'rganamiz, oxirida esa o'zingiz ham ro'yxat yasaysiz.","Bu darsda ro'yxat tuzishni o'rganamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такие списки и соберёшь свой.","В этом уроке ты научишься делать такие списки."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to make lists like these and build your own.","In this lesson you’ll learn to make lists like these."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================

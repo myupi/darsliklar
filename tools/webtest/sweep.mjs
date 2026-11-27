@@ -16,7 +16,7 @@ const base = opt('--base', 'http://localhost:5173');
 const langs = opt('--langs', 'uz').split(',');
 const shots = opt('--shots', null);
 const SIZES = (opt('--sizes', '375x740,360x640,1280x720,1440x900')).split(',').map((s) => s.split('x').map(Number));
-const files = readdirSync(join(root, 'lessons', course)).filter((f) => /^\d\dt\d-.+\.jsx$/.test(f)).filter((f) => nn === 'all' || nn.split(',').some((x) => f.startsWith(x.padStart(2, '0') + 't'))).sort();
+const files = readdirSync(join(root, 'lessons', course)).filter((f) => /^\d\d(?:q\d)?t\d-.+\.jsx$/.test(f)).filter((f) => nn === 'all' || nn.split(',').some((x) => f.startsWith(x.padStart(2, '0') + 't') || f.startsWith(x.padStart(2, '0') + 'q'))).sort();
 if (shots) mkdirSync(shots, { recursive: true });
 const MEASURE = (after) => `(() => {
   const m = document.querySelector('.aq-main'); if (!m) return { err: 'нет .aq-main' };

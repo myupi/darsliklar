@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-07q2-formy-vybor',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "7-dars. 2-qism: button va o'z anketangiz",
-    ru: "Урок 7. Часть 2: button и своя анкета",
-    en: "Lesson 7. Part 2: button and your own form"
+    uz: "14-dars. Tugma va o'z anketangiz",
+    ru: "Урок 14. Кнопка и своя анкета",
+    en: "Lesson 14. A button and your own form"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10682,7 +10682,7 @@ Object.assign(C, {
     ask: L3("Anketa hali tugmasiz", "Анкета пока без кнопки", "The form has no button yet"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda klub anketasini tuzatdik. Esingizdami, men o'yinlarni option tegisiz yozib adashgan edim? Endi har bir o'yin o'zining option tegi ichida turibdi, shuning uchun ro'yxat to'la.", "Привет! В прошлой части мы починили анкету клуба. Помнишь, я написал игры без option и ошибся? Теперь каждая игра стоит в своём option, и список заполнен.", "Hi! In the last part we fixed the club form. Remember, I wrote the games without option and got it wrong? Now every game sits in its own option, and the list is full."), k: "select" },
+      { text: L3("Salom! O'tgan darsda klub anketasini tuzatdik. Esingizdami, men o'yinlarni option tegisiz yozib adashgan edim? Endi har bir o'yin o'zining option tegi ichida turibdi, shuning uchun ro'yxat to'la.", "Привет! На прошлом уроке мы починили анкету клуба. Помнишь, я написал игры без option и ошибся? Теперь каждая игра стоит в своём option, и список заполнен.", "Hi! In the last lesson we fixed the club form. Remember, I wrote the games without option and got it wrong? Now every game sits in its own option, and the list is full."), k: "select" },
       { text: L3("Uzun gap uchun esa textarea bilan katta maydon yasadik, endi hech narsa yashirinib qolmaydi.", "А для длинного рассказа о себе сделали большое поле textarea, и теперь ничего не прячется.", "And for a long story about yourself we made a big textarea field, so nothing gets hidden any more."), k: "textarea" },
       { text: L3("Lekin pastga qarang-chi: o'yinni tanladik, gapni yozdik, endi nimani bosamiz? Hozircha hech narsa yo'q-ku!", "Но посмотри вниз: игру выбрали, рассказ написали, а что нажимать? Пока ничего нет!", "But look down below: we picked the game, we wrote the story, so what do we tap? There’s nothing there yet!"), k: "send" },
       { text: L3("Nima deb o'ylaysiz, anketani yuborish uchun unga nima kerak bo'larkin? Qani, ko'ramiz!", "Как думаешь, что нужно анкете, чтобы её можно было отправить? Давай посмотрим!", "What do you think the form needs so that it can be sent? Let’s find out!"), k: null }

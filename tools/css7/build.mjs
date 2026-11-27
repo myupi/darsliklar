@@ -29,4 +29,7 @@ naborRedaktor(gen);
     'doctype|DOCTYPE|CSS|style|box-sizing|border-box|content-box|Box Model|margin|padding|border|solid|dashed|dotted|width|height|font-size|px|img|background-image|background-repeat|background-size|no-repeat|repeat|cover|url|background-color|background color|color|class|id|hex|rgb|hsl|orangered|orange|tomato|green|blue|red|purple|lavender|yellow|gold|white|skyblue|navy|lightyellow|darkgreen|selector|property|value|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c7.src.jsx'), join(root, 'lessons/css/07-box-model.jsx'), 'css'], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c7.src.jsx'), join(root, 'lessons/css/07-box-model.jsx'), 'css'], { stdio: 'inherit' });
+}

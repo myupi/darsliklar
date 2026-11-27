@@ -12,16 +12,19 @@ const want = process.argv[3] || 'all';
 for (const course of ['html', 'css', 'bootstrap'].filter((c) => wantCourse === 'all' || wantCourse === c)) {
   const dir = join(here, course);
   if (!existsSync(dir)) continue;
-  const files = readdirSync(dir).filter((f) => /^l\d\d\.jsx$/.test(f)).filter((f) => want === 'all' || f === 'l' + want.padStart(2, '0') + '.jsx');
+  const byPart = course === 'html';   // HTML: тесты по частям урока, pNN.jsx (см. build.mjs)
+  const files = readdirSync(dir).filter((f) => (byPart ? /^p\d\d\.jsx$/ : /^l\d\d\.jsx$/).test(f)).filter((f) => want === 'all' || f === (byPart ? 'p' : 'l') + want.padStart(2, '0') + '.jsx');
   for (const f of files) {
-    const nn = f.slice(1, 3);
+    const seqNo = +f.slice(1, 3);
+    const nn = byPart ? String(Math.ceil(seqNo / 2)).padStart(2, '0') + 'q' + (seqNo % 2 ? 1 : 2) : f.slice(1, 3);
     const src = readFileSync(join(dir, f), 'utf8');
     const slug = /const SLUG = '([^']+)'/.exec(src)[1];
+    const tgt = (/target: '([^']+)'/.exec(src) || [])[1];
     const qs = [...src.matchAll(/^\s*\{ id: '([^']+)'.*?correct: (\d)/gm)].map((m) => ({ id: m[1], correct: +m[2] }));
     qs.forEach((q, i) => {
       const k = i + 1, good = k % 2 === 1, pick = good ? q.correct : (q.correct + 1) % 4;
-      const out = `// Сценарий проверки теста ${k}/${qs.length} к уроку ${+nn} курса ${NAME[course]} lessons/${course}/${nn}t${k}-${slug}.jsx.
-// Собрано: node tools/webtest/mkqa.mjs ${course} ${nn} — вручную не править. ${good ? 'Верный ответ.' : 'Неверный ответ (одна попытка).'}
+      const out = `// Сценарий проверки теста ${k}/${qs.length} к уроку ${byPart ? seqNo : +nn} курса ${NAME[course]} lessons/${course}/${nn}t${k}-${slug}.jsx.
+// Собрано: node tools/webtest/mkqa.mjs ${course} ${byPart ? String(seqNo).padStart(2, '0') : nn} — вручную не править. ${good ? 'Верный ответ.' : 'Неверный ответ (одна попытка).'}
 const AF = Object.getPrototypeOf(async function () {}).constructor;
 const step = (name, body, shot) => ({ name, shot: shot === undefined ? name.split(':')[0] + '-done' : shot, run: new AF('qa', body) });
 const STEPS = [
@@ -43,10 +46,10 @@ const STEPS = [
     await qa.waitFor(() => qa.finished().length >= 1, 10000, 'onFinished'); await qa.sleep(800);
     qa.expect(qa.finished().length === 1, 'onFinished ровно один раз');
     const pl = qa.payload();
-    qa.expect(pl && pl.meta && pl.meta.target === '${course}-${nn}' && pl.meta.ptype === '${NAME[course]}' && pl.correct === ${good} && pl.test && pl.test.score === ${good ? 1 : 0} && pl.test.max === 1, 'оценка в payload', { pl });\`, null)
+    qa.expect(pl && pl.meta && pl.meta.target === '${byPart ? tgt : course + '-' + nn}' && pl.meta.ptype === '${NAME[course]}' && pl.correct === ${good} && pl.test && pl.test.score === ${good ? 1 : 0} && pl.test.max === 1, 'оценка в payload', { pl });\`, null)
 ];
 export default {
-  title: 'Тест ${k}/${qs.length} к уроку ${+nn} курса ${NAME[course]}', file: '${course}/${nn}t${k}-${slug}', adapter: 'basic', langs: ['uz'],
+  title: 'Тест ${k}/${qs.length} к уроку ${byPart ? seqNo : +nn} курса ${NAME[course]}', file: '${course}/${nn}t${k}-${slug}', adapter: 'basic', langs: ['uz'],
   size: process.env.QA_SIZE || '375x740', voice: 'fast', expectFinish: true,
   data: { ru: {}, uz: {}, en: {} }, steps: STEPS, flows: []
 };

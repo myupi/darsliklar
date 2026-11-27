@@ -6865,9 +6865,9 @@ const META = {
   lessonId: 'html-04q2-ssylki-i-atributy',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "4-dars. 2-qism: o'z havolangiz va internetdagi saytlar",
-    ru: "Урок 4. Часть 2: своя ссылка и сайты в интернете",
-    en: "Lesson 4. Part 2: your own link and sites on the internet"
+    uz: "8-dars. Boshqa saytlarga havolalar",
+    ru: "Урок 8. Ссылки на другие сайты",
+    en: "Lesson 8. Links to other websites"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -11110,7 +11110,7 @@ Object.assign(C, {
     ask: L3("Havola qayerlarga olib boradi?", "Куда может вести ссылка?", "Where can a link go?"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda saytimizning sahifalarini havolalar bilan bog'ladik: a tegi havola yasaydi, href atributi esa qayerga borishini aytadi.", "Привет! В прошлой части мы связали страницы сайта ссылками: тег a делает ссылку, а атрибут href говорит, куда вести.", "Hi! In the last part we linked the pages of the site: the a tag makes a link, and the href attribute says where it goes."), k: null },
+      { text: L3("Salom! O'tgan darsda saytimizning sahifalarini havolalar bilan bog'ladik: a tegi havola yasaydi, href atributi esa qayerga borishini aytadi.", "Привет! На прошлом уроке мы связали страницы сайта ссылками: тег a делает ссылку, а атрибут href говорит, куда вести.", "Hi! In the last lesson we linked the pages of the site: the a tag makes a link, and the href attribute says where it goes."), k: null },
       { text: L3("Qo'shtirnoq ichiga esa hozircha faqat o'z fayllarimizning nomini yozdik: osh.html va oyinlar.html. Brauzer ularni harfma-harf qidirib topdi.", "В кавычках у нас пока были только имена своих файлов: osh.html и oyinlar.html. Браузер искал их буква в букву.", "So far the quotes held only the names of our own files: osh.html and oyinlar.html. The browser looked for them letter by letter."), k: "val" },
       { text: L3("Nima deb o'ylaysiz, fayl nomi o'rniga boshqa saytning manzilini yozsak, brauzer nima qiladi? Javobini birozdan keyin topamiz, oldin esa saytimizni bir aylanib chiqamiz. Ketdik!", "Как думаешь, что сделает браузер, если вместо имени файла написать адрес другого сайта? Ответ найдём чуть позже, а сначала пройдёмся по нашему сайту. Погнали!", "What do you think the browser will do if we write another site’s address instead of a file name? We’ll find the answer soon, but first let’s walk around our site. Let’s go!"), k: null }
     ]

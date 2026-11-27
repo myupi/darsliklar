@@ -15,8 +15,8 @@ export default {
   slug: 'spiski',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: "3-dars. 1-qism: ul, li va ol", ru: 'Урок 3. Часть 1: ul, li и ol', en: 'Lesson 3. Part 1: ul, li and ol' },
-    { uz: "3-dars. 2-qism: ul yoki ol va o'z ro'yxatingiz", ru: 'Урок 3. Часть 2: ul или ol и свой список', en: 'Lesson 3. Part 2: ul or ol and your own list' }
+    { uz: "5-dars. Ro'yxatlar: ul, ol va li", ru: "Урок 5. Списки: ul, ol и li", en: "Lesson 5. Lists: ul, ol and li" },
+    { uz: "6-dars. ul yoki ol: o'z ro'yxatingiz", ru: "Урок 6. ul или ol: свой список", en: "Lesson 6. ul or ol: your own list" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -32,14 +32,14 @@ export default {
   ],
   // Часть 1: загадка задаётся как раньше, но «в этой части», а не «в этом уроке».
   s1Done: {
-    uz: [["Bu darsda ro'yxat tuzishni o'rganamiz, oxirida esa o'zingiz ham ro'yxat yasaysiz.", "Bu qismda ro'yxat tuzishni o'rganamiz."]],
-    ru: [['Сегодня ты научишься делать такие списки и соберёшь свой.', 'В этой части ты научишься делать такие списки.'], ['в конце урока', 'в конце этой части']],
-    en: [['Today you’ll learn to make lists like these and build your own.', 'In this part you’ll learn to make lists like these.'], ['at the end of the lesson', 'at the end of this part']]
+    uz: [["Bu darsda ro'yxat tuzishni o'rganamiz, oxirida esa o'zingiz ham ro'yxat yasaysiz.", "Bu darsda ro'yxat tuzishni o'rganamiz."]],
+    ru: [['Сегодня ты научишься делать такие списки и соберёшь свой.', 'В этом уроке ты научишься делать такие списки.'], ['в конце урока', 'в конце урока']],
+    en: [['Today you’ll learn to make lists like these and build your own.', 'In this lesson you’ll learn to make lists like these.'], ['at the end of the lesson', 'at the end of the lesson']]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: "Retsept sahifasi tayyor", ru: 'Страница рецепта готова', en: 'The recipe page is ready' },
-    next: { uz: "Keyingi qism: ul yoki ol va o'z ro'yxatingiz", ru: 'Следующая часть: ul или ol и свой список', en: 'Next part: ul or ol, and your own list' },
+    next: { uz: "Keyingi dars: ul yoki ol va o'z ro'yxatingiz", ru: 'Следующий урок: ul или ol и свой список', en: 'Next lesson: ul or ol, and your own list' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -60,9 +60,9 @@ export default {
         ru: 'А каждый пункт живёт в li. li всегда стоит внутри ul или ol.',
         en: 'And each item lives in li. li always sits inside ul or ol.' } },
       { k: null, text: {
-        uz: "Lekin bitta savol qoldi: ul va ol teglarini almashtirib qo'ysak, sahifa nima bo'ladi? Keyingi qismda buni sinab ko'ramiz, undan keyin o'z ro'yxatingizni ham yasaymiz!",
-        ru: 'Но остался вопрос: что будет, если поменять ul и ol местами? Проверим это в следующей части, а потом соберём твой собственный список!',
-        en: 'But one question is left: what happens if we swap ul and ol? We’ll test it in the next part, and then build your own list!' } }
+        uz: "Lekin bitta savol qoldi: ul va ol teglarini almashtirib qo'ysak, sahifa nima bo'ladi? Keyingi darsda buni sinab ko'ramiz, undan keyin o'z ro'yxatingizni ham yasaymiz!",
+        ru: 'Но остался вопрос: что будет, если поменять ul и ol местами? Проверим это на следующем уроке, а потом соберём твой собственный список!',
+        en: 'But one question is left: what happens if we swap ul and ol? We’ll test it in the next lesson, and then build your own list!' } }
     ]
   },
   h2: {
@@ -71,9 +71,9 @@ export default {
     roles: true,
     say: [
       { k: null, text: {
-        uz: "Salom! O'tgan qismda retsept sahifasini tuzdik: mahsulotlar nuqtali ro'yxatda, qadamlar raqamli ro'yxatda.",
-        ru: 'Привет! В прошлой части мы собрали страницу рецепта: продукты в списке с точками, шаги в списке с номерами.',
-        en: 'Hi! In the last part we built the recipe page: the ingredients in a bulleted list, the steps in a numbered one.' } },
+        uz: "Salom! O'tgan darsda retsept sahifasini tuzdik: mahsulotlar nuqtali ro'yxatda, qadamlar raqamli ro'yxatda.",
+        ru: 'Привет! На прошлом уроке мы собрали страницу рецепта: продукты в списке с точками, шаги в списке с номерами.',
+        en: 'Hi! In the last lesson we built the recipe page: the ingredients in a bulleted list, the steps in a numbered one.' } },
       { k: 'li', text: {
         uz: "Lekin bandlarning o'zi ikkala ro'yxatda ham bir xil: ikkalasida ham li. Farq faqat tashqi tegda!",
         ru: 'Но сами пункты в обоих списках одинаковые: и там и там li. Разница только во внешнем теге!',

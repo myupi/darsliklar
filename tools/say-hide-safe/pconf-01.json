@@ -1,0 +1,5 @@
+{
+  "tools/qism/pconf/01-p2.part.jsx": {
+    "want": "FB.wrongText: правильный текст окна из задания (TABS[1].text — «Mushuk uxlayapti» / «Кот спит» / «The cat is sleeping», XTRA.football в дополнительной задаче), константа cfg, не ввод ученика; слово ученика {got} — в метках"
+  }
+}

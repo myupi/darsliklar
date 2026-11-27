@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-06q1-formy-vvod',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "6-dars. 1-qism: input va type",
-    ru: "Урок 6. Часть 1: input и type",
-    en: "Lesson 6. Part 1: input and type"
+    uz: "11-dars. Kiritish maydonlari: input va type",
+    ru: "Урок 11. Поля ввода: input и type",
+    en: "Lesson 11. Input fields: input and type"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10656,18 +10656,18 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Klub sahifasida uchta maydon bor", "На странице клуба три поля", "The club page has three fields"),
-    next: L3("Keyingi qism: placeholder, label va form", "Следующая часть: placeholder, label и form", "Next part: placeholder, label and form"),
+    next: L3("Keyingi dars: placeholder, label va form", "Следующий урок: placeholder, label и form", "Next lesson: placeholder, label and form"),
     roles: C.s15.roles,
     say: [
       { text: L3("Qarang-chi, klub sahifasi jonlandi! Oldin unda faqat yozuvlar turardi, endi esa har bir yozuvning yonida o'zining maydoni bor.", "Смотри, страница клуба ожила! Раньше на ней были одни подписи, а теперь рядом с каждой есть своё поле.", "Look, the club page came alive! It used to have only captions, and now every caption has its own field."), k: null },
       { text: L3("Bu maydonlarning hammasini bitta teg yasadi: input. U yopuvchi tegsiz yoziladi, ichiga esa kodning o'zi emas, sahifaga kirgan odam yozadi.", "Все эти поля сделал один тег: input. У него нет закрывающего тега, а внутри пишет не код, а тот, кто открыл страницу.", "One tag made all these fields: input. It has no closing tag, and what goes inside isn’t written by the code but by the person who opens the page."), k: "input" },
       { text: L3("Maydonlar bir-biridan qanday farq qilishini type atributi hal qiladi. text bo'lsa, yozuv ochiq turadi. number bo'lsa, faqat son yoziladi. password bo'lsa, harflar nuqtalar ortiga yashirinadi.", "А чем поля отличаются друг от друга, решает атрибут type. С text текст виден. С number пишутся только числа. А с password буквы прячутся за точками.", "What makes the fields different from each other is the type attribute. With text, the text is visible. With number, only numbers go in. With password, the letters hide behind dots."), k: "type" },
       { text: L3("Parol maydonini esa o'zingiz yig'dingiz: bo'laklarni to'g'ri tartibda qo'ydingiz. Yopuvchi tegga ham aldanmadingiz, chunki input uni kutmaydi.", "Поле для пароля собрано по порядку, и закрывающий тег никому не понадобился: у input его нет.", "You built the password field yourself and put the pieces in order. And you didn’t fall for the extra closing tag, because input doesn’t need one."), k: null },
-      { text: L3("Lekin bitta muammo qoldi. Sahifaga kirgan odam bo'sh maydonni ko'radi-yu, unga nima yozishni qayerdan bilsin? Keyingi qismda maydonning ichiga kichkina ishora qo'yamiz, yozuvni maydon bilan bog'laymiz va hammasini bitta anketaga yig'amiz!", "Но остался вопрос. Человек открывает страницу и видит пустое поле: откуда ему знать, что туда писать? В следующей части мы научим поле подсказывать, свяжем подпись с полем и соберём всё в одну анкету!", "But one problem is left. A person opens the page and sees an empty field: how would they know what to type there? In the next part we’ll make the field give a hint, tie each caption to its field and gather everything into one form!"), k: null }
+      { text: L3("Lekin bitta muammo qoldi. Sahifaga kirgan odam bo'sh maydonni ko'radi-yu, unga nima yozishni qayerdan bilsin? Keyingi darsda maydonning ichiga kichkina ishora qo'yamiz, yozuvni maydon bilan bog'laymiz va hammasini bitta anketaga yig'amiz!", "Но остался вопрос. Человек открывает страницу и видит пустое поле: откуда ему знать, что туда писать? На следующем уроке мы научим поле подсказывать, свяжем подпись с полем и соберём всё в одну анкету!", "But one problem is left. A person opens the page and sees an empty field: how would they know what to type there? In the next lesson we’ll make the field give a hint, tie each caption to its field and gather everything into one form!"), k: null }
     ]
   }
 });
-C.s1.done = L3("Bu qismda sahifaga shunday maydonlar qo'yishni va ularning turini tanlashni o'rganamiz. Parolning harflari nega nuqtaga aylanishini ham shu yerda bilib olasiz.", "В этой части ты научишься ставить на страницу такие поля и выбирать их вид. А ещё поймёшь, почему буквы пароля превращаются в точки.", "In this part you’ll learn to put fields like these on a page and choose their kind. You’ll also find out why the letters of a password turn into dots.");
+C.s1.done = L3("Bu darsda sahifaga shunday maydonlar qo'yishni va ularning turini tanlashni o'rganamiz. Parolning harflari nega nuqtaga aylanishini ham shu yerda bilib olasiz.", "В этом уроке ты научишься ставить на страницу такие поля и выбирать их вид. А ещё поймёшь, почему буквы пароля превращаются в точки.", "In this lesson you’ll learn to put fields like these on a page and choose their kind. You’ll also find out why the letters of a password turn into dots.");
 
 // =============================================================================
 // E1. ВЫВОД ЧАСТИ 1 (tools/qism/build.mjs; построен из S15 этого урока)

@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-03q2-spiski',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "3-dars. 2-qism: ul yoki ol va o'z ro'yxatingiz",
-    ru: "Урок 3. Часть 2: ul или ol и свой список",
-    en: "Lesson 3. Part 2: ul or ol and your own list"
+    uz: "6-dars. ul yoki ol: o'z ro'yxatingiz",
+    ru: "Урок 6. ul или ol: свой список",
+    en: "Lesson 6. ul or ol: your own list"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10680,7 +10680,7 @@ Object.assign(C, {
     ask: L3("Ikki ro'yxat, bitta farq", "Два списка и одно отличие", "Two lists, one difference"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda retsept sahifasini tuzdik: mahsulotlar nuqtali ro'yxatda, qadamlar raqamli ro'yxatda.", "Привет! В прошлой части мы собрали страницу рецепта: продукты в списке с точками, шаги в списке с номерами.", "Hi! In the last part we built the recipe page: the ingredients in a bulleted list, the steps in a numbered one."), k: null },
+      { text: L3("Salom! O'tgan darsda retsept sahifasini tuzdik: mahsulotlar nuqtali ro'yxatda, qadamlar raqamli ro'yxatda.", "Привет! На прошлом уроке мы собрали страницу рецепта: продукты в списке с точками, шаги в списке с номерами.", "Hi! In the last lesson we built the recipe page: the ingredients in a bulleted list, the steps in a numbered one."), k: null },
       { text: L3("Lekin bandlarning o'zi ikkala ro'yxatda ham bir xil: ikkalasida ham li. Farq faqat tashqi tegda!", "Но сами пункты в обоих списках одинаковые: и там и там li. Разница только во внешнем теге!", "But the items themselves are the same in both lists: li in each. The difference is only the outer tag!"), k: "li" },
       { text: L3("Nima deb o'ylaysiz, mahsulotlar ro'yxatida ul o'rniga ol qo'ysam, sahifada nima o'zgaradi? Qani, ko'ramiz. Ketdik!", "Как думаешь, что изменится на странице, если у продуктов поменять ul на ol? Давай посмотрим. Погнали!", "What do you think will change on the page if I swap ul for ol on the ingredients? Let’s see. Let’s go!"), k: null }
     ]

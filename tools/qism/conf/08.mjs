@@ -24,8 +24,8 @@ export default {
   slug: 'struktura-sajta',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: "8-dars. 1-qism: header, main, footer va nav", ru: 'Урок 8. Часть 1: header, main, footer и nav', en: 'Lesson 8. Part 1: header, main, footer and nav' },
-    { uz: "8-dars. 2-qism: section va o'z saytingiz", ru: 'Урок 8. Часть 2: section и свой сайт', en: 'Lesson 8. Part 2: section and your own site' }
+    { uz: "15-dars. Sayt qismlari: header, nav, main, footer", ru: "Урок 15. Части сайта: header, nav, main, footer", en: "Lesson 15. Parts of a site: header, nav, main, footer" },
+    { uz: "16-dars. Sayt bo'limlari: section", ru: "Урок 16. Разделы сайта: section", en: "Lesson 16. Site sections: section" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -41,14 +41,14 @@ export default {
   ],
   // Часть 1: загадка задаётся как раньше, но «в этой части», а не «на уроке» (в узбекской версии «Сегодня…» нет).
   s1Done: {
-    uz: [["Buni dars oxirida o'sha saytni ochib tekshiramiz.", "Buni shu qism oxirida o'sha saytni ochib tekshiramiz."]],
-    ru: [['Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта.', 'В этой части ты научишься делить сайт на header, nav, main и footer.'], ['в конце урока', 'в конце этой части']],
-    en: [['Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site.', 'In this part you’ll learn to split a site into header, nav, main and footer.'], ['at the end of the lesson', 'at the end of this part']]
+    uz: [["Buni dars oxirida o'sha saytni ochib tekshiramiz.", "Buni shu dars oxirida o'sha saytni ochib tekshiramiz."]],
+    ru: [['Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта.', 'В этом уроке ты научишься делить сайт на header, nav, main и footer.'], ['в конце урока', 'в конце урока']],
+    en: [['Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site.', 'In this lesson you’ll learn to split a site into header, nav, main and footer.'], ['at the end of the lesson', 'at the end of the lesson']]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: "Kodining saytiga qarang", ru: 'Посмотри на сайт Коди', en: 'Look at Kodi’s site' },
-    next: { uz: "Keyingi qism: section va o'z saytingiz", ru: 'Следующая часть: section и свой сайт', en: 'Next part: section and your own site' },
+    next: { uz: "Keyingi dars: section va o'z saytingiz", ru: 'Следующий урок: section и свой сайт', en: 'Next lesson: section and your own site' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -76,9 +76,9 @@ export default {
         ru: 'Внизу footer: он обозначает низ сайта. Обычно там пишут год и название сайта.',
         en: 'At the bottom is footer: it marks the bottom of the site. Usually it holds the year and the site’s name.' } },
       { k: 'main', text: {
-        uz: "Lekin bitta narsa menga tinchlik bermayapti: main ichida o'yinlar bilan retseptlar bir joyda aralash yotibdi-ku. Ularni bir-biridan qanday ajratamiz? Buni keyingi qismda bilib olamiz, undan keyin o'z saytingizni ham yasaymiz!",
-        ru: 'Но одна вещь не даёт мне покоя: внутри main игры и рецепты лежат вперемешку! Как их разделить? Узнаем в следующей части, а потом соберём твой собственный сайт!',
-        en: 'But one thing keeps bugging me: inside main the games and the recipes are all mixed together! How do we separate them? We’ll find out in the next part, and then we’ll build your own site!' } }
+        uz: "Lekin bitta narsa menga tinchlik bermayapti: main ichida o'yinlar bilan retseptlar bir joyda aralash yotibdi-ku. Ularni bir-biridan qanday ajratamiz? Buni keyingi darsda bilib olamiz, undan keyin o'z saytingizni ham yasaymiz!",
+        ru: 'Но одна вещь не даёт мне покоя: внутри main игры и рецепты лежат вперемешку! Как их разделить? Узнаем на следующем уроке, а потом соберём твой собственный сайт!',
+        en: 'But one thing keeps bugging me: inside main the games and the recipes are all mixed together! How do we separate them? We’ll find out in the next lesson, and then we’ll build your own site!' } }
     ]
   },
   h2: {

@@ -24,8 +24,8 @@ export default {
   slug: 'formy-vybor',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: '7-dars. 1-qism: select, option va textarea', ru: 'Урок 7. Часть 1: select, option и textarea', en: 'Lesson 7. Part 1: select, option and textarea' },
-    { uz: "7-dars. 2-qism: button va o'z anketangiz", ru: 'Урок 7. Часть 2: button и своя анкета', en: 'Lesson 7. Part 2: button and your own form' }
+    { uz: "13-dars. Tanlash ro'yxati va katta maydon", ru: "Урок 13. Список выбора и большое поле", en: "Lesson 13. A choice list and a big field" },
+    { uz: "14-dars. Tugma va o'z anketangiz", ru: "Урок 14. Кнопка и своя анкета", en: "Lesson 14. A button and your own form" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -42,15 +42,15 @@ export default {
   // Часть 1: загадка задаётся как раньше, но «в этой части» (в части 1 — только список и большое поле, кнопка и своя анкета — в части 2).
   // По-узбекски в исходнике нет обещания «ответ найдём в конце» — добавлено (как в русском и английском), иначе E1 разгадывает то, что не обещали.
   s1Done: {
-    uz: [["Bugun ro'yxat, katta maydon va tugma yasaymiz.", "Bu qismda ro'yxat va katta maydon yasaymiz."],
-      ["Sizningcha, qaysi biri ro'yxatni chiqaradi?", "Sizningcha, qaysi biri ro'yxatni chiqaradi? Javobni shu qismning oxirida birga topamiz."]],
-    ru: [['Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету.', 'В этой части ты научишься делать такой список и большое поле.'], ['в конце урока', 'в конце этой части']],
-    en: [['Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form.', 'In this part you’ll learn to make a list like this and a big field.'], ['at the end of the lesson', 'at the end of this part']]
+    uz: [["Bugun ro'yxat, katta maydon va tugma yasaymiz.", "Bu darsda ro'yxat va katta maydon yasaymiz."],
+      ["Sizningcha, qaysi biri ro'yxatni chiqaradi?", "Sizningcha, qaysi biri ro'yxatni chiqaradi? Javobni shu dars oxirida birga topamiz."]],
+    ru: [['Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету.', 'В этом уроке ты научишься делать такой список и большое поле.'], ['в конце урока', 'в конце урока']],
+    en: [['Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form.', 'In this lesson you’ll learn to make a list like this and a big field.'], ['at the end of the lesson', 'at the end of the lesson']]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: "Anketa: ro'yxat va katta maydon", ru: 'Анкета: список и большое поле', en: 'The form: a list and a big field' },
-    next: { uz: "Keyingi qism: button va o'z anketangiz", ru: 'Следующая часть: button и своя анкета', en: 'Next part: button and your own form' },
+    next: { uz: "Keyingi dars: button va o'z anketangiz", ru: 'Следующий урок: button и своя анкета', en: 'Next lesson: button and your own form' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -74,9 +74,9 @@ export default {
         ru: 'Длинное предложение не влезает в input, поэтому большое поле делает textarea. И не забывай про закрывающий тег.',
         en: 'A long sentence doesn’t fit in input, so the big field is made by textarea. And don’t forget its closing tag.' } },
       { k: null, text: {
-        uz: "Lekin bitta narsa yetishmayapti: odam o'yinni tanladi, o'zi haqida yozdi, endi javobini nima bilan yuboradi? Buni keyingi qismda topamiz, undan keyin o'z anketangizni ham yig'amiz!",
-        ru: 'Но кое-чего не хватает: человек выбрал игру, написал о себе, а чем отправить ответ? Это узнаем в следующей части, а потом соберём твою собственную анкету!',
-        en: 'But something is still missing: a person picked a game and wrote about themselves, so what do they send the answer with? We’ll find out in the next part, and then build your own form!' } }
+        uz: "Lekin bitta narsa yetishmayapti: odam o'yinni tanladi, o'zi haqida yozdi, endi javobini nima bilan yuboradi? Buni keyingi darsda topamiz, undan keyin o'z anketangizni ham yig'amiz!",
+        ru: 'Но кое-чего не хватает: человек выбрал игру, написал о себе, а чем отправить ответ? Это узнаем на следующем уроке, а потом соберём твою собственную анкету!',
+        en: 'But something is still missing: a person picked a game and wrote about themselves, so what do they send the answer with? We’ll find out in the next lesson, and then build your own form!' } }
     ]
   },
   h2: {
@@ -85,9 +85,9 @@ export default {
     roles: true,
     say: [
       { k: 'select', text: {
-        uz: "Salom! O'tgan qismda klub anketasini tuzatdik. Esingizdami, men o'yinlarni option tegisiz yozib adashgan edim? Endi har bir o'yin o'zining option tegi ichida turibdi, shuning uchun ro'yxat to'la.",
-        ru: 'Привет! В прошлой части мы починили анкету клуба. Помнишь, я написал игры без option и ошибся? Теперь каждая игра стоит в своём option, и список заполнен.',
-        en: 'Hi! In the last part we fixed the club form. Remember, I wrote the games without option and got it wrong? Now every game sits in its own option, and the list is full.' } },
+        uz: "Salom! O'tgan darsda klub anketasini tuzatdik. Esingizdami, men o'yinlarni option tegisiz yozib adashgan edim? Endi har bir o'yin o'zining option tegi ichida turibdi, shuning uchun ro'yxat to'la.",
+        ru: 'Привет! На прошлом уроке мы починили анкету клуба. Помнишь, я написал игры без option и ошибся? Теперь каждая игра стоит в своём option, и список заполнен.',
+        en: 'Hi! In the last lesson we fixed the club form. Remember, I wrote the games without option and got it wrong? Now every game sits in its own option, and the list is full.' } },
       { k: 'textarea', text: {
         uz: "Uzun gap uchun esa textarea bilan katta maydon yasadik, endi hech narsa yashirinib qolmaydi.",
         ru: 'А для длинного рассказа о себе сделали большое поле textarea, и теперь ничего не прячется.',

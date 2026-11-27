@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-06q2-formy-vvod',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "6-dars. 2-qism: placeholder, label va form",
-    ru: "Урок 6. Часть 2: placeholder, label и form",
-    en: "Lesson 6. Part 2: placeholder, label and form"
+    uz: "12-dars. Ishora va yozuv: placeholder va label",
+    ru: "Урок 12. Подсказки и подписи: placeholder и label",
+    en: "Lesson 12. Hints and labels: placeholder and label"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10658,10 +10658,10 @@ Object.assign(C, {
     ask: L3("Parol maydonidagi sir", "Загадка про пароль", "The password riddle"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda klub sahifasiga maydonlar qo'ydik: input maydon yasadi, type esa uning turini tanladi. Parol maydonida harflar nuqtaga aylanganini esingizdami?", "Привет! В прошлой части мы поставили на страницу клуба поля: input делает поле, а type выбирает его вид. Помнишь, как в поле пароля буквы спрятались за точками?", "Hi! Last time we put fields on the club page: input makes a field, and type chooses its kind. Remember how the letters in the password field hid behind dots?"), k: "type" },
+      { text: L3("Salom! O'tgan darsda klub sahifasiga maydonlar qo'ydik: input maydon yasadi, type esa uning turini tanladi. Parol maydonida harflar nuqtaga aylanganini esingizdami?", "Привет! На прошлом уроке мы поставили на страницу клуба поля: input делает поле, а type выбирает его вид. Помнишь, как в поле пароля буквы спрятались за точками?", "Hi! Last time we put fields on the club page: input makes a field, and type chooses its kind. Remember how the letters in the password field hid behind dots?"), k: "type" },
       { text: L3("Endi bitta sir bor. Kecha ukam so'radi: «Parol yozganda harflar nega nuqtaga aylanadi?» Men shoshilib javob berdim: parol maydonida placeholder bor, shuning uchun harflar nuqtaga aylanadi, dedim. Mana, o'sha sahifa: parol maydonining ichida «Parol» degan so'z turibdi.", "Теперь загадка. Я сделал поле для пароля на другой странице, добавил ему атрибут placeholder и написал в нём слово «Пароль». По-моему, теперь пароль сам спрячется за точками.", "Now a riddle. On another page I made a password field, added the placeholder attribute to it and wrote the word “Password” in it. I think the password will now hide behind dots by itself."), k: "riddle" },
-      { text: L3("Ukam jim qoldi-yu, o'zim tinchimay yuribman: haqiqatan ham shundaymi? Siz nima deb o'ylaysiz, parol endi nuqtalar ortiga yashirinadimi? O'tgan qismda nimalarni o'rganganingizni eslab ko'ring-chi!", "Ну как думаешь, я прав? Вспомни, чему мы научились в прошлой части.", "So what do you think, am I right? Try to remember what we learned in the last part."), k: "riddle" },
-      { text: L3("Javobni shu qismning oxirida birga topamiz. Buning uchun placeholder nima ekanini, yozuvni maydon bilan qanday bog'lashni va hammasini bitta anketaga qanday yig'ishni o'rganamiz. Ketdik!", "Ответ найдём вместе в конце этой части. Для этого узнаем, что такое placeholder, как связать подпись с полем и как собрать всё в одну анкету. Поехали!", "We’ll find the answer together at the end of this part. First we’ll find out what placeholder is, how to tie a caption to a field and how to gather everything into one form. Let’s go!"), k: "riddle" }
+      { text: L3("Ukam jim qoldi-yu, o'zim tinchimay yuribman: haqiqatan ham shundaymi? Siz nima deb o'ylaysiz, parol endi nuqtalar ortiga yashirinadimi? O'tgan darsda nimalarni o'rganganingizni eslab ko'ring-chi!", "Ну как думаешь, я прав? Вспомни, чему мы научились на прошлом уроке.", "So what do you think, am I right? Try to remember what we learned in the last lesson."), k: "riddle" },
+      { text: L3("Javobni shu dars oxirida birga topamiz. Buning uchun placeholder nima ekanini, yozuvni maydon bilan qanday bog'lashni va hammasini bitta anketaga qanday yig'ishni o'rganamiz. Ketdik!", "Ответ найдём вместе в конце урока. Для этого узнаем, что такое placeholder, как связать подпись с полем и как собрать всё в одну анкету. Поехали!", "We’ll find the answer together at the end of the lesson. First we’ll find out what placeholder is, how to tie a caption to a field and how to gather everything into one form. Let’s go!"), k: "riddle" }
     ]
   }
 });

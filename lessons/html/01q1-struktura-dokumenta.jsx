@@ -6872,9 +6872,9 @@ const META = {
   lessonId: 'html-01q1-struktura-dokumenta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "1-dars. 1-qism: teg, head va title",
-    ru: "Урок 1. Часть 1: тег, head и title",
-    en: "Lesson 1. Part 1: tags, head and title"
+    uz: "1-dars. Teg, head va title",
+    ru: "Урок 1. Теги, head и title",
+    en: "Lesson 1. Tags, head and title"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -7754,21 +7754,21 @@ Object.assign(C, {
   e1: {
     eyebrow: L3('Xulosa', 'Итог', 'Summary'),
     ask: L3("Sahifaning boshi tayyor", 'Начало страницы готово', 'The top of the page is ready'),
-    next: L3("Keyingi qism: oynada ko'rinadigan hamma narsa", 'Следующая часть: всё, что видно в окне', 'Next part: everything you see in the window'),
+    next: L3("Keyingi dars: oynada ko'rinadigan hamma narsa", 'Следующий урок: всё, что видно в окне', 'Next lesson: everything you see in the window'),
     say: [
       { text: L3("Mana, sahifangizning boshi tayyor! Nomi yorliqda turibdi.", 'Вот и готово начало твоей страницы! Её название уже на вкладке.', 'Here it is, the top of your page! Its name is already on the tab.'), k: null },
       { text: L3("Esingizdami? Teg bu burchakli qavs ichidagi so'z. Brauzer uni ko'rsatmaydi, faqat o'qiydi.", 'Помнишь? Тег — это слово в угловых скобках. Браузер его не показывает, а только читает.', 'Remember? A tag is a word in angle brackets. The browser doesn’t show it, it just reads it.'), k: null },
       { text: L3("html butun sahifani o'rab turadi.", 'html обнимает всю страницу.', 'html wraps the whole page.'), k: 'html' },
       { text: L3("head sahifa haqidagi ma'lumotlarni saqlaydi.", 'head хранит информацию о странице.', 'head keeps information about the page.'), k: 'head' },
       { text: L3("title head ichida yashaydi. Unga sahifa nomi yoziladi, brauzer esa shu nomni yorliqda ko'rsatadi.", 'title живёт внутри head. В нём пишут название страницы, а браузер показывает его на вкладке.', 'title lives inside head. It holds the page name, and the browser shows that name on the tab.'), k: 'title' },
-      { text: L3("Lekin qarang: brauzer oynasi hali bo'sh. Oynada ko'rinadigan hamma narsa qayerda yashaydi? Buni keyingi qismda bilib olamiz!", 'Но посмотри: окно браузера пока пустое. Где живёт всё, что видно в окне? Узнаем в следующей части!', 'But look: the browser window is still empty. Where does everything you see in the window live? We’ll find out in the next part!'), k: 'body' }
+      { text: L3("Lekin qarang: brauzer oynasi hali bo'sh. Oynada ko'rinadigan hamma narsa qayerda yashaydi? Buni keyingi darsda bilib olamiz!", 'Но посмотри: окно браузера пока пустое. Где живёт всё, что видно в окне? Узнаем на следующем уроке!', 'But look: the browser window is still empty. Where does everything you see in the window live? We’ll find out in the next lesson!'), k: 'body' }
     ]
   },
   h2: {
     eyebrow: L3('Davom etamiz', 'Продолжаем', 'Let’s continue'),
     ask: L3("Oyna hali bo'sh", 'Окно пока пустое', 'The window is still empty'),
     say: [
-      { text: L3("Salom! O'tgan qismda biz sahifaning boshini yasadik: html, head va title. Sahifa nomi yorliqda turibdi.", 'Привет! В прошлой части мы собрали начало страницы: html, head и title. Название страницы уже на вкладке.', 'Hi! In the last part we built the top of the page: html, head and title. The page name is already on the tab.'), k: 'title' },
+      { text: L3("Salom! O'tgan darsda biz sahifaning boshini yasadik: html, head va title. Sahifa nomi yorliqda turibdi.", 'Привет! На прошлом уроке мы собрали начало страницы: html, head и title. Название страницы уже на вкладке.', 'Hi! In the last lesson we built the top of the page: html, head and title. The page name is already on the tab.'), k: 'title' },
       { text: L3("Lekin brauzer oynasiga qarang: u bo'm-bo'sh! Matn yo'q, rasm yo'q, tugma yo'q.", 'Но посмотри на окно браузера: оно совсем пустое! Ни текста, ни картинок, ни кнопок.', 'But look at the browser window: it’s completely empty! No text, no pictures, no buttons.'), k: 'body' },
       { text: L3("Nima deb o'ylaysiz, oynadagi hamma narsa qayerda yashaydi? Bugun shuni bilib olamiz va sahifani to'ldiramiz. Ketdik!", 'Как думаешь, где живёт всё, что видно в окне? Сегодня узнаем и заполним страницу. Погнали!', 'Where do you think everything in the window lives? Today we’ll find out and fill the page. Let’s go!'), k: null }
     ]

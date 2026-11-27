@@ -12,6 +12,11 @@ export function titlesOf(lesson, course) {
   if (TITLES[lesson.file]) return TITLES[lesson.file];
   if (lesson.kind === 'test' && lesson.tk != null && course) {
     // Урок частями: тема теста — по целому файлу урока (<NN>-<slug>), а не по части.
+    // Тест части урока (<NN>q<K>t<J>): тема — название этой части (её файл урока).
+    if (lesson.qk != null && lesson.slug) {
+      const part = TITLES[`${lesson.course}/${String(lesson.n).padStart(2, '0')}q${lesson.qk}-${lesson.slug}`];
+      if (part) return Object.fromEntries(LANGS.map((l) => [l, `${TEST[l]} ${lesson.tk}/5 · ${part[l].replace(PREFIX[l], '')}`]));
+    }
     const whole = lesson.slug ? TITLES[`${lesson.course}/${String(lesson.n).padStart(2, '0')}-${lesson.slug}`] : null;
     const own = course.lessons.find((l) => l.kind === 'lesson' && l.n === lesson.n && l.file);
     const t = whole || (own && TITLES[own.file]);

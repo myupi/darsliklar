@@ -24,8 +24,8 @@ export default {
   slug: 'izobrazheniya',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: '5-dars. 1-qism: img, src va alt', ru: 'Урок 5. Часть 1: img, src и alt', en: 'Lesson 5. Part 1: img, src and alt' },
-    { uz: "5-dars. 2-qism: internetdagi rasm va o'z rasmingiz", ru: 'Урок 5. Часть 2: картинка из интернета и своя картинка', en: 'Lesson 5. Part 2: a picture from the internet and your own' }
+    { uz: "9-dars. Rasmlar: img, src va alt", ru: "Урок 9. Картинки: img, src и alt", en: "Lesson 9. Images: img, src and alt" },
+    { uz: "10-dars. Internetdagi rasmlar", ru: "Урок 10. Картинки из интернета", en: "Lesson 10. Pictures from the web" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -44,22 +44,22 @@ export default {
   // Часть 1: загадка задаётся как раньше, но «в этой части»; картинки из интернета — материал части 2, в обещании их нет.
   s1Done: {
     uz: [
-      ["Bugungi darsdan keyin siz ham sahifaga rasm qo'ya olasiz: o'z faylingizdan ham, internetdagi saytdan ham.", "Bu qismda siz ham sahifaga rasm qo'yishni o'rganasiz."],
-      ["Shoshilmayman, oldin rasm qo'yishni o'rganib olamiz.", "Shoshilmayman: oldin rasm qo'yishni o'rganib olamiz, javobni esa shu qism oxirida topamiz."]
+      ["Bugungi darsdan keyin siz ham sahifaga rasm qo'ya olasiz: o'z faylingizdan ham, internetdagi saytdan ham.", "Bu darsda siz ham sahifaga rasm qo'yishni o'rganasiz."],
+      ["Shoshilmayman, oldin rasm qo'yishni o'rganib olamiz.", "Shoshilmayman: oldin rasm qo'yishni o'rganib olamiz, javobni esa shu dars oxirida topamiz."]
     ],
     ru: [
-      ['Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете.', 'В этой части ты научишься ставить такие картинки.'],
-      ['в конце урока', 'в конце этой части']
+      ['Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете.', 'В этом уроке ты научишься ставить такие картинки.'],
+      ['в конце урока', 'в конце урока']
     ],
     en: [
-      ['Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet.', 'In this part you’ll learn to put pictures like this on a page.'],
-      ['at the end of the lesson', 'at the end of this part']
+      ['Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet.', 'In this lesson you’ll learn to put pictures like this on a page.'],
+      ['at the end of the lesson', 'at the end of the lesson']
     ]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: 'Osh sahifasi tayyor', ru: 'Страница плова готова', en: 'The plov page is ready' },
-    next: { uz: "Keyingi qism: internetdagi rasm va o'z rasmingiz", ru: 'Следующая часть: картинка из интернета и своя картинка', en: 'Next part: a picture from the internet and your own' },
+    next: { uz: "Keyingi dars: internetdagi rasm va o'z rasmingiz", ru: 'Следующий урок: картинка из интернета и своя картинка', en: 'Next lesson: a picture from the internet and your own' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -83,9 +83,9 @@ export default {
         ru: 'А alt словами говорит, что на картинке, даже если фото не открылось. Смотри: файл сломан, а на месте фото остались эти слова.',
         en: 'And alt says in words what’s in the picture, even if the photo doesn’t open. Look: the file is broken, but these words are left where the photo was.' } },
       { k: null, text: {
-        uz: "Hozircha rasmlarimiz hammasi o'zimizning fayllarimiz ichida yotibdi. Lekin quyosh rasmi bizda yo'q, u faqat internetda bor. Uni sahifamizga qanday olib kelamiz? Buni keyingi qismda ko'ramiz, keyin o'zingizning rasmingizni ham qo'yasiz!",
-        ru: 'Пока все наши картинки лежат среди наших файлов. А вот картинки солнца у нас нет, она есть только в интернете. Как принести её на страницу? Узнаем в следующей части, а потом поставим и твою картинку!',
-        en: 'So far all our pictures sit among our own files. But we don’t have a sun picture; it exists only on the internet. How do we bring it to the page? We’ll find out in the next part, and then put in your own picture too!' } }
+        uz: "Hozircha rasmlarimiz hammasi o'zimizning fayllarimiz ichida yotibdi. Lekin quyosh rasmi bizda yo'q, u faqat internetda bor. Uni sahifamizga qanday olib kelamiz? Buni keyingi darsda ko'ramiz, keyin o'zingizning rasmingizni ham qo'yasiz!",
+        ru: 'Пока все наши картинки лежат среди наших файлов. А вот картинки солнца у нас нет, она есть только в интернете. Как принести её на страницу? Узнаем на следующем уроке, а потом поставим и твою картинку!',
+        en: 'So far all our pictures sit among our own files. But we don’t have a sun picture; it exists only on the internet. How do we bring it to the page? We’ll find out in the next lesson, and then put in your own picture too!' } }
     ]
   },
   h2: {
@@ -94,9 +94,9 @@ export default {
     roles: true,
     say: [
       { k: null, text: {
-        uz: "Salom! O'tgan qismda osh sahifamizga rasm qo'ydik, rasm nega ba'zan chiqmay qolishini ham bilib oldik.",
-        ru: 'Привет! В прошлой части мы поставили картинку на страницу плова и выяснили, почему картинки иногда не появляются.',
-        en: 'Hi! In the last part we put a picture on the plov page and found out why pictures sometimes don’t show up.' } },
+        uz: "Salom! O'tgan darsda osh sahifamizga rasm qo'ydik, rasm nega ba'zan chiqmay qolishini ham bilib oldik.",
+        ru: 'Привет! На прошлом уроке мы поставили картинку на страницу плова и выяснили, почему картинки иногда не появляются.',
+        en: 'Hi! In the last lesson we put a picture on the plov page and found out why pictures sometimes don’t show up.' } },
       { k: 'src', text: {
         uz: "Esingizdami, brauzer rasmni src ichidagi nom bo'yicha qidiradi? Nom bizning fayllarimizdan biriga mos kelsa, rasm chiqadi, bo'lmasa buzilgan rasm belgisi turadi.",
         ru: 'Помнишь, браузер ищет картинку по имени в src? Если имя совпало с одним из наших файлов, фото на месте, а если нет, видно значок сломанной картинки.',

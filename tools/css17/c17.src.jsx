@@ -40,9 +40,9 @@ const META = {
   lessonId: 'css-17-final-proekt',
   module: 'css-m1-osnovy',
   lessonTitle: {
-    uz: '17-dars. Yakuniy loyiha',
-    ru: 'Урок 17. Финальный проект',
-    en: 'Lesson 17. Final project'
+    uz: '33-dars. Yakuniy loyiha',
+    ru: 'Урок 33. Финальный проект',
+    en: 'Lesson 33. Final project'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -308,7 +308,7 @@ const C = {
       bad: L3("Bu so'zni brauzer tanimadi. display uchun yozganingizni bir tekshirib ko'ring.", 'Браузер не узнал это слово. Проверь слово для display.', 'The browser didn’t recognize that word. Check the word for display.')
     },
     hints: [
-      L3("O'ninchi darsda narsalarni qatorga tizgan so'z esingizdami?", 'Вспомни слово из десятого урока, которое ставит в ряд.', 'Remember the word from lesson ten that makes a row.'),
+      L3("Flex darsida narsalarni qatorga tizgan so'z esingizdami?", 'Вспомни слово из урока про flex, которое ставит в ряд.', 'Remember the word from the flex lesson that makes a row.'),
       L3("U so'z flex edi.", 'Это слово flex.', 'The word is flex.'),
       L3("flex deb yozing va natijani tekshirib ko'ring.", 'Впиши flex и нажми «Проверить».', 'Type flex and tap Check.')
     ],

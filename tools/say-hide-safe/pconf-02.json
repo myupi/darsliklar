@@ -1,0 +1,5 @@
+{
+  "tools/qism/pconf/02-p2.part.jsx": {
+    "want": "FB.boldWrong / FB.italWrong: нужные слова из задания (XTRA2.n1 / n1d / n2 / n2d — b и i), константы cfg, не ввод ученика; слова ученика — в {got} в метках"
+  }
+}

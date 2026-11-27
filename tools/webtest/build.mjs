@@ -19,23 +19,27 @@ const want = process.argv[3] || 'all';
 for (const course of ['html', 'css', 'bootstrap'].filter((c) => wantCourse === 'all' || wantCourse === c)) {
   const dir = join(here, course);
   if (!existsSync(dir)) continue;
-  const files = readdirSync(dir).filter((f) => /^l\d\d\.jsx$/.test(f)).filter((f) => want === 'all' || f === 'l' + want.padStart(2, '0') + '.jsx');
+  // HTML (27.11.2026): уроки разделены на части — тесты по частям, вопросы части — tools/webtest/html/pNN.jsx
+  // (NN = сквозной номер урока 01…16: нечётный — часть 1, чётный — часть 2 урока ceil(NN/2)); файлы lessons/html/<n>q<K>t<J>-<slug>.jsx.
+  const byPart = course === 'html';
+  const files = readdirSync(dir).filter((f) => (byPart ? /^p\d\d\.jsx$/ : /^l\d\d\.jsx$/).test(f)).filter((f) => want === 'all' || f === (byPart ? 'p' : 'l') + want.padStart(2, '0') + '.jsx');
   for (const f of files) {
-    const nn = f.slice(1, 3);
+    const seqNo = +f.slice(1, 3);
+    const nn = byPart ? String(Math.ceil(seqNo / 2)).padStart(2, '0') + 'q' + (seqNo % 2 ? 1 : 2) : f.slice(1, 3);
     const src = readFileSync(join(dir, f), 'utf8');
     const slug = /const SLUG = '([^']+)'/.exec(src)[1];
     const n = (src.match(/^\s*\{ id: /gm) || []).length;
     for (let k = 1; k <= n; k += 1) {
-      const out = `// Тест ${k}/${n} к уроку ${+nn} курса ${NAME[course]} — один вопрос в формате CRM «JSX savol / test» (16.11.2026).
-// Собрано: node tools/webtest/build.mjs ${course} ${nn} — вручную не править; исходник — tools/webtest/${course}/${f},
+      const out = `// Тест ${k}/${n} к уроку ${byPart ? seqNo : +nn} курса ${NAME[course]} — один вопрос в формате CRM «JSX savol / test» (16.11.2026).
+// Собрано: node tools/webtest/build.mjs ${course} ${byPart ? String(seqNo).padStart(2, '0') : nn} — вручную не править; исходник — tools/webtest/${course}/${f},
 // набор — tools/aitest/kit.jsx и tools/webtest/web-kit.jsx.
 import React, { useEffect, useRef, useState } from 'react';
 ${kit}
 ${web}
 ${course === 'bootstrap' ? bsCss() : ''}${src}
-export default function ${NAME[course]}Test${nn}q${k}(props) { return <><style>{WQ_CSS}</style><AqTest Q={QS[${k - 1}]} {...props} /></>; }
+export default function ${NAME[course]}Test${nn.replace('q', 'Q')}${byPart ? 't' : 'q'}${k}(props) { return <><style>{WQ_CSS}</style><AqTest Q={QS[${k - 1}]} {...props} /></>; }
 `;
-      const path = join(root, 'lessons', course, `${nn}t${k}-${slug}.jsx`);
+      const path = join(root, 'lessons', course, `${nn}${byPart ? '' : ''}t${k}-${slug}.jsx`);
       writeFileSync(path, out);
       console.log('Собран', path.replace(root + '/', ''));
     }

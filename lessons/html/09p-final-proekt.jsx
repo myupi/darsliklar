@@ -6850,9 +6850,9 @@ const META = {
   lessonId: 'html-09p-final-proekt',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "9-amaliyot. Saytimni boshidan oxirigacha yasayman",
-    ru: 'Практика 9. Мой сайт от и до',
-    en: 'Practice 9. My site from start to finish'
+    uz: "17-amaliyot. Saytimni boshidan oxirigacha yasayman",
+    ru: 'Практика 17. Мой сайт от и до',
+    en: 'Practice 17. My site from start to finish'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });

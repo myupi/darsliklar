@@ -51,8 +51,8 @@ export default {
   slug: 'formy-vvod',
   riddleInE1: false,
   lessonTitleParts: [
-    { uz: '6-dars. 1-qism: input va type', ru: 'Урок 6. Часть 1: input и type', en: 'Lesson 6. Part 1: input and type' },
-    { uz: '6-dars. 2-qism: placeholder, label va form', ru: 'Урок 6. Часть 2: placeholder, label и form', en: 'Lesson 6. Part 2: placeholder, label and form' }
+    { uz: "11-dars. Kiritish maydonlari: input va type", ru: "Урок 11. Поля ввода: input и type", en: "Lesson 11. Input fields: input and type" },
+    { uz: "12-dars. Ishora va yozuv: placeholder va label", ru: "Урок 12. Подсказки и подписи: placeholder и label", en: "Lesson 12. Hints and labels: placeholder and label" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -69,14 +69,14 @@ export default {
   // Часть 1 не загадывает загадку: S1 кончается обещанием этой части (про точки в пароле — она научит).
   s1Done: null,
   s1Riddle: {
-    uz: "Bu qismda sahifaga shunday maydonlar qo'yishni va ularning turini tanlashni o'rganamiz. Parolning harflari nega nuqtaga aylanishini ham shu yerda bilib olasiz.",
-    ru: 'В этой части ты научишься ставить на страницу такие поля и выбирать их вид. А ещё поймёшь, почему буквы пароля превращаются в точки.',
-    en: 'In this part you’ll learn to put fields like these on a page and choose their kind. You’ll also find out why the letters of a password turn into dots.'
+    uz: "Bu darsda sahifaga shunday maydonlar qo'yishni va ularning turini tanlashni o'rganamiz. Parolning harflari nega nuqtaga aylanishini ham shu yerda bilib olasiz.",
+    ru: 'В этом уроке ты научишься ставить на страницу такие поля и выбирать их вид. А ещё поймёшь, почему буквы пароля превращаются в точки.',
+    en: 'In this lesson you’ll learn to put fields like these on a page and choose their kind. You’ll also find out why the letters of a password turn into dots.'
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: "Klub sahifasida uchta maydon bor", ru: 'На странице клуба три поля', en: 'The club page has three fields' },
-    next: { uz: 'Keyingi qism: placeholder, label va form', ru: 'Следующая часть: placeholder, label и form', en: 'Next part: placeholder, label and form' },
+    next: { uz: 'Keyingi dars: placeholder, label va form', ru: 'Следующий урок: placeholder, label и form', en: 'Next lesson: placeholder, label and form' },
     roles: true,
     say: [
       { k: null, text: {
@@ -96,9 +96,9 @@ export default {
         ru: 'Поле для пароля собрано по порядку, и закрывающий тег никому не понадобился: у input его нет.',
         en: 'You built the password field yourself and put the pieces in order. And you didn’t fall for the extra closing tag, because input doesn’t need one.' } },
       { k: null, text: {
-        uz: "Lekin bitta muammo qoldi. Sahifaga kirgan odam bo'sh maydonni ko'radi-yu, unga nima yozishni qayerdan bilsin? Keyingi qismda maydonning ichiga kichkina ishora qo'yamiz, yozuvni maydon bilan bog'laymiz va hammasini bitta anketaga yig'amiz!",
-        ru: 'Но остался вопрос. Человек открывает страницу и видит пустое поле: откуда ему знать, что туда писать? В следующей части мы научим поле подсказывать, свяжем подпись с полем и соберём всё в одну анкету!',
-        en: 'But one problem is left. A person opens the page and sees an empty field: how would they know what to type there? In the next part we’ll make the field give a hint, tie each caption to its field and gather everything into one form!' } }
+        uz: "Lekin bitta muammo qoldi. Sahifaga kirgan odam bo'sh maydonni ko'radi-yu, unga nima yozishni qayerdan bilsin? Keyingi darsda maydonning ichiga kichkina ishora qo'yamiz, yozuvni maydon bilan bog'laymiz va hammasini bitta anketaga yig'amiz!",
+        ru: 'Но остался вопрос. Человек открывает страницу и видит пустое поле: откуда ему знать, что туда писать? На следующем уроке мы научим поле подсказывать, свяжем подпись с полем и соберём всё в одну анкету!',
+        en: 'But one problem is left. A person opens the page and sees an empty field: how would they know what to type there? In the next lesson we’ll make the field give a hint, tie each caption to its field and gather everything into one form!' } }
     ]
   },
   h2: {
@@ -107,21 +107,21 @@ export default {
     roles: true,
     say: [
       { k: 'type', text: {
-        uz: "Salom! O'tgan qismda klub sahifasiga maydonlar qo'ydik: input maydon yasadi, type esa uning turini tanladi. Parol maydonida harflar nuqtaga aylanganini esingizdami?",
-        ru: 'Привет! В прошлой части мы поставили на страницу клуба поля: input делает поле, а type выбирает его вид. Помнишь, как в поле пароля буквы спрятались за точками?',
+        uz: "Salom! O'tgan darsda klub sahifasiga maydonlar qo'ydik: input maydon yasadi, type esa uning turini tanladi. Parol maydonida harflar nuqtaga aylanganini esingizdami?",
+        ru: 'Привет! На прошлом уроке мы поставили на страницу клуба поля: input делает поле, а type выбирает его вид. Помнишь, как в поле пароля буквы спрятались за точками?',
         en: 'Hi! Last time we put fields on the club page: input makes a field, and type chooses its kind. Remember how the letters in the password field hid behind dots?' } },
       { k: 'riddle', text: {
         uz: "Endi bitta sir bor. Kecha ukam so'radi: «Parol yozganda harflar nega nuqtaga aylanadi?» Men shoshilib javob berdim: parol maydonida placeholder bor, shuning uchun harflar nuqtaga aylanadi, dedim. Mana, o'sha sahifa: parol maydonining ichida «Parol» degan so'z turibdi.",
         ru: 'Теперь загадка. Я сделал поле для пароля на другой странице, добавил ему атрибут placeholder и написал в нём слово «Пароль». По-моему, теперь пароль сам спрячется за точками.',
         en: 'Now a riddle. On another page I made a password field, added the placeholder attribute to it and wrote the word “Password” in it. I think the password will now hide behind dots by itself.' } },
       { k: 'riddle', text: {
-        uz: "Ukam jim qoldi-yu, o'zim tinchimay yuribman: haqiqatan ham shundaymi? Siz nima deb o'ylaysiz, parol endi nuqtalar ortiga yashirinadimi? O'tgan qismda nimalarni o'rganganingizni eslab ko'ring-chi!",
-        ru: 'Ну как думаешь, я прав? Вспомни, чему мы научились в прошлой части.',
-        en: 'So what do you think, am I right? Try to remember what we learned in the last part.' } },
+        uz: "Ukam jim qoldi-yu, o'zim tinchimay yuribman: haqiqatan ham shundaymi? Siz nima deb o'ylaysiz, parol endi nuqtalar ortiga yashirinadimi? O'tgan darsda nimalarni o'rganganingizni eslab ko'ring-chi!",
+        ru: 'Ну как думаешь, я прав? Вспомни, чему мы научились на прошлом уроке.',
+        en: 'So what do you think, am I right? Try to remember what we learned in the last lesson.' } },
       { k: 'riddle', text: {
-        uz: "Javobni shu qismning oxirida birga topamiz. Buning uchun placeholder nima ekanini, yozuvni maydon bilan qanday bog'lashni va hammasini bitta anketaga qanday yig'ishni o'rganamiz. Ketdik!",
-        ru: 'Ответ найдём вместе в конце этой части. Для этого узнаем, что такое placeholder, как связать подпись с полем и как собрать всё в одну анкету. Поехали!',
-        en: 'We’ll find the answer together at the end of this part. First we’ll find out what placeholder is, how to tie a caption to a field and how to gather everything into one form. Let’s go!' } }
+        uz: "Javobni shu dars oxirida birga topamiz. Buning uchun placeholder nima ekanini, yozuvni maydon bilan qanday bog'lashni va hammasini bitta anketaga qanday yig'ishni o'rganamiz. Ketdik!",
+        ru: 'Ответ найдём вместе в конце урока. Для этого узнаем, что такое placeholder, как связать подпись с полем и как собрать всё в одну анкету. Поехали!',
+        en: 'We’ll find the answer together at the end of the lesson. First we’ll find out what placeholder is, how to tie a caption to a field and how to gather everything into one form. Let’s go!' } }
     ]
   },
   e1Edits: E1_EDITS,

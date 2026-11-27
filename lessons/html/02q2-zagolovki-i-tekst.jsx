@@ -6868,9 +6868,9 @@ const META = {
   lessonId: 'html-02q2-zagolovki-i-tekst',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "2-dars. 2-qism: b, i va o'z sahifangiz",
-    ru: "Урок 2. Часть 2: b, i и своя страница",
-    en: "Lesson 2. Part 2: b, i and your own page"
+    uz: "4-dars. Qalin va qiya matn",
+    ru: "Урок 4. Жирный и наклонный текст",
+    en: "Lesson 4. Bold and italic text"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10753,7 +10753,7 @@ Object.assign(C, {
     ask: L3("Qalin va qiya so'zlar", "Жирные и курсивные слова", "Bold and italic words"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda mushuk sahifasini tartibga keltirdik. Sarlavhalar uchun h1 tegidan h6 tegigacha oltita teg borligini bilib oldik, eng kattasi esa h1 ekan.", "Привет! В прошлой части мы навели порядок на странице про кота. Узнали, что тегов заголовков шесть, от h1 до h6, а самый крупный из них — h1.", "Hi! In the last part we put the cat page in order. We learned there are six heading tags, from h1 to h6, and the biggest one is h1."), k: "h" },
+      { text: L3("Salom! O'tgan darsda mushuk sahifasini tartibga keltirdik. Sarlavhalar uchun h1 tegidan h6 tegigacha oltita teg borligini bilib oldik, eng kattasi esa h1 ekan.", "Привет! На прошлом уроке мы навели порядок на странице про кота. Узнали, что тегов заголовков шесть, от h1 до h6, а самый крупный из них — h1.", "Hi! In the last lesson we put the cat page in order. We learned there are six heading tags, from h1 to h6, and the biggest one is h1."), k: "h" },
       { text: L3("Matnni esa p tegi abzaslarga bo'lib berdi. Endi shu abzaslardan biriga yaqinroq qarang-chi.", "А текст на абзацы разделил тег p. Теперь присмотрись к одному из этих абзацев.", "And the p tag split the text into paragraphs. Now take a closer look at one of those paragraphs."), k: "p" },
       { text: L3("Mana, «juda» so'zi qalin turibdi, ko'zga darrov tashlanyapti-ku!", "Смотри, слово «очень» стоит жирным, и оно сразу бросается в глаза!", "See, the word “really” is bold, and it catches your eye right away!"), k: "b" },
       { text: L3("«uxlashni» so'zi esa qiya. Sizningcha, faqat bitta so'zni qalin yoki qiya qilish mumkinmi, yoki butun abzas birdan o'zgarib ketadimi? Qani, ko'ramiz!", "А слово «спать» написано курсивом. Как думаешь, можно ли сделать жирным или курсивным только одно слово, или весь абзац изменится сразу? Давай посмотрим!", "And the word “sleep” is in italic. What do you think: can we make just one word bold or italic, or will the whole paragraph change at once? Let’s see!"), k: "i" }

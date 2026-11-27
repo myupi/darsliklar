@@ -43,8 +43,8 @@ export default {
   slug: 'zagolovki-i-tekst',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: '2-dars. 1-qism: h1–h6 va p', ru: 'Урок 2. Часть 1: h1–h6 и p', en: 'Lesson 2. Part 1: h1–h6 and p' },
-    { uz: "2-dars. 2-qism: b, i va o'z sahifangiz", ru: 'Урок 2. Часть 2: b, i и своя страница', en: 'Lesson 2. Part 2: b, i and your own page' }
+    { uz: "3-dars. Sarlavhalar va abzaslar", ru: "Урок 3. Заголовки и абзацы", en: "Lesson 3. Headings and paragraphs" },
+    { uz: "4-dars. Qalin va qiya matn", ru: "Урок 4. Жирный и наклонный текст", en: "Lesson 4. Bold and italic text" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -60,17 +60,17 @@ export default {
   ],
   // Часть 1: загадка задаётся как раньше, но «в этой части», а не «в этом уроке»; своей страницы в части 1 нет.
   s1Done: {
-    uz: [["Bugun matnni shunday tartibga solishni o'rganasiz, keyin o'z sahifangizni yasaysiz.", "Bu qismda sarlavhalar va abzaslar yordamida matnni shunday tartibga solishni o'rganasiz."],
-      ["dars oxirida yana so'rayman", "bu qismning oxirida yana so'rayman"]],
-    ru: [['Сегодня ты научишься так оформлять текст и сделаешь свою страницу.', 'В этой части ты научишься так оформлять текст с помощью заголовков и абзацев.'],
-      ['в конце урока', 'в конце этой части']],
-    en: [['Today you’ll learn to shape text like this and make your own page.', 'In this part you’ll learn to shape text like this with headings and paragraphs.'],
-      ['at the end of the lesson', 'at the end of this part']]
+    uz: [["Bugun matnni shunday tartibga solishni o'rganasiz, keyin o'z sahifangizni yasaysiz.", "Bu darsda sarlavhalar va abzaslar yordamida matnni shunday tartibga solishni o'rganasiz."],
+      ["dars oxirida yana so'rayman", "bu dars oxirida yana so'rayman"]],
+    ru: [['Сегодня ты научишься так оформлять текст и сделаешь свою страницу.', 'В этом уроке ты научишься так оформлять текст с помощью заголовков и абзацев.'],
+      ['в конце урока', 'в конце урока']],
+    en: [['Today you’ll learn to shape text like this and make your own page.', 'In this lesson you’ll learn to shape text like this with headings and paragraphs.'],
+      ['at the end of the lesson', 'at the end of the lesson']]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: 'Mushuk sahifasi: sarlavhalar va abzaslar', ru: 'Страница про кота: заголовки и абзацы', en: 'The cat page: headings and paragraphs' },
-    next: { uz: "Keyingi qism: b, i va o'z sahifangiz", ru: 'Следующая часть: b, i и своя страница', en: 'Next part: b, i and your own page' },
+    next: { uz: "Keyingi dars: b, i va o'z sahifangiz", ru: 'Следующий урок: b, i и своя страница', en: 'Next lesson: b, i and your own page' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -94,9 +94,9 @@ export default {
         ru: 'Отлично! Заголовок закрыт, абзац собран — всё это ты сделал своими руками.',
         en: 'Awesome! The heading is closed and the paragraph is built, and you did all of it yourself.' } },
       { k: 'bi', text: {
-        uz: "Lekin sahifada yana bir sir qoldi: abzasdagi «juda» so'zi qalin, «uxlashni» so'zi esa qiya yozilgan. Ularni qaysi teglar shunaqa qilgan, nima deb o'ylaysiz? Keyingi qismda topamiz, undan keyin o'z sahifangizni ham yasaymiz!",
-        ru: 'Но на странице осталась ещё одна загадка: слово «очень» в абзаце жирное, а слово «спать» написано курсивом. Как думаешь, какие теги это делают? Узнаем в следующей части, а потом соберём и твою страницу!',
-        en: 'But the page still has one more mystery: the word “really” in the paragraph is bold, and “sleep” is in italic. Which tags do you think do that? We’ll find out in the next part, and then we’ll build your own page too!' } }
+        uz: "Lekin sahifada yana bir sir qoldi: abzasdagi «juda» so'zi qalin, «uxlashni» so'zi esa qiya yozilgan. Ularni qaysi teglar shunaqa qilgan, nima deb o'ylaysiz? Keyingi darsda topamiz, undan keyin o'z sahifangizni ham yasaymiz!",
+        ru: 'Но на странице осталась ещё одна загадка: слово «очень» в абзаце жирное, а слово «спать» написано курсивом. Как думаешь, какие теги это делают? Узнаем на следующем уроке, а потом соберём и твою страницу!',
+        en: 'But the page still has one more mystery: the word “really” in the paragraph is bold, and “sleep” is in italic. Which tags do you think do that? We’ll find out in the next lesson, and then we’ll build your own page too!' } }
     ]
   },
   h2: {
@@ -105,9 +105,9 @@ export default {
     roles: true,
     say: [
       { k: 'h', text: {
-        uz: "Salom! O'tgan qismda mushuk sahifasini tartibga keltirdik. Sarlavhalar uchun h1 tegidan h6 tegigacha oltita teg borligini bilib oldik, eng kattasi esa h1 ekan.",
-        ru: 'Привет! В прошлой части мы навели порядок на странице про кота. Узнали, что тегов заголовков шесть, от h1 до h6, а самый крупный из них — h1.',
-        en: 'Hi! In the last part we put the cat page in order. We learned there are six heading tags, from h1 to h6, and the biggest one is h1.' } },
+        uz: "Salom! O'tgan darsda mushuk sahifasini tartibga keltirdik. Sarlavhalar uchun h1 tegidan h6 tegigacha oltita teg borligini bilib oldik, eng kattasi esa h1 ekan.",
+        ru: 'Привет! На прошлом уроке мы навели порядок на странице про кота. Узнали, что тегов заголовков шесть, от h1 до h6, а самый крупный из них — h1.',
+        en: 'Hi! In the last lesson we put the cat page in order. We learned there are six heading tags, from h1 to h6, and the biggest one is h1.' } },
       { k: 'p', text: {
         uz: "Matnni esa p tegi abzaslarga bo'lib berdi. Endi shu abzaslardan biriga yaqinroq qarang-chi.",
         ru: 'А текст на абзацы разделил тег p. Теперь присмотрись к одному из этих абзацев.',

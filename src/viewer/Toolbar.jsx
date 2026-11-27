@@ -115,7 +115,7 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
           ) : (
             <h1>
               {lesson.n != null ? <span className="tb-n">{pad2(lesson.n)}</span> : null}
-              {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.kind === 'test' && lesson.lessonTitle ? `${lesson.title} · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
+              {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.pk ? lesson.title : (lesson.practiceTitle || lesson.lessonTitle)}` : lesson.kind === 'test' && lesson.lessonTitle ? `${lesson.title} · ${lesson.testTitle || lesson.lessonTitle}` : lesson.title}
             </h1>
           )}
           <span className={'pill is-' + lesson.status}>

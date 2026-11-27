@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-07q1-formy-vybor',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "7-dars. 1-qism: select, option va textarea",
-    ru: "Урок 7. Часть 1: select, option и textarea",
-    en: "Lesson 7. Part 1: select, option and textarea"
+    uz: "13-dars. Tanlash ro'yxati va katta maydon",
+    ru: "Урок 13. Список выбора и большое поле",
+    en: "Lesson 13. A choice list and a big field"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10680,7 +10680,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Anketa: ro'yxat va katta maydon", "Анкета: список и большое поле", "The form: a list and a big field"),
-    next: L3("Keyingi qism: button va o'z anketangiz", "Следующая часть: button и своя анкета", "Next part: button and your own form"),
+    next: L3("Keyingi dars: button va o'z anketangiz", "Следующий урок: button и своя анкета", "Next lesson: button and your own form"),
     roles: C.s15.roles,
     say: [
       { text: L3("Endi sirni ochamiz! Esingizdami, men o'yinlarni select ichiga shunchaki yozib qo'ygandim va ro'yxat uchta o'yin bilan to'ladi deb o'ylagandim? Mana, sahifaga qarang: ro'yxat bo'm-bo'sh turibdi! Shaxmat qatorida ham xuddi shunday bo'lgan edi-ku: tegning nomi bo'lmasa, brauzer qatorni variant deb bilmagan. Demak, yanglishibman: har bir variant o'zining option tegi ichida turishi shart.", "Раскроем загадку. Помнишь, я просто написал названия игр внутри select и думал, что список заполнится тремя играми? Смотри на страницу: список совсем пустой! С Шахматами было так же: без имени тега браузер не считал строку вариантом. Значит, я ошибся: каждый вариант должен стоять внутри option.", "Time to solve the riddle. Remember, I just wrote the game names inside select and thought the list would fill up with three games? Look at the page: the list is completely empty! It was the same with Chess: without a tag name, the browser didn’t treat the line as a choice. So I was wrong: every choice has to sit inside its own option."), k: "riddle" },
@@ -10688,14 +10688,14 @@ Object.assign(C, {
       { text: L3("Butun ro'yxatni select tegi yasaydi. Uni kichkina strelkasidan tanib olasiz: bossangiz, ro'yxat ochiladi.", "Весь список делает тег select. Его легко узнать по маленькой стрелке: нажал, и список раскрылся.", "The whole list is made by the select tag. You can spot it by the little arrow: tap it, and the list opens."), k: "select" },
       { text: L3("Ro'yxatning har bir qatorini option tegi yasaydi. Variantlar kodda qaysi tartibda turgan bo'lsa, ro'yxatda ham shu tartibda chiqadi.", "Каждую строку списка делает option. Варианты идут в том порядке, в каком стоят в коде.", "Each line of the list is made by option. The choices appear in the same order as in the code."), k: "option" },
       { text: L3("Uzun gap input tegiga sig'maydi-ku, shuning uchun katta maydonni textarea yasaydi. Uni yopuvchi teg bilan yozishni esdan chiqarmang.", "Длинное предложение не влезает в input, поэтому большое поле делает textarea. И не забывай про закрывающий тег.", "A long sentence doesn’t fit in input, so the big field is made by textarea. And don’t forget its closing tag."), k: "textarea" },
-      { text: L3("Lekin bitta narsa yetishmayapti: odam o'yinni tanladi, o'zi haqida yozdi, endi javobini nima bilan yuboradi? Buni keyingi qismda topamiz, undan keyin o'z anketangizni ham yig'amiz!", "Но кое-чего не хватает: человек выбрал игру, написал о себе, а чем отправить ответ? Это узнаем в следующей части, а потом соберём твою собственную анкету!", "But something is still missing: a person picked a game and wrote about themselves, so what do they send the answer with? We’ll find out in the next part, and then build your own form!"), k: null }
+      { text: L3("Lekin bitta narsa yetishmayapti: odam o'yinni tanladi, o'zi haqida yozdi, endi javobini nima bilan yuboradi? Buni keyingi darsda topamiz, undan keyin o'z anketangizni ham yig'amiz!", "Но кое-чего не хватает: человек выбрал игру, написал о себе, а чем отправить ответ? Это узнаем на следующем уроке, а потом соберём твою собственную анкету!", "But something is still missing: a person picked a game and wrote about themselves, so what do they send the answer with? We’ll find out in the next lesson, and then build your own form!"), k: null }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Bugun ro'yxat, katta maydon va tugma yasaymiz.","Bu qismda ro'yxat va katta maydon yasaymiz."],["Sizningcha, qaysi biri ro'yxatni chiqaradi?","Sizningcha, qaysi biri ro'yxatni chiqaradi? Javobni shu qismning oxirida birga topamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету.","В этой части ты научишься делать такой список и большое поле."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form.","In this part you’ll learn to make a list like this and a big field."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Bugun ro'yxat, katta maydon va tugma yasaymiz.","Bu darsda ro'yxat va katta maydon yasaymiz."],["Sizningcha, qaysi biri ro'yxatni chiqaradi?","Sizningcha, qaysi biri ro'yxatni chiqaradi? Javobni shu dars oxirida birga topamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такой список, большое поле и кнопку и сделаешь свою анкету.","В этом уроке ты научишься делать такой список и большое поле."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to make a list like this, a big field and a button, and you’ll make your own form.","In this lesson you’ll learn to make a list like this and a big field."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================

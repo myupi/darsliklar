@@ -29,4 +29,7 @@ naborRedaktor(gen);
     'doctype|DOCTYPE|CSS|style|background-color|background color|color|class|id|hex|rgb|hsl|orangered|orange|tomato|green|blue|red|purple|lavender|yellow|selector|property|value|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c3.src.jsx'), join(root, 'lessons/css/03-cveta.jsx'), 'css'], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c3.src.jsx'), join(root, 'lessons/css/03-cveta.jsx'), 'css'], { stdio: 'inherit' });
+}

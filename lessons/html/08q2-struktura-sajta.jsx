@@ -6862,9 +6862,9 @@ const META = {
   lessonId: 'html-08q2-struktura-sajta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "8-dars. 2-qism: section va o'z saytingiz",
-    ru: "Урок 8. Часть 2: section и свой сайт",
-    en: "Lesson 8. Part 2: section and your own site"
+    uz: "16-dars. Sayt bo'limlari: section",
+    ru: "Урок 16. Разделы сайта: section",
+    en: "Lesson 16. Site sections: section"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });

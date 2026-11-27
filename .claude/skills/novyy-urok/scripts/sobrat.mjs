@@ -111,7 +111,7 @@ writeFileSync(resolve(outArg), out);
 // Шрифт Inter — ресурсы урока для CRM (15.11.2026; канон грузит их по ключу, useLmsPlatform → loadFont):
 // lessons/<курс>/assets/<урок>/<ключ>.woff2 — их загружают в CRM вместе с уроком (блок WOFF2).
 {
-  const m = /lessons\/(html|css|ai|bootstrap|tilda|javascript)\/(\d\d(?:p|q\d)?-[^/]+)\.jsx$/.exec(resolve(outArg));   // bootstrap — 19.11.2026; части урока q1/q2, tilda — 25.11.2026
+  const m = /lessons\/(html|css|ai|bootstrap|tilda|javascript)\/(\d\d(?:p\d?|q\d)?-[^/]+)\.jsx$/.exec(resolve(outArg));   // bootstrap — 19.11.2026; части урока q1/q2, tilda — 25.11.2026; части практики p1/p2 — 27.11.2026
   if (m && out.indexOf('const LMS_FONTS = [') >= 0) {
     const fonts = new URL('../../../../tools/redaktor28/fonts/', import.meta.url);
     const dir = resolve(dirname(resolve(outArg)), 'assets', m[2]);

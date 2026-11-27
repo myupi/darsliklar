@@ -1,0 +1,5 @@
+{
+  "tools/qism/pconf/03-p2.part.jsx": {
+    "want": "FB.keepItem: слово пункта без li из задания (TABS[2].items[bad] — «Kitob» / «Книга» / «Book», XTRA2.greet.items[bad]), константа cfg, не ввод ученика"
+  }
+}

@@ -6865,9 +6865,9 @@ const META = {
   lessonId: 'html-04q1-ssylki-i-atributy',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "4-dars. 1-qism: a tegi, href va buzilgan havolalar",
-    ru: "Урок 4. Часть 1: тег a, href и поломки ссылок",
-    en: "Lesson 4. Part 1: the a tag, href and broken links"
+    uz: "7-dars. Havolalar: a va href",
+    ru: "Урок 7. Ссылки: a и href",
+    en: "Lesson 7. Links: a and href"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -11108,7 +11108,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Saytning sahifalari havolalar bilan bog'langan", "Страницы сайта связаны ссылками", "The pages of the site are linked"),
-    next: L3("Keyingi qism: o'z havolangiz va internetdagi saytlar", "Следующая часть: своя ссылка и сайты в интернете", "Next part: your own link and sites on the internet"),
+    next: L3("Keyingi dars: o'z havolangiz va internetdagi saytlar", "Следующий урок: своя ссылка и сайты в интернете", "Next lesson: your own link and sites on the internet"),
     roles: C.s15.roles,
     say: [
       { text: L3("Endi sirni ochamiz! Esingizdami, men «Mening o'yinlarim» so'zlarini a tegiga o'rab qo'yib, manzil yozmagan edim? Mana o'sha sahifa: so'zlar oddiy matn bo'lib turibdi, bosib bo'lmaydi. Brauzer aqlli bo'lsa ham, fikrimni o'qiy olmaydi-ku. Kitob haq ekan: href bo'lmasa, havola hech qayerga olib bormaydi.", "Пора разгадать загадку! Помнишь, слова «Мои игры» лежали в теге a, а адреса не было? Вот эта страница: слова остались обычным текстом, нажать их нельзя. Браузер умный, но мысли читать не умеет. Значит, без href тег a никуда не ведёт.", "Time to solve the riddle! Remember, the words “My games” sat inside the a tag, but there was no address? Here’s that page: the words stayed plain text, and you can’t tap them. The browser is smart, but it can’t read minds. So without href, the a tag leads nowhere."), k: "riddle" },
@@ -11117,14 +11117,14 @@ Object.assign(C, {
       { text: L3("Qayerga olib borishini esa href atributi aytadi. U havolaga manzil beradi.", "А куда ссылка ведёт, говорит атрибут href. Он даёт ссылке адрес.", "And where the link goes is told by the href attribute. It gives the link an address."), k: "href" },
       { text: L3("Qo'shtirnoq ichida qiymat turadi, bizda u fayl nomi. Uni harfma-harf yozmasak, brauzer «Fayl topilmadi», deb javob beradi.", "В кавычках стоит значение, у нас это имя файла. Если написать его не буква в букву, браузер ответит: «Файл не найден».", "In the quotes is the value, here the file name. If you don’t type it exactly, the browser answers: “File not found”."), k: "val" },
       { text: L3("Havola qayerda tugashini esa yopuvchi a tegi aytadi. Uni qo'ymasak, gapning qolgan qismi ham ko'k bo'lib ketadi-ku!", "А где ссылка заканчивается, показывает закрывающий тег a. Без него синим станет и остаток фразы.", "And where the link ends is shown by the closing a tag. Without it, the rest of the sentence turns blue too."), k: null },
-      { text: L3("Lekin hozircha havolalarimiz faqat o'z saytimizdagi fayllarga olib bordi. Nima deb o'ylaysiz, havola internetdagi boshqa saytga ham olib bora oladimi? Sizning o'z sahifangizga-chi? Keyingi qismda shuni aniqlaymiz!", "Но пока наши ссылки вели только на файлы нашего сайта. Как думаешь, может ли ссылка вести на другой сайт в интернете? А на твою собственную страницу? Выясним в следующей части!", "But so far our links only led to files on our own site. Do you think a link can take you to another site on the internet? And to your own page? We’ll find out in the next part!"), k: null }
+      { text: L3("Lekin hozircha havolalarimiz faqat o'z saytimizdagi fayllarga olib bordi. Nima deb o'ylaysiz, havola internetdagi boshqa saytga ham olib bora oladimi? Sizning o'z sahifangizga-chi? Keyingi darsda shuni aniqlaymiz!", "Но пока наши ссылки вели только на файлы нашего сайта. Как думаешь, может ли ссылка вести на другой сайт в интернете? А на твою собственную страницу? Выясним на следующем уроке!", "But so far our links only led to files on our own site. Do you think a link can take you to another site on the internet? And to your own page? We’ll find out in the next lesson!"), k: null }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Bunday havolalarni bugun o'zingiz yasaysiz: o'z sahifangizga ham, internetdagi saytlarga ham.","Bu qismda bunday havolalarni yasashni o'rganamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете.","В этой части ты научишься делать такие ссылки."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to make links like these: to your own page and to a site on the internet.","In this part you’ll learn to make links like these."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Bunday havolalarni bugun o'zingiz yasaysiz: o'z sahifangizga ham, internetdagi saytlarga ham.","Bu darsda bunday havolalarni yasashni o'rganamiz."]]), fix(d.ru, [["Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете.","В этом уроке ты научишься делать такие ссылки."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to make links like these: to your own page and to a site on the internet.","In this lesson you’ll learn to make links like these."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================

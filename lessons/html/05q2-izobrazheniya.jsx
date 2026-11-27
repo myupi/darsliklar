@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-05q2-izobrazheniya',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "5-dars. 2-qism: internetdagi rasm va o'z rasmingiz",
-    ru: "Урок 5. Часть 2: картинка из интернета и своя картинка",
-    en: "Lesson 5. Part 2: a picture from the internet and your own"
+    uz: "10-dars. Internetdagi rasmlar",
+    ru: "Урок 10. Картинки из интернета",
+    en: "Lesson 10. Pictures from the web"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -11066,7 +11066,7 @@ Object.assign(C, {
     ask: L3("Rasm boshqa saytda tursa-chi?", "А если картинка на другом сайте?", "What if the picture is on another site?"),
     roles: C.s15.roles,
     say: [
-      { text: L3("Salom! O'tgan qismda osh sahifamizga rasm qo'ydik, rasm nega ba'zan chiqmay qolishini ham bilib oldik.", "Привет! В прошлой части мы поставили картинку на страницу плова и выяснили, почему картинки иногда не появляются.", "Hi! In the last part we put a picture on the plov page and found out why pictures sometimes don’t show up."), k: null },
+      { text: L3("Salom! O'tgan darsda osh sahifamizga rasm qo'ydik, rasm nega ba'zan chiqmay qolishini ham bilib oldik.", "Привет! На прошлом уроке мы поставили картинку на страницу плова и выяснили, почему картинки иногда не появляются.", "Hi! In the last lesson we put a picture on the plov page and found out why pictures sometimes don’t show up."), k: null },
       { text: L3("Esingizdami, brauzer rasmni src ichidagi nom bo'yicha qidiradi? Nom bizning fayllarimizdan biriga mos kelsa, rasm chiqadi, bo'lmasa buzilgan rasm belgisi turadi.", "Помнишь, браузер ищет картинку по имени в src? Если имя совпало с одним из наших файлов, фото на месте, а если нет, видно значок сломанной картинки.", "Remember, the browser looks for the picture by the name in src? If the name matches one of our files, the photo is there; if not, you see a broken picture icon."), k: "src" },
       { text: L3("Lekin hozirgacha rasm doim bizning fayllarimiz ichida yotgan edi. Nima deb o'ylaysiz, rasm boshqa saytda tursa, brauzer uni topa oladimi? Yoki src ichiga boshqacha narsa yozish kerakmi? Qani, ko'ramiz.", "Но до сих пор все картинки лежали среди наших файлов. Как думаешь, найдёт ли браузер картинку, которая лежит на другом сайте? Или в src нужно писать что-то другое? Давай посмотрим.", "But so far every picture sat among our own files. What do you think, will the browser find a picture that lives on another site? Or should src hold something different? Let’s see."), k: null }
     ]

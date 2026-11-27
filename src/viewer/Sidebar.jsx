@@ -8,7 +8,7 @@ import { G01_BLOCKS, useBank } from './TrainerPage.jsx';
 const STATUS_LABEL = { ready: 'готов', planned: 'в плане', extra: 'вне плана' };
 
 const match = (l, q) =>
-  !q || [l.title, l.lessonTitle, l.practiceTitle, l.slug, l.file, ...(l.topics || []), l.n != null ? pad2(l.n) : '']
+  !q || [l.title, l.lessonTitle, l.practiceTitle, l.slug, l.file, ...(l.topics || []), l.n != null ? pad2(l.n) : '', l.seq != null ? String(l.seq) : '']
     .some((s) => String(s || '').toLowerCase().includes(q));
 
 export default function Sidebar({ catalog, selectedKey, onPick, mode = 'lessons', onMode, cmpItems = [], cmpKey, onCmp, trnKey, onTrn }) {
@@ -123,7 +123,7 @@ export default function Sidebar({ catalog, selectedKey, onPick, mode = 'lessons'
                         ) : l.kind === 'practice' ? (
                           <span className="lesson-n" aria-hidden="true"><PencilRuler size={13} /></span>
                         ) : (
-                          <span className="lesson-n">{l.n != null ? pad2(l.n) : '··'}</span>
+                          <span className="lesson-n">{l.seq != null ? l.seq : l.n != null ? pad2(l.n) : '··'}</span>
                         )}
                         <span className="lesson-body">
                           <span className="lesson-title">{l.title}</span>

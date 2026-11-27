@@ -6863,9 +6863,9 @@ const META = {
   lessonId: 'html-05q1-izobrazheniya',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "5-dars. 1-qism: img, src va alt",
-    ru: "Урок 5. Часть 1: img, src и alt",
-    en: "Lesson 5. Part 1: img, src and alt"
+    uz: "9-dars. Rasmlar: img, src va alt",
+    ru: "Урок 9. Картинки: img, src и alt",
+    en: "Lesson 9. Images: img, src and alt"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -11064,7 +11064,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Osh sahifasi tayyor", "Страница плова готова", "The plov page is ready"),
-    next: L3("Keyingi qism: internetdagi rasm va o'z rasmingiz", "Следующая часть: картинка из интернета и своя картинка", "Next part: a picture from the internet and your own"),
+    next: L3("Keyingi dars: internetdagi rasm va o'z rasmingiz", "Следующий урок: картинка из интернета и своя картинка", "Next lesson: a picture from the internet and your own"),
     roles: C.s15.roles,
     say: [
       { text: L3("Endi sirni yechamiz! Esingizdami, mehmon «rasm yo'q-ku» deb yozgan edi, men esa osh.jpg faylini rasmga href bilan yozgandim? Sahifaga qarang: sarlavha bilan yozuvning o'rtasi bo'm-bo'sh. Demak, mehmon haq ekan: img tegi href so'zini tushunmaydi, chunki href havolalar uchun, rasm faylini esa faqat src aytadi.", "Пора разгадать загадку! Помнишь, у картинки стоял href с файлом osh.jpg, и всё казалось верным? Смотри на страницу: между заголовком и текстом пусто. Тег img не знает слова href: оно нужно ссылкам, а файл картинки называет только src.", "Time to solve the riddle! Remember, the picture had href with the file osh.jpg, and it all looked right? Look at the page: it’s empty between the heading and the text. The img tag doesn’t know the word href: it’s for links, and only src names the picture file."), k: "riddle" },
@@ -11072,14 +11072,14 @@ Object.assign(C, {
       { text: L3("Rasmni sahifaga img tegi qo'yadi. U kodda sarlavha bilan yozuvning o'rtasida turadi, rasm ham sahifada aynan shu yerda chiqdi.", "Картинку на страницу ставит тег img. В коде он стоит между заголовком и текстом, и фото появилось именно там.", "The img tag puts the picture on the page. In the code it sits between the heading and the text, and that’s exactly where the photo appeared."), k: "img" },
       { text: L3("Qaysi rasm ekanini src atributi aytadi. Brauzer undagi osh.jpg nomini o'qib, shu faylni topadi. Nomda bitta harf adashsa, rasm chiqmaydi, chunki brauzer faylni harfma-harf qidiradi.", "Какой файл показать, говорит атрибут src. Браузер читает в нём имя osh.jpg и находит этот файл. Ошибёшься хоть в одной букве, и картинки не будет, ведь браузер ищет файл буква в букву.", "The src attribute says which file to show. The browser reads the name osh.jpg in it and finds that file. One wrong letter and the picture won’t appear, because the browser looks for the file letter by letter."), k: "src" },
       { text: L3("alt esa rasm ochilmasa ham, unda nima borligini so'z bilan aytib turadi. Mana, fayl buzilgan, lekin rasm o'rnida so'zlar turibdi: nima borligini baribir bilib turibmiz.", "А alt словами говорит, что на картинке, даже если фото не открылось. Смотри: файл сломан, а на месте фото остались эти слова.", "And alt says in words what’s in the picture, even if the photo doesn’t open. Look: the file is broken, but these words are left where the photo was."), k: "alt" },
-      { text: L3("Hozircha rasmlarimiz hammasi o'zimizning fayllarimiz ichida yotibdi. Lekin quyosh rasmi bizda yo'q, u faqat internetda bor. Uni sahifamizga qanday olib kelamiz? Buni keyingi qismda ko'ramiz, keyin o'zingizning rasmingizni ham qo'yasiz!", "Пока все наши картинки лежат среди наших файлов. А вот картинки солнца у нас нет, она есть только в интернете. Как принести её на страницу? Узнаем в следующей части, а потом поставим и твою картинку!", "So far all our pictures sit among our own files. But we don’t have a sun picture; it exists only on the internet. How do we bring it to the page? We’ll find out in the next part, and then put in your own picture too!"), k: null }
+      { text: L3("Hozircha rasmlarimiz hammasi o'zimizning fayllarimiz ichida yotibdi. Lekin quyosh rasmi bizda yo'q, u faqat internetda bor. Uni sahifamizga qanday olib kelamiz? Buni keyingi darsda ko'ramiz, keyin o'zingizning rasmingizni ham qo'yasiz!", "Пока все наши картинки лежат среди наших файлов. А вот картинки солнца у нас нет, она есть только в интернете. Как принести её на страницу? Узнаем на следующем уроке, а потом поставим и твою картинку!", "So far all our pictures sit among our own files. But we don’t have a sun picture; it exists only on the internet. How do we bring it to the page? We’ll find out in the next lesson, and then put in your own picture too!"), k: null }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Bugungi darsdan keyin siz ham sahifaga rasm qo'ya olasiz: o'z faylingizdan ham, internetdagi saytdan ham.","Bu qismda siz ham sahifaga rasm qo'yishni o'rganasiz."],["Shoshilmayman, oldin rasm qo'yishni o'rganib olamiz.","Shoshilmayman: oldin rasm qo'yishni o'rganib olamiz, javobni esa shu qism oxirida topamiz."]]), fix(d.ru, [["Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете.","В этой части ты научишься ставить такие картинки."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet.","In this part you’ll learn to put pictures like this on a page."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Bugungi darsdan keyin siz ham sahifaga rasm qo'ya olasiz: o'z faylingizdan ham, internetdagi saytdan ham.","Bu darsda siz ham sahifaga rasm qo'yishni o'rganasiz."],["Shoshilmayman, oldin rasm qo'yishni o'rganib olamiz.","Shoshilmayman: oldin rasm qo'yishni o'rganib olamiz, javobni esa shu dars oxirida topamiz."]]), fix(d.ru, [["Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете.","В этом уроке ты научишься ставить такие картинки."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet.","In this lesson you’ll learn to put pictures like this on a page."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================

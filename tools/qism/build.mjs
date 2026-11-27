@@ -17,6 +17,7 @@
 //   { dir, src, screens, css?, slug, lessonTitleParts: [{uz,ru,en}, {uz,ru,en}],
 //     parts: [{ screens: "…" }, { screens: "…" }],     // список экранов (код массива SCREENS) каждой части
 //     riddleInE1: true|false,
+//     s15Drop: ['k', …],   // ключи реплик итогового экрана, которые часть 2 не повторяет (CSS 8: 'riddle2' — круг из квадрата)
 //     s1Done: { uz: [[from, to]], ru: [...], en: [...] } | null,   // правка S1.done части 1 («в этой части…»)
 //     s1Riddle: null | { uz, ru, en },                              // (урок 6) убрать загадку из S1.done части 1 — новый текст
 //     e1: { eyebrow, ask, next, say: [{ text: L3(…), k }] },        // тексты — строкой JS (код L3(…))
@@ -36,7 +37,9 @@ const must = (s, from, to, what) => {
   return s.replace(from, () => to);
 };
 
-const confDir = join(here, 'conf');
+// node tools/qism/build.mjs <NN>[,<NN>]|all [css] — курс по умолчанию html (конфиги conf/), css — конфиги conf-css/ (27.11.2026).
+const COURSE = process.argv[3] || 'html';
+const confDir = join(here, COURSE === 'html' ? 'conf' : 'conf-' + COURSE);
 const arg = process.argv[2];
 if (!arg) { console.error('node tools/qism/build.mjs <NN>[,<NN>]|all'); process.exit(1); }
 const nums = arg === 'all'
@@ -44,9 +47,9 @@ const nums = arg === 'all'
   : arg.split(',').map((x) => x.padStart(2, '0'));
 
 // Код S15 урока (функция целиком) — основа E1 и H2.
-function s15Source(scr) {
-  const a = scr.indexOf('function S15(');
-  if (a < 0) throw new Error('qism/build.mjs: в экранах нет function S15');
+function s15Source(scr, fn = 'S15') {
+  const a = scr.indexOf('function ' + fn + '(');
+  if (a < 0) throw new Error('qism/build.mjs: в экранах нет function ' + fn);
   const b = scr.indexOf('\n}\n', a);
   return scr.slice(a, b + 3);
 }
@@ -54,9 +57,9 @@ const poseRe = /pose: i === c\.say\.length - 1 \? 'celebrate' : i === 0 \? '(\w+
 const nextRe = /<span>\{pick\(UI\.nextLesson\)\}: <b>\{pick\(UI\.next\)\}<\/b><\/span>/;
 const navRe = /nav=\{<><BackBtn onPrev=\{p\.prev\} \/><NextBtn disabled=\{!canGo\} onClick=\{p\.finish\} label=\{UI\.finish\} \/><\/>\}/;
 
-function deriveE1(s15, edits) {
-  let s = must(s15, 'function S15(', 'function E1(', 'E1: имя');
-  s = must(s, 'const c = C.s15;', 'const c = C.e1;', 'E1: тексты');
+function deriveE1(s15, edits, fn = 'S15') {
+  let s = must(s15, 'function ' + fn + '(', 'function E1(', 'E1: имя');
+  s = must(s, 'const c = C.' + fn.toLowerCase() + ';', 'const c = C.e1;', 'E1: тексты');
   if (!poseRe.test(s)) throw new Error('qism: в S15 нет ожидаемой строки поз');
   s = s.replace(poseRe, (m, p0) => `pose: i === c.say.length - 1 ? 'curious' : i === 0 ? '${p0}' : 'point'`);
   if (!nextRe.test(s)) throw new Error('qism: в S15 нет строки «Следующий урок»');
@@ -64,9 +67,9 @@ function deriveE1(s15, edits) {
   for (const [from, to] of edits || []) s = must(s, from, to, 'E1-правка');
   return s;
 }
-function deriveH2(s15, edits) {
-  let s = must(s15, 'function S15(', 'function H2(', 'H2: имя');
-  s = must(s, 'const c = C.s15;', 'const c = C.h2;', 'H2: тексты');
+function deriveH2(s15, edits, fn = 'S15') {
+  let s = must(s15, 'function ' + fn + '(', 'function H2(', 'H2: имя');
+  s = must(s, 'const c = C.' + fn.toLowerCase() + ';', 'const c = C.h2;', 'H2: тексты');
   if (!poseRe.test(s)) throw new Error('qism: в S15 нет ожидаемой строки поз');
   s = s.replace(poseRe, () => "pose: i === 0 ? 'hello' : i === c.say.length - 1 ? 'curious' : 'wonder'");
   s = must(s, "  useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);\n", '', 'H2: без салюта');
@@ -91,13 +94,15 @@ for (const NN of nums) {
   const srcRaw = readFileSync(join(dir, conf.src), 'utf8');
   const scrRaw = readFileSync(join(dir, conf.screens), 'utf8');
   const cssRaw = conf.cssFile ? readFileSync(join(dir, conf.cssFile), 'utf8') : '';
-  const s15 = s15Source(scrRaw);
-  const E1 = deriveE1(s15, conf.e1Edits);
-  const H2 = deriveH2(s15, conf.h2Edits);
+  const course = conf.course || COURSE;          // курс: html (по умолчанию) или css
+  const fn = conf.achievement || 'S15';          // функция итогового экрана (у урока 2 CSS — S12)
+  const s15 = s15Source(scrRaw, fn);
+  const E1 = deriveE1(s15, conf.e1Edits, fn);
+  const H2 = deriveH2(s15, conf.h2Edits, fn);
 
   const textBlock = (name, o) => `  ${name}: {
     eyebrow: ${L3js(o.eyebrow)},
-    ask: ${L3js(o.ask)},${o.next ? `\n    next: ${L3js(o.next)},` : ''}${o.roles ? '\n    roles: C.s15.roles,' : ''}
+    ask: ${L3js(o.ask)},${o.next ? `\n    next: ${L3js(o.next)},` : ''}${o.roles ? '\n    roles: C.' + fn.toLowerCase() + '.roles,' : ''}
     say: [
 ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }`).join(',\n')}
     ]
@@ -105,8 +110,8 @@ ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }
 
   conf.parts.forEach((P, idx) => {
     const k = idx + 1;
-    const out = `lessons/html/${NN}q${k}-${conf.slug}.jsx`;
-    const lessonId = conf.lessonId.replace(/^(html-\d\d)-/, `$1q${k}-`);
+    const out = `lessons/${course}/${NN}q${k}-${conf.slug}.jsx`;
+    const lessonId = conf.lessonId.replace(/^((?:html|css)-\d\d)-/, `$1q${k}-`);
     const part1 = k === 1;
 
     // Тексты: новые экраны своей части + правки существующих.
@@ -120,7 +125,8 @@ ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }
     if (part1 && conf.s1Riddle) {
       texts += `C.s1.done = ${L3js(conf.s1Riddle)};\n`;
     }
-    if (!part1 && conf.riddleInE1) texts += 'C.s15.say = C.s15.say.slice(1);   // разгадка загадки — в выводе части 1\n';
+    if (!part1 && conf.riddleInE1) texts += 'C.' + fn.toLowerCase() + '.say = C.' + fn.toLowerCase() + '.say.slice(1);   // разгадка загадки — в выводе части 1\n';
+    if (!part1 && conf.s15Drop) texts += `C.${fn.toLowerCase()}.say = C.${fn.toLowerCase()}.say.filter((x) => !${JSON.stringify(conf.s15Drop)}.includes(x.k));   // реплики итога, уже показанные в выводе части 1\n`;
 
     // Экраны: список своей части + E1 или H2 перед реестром.
     let scr = scrRaw;
@@ -130,7 +136,7 @@ ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }
     scr = scr.slice(0, a) + 'const SCREENS = [\n  ' + conf.parts[idx].screens + '\n' + scr.slice(b);
     if (!part1 && conf.riddleInE1) {
       // Первая реплика S15 (разгадка) убрана — первая оставшаяся звучит не «смущённо».
-      const a15 = scr.indexOf('function S15(');
+      const a15 = scr.indexOf('function ' + fn + '(');
       const b15 = scr.indexOf('\n}\n', a15);
       let f15 = scr.slice(a15, b15 + 3);
       if (!/i === 0 \? '(?:embarrassed|wonder)' : 'point'/.test(f15)) throw new Error('qism: в S15 нет ожидаемой позы первой реплики');
@@ -139,13 +145,21 @@ ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }
     }
     const mark = '// =============================================================================\n// РЕЕСТР И КОРЕНЬ';
     scr = must(scr, mark, `${texts}\n// =============================================================================\n// ${part1 ? 'E1. ВЫВОД ЧАСТИ 1' : 'H2. КРЮЧОК ЧАСТИ 2'} (tools/qism/build.mjs; построен из S15 этого урока)\n// =============================================================================\n${part1 ? E1 : H2}\n${mark}`, 'реестр');
+    // textFixes — замены в текстах урока для частей (ссылки на номера старых уроков: «девятого урока» и т. п.
+    // после деления номера сквозные): [[from, to]] — применяются к экранам и исходнику; каждая должна найтись.
+    let srcFixed = srcRaw;
+    for (const [from, to] of conf.textFixes || []) {
+      const inScr = scr.includes(from), inSrc = srcFixed.includes(from);
+      if (!inScr && !inSrc) throw new Error('qism: textFixes — нет фрагмента: ' + from);
+      scr = scr.split(from).join(to); srcFixed = srcFixed.split(from).join(to);
+    }
     writeFileSync(join(gen, `q${k}-screens.jsx`), scr);
 
     // CSS: свой (при необходимости) — дописывается к CSS урока.
     const cssName = conf.cssFile ? `q${k}.css` : null;
     if (cssName) writeFileSync(join(gen, cssName), cssRaw + (conf.css ? '\n' + conf.css : ''));
 
-    let src = srcRaw;
+    let src = srcFixed;
     src = must(src, /lessonId: '[^']+'/.exec(src)[0], `lessonId: '${lessonId}'`, 'lessonId');
     const tm = /lessonTitle: \{\s*uz: [^\n]*\n\s*ru: [^\n]*\n\s*en: [^\n]*\n\s*\}/.exec(src);
     if (!tm) throw new Error('qism: нет lessonTitle в META');
@@ -159,9 +173,9 @@ ${o.say.map((x) => `      { text: ${L3js(x.text)}, k: ${x.k ? q(x.k) : 'null'} }
       if (p === `q${k}-screens.jsx` || p === cssName) return m;
       return '/*@FILE:' + (p.startsWith('gen/') ? p.slice(4) : '../' + p) + '@*/';
     });
-    src = `// СГЕНЕРИРОВАНО tools/qism/build.mjs (урок ${Number(NN)} курса HTML, часть ${k}) — не править руками.\n` + src;
+    src = `// СГЕНЕРИРОВАНО tools/qism/build.mjs (урок ${Number(NN)} курса ${course.toUpperCase()}, часть ${k}) — не править руками.\n` + src;
     const srcOut = join(gen, `q${k}.src.jsx`);
     writeFileSync(srcOut, src);
-    execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), srcOut, join(root, out)], { stdio: 'inherit' });
+    execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), srcOut, join(root, out)].concat(course === 'html' ? [] : [course]), { stdio: 'inherit' });
   });
 }

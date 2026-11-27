@@ -1,0 +1,8 @@
+{
+  "tools/qism/pconf/07-p1.part.jsx": {
+    "want": "FB.taPh: ожидаемая подсказка placeholder из задания (PH.savol / PH.taklif — константы cfg), не ввод ученика"
+  },
+  "tools/qism/pconf/07-p2.part.jsx": {
+    "want": "FB.taPh: ожидаемая подсказка placeholder из задания (PH.fikr / PH.taom — константы cfg), не ввод ученика"
+  }
+}

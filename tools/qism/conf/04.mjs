@@ -22,8 +22,8 @@ export default {
   slug: 'ssylki-i-atributy',
   riddleInE1: true,
   lessonTitleParts: [
-    { uz: "4-dars. 1-qism: a tegi, href va buzilgan havolalar", ru: 'Урок 4. Часть 1: тег a, href и поломки ссылок', en: 'Lesson 4. Part 1: the a tag, href and broken links' },
-    { uz: "4-dars. 2-qism: o'z havolangiz va internetdagi saytlar", ru: 'Урок 4. Часть 2: своя ссылка и сайты в интернете', en: 'Lesson 4. Part 2: your own link and sites on the internet' }
+    { uz: "7-dars. Havolalar: a va href", ru: "Урок 7. Ссылки: a и href", en: "Lesson 7. Links: a and href" },
+    { uz: "8-dars. Boshqa saytlarga havolalar", ru: "Урок 8. Ссылки на другие сайты", en: "Lesson 8. Links to other websites" }
   ],
   parts: [
     { screens: `{ id: 's1', code: 'HOOK', Comp: S1 },
@@ -41,14 +41,14 @@ export default {
   ],
   // Часть 1: загадка задаётся как раньше, но «в этой части», а не «сегодня … и на сайт в интернете».
   s1Done: {
-    uz: [["Bunday havolalarni bugun o'zingiz yasaysiz: o'z sahifangizga ham, internetdagi saytlarga ham.", "Bu qismda bunday havolalarni yasashni o'rganamiz."]],
-    ru: [['Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете.', 'В этой части ты научишься делать такие ссылки.'], ['в конце урока', 'в конце этой части']],
-    en: [['Today you’ll learn to make links like these: to your own page and to a site on the internet.', 'In this part you’ll learn to make links like these.'], ['at the end of the lesson', 'at the end of this part']]
+    uz: [["Bunday havolalarni bugun o'zingiz yasaysiz: o'z sahifangizga ham, internetdagi saytlarga ham.", "Bu darsda bunday havolalarni yasashni o'rganamiz."]],
+    ru: [['Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете.', 'В этом уроке ты научишься делать такие ссылки.'], ['в конце урока', 'в конце урока']],
+    en: [['Today you’ll learn to make links like these: to your own page and to a site on the internet.', 'In this lesson you’ll learn to make links like these.'], ['at the end of the lesson', 'at the end of the lesson']]
   },
   e1: {
     eyebrow: { uz: 'Xulosa', ru: 'Итог', en: 'Summary' },
     ask: { uz: "Saytning sahifalari havolalar bilan bog'langan", ru: 'Страницы сайта связаны ссылками', en: 'The pages of the site are linked' },
-    next: { uz: "Keyingi qism: o'z havolangiz va internetdagi saytlar", ru: 'Следующая часть: своя ссылка и сайты в интернете', en: 'Next part: your own link and sites on the internet' },
+    next: { uz: "Keyingi dars: o'z havolangiz va internetdagi saytlar", ru: 'Следующий урок: своя ссылка и сайты в интернете', en: 'Next lesson: your own link and sites on the internet' },
     roles: true,
     say: [
       { k: 'riddle', text: {
@@ -76,9 +76,9 @@ export default {
         ru: 'А где ссылка заканчивается, показывает закрывающий тег a. Без него синим станет и остаток фразы.',
         en: 'And where the link ends is shown by the closing a tag. Without it, the rest of the sentence turns blue too.' } },
       { k: null, text: {
-        uz: "Lekin hozircha havolalarimiz faqat o'z saytimizdagi fayllarga olib bordi. Nima deb o'ylaysiz, havola internetdagi boshqa saytga ham olib bora oladimi? Sizning o'z sahifangizga-chi? Keyingi qismda shuni aniqlaymiz!",
-        ru: 'Но пока наши ссылки вели только на файлы нашего сайта. Как думаешь, может ли ссылка вести на другой сайт в интернете? А на твою собственную страницу? Выясним в следующей части!',
-        en: 'But so far our links only led to files on our own site. Do you think a link can take you to another site on the internet? And to your own page? We’ll find out in the next part!' } }
+        uz: "Lekin hozircha havolalarimiz faqat o'z saytimizdagi fayllarga olib bordi. Nima deb o'ylaysiz, havola internetdagi boshqa saytga ham olib bora oladimi? Sizning o'z sahifangizga-chi? Keyingi darsda shuni aniqlaymiz!",
+        ru: 'Но пока наши ссылки вели только на файлы нашего сайта. Как думаешь, может ли ссылка вести на другой сайт в интернете? А на твою собственную страницу? Выясним на следующем уроке!',
+        en: 'But so far our links only led to files on our own site. Do you think a link can take you to another site on the internet? And to your own page? We’ll find out in the next lesson!' } }
     ]
   },
   h2: {
@@ -87,9 +87,9 @@ export default {
     roles: true,
     say: [
       { k: null, text: {
-        uz: "Salom! O'tgan qismda saytimizning sahifalarini havolalar bilan bog'ladik: a tegi havola yasaydi, href atributi esa qayerga borishini aytadi.",
-        ru: 'Привет! В прошлой части мы связали страницы сайта ссылками: тег a делает ссылку, а атрибут href говорит, куда вести.',
-        en: 'Hi! In the last part we linked the pages of the site: the a tag makes a link, and the href attribute says where it goes.' } },
+        uz: "Salom! O'tgan darsda saytimizning sahifalarini havolalar bilan bog'ladik: a tegi havola yasaydi, href atributi esa qayerga borishini aytadi.",
+        ru: 'Привет! На прошлом уроке мы связали страницы сайта ссылками: тег a делает ссылку, а атрибут href говорит, куда вести.',
+        en: 'Hi! In the last lesson we linked the pages of the site: the a tag makes a link, and the href attribute says where it goes.' } },
       { k: 'val', text: {
         uz: "Qo'shtirnoq ichiga esa hozircha faqat o'z fayllarimizning nomini yozdik: osh.html va oyinlar.html. Brauzer ularni harfma-harf qidirib topdi.",
         ru: 'В кавычках у нас пока были только имена своих файлов: osh.html и oyinlar.html. Браузер искал их буква в букву.',

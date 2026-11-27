@@ -6862,9 +6862,9 @@ const META = {
   lessonId: 'html-08q1-struktura-sajta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "8-dars. 1-qism: header, main, footer va nav",
-    ru: "Урок 8. Часть 1: header, main, footer и nav",
-    en: "Lesson 8. Part 1: header, main, footer and nav"
+    uz: "15-dars. Sayt qismlari: header, nav, main, footer",
+    ru: "Урок 15. Части сайта: header, nav, main, footer",
+    en: "Lesson 15. Parts of a site: header, nav, main, footer"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10670,7 +10670,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Kodining saytiga qarang", "Посмотри на сайт Коди", "Look at Kodi’s site"),
-    next: L3("Keyingi qism: section va o'z saytingiz", "Следующая часть: section и свой сайт", "Next part: section and your own site"),
+    next: L3("Keyingi dars: section va o'z saytingiz", "Следующий урок: section и свой сайт", "Next lesson: section and your own site"),
     roles: C.s15.roles,
     say: [
       { text: L3("Endi sirni ochamiz! Esingizdami, tepani header tegiga o'rasam, sayt boshi o'zi rangli bo'lib qoladi, deb o'ylagan edim? Mana, o'sha saytni ochdim: tepa header ichida turibdi, lekin hech qanday rang paydo bo'lmabdi. Demak, men yanglishgan ekanman!", "Пора разгадать загадку! Помнишь, мне казалось: если обернуть верх сайта в header, он сам станет цветным? Вот тот самый сайт: верх лежит в header, а цвета нет. Выходит, мне только показалось!", "Time to solve the riddle! Remember, I thought that wrapping the top of the site in header would make it colorful by itself? Here’s that very site: the top is inside header, but there’s no color at all. So I was wrong!"), k: "riddle" },
@@ -10679,14 +10679,14 @@ Object.assign(C, {
       { text: L3("Menyuni nav tegi o'rab turadi, u header ichida yashaydi. Faqat head bilan adashtirmang: head ko'rinmas ma'lumotlar uchun kerak, header esa sahifaning ko'rinadigan boshi.", "Меню оборачивает тег nav, и он стоит внутри header. Только не путай его с head: head нужен для невидимых сведений о странице, а header для видимого верха.", "The menu is wrapped by the nav tag, and it sits inside header. Just don’t mix it up with head: head holds invisible information about the page, while header is the visible top."), k: "nav" },
       { text: L3("O'rtada main turibdi: u sahifaning eng muhim qismini o'rab turadi. Esingizdami, sahifada main faqat bitta bo'ladi.", "Посередине main: он оборачивает самое важное на странице. Помнишь, main на странице бывает только один.", "In the middle is main: it wraps the most important part of the page. Remember, a page has only one main."), k: "main" },
       { text: L3("Eng pastda footer turibdi: u sayt oxirini bildiradi. Odatda unga yil bilan saytning nomi yoziladi.", "Внизу footer: он обозначает низ сайта. Обычно там пишут год и название сайта.", "At the bottom is footer: it marks the bottom of the site. Usually it holds the year and the site’s name."), k: "footer" },
-      { text: L3("Lekin bitta narsa menga tinchlik bermayapti: main ichida o'yinlar bilan retseptlar bir joyda aralash yotibdi-ku. Ularni bir-biridan qanday ajratamiz? Buni keyingi qismda bilib olamiz, undan keyin o'z saytingizni ham yasaymiz!", "Но одна вещь не даёт мне покоя: внутри main игры и рецепты лежат вперемешку! Как их разделить? Узнаем в следующей части, а потом соберём твой собственный сайт!", "But one thing keeps bugging me: inside main the games and the recipes are all mixed together! How do we separate them? We’ll find out in the next part, and then we’ll build your own site!"), k: "main" }
+      { text: L3("Lekin bitta narsa menga tinchlik bermayapti: main ichida o'yinlar bilan retseptlar bir joyda aralash yotibdi-ku. Ularni bir-biridan qanday ajratamiz? Buni keyingi darsda bilib olamiz, undan keyin o'z saytingizni ham yasaymiz!", "Но одна вещь не даёт мне покоя: внутри main игры и рецепты лежат вперемешку! Как их разделить? Узнаем на следующем уроке, а потом соберём твой собственный сайт!", "But one thing keeps bugging me: inside main the games and the recipes are all mixed together! How do we separate them? We’ll find out in the next lesson, and then we’ll build your own site!"), k: "main" }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Buni dars oxirida o'sha saytni ochib tekshiramiz.","Buni shu qism oxirida o'sha saytni ochib tekshiramiz."]]), fix(d.ru, [["Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта.","В этой части ты научишься делить сайт на header, nav, main и footer."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site.","In this part you’ll learn to split a site into header, nav, main and footer."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Buni dars oxirida o'sha saytni ochib tekshiramiz.","Buni shu dars oxirida o'sha saytni ochib tekshiramiz."]]), fix(d.ru, [["Сегодня ты научишься делить сайт на такие части и сделаешь части своего сайта.","В этом уроке ты научишься делить сайт на header, nav, main и footer."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to split a site into parts like these, and you’ll make the parts of your own site.","In this lesson you’ll learn to split a site into header, nav, main and footer."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================

@@ -29,4 +29,7 @@ naborRedaktor(gen);
     'doctype|DOCTYPE|CSS|style|flex-direction|row-reverse|column-reverse|row|column|flex|nav|inline-block|display|inline|block|none|div|span|Flexbox|border-radius|box-shadow|border-top|border-right|border-bottom|border-left|gray|box-sizing|border-box|content-box|Box Model|margin|padding|border|solid|dashed|dotted|width|height|font-size|px|img|background-image|background-repeat|background-size|no-repeat|repeat|cover|url|background-color|background color|color|class|id|hex|rgb|hsl|orangered|orange|tomato|green|blue|red|purple|lavender|yellow|gold|white|skyblue|navy|lightyellow|darkgreen|selector|property|value|H (?:one|', 'en words'));
 }
 
-execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c10.src.jsx'), join(root, 'lessons/css/10-flexbox-osi.jsx'), 'css'], { stdio: 'inherit' });
+// --gen-only: только папка gen/ (для сборки уроков частями, tools/qism/build.mjs), без сборки самого урока.
+if (!process.argv.includes("--gen-only")) {
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), join(here, 'c10.src.jsx'), join(root, 'lessons/css/10-flexbox-osi.jsx'), 'css'], { stdio: 'inherit' });
+}

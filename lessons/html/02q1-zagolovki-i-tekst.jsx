@@ -6868,9 +6868,9 @@ const META = {
   lessonId: 'html-02q1-zagolovki-i-tekst',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: "2-dars. 1-qism: h1–h6 va p",
-    ru: "Урок 2. Часть 1: h1–h6 и p",
-    en: "Lesson 2. Part 1: h1–h6 and p"
+    uz: "3-dars. Sarlavhalar va abzaslar",
+    ru: "Урок 3. Заголовки и абзацы",
+    en: "Lesson 3. Headings and paragraphs"
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -10751,7 +10751,7 @@ Object.assign(C, {
   e1: {
     eyebrow: L3("Xulosa", "Итог", "Summary"),
     ask: L3("Mushuk sahifasi: sarlavhalar va abzaslar", "Страница про кота: заголовки и абзацы", "The cat page: headings and paragraphs"),
-    next: L3("Keyingi qism: b, i va o'z sahifangiz", "Следующая часть: b, i и своя страница", "Next part: b, i and your own page"),
+    next: L3("Keyingi dars: b, i va o'z sahifangiz", "Следующий урок: b, i и своя страница", "Next lesson: b, i and your own page"),
     roles: C.s15.roles,
     say: [
       { text: L3("Voy, adashdim! Men asosiy sarlavhaga h6 tegini qo'ymoqchi edim, chunki olti katta son-ku. Mana, natijasi: sarlavha mitti bo'lib qoldi! Siz buni sarlavhalar bilan tanishganimizda o'zingiz ham ko'rgan edingiz: raqam o'lchamni emas, muhimlikni bildiradi, shuning uchun raqam qancha katta bo'lsa, sarlavha shuncha kichik bo'ladi.", "Ой, я ошибся! Я хотел поставить на главный заголовок h6, ведь шесть — большое число. Смотри, что вышло: заголовок стал совсем мелким! Ты и сам видел это, когда мы знакомились с заголовками: цифра — не размер, а важность, и чем больше цифра, тем мельче заголовок.", "Oops, I was wrong! I wanted to put h6 on the main heading, because six is a big number. Look what happened: the heading turned tiny! You saw it yourself when we met the headings: the number isn’t the size but the importance, and the bigger the number, the smaller the heading."), k: "riddle" },
@@ -10759,14 +10759,14 @@ Object.assign(C, {
       { text: L3("Pastdagi sarlavhani ko'ryapsizmi? U bo'limning sarlavhasi, shuning uchun h2 tegida turibdi. U asosiy sarlavhadan kichikroq bo'ladi, lekin oddiy matndan baribir kattaroq.", "Заголовок ниже — это заголовок раздела, поэтому у него h2. Он мельче главного, но всё равно крупнее обычного текста.", "The heading below is a section heading, so it gets h2. It’s smaller than the main one, but still bigger than plain text."), k: "h2" },
       { text: L3("Matn esa abzaslarga bo'lingan, chunki har bir abzasni o'z p tegi o'rab turibdi. Brauzer abzaslarni bir-biridan ajratib, o'rtasida bo'sh joy qoldiradi.", "Дальше идёт текст. Он разделён на абзацы, потому что каждый абзац обёрнут в свой тег p. Поэтому браузер отделяет их друг от друга отступом.", "Next comes the text. It’s split into paragraphs because each one is wrapped in its own p tag. That’s why the browser sets them apart with some space."), k: "p" },
       { text: L3("Qoyil! Siz sarlavhani yopishni ham, abzasni o'zingiz yig'ishni ham eplab oldingiz.", "Отлично! Заголовок закрыт, абзац собран — всё это ты сделал своими руками.", "Awesome! The heading is closed and the paragraph is built, and you did all of it yourself."), k: null },
-      { text: L3("Lekin sahifada yana bir sir qoldi: abzasdagi «juda» so'zi qalin, «uxlashni» so'zi esa qiya yozilgan. Ularni qaysi teglar shunaqa qilgan, nima deb o'ylaysiz? Keyingi qismda topamiz, undan keyin o'z sahifangizni ham yasaymiz!", "Но на странице осталась ещё одна загадка: слово «очень» в абзаце жирное, а слово «спать» написано курсивом. Как думаешь, какие теги это делают? Узнаем в следующей части, а потом соберём и твою страницу!", "But the page still has one more mystery: the word “really” in the paragraph is bold, and “sleep” is in italic. Which tags do you think do that? We’ll find out in the next part, and then we’ll build your own page too!"), k: "bi" }
+      { text: L3("Lekin sahifada yana bir sir qoldi: abzasdagi «juda» so'zi qalin, «uxlashni» so'zi esa qiya yozilgan. Ularni qaysi teglar shunaqa qilgan, nima deb o'ylaysiz? Keyingi darsda topamiz, undan keyin o'z sahifangizni ham yasaymiz!", "Но на странице осталась ещё одна загадка: слово «очень» в абзаце жирное, а слово «спать» написано курсивом. Как думаешь, какие теги это делают? Узнаем на следующем уроке, а потом соберём и твою страницу!", "But the page still has one more mystery: the word “really” in the paragraph is bold, and “sleep” is in italic. Which tags do you think do that? We’ll find out in the next lesson, and then we’ll build your own page too!"), k: "bi" }
     ]
   }
 });
 {
   const d = C.s1.done;
   const fix = (s, pairs) => pairs.reduce((a, [f, t]) => { if (!a.includes(f)) throw new Error("qism: нет фрагмента в s1.done: " + f); return a.split(f).join(t); }, s);
-  C.s1.done = L3(fix(d.uz, [["Bugun matnni shunday tartibga solishni o'rganasiz, keyin o'z sahifangizni yasaysiz.","Bu qismda sarlavhalar va abzaslar yordamida matnni shunday tartibga solishni o'rganasiz."],["dars oxirida yana so'rayman","bu qismning oxirida yana so'rayman"]]), fix(d.ru, [["Сегодня ты научишься так оформлять текст и сделаешь свою страницу.","В этой части ты научишься так оформлять текст с помощью заголовков и абзацев."],["в конце урока","в конце этой части"]]), fix(d.en, [["Today you’ll learn to shape text like this and make your own page.","In this part you’ll learn to shape text like this with headings and paragraphs."],["at the end of the lesson","at the end of this part"]]));
+  C.s1.done = L3(fix(d.uz, [["Bugun matnni shunday tartibga solishni o'rganasiz, keyin o'z sahifangizni yasaysiz.","Bu darsda sarlavhalar va abzaslar yordamida matnni shunday tartibga solishni o'rganasiz."],["dars oxirida yana so'rayman","bu dars oxirida yana so'rayman"]]), fix(d.ru, [["Сегодня ты научишься так оформлять текст и сделаешь свою страницу.","В этом уроке ты научишься так оформлять текст с помощью заголовков и абзацев."],["в конце урока","в конце урока"]]), fix(d.en, [["Today you’ll learn to shape text like this and make your own page.","In this lesson you’ll learn to shape text like this with headings and paragraphs."],["at the end of the lesson","at the end of the lesson"]]));
 }
 
 // =============================================================================
