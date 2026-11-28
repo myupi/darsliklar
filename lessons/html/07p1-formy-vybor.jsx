@@ -9398,8 +9398,10 @@ function lexA7(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A7_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A7_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a7Attrs(name, body.slice(name.length)));
@@ -9419,6 +9421,8 @@ function lexA7(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A7_ATTRS = { a: ['href'], img: ['src', 'alt'], input: ['type', 'placeholder'], textarea: ['placeholder'] };
 function a7Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -10696,13 +10700,13 @@ Object.assign(C, {
         'Ура! Четыре страницы лагеря снова работают: смена, вопросы, спорт и отзывы. Списки полные, большое поле на месте!',
         'Hooray! Four pages of the camp site work again: shift, questions, sport and reviews. The lists are full, the big field is in place!') },
       { k: 'select', text: L3("Ro'yxatning o'zini select tegi yasadi. Uni kichkina strelkasidan taniysiz: bossangiz, variantlar ochiladi.",
-        'Весь список делает тег select. Его легко узнать по маленькой стрелке: нажал, и варианты раскрылись.',
+        'Весь список делает тег select. Его легко узнать по маленькой стрелке: нажми на неё, и варианты раскроются.',
         'The whole list is made by the select tag. You can spot it by the little arrow: tap it, and the choices open.') },
       { k: 'option', text: L3("Har bir variantni option tegi yasadi. Iyul nega yo'qolgan edi? Chunki uning option tegi buzilgan edi. Fikrlar sahifasida ham so'z option tegisiz qolgandi. Demak, option tegisiz so'z ro'yxatga hech qachon tushmaydi.",
         'Каждый вариант делает option. Почему пропал июль? У него был сломан тег option. И на странице отзывов слово осталось без option. Значит, слово без option в список не попадает.',
         'Each choice is made by option. Why did July disappear? Its option tag was broken. And on the reviews page a word was left without option. So a word without option never gets into the list.') },
       { k: 'textarea', text: L3("Uzun gap input tegiga sig'maydi, shuning uchun katta maydonni textarea yasadi. Uni ham yopuvchi teg bilan yozdingiz.",
-        'Длинный текст не влезает в input, поэтому большое поле делает textarea. И ты записал его с закрывающим тегом.',
+        'Длинный текст не влезает в input, поэтому большое поле делает textarea. И у него обязательно есть закрывающий тег.',
         'A long text doesn’t fit in input, so the big field is made by textarea. And you wrote it with a closing tag.') },
       { k: null, text: L3("Lekin bitta narsa yetishmayapti: bola ro'yxatdan tanladi, o'zi haqida yozdi, endi anketani nima bilan yuboradi? Buni keyingi darsda hal qilamiz, oxirida esa o'z anketangizni yozasiz!",
         'Но кое-чего не хватает: человек выбрал из списка, написал о себе, а чем отправить анкету? Это решим на следующем уроке, а в конце ты напишешь свою анкету!',

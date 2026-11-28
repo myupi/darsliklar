@@ -9385,8 +9385,10 @@ function lexA8(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A8_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A8_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a8Attrs(name, body.slice(name.length)));
@@ -9406,6 +9408,8 @@ function lexA8(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A8_ATTRS = { a: ['href'], img: ['src', 'alt'] };
 function a8Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -10593,7 +10597,7 @@ Object.assign(C, {
         'Посередине main: он оборачивает самое важное на странице. Помнишь, main на странице бывает только один.',
         'In the middle is main: it wraps the most important part of the page. Remember, a page has only one main.') },
       { k: 'footer', text: L3("Eng pastda footer: bu sayt oxiri. Jamoa sahifasida uni o'zingiz yozdingiz, yozuvni footer ichiga solib.",
-        'Внизу footer: это низ сайта. На странице команды ты написал его сам, положив надпись внутрь footer.',
+        'Внизу footer: это низ сайта. На странице команды надпись легла внутрь footer — это твоя работа.',
         'At the bottom is footer: the bottom of the site. On the team page you wrote it yourself, putting the text inside footer.') },
       { k: null, text: L3("Lekin bitta savol qoldi: main ichida mavzular ko'payib ketsa, ularni qanday ajratamiz? Buni keyingi darsda bilib olamiz, oxirida esa o'z saytingizni yig'asiz!",
         'Но остался вопрос: если тем внутри main станет много, как их разделить? Узнаем на следующем уроке, а в конце ты соберёшь свой сайт!',
@@ -14213,6 +14217,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Телефон: пока открыта панель ошибки или подсказки, «Проверить» в ряду символов под ней не нажимается — прячем,
    ученик закрывает панель («Попробовать ещё» / «Понятно»). Валидатор IT (B07, 15.11.2026): кнопка под панелью. */
 @media (max-width: 759px) { .b-stage.has-sheet.is-sheet-hint .key-go { visibility: hidden; } }
+/* Аудит 28.11.2026: подпись тега — не мельче 9 px; значок «Inspektor» слева, чтобы не закрывать подписи тегов справа. */
+.r28 .a8-reg-tag { font-size: max(.6em, 9px); }
+.r28 .a8-insp-badge { right: auto; left: 4px; }
 
 /* ── Практика 8 частями (tools/qism/pconf): хук части 2 и вывод части 1 ── */
 

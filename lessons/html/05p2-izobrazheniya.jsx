@@ -9362,8 +9362,10 @@ function lexA5(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A5_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A5_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a5Attrs(name, body.slice(name.length)));
@@ -9385,6 +9387,8 @@ function lexA5(src) {
 // hrefOnImg (href у картинки — загадка урока 5), attrTypo, attrNone.
 const A5_ATTRS = { a: ['href'], img: ['src', 'alt'] };
 function a5Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -10791,7 +10795,7 @@ Object.assign(C, {
         'Смотри, и остальные страницы зоопарка готовы: пингвин, фламинго, жираф и твоё животное. Теперь можно открывать зоопарк для гостей!',
         'Look, the other pages of the zoo are ready too: the penguin, the flamingo, the giraffe and your own animal. Now we can open the zoo to guests!') },
       { k: 'src', text: L3("Boshqa saytdagi rasm uchun src ichiga to'liq manzilni yozdingiz: https, sayt nomi, qiya chiziq va fayl nomi. O'zimizning papkadagi rasm uchun esa fayl nomining o'zi yetdi.",
-        'Для картинки с другого сайта ты писал в src полный адрес: https, имя сайта, косая черта и имя файла. А для картинки из нашей папки хватало имени файла.',
+        'Для картинки с другого сайта в src нужен был полный адрес: https, имя сайта, косая черта и имя файла. А для картинки из нашей папки хватало имени файла.',
         'For a picture from another site you wrote the full address in src: https, the site name, a slash and the file name. For a picture from our own folder the file name was enough.') },
       { k: 'src', text: L3("Flamingo sahifasida manzilning boshida https tushib qolgan edi. Usiz brauzer rasmni o'zimizning papkadan izlaydi va topa olmaydi.",
         'На странице фламинго в начале адреса не хватало https. Без него браузер ищет картинку в нашей папке и не находит.',
@@ -10800,10 +10804,10 @@ Object.assign(C, {
         'На странице жирафа картинка стояла сверху, а под ней абзац. Картинку ставит тег img, а абзац тег p.',
         'On the giraffe page the picture came first and the paragraph went under it. The img tag adds the picture, and the p tag adds the paragraph.') },
       { k: 'alt', text: L3("Har bir rasmga alt ham yozdingiz: rasm ochilmay qolsa, sahifada aynan shu so'zlar turadi.",
-        'К каждой картинке ты написал и alt: если фото не откроется, на странице останутся именно эти слова.',
+        'У каждой картинки есть и alt: если фото не откроется, на странице останутся именно эти слова.',
         'You wrote alt for every picture too: if the photo doesn’t open, exactly these words stay on the page.') },
       { k: 'own', text: L3("Oxirida o'z hayvoningiz bilan sahifa yozdingiz, endi bog'imizda sevimli hayvoningiz ham yashaydi! Mehmonlar bog'ni baholashi kerak-ku: buning uchun anketa bo'lmasa bo'lmaydi.",
-        'А в конце ты написал страницу со своим животным. Это было мощно! На следующем уроке познакомимся с формами.',
+        'А в конце появилась страница с твоим животным. Это было мощно! На следующем уроке познакомимся с формами.',
         'And at the end you made a page with your own animal. That was awesome! Next lesson we’ll meet forms.') }
     ],
     roles: {

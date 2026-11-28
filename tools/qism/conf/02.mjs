@@ -75,7 +75,7 @@ export default {
     say: [
       { k: 'riddle', text: {
         uz: "Voy, adashdim! Men asosiy sarlavhaga h6 tegini qo'ymoqchi edim, chunki olti katta son-ku. Mana, natijasi: sarlavha mitti bo'lib qoldi! Siz buni sarlavhalar bilan tanishganimizda o'zingiz ham ko'rgan edingiz: raqam o'lchamni emas, muhimlikni bildiradi, shuning uchun raqam qancha katta bo'lsa, sarlavha shuncha kichik bo'ladi.",
-        ru: 'Ой, я ошибся! Я хотел поставить на главный заголовок h6, ведь шесть — большое число. Смотри, что вышло: заголовок стал совсем мелким! Ты и сам видел это, когда мы знакомились с заголовками: цифра — не размер, а важность, и чем больше цифра, тем мельче заголовок.',
+        ru: 'Ой, я ошибся! Я хотел поставить на главный заголовок h6, ведь шесть — большое число. Смотри, что вышло: заголовок стал совсем мелким! Это уже было видно, когда мы знакомились с заголовками: цифра — не размер, а важность, и чем больше цифра, тем мельче заголовок.',
         en: 'Oops, I was wrong! I wanted to put h6 on the main heading, because six is a big number. Look what happened: the heading turned tiny! You saw it yourself when we met the headings: the number isn’t the size but the importance, and the bigger the number, the smaller the heading.' } },
       { k: 'h', text: {
         uz: "Endi h6 o'rniga h1 tegini qo'yamiz. Ana, sarlavha sahifaning tepasida katta bo'lib turibdi! h1 eng katta sarlavha bo'ladi, demak, sahifaning asosiy sarlavhasi uchun aynan shu teg kerak.",
@@ -91,7 +91,7 @@ export default {
         en: 'Next comes the text. It’s split into paragraphs because each one is wrapped in its own p tag. That’s why the browser sets them apart with some space.' } },
       { k: null, text: {
         uz: "Qoyil! Siz sarlavhani yopishni ham, abzasni o'zingiz yig'ishni ham eplab oldingiz.",
-        ru: 'Отлично! Заголовок закрыт, абзац собран — всё это ты сделал своими руками.',
+        ru: 'Отлично! Заголовок закрыт, абзац собран — всё это сделано твоими руками.',
         en: 'Awesome! The heading is closed and the paragraph is built, and you did all of it yourself.' } },
       { k: 'bi', text: {
         uz: "Lekin sahifada yana bir sir qoldi: abzasdagi «juda» so'zi qalin, «uxlashni» so'zi esa qiya yozilgan. Ularni qaysi teglar shunaqa qilgan, nima deb o'ylaysiz? Keyingi darsda topamiz, undan keyin o'z sahifangizni ham yasaymiz!",

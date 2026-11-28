@@ -58,8 +58,10 @@ function lexA4(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A4_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A4_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a4Attrs(name, body.slice(name.length)));
@@ -77,6 +79,8 @@ function lexA4(src) {
 // attrs.href — значение (нет href — undefined); attrErr — первая ошибка записи: noEq (href без =), noQuote
 // (значение без кавычек), attrTypo (другое имя атрибута), attrNone (атрибут у тега, которому он не нужен).
 function a4Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;

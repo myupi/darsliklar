@@ -197,7 +197,7 @@ Object.assign(C, {
         'Смотри, и остальные страницы зоопарка готовы: пингвин, фламинго, жираф и твоё животное. Теперь можно открывать зоопарк для гостей!',
         'Look, the other pages of the zoo are ready too: the penguin, the flamingo, the giraffe and your own animal. Now we can open the zoo to guests!') },
       { k: 'src', text: L3("Boshqa saytdagi rasm uchun src ichiga to'liq manzilni yozdingiz: https, sayt nomi, qiya chiziq va fayl nomi. O'zimizning papkadagi rasm uchun esa fayl nomining o'zi yetdi.",
-        'Для картинки с другого сайта ты писал в src полный адрес: https, имя сайта, косая черта и имя файла. А для картинки из нашей папки хватало имени файла.',
+        'Для картинки с другого сайта в src нужен был полный адрес: https, имя сайта, косая черта и имя файла. А для картинки из нашей папки хватало имени файла.',
         'For a picture from another site you wrote the full address in src: https, the site name, a slash and the file name. For a picture from our own folder the file name was enough.') },
       { k: 'src', text: L3("Flamingo sahifasida manzilning boshida https tushib qolgan edi. Usiz brauzer rasmni o'zimizning papkadan izlaydi va topa olmaydi.",
         'На странице фламинго в начале адреса не хватало https. Без него браузер ищет картинку в нашей папке и не находит.',
@@ -206,10 +206,10 @@ Object.assign(C, {
         'На странице жирафа картинка стояла сверху, а под ней абзац. Картинку ставит тег img, а абзац тег p.',
         'On the giraffe page the picture came first and the paragraph went under it. The img tag adds the picture, and the p tag adds the paragraph.') },
       { k: 'alt', text: L3("Har bir rasmga alt ham yozdingiz: rasm ochilmay qolsa, sahifada aynan shu so'zlar turadi.",
-        'К каждой картинке ты написал и alt: если фото не откроется, на странице останутся именно эти слова.',
+        'У каждой картинки есть и alt: если фото не откроется, на странице останутся именно эти слова.',
         'You wrote alt for every picture too: if the photo doesn’t open, exactly these words stay on the page.') },
       { k: 'own', text: L3("Oxirida o'z hayvoningiz bilan sahifa yozdingiz, endi bog'imizda sevimli hayvoningiz ham yashaydi! Mehmonlar bog'ni baholashi kerak-ku: buning uchun anketa bo'lmasa bo'lmaydi.",
-        'А в конце ты написал страницу со своим животным. Это было мощно! На следующем уроке познакомимся с формами.',
+        'А в конце появилась страница с твоим животным. Это было мощно! На следующем уроке познакомимся с формами.',
         'And at the end you made a page with your own animal. That was awesome! Next lesson we’ll meet forms.') }
     ],
     roles: {

@@ -9351,6 +9351,8 @@ function lexA2(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const name = (close ? inner.slice(1) : inner).trim().toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A2_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A2_KNOWN.indexOf(name) >= 0) { out.push({ k: close ? 'close' : 'open', name, raw }); continue; }
     if (/^h\s*\d+$/.test(name)) { out.push({ k: 'bad', why: 'noLevel', bad: raw }); continue; }
     const near = a2Near(name.replace(/[^a-z]/g, ''));
@@ -10440,10 +10442,10 @@ Object.assign(C.fin, {
       'Под ним абзац в p.',
       'Under it there’s a paragraph in p.') },
     { k: 'bi', text: L3("Abzasdagi muhim so'zni b yoki i bilan ajratdingiz. E'londa vaqtni qalin, kitobning nomini esa qiya qilgan edingiz: so'z har safar ikkita tegning o'rtasida turdi.",
-      'Важное слово в абзаце ты выделил тегом b или i. В объявлении ты сделал жирным время, а название книги наклонным: слово каждый раз стояло между двумя тегами.',
+      'Важное слово в абзаце выделяют тегом b или i. В объявлении жирным стало время, а название книги — наклонным: слово каждый раз стояло между двумя тегами.',
       'You marked the important word in the paragraph with b or i. In the notice you made the time bold and the book title slanted: each time the word sat between two tags.') },
     { k: null, text: L3("Ob-havo sahifasida esa yopilmagan b tegini topdingiz, shuning uchun qalinlik hamma matnga yoyilgan edi. Yopuvchi teg qalinlikni to'xtatdi.",
-      'А на странице погоды ты нашёл незакрытый b: из-за него жирным стал весь текст. Закрывающий тег остановил жирный.',
+      'А на странице погоды нашёлся незакрытый b: из-за него жирным стал весь текст. Закрывающий тег остановил жирный.',
       'And on the weather page you found the unclosed b: because of it all the text turned bold. The closing tag stopped the bold.') },
     { k: 'own', text: L3("Butun maqola sizning qo'lingizdan chiqdi! Gazetada endi nima yetishmaydi, sizningcha? Ro'yxatlar kerak bo'lsa kerak.",
       'А в конце вся статья написана твоими руками. Это было мощно! На следующем уроке сделаем списки.',

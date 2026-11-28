@@ -103,7 +103,7 @@ Object.assign(C, {
         'Посередине main: он оборачивает самое важное на странице. Помнишь, main на странице бывает только один.',
         'In the middle is main: it wraps the most important part of the page. Remember, a page has only one main.') },
       { k: 'footer', text: L3("Eng pastda footer: bu sayt oxiri. Jamoa sahifasida uni o'zingiz yozdingiz, yozuvni footer ichiga solib.",
-        'Внизу footer: это низ сайта. На странице команды ты написал его сам, положив надпись внутрь footer.',
+        'Внизу footer: это низ сайта. На странице команды надпись легла внутрь footer — это твоя работа.',
         'At the bottom is footer: the bottom of the site. On the team page you wrote it yourself, putting the text inside footer.') },
       { k: null, text: L3("Lekin bitta savol qoldi: main ichida mavzular ko'payib ketsa, ularni qanday ajratamiz? Buni keyingi darsda bilib olamiz, oxirida esa o'z saytingizni yig'asiz!",
         'Но остался вопрос: если тем внутри main станет много, как их разделить? Узнаем на следующем уроке, а в конце ты соберёшь свой сайт!',

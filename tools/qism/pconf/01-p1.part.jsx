@@ -23,6 +23,7 @@ Object.assign(NOT_SPOKEN_IN, { roles: { tag: 1, head: 1, title: 1, exact: 1 } })
 
 // ── Крючок: пять страниц → четыре. ──
 Object.assign(C.s1, {
+  eyebrow: L3("To'rtta varaq", 'Четыре вкладки', 'Four tabs'),   // аудит 28.11.2026: в части 1 вкладок четыре
   say: L3("Brauzerimda nechta varaq ochiq turibdi, sanab ko'ring-chi: to'rtta! Musiqa, o'yinlar, oshxona va sayohat sahifalari. Kecha ularni yangilamoqchi bo'lgandim, kompyuterim qotib qoldi. Keling, nima bo'lganini birga ko'ramiz: «Yangilash» tugmasini bosing.",
     'Привет! Это мой браузер. Здесь открыты четыре моих любимых страницы: музыка, игры, кухня и поездки. Вчера я хотел их обновить, но что-то случилось. Давай посмотрим вместе. Нажми «Обновить».',
     'Hi! This is my browser. Four of my favourite pages are open here: music, games, kitchen and trips. Yesterday I tried to refresh them, but something happened. Let’s look together. Tap “Refresh”.'),
@@ -93,7 +94,7 @@ Object.assign(C, {
         'Помнишь? Тег — это слово в угловых скобках. Браузер его не показывает, а только читает. Открывающий тег начинает, а закрывающий с косой чертой заканчивает.',
         'Remember? A tag is a word in angle brackets. The browser doesn’t show it, it just reads it. The opening tag starts, and the closing one with a slash ends.') },
       { k: 'head', text: L3("head sahifa haqidagi ma'lumotlarni saqlaydi, oynada esa ko'rinmaydi. Oshxona sahifasida title uchun uyni o'zingiz yasadingiz.",
-        'head хранит сведения о странице, а в окне его не видно. На странице кухни ты сам построил для title дом.',
+        'head хранит сведения о странице, а в окне его не видно. А на странице кухни у title появился дом — его построили твои руки.',
         'head keeps information about the page, and you can’t see it in the window. On the kitchen page you built a home for title yourself.') },
       { k: 'title', text: L3("title head ichida yashaydi. Unga sahifaning nomi yoziladi, brauzer esa shu nomni varaqda ko'rsatadi.",
         'title живёт внутри head. В нём пишут название страницы, а браузер показывает его на вкладке.',

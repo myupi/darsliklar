@@ -63,7 +63,7 @@ export default {
         en: 'And here is the form put together the right way: the list and the big field are both in place!' } },
       { k: 'select', text: {
         uz: "Butun ro'yxatni select tegi yasaydi. Uni kichkina strelkasidan tanib olasiz: bossangiz, ro'yxat ochiladi.",
-        ru: 'Весь список делает тег select. Его легко узнать по маленькой стрелке: нажал, и список раскрылся.',
+        ru: 'Весь список делает тег select. Его легко узнать по маленькой стрелке: нажми на неё, и список раскроется.',
         en: 'The whole list is made by the select tag. You can spot it by the little arrow: tap it, and the list opens.' } },
       { k: 'option', text: {
         uz: "Ro'yxatning har bir qatorini option tegi yasaydi. Variantlar kodda qaysi tartibda turgan bo'lsa, ro'yxatda ham shu tartibda chiqadi.",

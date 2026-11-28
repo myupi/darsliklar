@@ -168,7 +168,7 @@ Object.assign(C, {
     eyebrow: L3("Xulosa", 'Вывод', 'Summary'),
     say: [
       { k: 'all', text: L3("Qarang, maktab saytining qolgan sahifalari ham tayyor: maktab haqida, to'garaklar, tadbirlar va sizning saytingiz. Endi o'zingiz qurgan sinf saytini tepadan pastga bir aylanib chiqamiz.",
-        'Смотри, остальные страницы школьного сайта тоже готовы: о школе, кружки, события и твой сайт. Теперь пройдёмся сверху вниз по сайту, который ты собрал сам.',
+        'Смотри, остальные страницы школьного сайта тоже готовы: о школе, кружки, события и твой сайт. Теперь пройдёмся сверху вниз по сайту, который собран твоими руками.',
         'Look, the other pages of the school site are ready too: about the school, clubs, events and your own site. Now let’s walk from top to bottom through the site you built yourself.') },
       { k: 'header', text: L3("Eng tepada header turibdi: sayt nomi bilan menyu shu yerda yashaydi. Uni head bilan adashtirmang.",
         'Наверху header: в нём название сайта и меню. Не путай его с head.',
@@ -186,7 +186,7 @@ Object.assign(C, {
         'Внизу footer: это низ сайта.',
         'At the bottom is footer: the bottom of the site.') },
       { k: 'own', text: L3("Bu saytni o'zingiz noldan qurdingiz, Inspektor esa unda birorta ham qismni o'tkazib yubormadi! Endi butun kursdagi bilimlaringizni bitta saytga yig'adigan katta loyiha sizni kutyapti.",
-        'Этот сайт ты собрал с нуля, и Инспектор не пропустил ни одной части! Дальше тебя ждёт большой проект, который соберёт знания всего курса в один сайт.',
+        'Этот сайт собран тобой с нуля, и Инспектор не пропустил ни одной части! Дальше тебя ждёт большой проект, который соберёт знания всего курса в один сайт.',
         'You built this site from scratch, and the Inspector didn’t miss a single part! A big project is next, one that brings the whole course together in a single site.') }
     ],
     roles: FIN_OLD.roles,

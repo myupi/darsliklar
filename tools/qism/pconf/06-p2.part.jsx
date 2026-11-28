@@ -67,7 +67,7 @@ Object.assign(C.fin, {
       'А в последней анкете все поля собрал в одно место тег form.',
       'And in the last form, one form tag gathered all the fields in one place.') },
     { k: 'type', text: L3("Rasm chizish anketasidagi sirni esa o'zingiz ochdingiz: parolni placeholder emas, faqat password yashira oladi.",
-      'А загадку из анкеты рисования ты разгадал сам: пароль прячет только password, а не placeholder.',
+      'А загадка из анкеты рисования разгадана: пароль прячет только password, а не placeholder.',
       'And you solved the riddle from the drawing form yourself: only password hides a password, not placeholder.') },
     { k: 'own', text: L3("Saytda endi sizning to'garagingiz ham bor, anketasi bilan birga! Bolalar ro'yxatdan tanlashi va anketani yuborishi uchun yana nima kerak ekan, o'ylab ko'ring.",
       'А в конце — твоя собственная анкета. Это было мощно! На следующем уроке научимся выбору из списка и кнопке отправки.',

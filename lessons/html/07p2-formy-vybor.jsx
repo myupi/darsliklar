@@ -9398,8 +9398,10 @@ function lexA7(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A7_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A7_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a7Attrs(name, body.slice(name.length)));
@@ -9419,6 +9421,8 @@ function lexA7(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A7_ATTRS = { a: ['href'], img: ['src', 'alt'], input: ['type', 'placeholder'], textarea: ['placeholder'] };
 function a7Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -10717,10 +10721,10 @@ Object.assign(C, {
         'Смотри, сайт лагеря готов: запись, экскурсия, предложения и твоя анкета. Все кнопки на месте, поля закрыты!',
         'Look, the camp site is ready: sign-up, trip, ideas and your own form. All the buttons are in place, the fields are closed!') },
       { k: 'select', text: L3("Ro'yxatni select yasadi, uning har bir varianti esa o'z option tegida turdi. Strelkani bossangiz, variantlar ochiladi.",
-        'Список делал select, а каждый вариант стоял в своём option. Нажал на стрелку, и варианты раскрылись.',
+        'Список делал select, а каждый вариант стоял в своём option. Нажмёшь на стрелку — и варианты раскроются.',
         'The list was made by select, and each choice sat in its own option. Tap the arrow, and the choices open.') },
       { k: 'option', text: L3("Esingizdami, option tegisiz so'z ro'yxatga hech qachon tushmaydi. Shuning uchun har bir variantni o'z option tegiga yozdingiz.",
-        'Помнишь, слово без option в список не попадает. Поэтому каждый вариант ты записывал в свой option.',
+        'Помнишь, слово без option в список не попадает. Поэтому каждый вариант записывают в свой option.',
         'Remember, a word without option never gets into the list. That’s why you wrote each choice in its own option.') },
       { k: 'textarea', text: L3("textarea esa katta maydon yasadi. Uni yopmasangiz, pastdagi tugmani ham o'z ichiga yutib yuboradi.",
         'А textarea ставил большое поле. Если его не закрыть, он проглотит и кнопку под собой.',

@@ -7023,7 +7023,7 @@ const C = {
   s1: {
     eyebrow: L3("Mening saytim", 'Мой сайт', 'My site'),
     say: L3("Butun HTML kursi ortda qoldi, endi eng qiziq ish boshlanadi: o'z saytingizni noldan yasaymiz! Faylga qarang-chi: unda hozircha bitta qator turibdi, xolos. Shundan haqiqiy sayt chiqarmikan, sizningcha? «Boshlash» tugmasini bosing, ko'ramiz.",
-      'Привет! Ты прошёл весь курс HTML. Осталось самое интересное: сделать свой сайт с пустого файла. Смотри, в файле пока одна строка. Нажми «Начать».',
+      'Привет! Весь курс HTML позади. Осталось самое интересное: сделать свой сайт с пустого файла. Смотри, в файле пока одна строка. Нажми «Начать».',
       'Hi! You’ve finished the whole HTML course. Now the most exciting part is left: building your own site from an empty file. Look, the file has just one line so far. Tap “Start”.'),
     start: L3("Chiqadi, albatta! Mana, sayt rejasi: to'qqizta qadam, sahifaning nomidan boshlab sayt oxiridagi anketagacha.",
       'Вот план сайта! В нём девять шагов: от названия страницы до формы внизу сайта.',
@@ -7078,9 +7078,9 @@ const C = {
   },
   t4: {
     eyebrow: L3("Men haqimda", 'Обо мне', 'About me'),
-    say: L3("Sayt boshi butun, endi pastga, asosiy qismga tushamiz: u main tegida turadi. Xo'sh, mehmon saytga kirib, birinchi bo'lib nimani bilmoqchi bo'ladi? Albatta, siz kimligingizni! Shuning uchun main ichidagi birinchi bo'lim siz haqingizda bo'ladi. Bo'limni section tegi yasaydi: tepasida h2 sarlavha, tagida esa bitta abzas turadi.",
-      'Верх готов! Теперь главная часть, то есть тег main. Внутри напишем первый раздел: section, в нём заголовок h2 и абзац о себе.',
-      'The top is ready! Now the main part, that is, the main tag. Inside it we write the first section: section, with an h2 heading and a paragraph about yourself.'),
+    say: L3("Sayt boshi butun, endi pastga, asosiy qismga tushamiz: u main tegida turadi. Xo'sh, mehmon saytga kirib, birinchi bo'lib nimani bilmoqchi bo'ladi? Albatta, siz kimligingizni! Shuning uchun main ichidagi birinchi bo'lim siz haqingizda bo'ladi. Bo'limni section tegi yasaydi: tepasida h2 sarlavha, tagida esa bitta abzas turadi. Faqat hammaga ko'rsatsa bo'ladigan narsalarni yozing: qiziqishlaringizni. Manzil, maktab, telefon va familiyani yozmang.",
+      'Верх готов! Теперь главная часть, то есть тег main. Внутри напишем первый раздел: section, в нём заголовок h2 и абзац о себе. Пиши только то, что можно показать всем: свои увлечения. Адрес, школу, телефон и фамилию не пиши.',
+      'The top is ready! Now the main part, that is, the main tag. Inside it we write the first section: section, with an h2 heading and a paragraph about yourself. Write only what anyone may see: your hobbies. Don’t write your address, school, phone number or surname.'),
     ask: L3("main ichida section: h2 va abzas p", 'main, в нём section: h2 и абзац p', 'main with a section: h2 and a paragraph p'),
     ok: L3("Birinchi bo'lim tayyor, sayt birdan jonlanib qoldi: endi mehmon sizni taniydi!", 'Отлично! Раздел готов, сайт ожил!', 'Great! The section is ready, and the site came alive!'),
     hints: [
@@ -7166,7 +7166,7 @@ const C = {
   fin: {
     eyebrow: L3("Xulosa", 'Вывод', 'Summary'),
     say: [
-      { k: 'own', text: L3("Qarang, bu sizning saytingiz! Uni bo'm-bo'sh fayldan boshlab, to'qqiz qadamda o'zingiz yozib chiqdingiz.", 'Смотри, это твой сайт! Ты написал его сам, с пустого файла, за девять шагов.', 'Look, this is your site! You wrote it yourself, from an empty file, in nine steps.') },
+      { k: 'own', text: L3("Qarang, bu sizning saytingiz! Uni bo'm-bo'sh fayldan boshlab, to'qqiz qadamda o'zingiz yozib chiqdingiz.", 'Смотри, это твой сайт! Весь код в нём твой: с пустого файла, за девять шагов.', 'Look, this is your site! You wrote it yourself, from an empty file, in nine steps.') },
       { k: 'title', text: L3("Tepadan boshlaymiz: title sahifangizning nomini brauzer varag'iga chiqardi.", 'title вывел название на вкладку.', 'title put the name on the tab.') },
       { k: 'header', text: L3("Sayt boshini header yasadi, uning ichidagi h1 esa asosiy sarlavha bo'ldi.", 'header стал верхом сайта, а h1 — его большим заголовком.', 'header became the top of the site, and h1 its big heading.') },
       { k: 'nav', text: L3("Sarlavhaning yonida nav ichidagi havola menyuga aylandi, shuning uchun mehmon endi boshqa sahifaga o'ta oladi.", 'Ссылка в nav стала меню.', 'The link in nav became the menu.') },
@@ -7174,7 +7174,7 @@ const C = {
       { k: 'list', text: L3("Sevimli narsalaringizni ul tegi ro'yxatga yig'di, har bir bandni esa o'z li tegiga solganingiz uchun nuqtalar chiqdi.", 'ul и li сделали список.', 'ul and li made the list.') },
       { k: 'img', text: L3("Keyingi bo'limga rasmni img tegi olib keldi: src brauzerga faylni ko'rsatdi, alt esa rasmda nima borligini so'z bilan aytib turibdi.", 'img с src и alt поставил картинку.', 'img with src and alt added the picture.') },
       { k: 'footer', text: L3("Eng pastda footer turibdi, u saytni yopib qo'yadi, odatda uning ichiga yil bilan sayt nomi yoziladi.", 'footer стал низом сайта.', 'footer became the bottom of the site.') },
-      { k: 'form', text: L3("Footer ichidagi form, label, input, select va button esa mehmonlaringiz uchun anketaga aylandi. Ko'rdingizmi? Butun HTML kursi bitta saytga sig'di! CSS kursida bu sayt rang va shakl oladi.", 'А form, label, input, select и button стали формой для гостей. Это был весь курс HTML, и ты собрал его в одном сайте! В следующем курсе с CSS сделаем твой сайт цветным и красивым.', 'And form, label, input, select and button became a form for visitors. That was the whole HTML course, and you put it all into one site! In the next course, CSS will make your site colorful and beautiful.') }
+      { k: 'form', text: L3("Footer ichidagi form, label, input, select va button esa mehmonlaringiz uchun anketaga aylandi. Ko'rdingizmi? Butun HTML kursi bitta saytga sig'di! CSS kursida bu sayt rang va shakl oladi.", 'А form, label, input, select и button стали формой для гостей. Это был весь курс HTML, и весь он уместился в одном сайте! В следующем курсе с CSS сделаем твой сайт цветным и красивым.', 'And form, label, input, select and button became a form for visitors. That was the whole HTML course, and you put it all into one site! In the next course, CSS will make your site colorful and beautiful.') }
     ],
     roles: {
       title: L3("title — sahifa nomi", 'title — название', 'title — page title'),
@@ -9438,8 +9438,10 @@ function lexA9(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A9_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A9_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a9Attrs(name, body.slice(name.length)));
@@ -9459,6 +9461,8 @@ function lexA9(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A9_ATTRS = { a: ['href'], img: ['src', 'alt'], input: ['type', 'placeholder'] };
 function a9Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -14280,4 +14284,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Телефон: пока открыта панель ошибки или подсказки, «Проверить» в ряду символов под ней не нажимается — прячем,
    ученик закрывает панель («Попробовать ещё» / «Понятно»). Валидатор IT (B07, 15.11.2026): кнопка под панелью. */
 @media (max-width: 759px) { .b-stage.has-sheet.is-sheet-hint .key-go { visibility: hidden; } }
+/* Аудит 28.11.2026: подпись тега — не мельче 9 px; значок «Inspektor» слева, чтобы не закрывать подписи тегов справа. */
+.r28 .a9-reg-tag { font-size: max(.6em, 9px); }
+.r28 .a9-insp-badge { right: auto; left: 4px; }
 `;

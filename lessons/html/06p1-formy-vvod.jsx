@@ -7028,7 +7028,7 @@ const C = {
       'Первая анкета: футбол. У поля пароля значение type осталось пустым. Без значения браузер считает поле обычным. Вот пароль и виден всем. Впиши в кавычки вид поля, который прячет пароль.',
       'The first form is football. The password field’s type value is empty. Without a value the browser treats the field as a plain one. That’s why everyone can see the password. Type the field type that hides the password in the quotes.'),
     ask: L3("type ichiga yozing: password", 'Впиши в type: password', 'Type in type: password'),
-    ok: L3("Parol yana nuqtalar ortiga bekinib oldi, futbolchilarning sirini endi hech kim ko'rmaydi!", 'Отлично! Пароль снова спрятался за точками!', 'Great! The password is hidden behind dots again!'),
+    ok: L3("Parol yana nuqtalar ortiga bekinib oldi, futbolchilarning sirini endi yondagi hech kim ko'rmaydi! Faqat esda tuting: darsda parol misol uchun, haqiqiy parolingizni hech qayerga yozmang.", 'Отлично! Пароль снова спрятался за точками! Только помни: в уроке пароль для примера, настоящий пароль никуда не вводи.', 'Great! The password is hidden behind dots again! Just remember: in the lesson the password is only an example, never type your real password anywhere.'),
     hints: [
       L3("Maydon qanaqa bo'lishini brauzerga type aytadi. Parol qatoridagi bo'sh qo'shtirnoqni ko'ryapsizmi?", 'Каким будет поле, говорит type. Найди пустые кавычки.', 'type says what the field is like. Find the empty quotes.'),
       L3("Bo'sh qo'shtirnoqqa uchta so'zdan biri yoziladi: text, password yoki number. Qaysi biri harflarni nuqtaga aylantiradi?", 'Видов три: text, password и number. Какой из них показывает точки? Посмотри на список рядом.', 'There are three types: text, password and number. Which one shows dots? Look at the list next to it.'),
@@ -7038,7 +7038,7 @@ const C = {
   },
   t2: {
     eyebrow: L3("Shaxmat", 'Шахматы', 'Chess'),
-    say: L3("Futbolchilarning paroli xavfsiz, endi shaxmatchilar navbati. Bu anketada Ism degan yozuv bor-u, uning maydoni butunlay o'chib ketibdi. Maydon qanaqa bo'lishini type aytadi, kulrang ishorani esa placeholder yozadi. Qani, ikkalasini bitta input qatoriga yig'ib yozing-chi. input tegini yopmaysiz: u yolg'iz yuradi.",
+    say: L3("Futbolchilarning paroli endi nuqtalar ortida. Endi shaxmatchilar navbati. Bu anketada Ism degan yozuv bor-u, uning maydoni butunlay o'chib ketibdi. Maydon qanaqa bo'lishini type aytadi, kulrang ishorani esa placeholder yozadi. Qani, ikkalasini bitta input qatoriga yig'ib yozing-chi. input tegini yopmaysiz: u yolg'iz yuradi.",
       'Футбол готов, теперь шахматы. В этой анкете подпись «Имя» есть, а строка с полем стёрлась целиком. Напиши в пустой строке всё поле: тег input, в type — text, а в placeholder — серая подсказка. Помнишь, input не закрывается.',
       'Football is done, now chess. This form has the name caption, but the field line got erased completely. Write the whole field in the empty row: the input tag, text in type, and a grey hint in placeholder. Remember, input doesn’t close.'),
     ask: L3("input qatori: type «text», placeholder «Ismingiz»", 'Строка input: type «text», placeholder «Твоё имя»', 'input line: type “text”, placeholder “Your name”'),
@@ -9378,8 +9378,10 @@ function lexA6(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A6_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A6_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a6Attrs(name, body.slice(name.length)));
@@ -9398,6 +9400,8 @@ function lexA6(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A6_ATTRS = { a: ['href'], img: ['src', 'alt'], input: ['type', 'placeholder'] };
 function a6Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -10549,9 +10553,9 @@ Object.assign(C.s1, {
 Object.assign(C, {
   t2: {
     eyebrow: L3("Musiqa", 'Музыка', 'Music'),
-    say: L3("Futbolchilarning paroli xavfsiz, endi musiqa to'garagi navbati. Bu anketada Yosh degan yozuv bor, uning ostidagi maydon esa oddiy chiqibdi: yoshga harf ham yozib yuborish mumkin. Chunki input tegida type atributi yo'q ekan. Atribut shunday yoziladi: oldin nomi, keyin teng belgisi, keyin qo'shtirnoq ichida qiymati. Bo'sh joyga type atributini number qiymati bilan yozing.",
-      'Пароль футболистов в безопасности, теперь музыка. В этой анкете есть подпись «Возраст», а поле под ней обычное: в возраст можно вписать и буквы. Всё потому, что у тега input нет атрибута type. Атрибут пишется так: сначала имя, потом знак равенства, потом значение в кавычках. Впиши в пустое место атрибут type со значением number.',
-      'The football password is safe, now music. This form has the age caption, but the field under it is a plain one: you can even type letters into an age. That’s because the input tag has no type attribute. An attribute is written like this: first the name, then an equals sign, then the value in quotes. Write the type attribute with the value number in the empty spot.'),
+    say: L3("Futbolchilarning paroli endi nuqtalar ortida. Endi musiqa to'garagi navbati. Bu anketada Yosh degan yozuv bor, uning ostidagi maydon esa oddiy chiqibdi: yoshga harf ham yozib yuborish mumkin. Chunki input tegida type atributi yo'q ekan. Atribut shunday yoziladi: oldin nomi, keyin teng belgisi, keyin qo'shtirnoq ichida qiymati. Bo'sh joyga type atributini number qiymati bilan yozing.",
+      'Пароль футболистов спрятан за точками, теперь музыка. В этой анкете есть подпись «Возраст», а поле под ней обычное: в возраст можно вписать и буквы. Всё потому, что у тега input нет атрибута type. Атрибут пишется так: сначала имя, потом знак равенства, потом значение в кавычках. Впиши в пустое место атрибут type со значением number.',
+      'The football password is behind dots now, next is music. This form has the age caption, but the field under it is a plain one: you can even type letters into an age. That’s because the input tag has no type attribute. An attribute is written like this: first the name, then an equals sign, then the value in quotes. Write the type attribute with the value number in the empty spot.'),
     ask: L3("Yosh maydoniga atribut qo'shing: type, qiymati number", 'Добавь полю возраста атрибут: type со значением number', 'Give the age field an attribute: type with the value number'),
     ok: L3("Zo'r! Maydonda strelkalar paydo bo'ldi, endi unga faqat son yoziladi. Yosh maydoni tuzaldi!",
       'Огонь! В поле появились стрелки, и теперь в него пишутся только числа. Поле возраста починено!',

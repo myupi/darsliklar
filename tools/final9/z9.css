@@ -522,3 +522,6 @@
 .r28 .z9-st.is-done { background: #DCFCE7; box-shadow: inset 0 0 0 1.5px #22C55E; color: #15803D; }
 .r28 .z9-st.is-done b::after { content: ' ✓'; }
 .r28 .z9-st.is-done.is-cur { box-shadow: inset 0 0 0 2px #16A34A, 0 0 0 3px #BBF7D0; color: #15803D; }
+/* Аудит 28.11.2026: подпись тега — не мельче 9 px; значок «Inspektor» слева, чтобы не закрывать подписи тегов справа. */
+.r28 .z9-reg-tag { font-size: max(.6em, 9px); }
+.r28 .z9-insp-badge { right: auto; left: 4px; }

@@ -155,7 +155,7 @@ Object.assign(C, {
         'А у гостей и подарков порядок не важен, им хватило ul, и появились точки.',
         'For the guests and the gifts the order doesn’t matter, so ul was enough and bullets appeared.') },
       { k: 'li', text: L3("Sovg'alar sahifasida li tegisiz qolgan bandni ham topdingiz: har bir band o'z li tegida turishi kerak.",
-        'А на странице подарков ты нашёл пункт без li: каждый пункт должен стоять в своём li.',
+        'А на странице подарков нашёлся пункт без li: каждый пункт должен стоять в своём li.',
         'And on the gifts page you found the item without li: each item has to sit in its own li.') },
       { k: 'own', text: L3("To'rtinchi sahifada o'z ro'yxatingiz turibdi, bu bayramdagi eng yaxshi sovg'a bo'ldi! Mehmonlar bir sahifadan boshqasiga qanday o'tadi, o'ylab ko'rdingizmi? Buni havolalar hal qiladi.",
         'А в конце весь список составлен твоими руками. Это было мощно! На следующем уроке познакомимся со ссылками.',

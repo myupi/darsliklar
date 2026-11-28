@@ -9326,6 +9326,8 @@ function lexA1(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const name = (close ? inner.slice(1) : inner).trim().toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A1_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A1_KNOWN.indexOf(name) >= 0) { out.push({ k: close ? 'close' : 'open', name, raw }); continue; }
     const near = a1Near(name.replace(/[^a-z]/g, ''));
     out.push(near ? { k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + near + '>' } : { k: 'bad', why: 'unknown', bad: raw });
@@ -10203,13 +10205,13 @@ Object.assign(C, {
         'Смотри, все четыре вкладки горят: погода, животные, кино и твоя страница!',
         'Look, all four tabs are lit: weather, animals, movies and your own page!') },
       { k: 'title', text: L3("Nom title tegida turdi va varaqda chiqdi. Hayvonlar sahifasida esa uni o'z joyiga qaytardingiz.",
-        'Название стояло в title и показалось на вкладке. А на странице про животных ты вернул его на место.',
+        'Название стояло в title и показалось на вкладке. А на странице про животных он вернулся на место.',
         'The name sat in title and showed on the tab. And on the animals page you put it back in its place.') },
       { k: 'body', text: L3("Matnni body ichiga qo'ydingiz, shuning uchun u oynada chiqdi. Ob-havo sahifasining bo'sh oynasini ham shunday to'ldirdingiz.",
-        'Текст оказался внутри body, поэтому он появился в окне. Так ты наполнил и пустое окно на странице погоды.',
+        'Текст оказался внутри body, поэтому он появился в окне. Так наполнилось и пустое окно на странице погоды.',
         'The text went inside body, so it showed up in the window. That’s how you filled the empty window on the weather page.') },
       { k: 'close', text: L3("Har bir ochgan tegingizni yopdingiz, kino sahifasida yopilmay qolgan title tegini ham o'zingiz topdingiz.",
-        'Каждый открытый тег закрыт, а на странице кино ты сам нашёл забытый закрывающий title.',
+        'Каждый открытый тег закрыт, а на странице кино нашёлся забытый закрывающий title.',
         'You closed every opened tag and even found the forgotten closing title on the movies page.') },
       { k: 'own', text: L3("To'rtinchi varaq esa endi bo'm-bo'sh emas: unda o'zingiz yozgan sahifa turibdi! Katta sarlavha bilan abzaslar hali yo'q: ular sahifangizni navbatdagi darsda to'ldiradi.",
         'А в конце вся страница написана твоими руками. Это было мощно! На следующем уроке добавим на страницу большой заголовок и абзацы.',

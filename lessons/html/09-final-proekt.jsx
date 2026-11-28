@@ -7180,7 +7180,7 @@ const C = {
         'Вернёмся к загадке. Помнишь, я думал, что сайт надо стереть и написать заново? Увы, я ошибся. Ты на каждой странице поправил всего одну маленькую ошибку: один тег, один атрибут или одно значение. Программисты так и работают: находят ошибку и чинят именно её.',
         'Back to our riddle. Remember, I thought we had to delete the site and write it again? Sadly, I was wrong. On each page you fixed just one small bug: one tag, one attribute or one value. That’s how programmers work: they find the bug and fix exactly that.'), k: 'riddle' },
       { text: L3("Mana, saytim yana jonlandi: sarlavha kap-katta, mushuk joyida, osh qadamlari raqamlangan, havola bosiladi, parol esa yashirin turibdi.", 'Смотри, мой сайт снова работает: заголовок большой, картинка на месте, шаги пронумерованы, ссылка нажимается, а пароль спрятан.', 'Look, my site works again: the heading is big, the picture is in place, the steps are numbered, the link works, and the password is hidden.'), k: null },
-      { text: L3("Siz uddaladingiz: HTML kursi tugadi! Birinchi darsda bitta oddiy sahifa yasagan edik, hozir esa sarlavhasi, ro'yxatlari, havolalari, rasmlari va anketasi bor saytlar turibdi. Sakkizta bekatning hammasidan o'zingiz o'tdingiz. Endi glitch ham sizdan qo'rqadi!", 'Ты прошёл курс HTML! Теперь ты знаешь структуру страницы, заголовки, списки, ссылки, картинки, формы и части сайта.', 'You’ve finished the HTML course! Now you know page structure, headings, lists, links, pictures, forms and the parts of a site.'), k: 'cert' },
+      { text: L3("Siz uddaladingiz: HTML kursi tugadi! Birinchi darsda bitta oddiy sahifa yasagan edik, hozir esa sarlavhasi, ro'yxatlari, havolalari, rasmlari va anketasi bor saytlar turibdi. Sakkizta bekatning hammasidan o'zingiz o'tdingiz. Endi glitch ham sizdan qo'rqadi!", 'Курс HTML пройден! Теперь ты знаешь структуру страницы, заголовки, списки, ссылки, картинки, формы и части сайта.', 'You’ve finished the HTML course! Now you know page structure, headings, lists, links, pictures, forms and the parts of a site.'), k: 'cert' },
       { text: L3("Endi har qanday sahifaning asosini o'zingiz qura olasiz, xuddi haqiqiy veb-dasturchidek. Lekin hozircha saytlarimiz oq-qora, rang ham, shrift ham yo'q. Keyingi kursda CSS bilan ularga rang va shrift beramiz, hamma narsani joy-joyiga chiroyli qo'yamiz. Sizni o'sha yerda intiqib kutaman!", 'В следующем курсе сделаем сайты красивыми с помощью CSS: добавим цвет, шрифты и расположение. До встречи!', 'In the next course we’ll make sites beautiful with CSS: colors, fonts and layout. See you!'), k: null }
     ],
     certH: L3('HTML kursi', 'Курс HTML', 'HTML course'),
@@ -14078,4 +14078,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .z9-st.is-done { background: #DCFCE7; box-shadow: inset 0 0 0 1.5px #22C55E; color: #15803D; }
 .r28 .z9-st.is-done b::after { content: ' ✓'; }
 .r28 .z9-st.is-done.is-cur { box-shadow: inset 0 0 0 2px #16A34A, 0 0 0 3px #BBF7D0; color: #15803D; }
+/* Аудит 28.11.2026: подпись тега — не мельче 9 px; значок «Inspektor» слева, чтобы не закрывать подписи тегов справа. */
+.r28 .z9-reg-tag { font-size: max(.6em, 9px); }
+.r28 .z9-insp-badge { right: auto; left: 4px; }
 `;

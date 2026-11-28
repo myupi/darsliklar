@@ -170,7 +170,7 @@ const C = {
       L3("Mana, oxirgisi: endi o'rtadagi katta qism yonib turibdi. Bu safar qaysi qatorni bosasiz?", 'Последняя. Теперь горит большая часть посередине. В какой она строке?', 'The last one. Now the big part in the middle is lit. Which line is it on?')
     ],
     ok: [
-      L3("Pastki ramkaga tegishli qator shu: sayt oxirini footer o'rab turadi, shuning uchun u eng pastda.", 'Верно! Низ сайта делает строка footer.', 'Right! The footer line makes the bottom of the site.'),
+      L3("Pastki ramkaga tegishli qator shu: sayt oxirini footer o'rab turadi. Kodda u eng oxirida yozilgan, shuning uchun sahifada ham pastda chiqdi.", 'Верно! Низ сайта — строка footer. В коде она стоит последней, поэтому и на странице оказалась внизу.', 'Right! The bottom of the site is the footer line. It comes last in the code, so it ends up at the bottom of the page too.'),
       L3("Tepadagi ramkani o'zingiz topdingiz: header sayt boshini o'raydi.", 'Верно! Верх сайта лежит внутри header.', 'Right! The top of the site is inside header.'),
       L3("O'rtadagi katta ramka main tegidan chiqdi, ichida o'yinlar bilan retseptlar turibdi.", 'Верно! Главная часть — внутри main, игры и рецепты тоже там.', 'Right! The main part is inside main, with the games and recipes.')
     ],
@@ -240,7 +240,7 @@ const C = {
       header: L3("header butun sayt boshini o'rab turadi: tepadagi keng qismni qidiring.", 'header — весь верх сайта: широкая полоса наверху.', 'header is the whole top of the site: the wide strip at the top.'),
       nav: L3("nav butun boshni emas, faqat menyuni o'raydi, ya'ni sayt boshidagi havolalarni. Kichikroq qismni qidiring.", 'nav — только меню: ссылки в верху сайта.', 'nav is only the menu: the links at the top.'),
       main: L3("Hali emas: main o'rtada turadigan eng katta qismni o'raydi. Qaysi sxemada o'rtasi yonib turibdi, shuni toping.", 'main — самая большая часть посередине.', 'main is the biggest part in the middle.'),
-      footer: L3("footer doim eng pastda, sayt oxirida turadi. Pastki qismi yongan sxemani qidiring.", 'footer — самая нижняя часть.', 'footer is the part at the very bottom.')
+      footer: L3("footer sayt oxirini bildiradi. Uni odatda kodning eng oxirida yozishadi, shuning uchun u pastda ko'rinadi. Pastki qismi yongan sxemani qidiring.", 'footer — низ сайта. Его обычно пишут в самом конце кода, поэтому он и оказывается внизу.', 'footer is the bottom of the site. It is usually written at the very end of the code, so it ends up at the bottom.')
     },
     hints: [
       L3("Har bir sxemada qayeri yonib turibdi: tepasimi, o'rtasimi yoki pasti?", 'Что горит на каждой схеме: верх, середина или низ?', 'What’s lit on each diagram: the top, the middle or the bottom?'),

@@ -206,7 +206,7 @@ const C = {
       'Первая анкета: футбол. У поля пароля значение type осталось пустым. Без значения браузер считает поле обычным. Вот пароль и виден всем. Впиши в кавычки вид поля, который прячет пароль.',
       'The first form is football. The password field’s type value is empty. Without a value the browser treats the field as a plain one. That’s why everyone can see the password. Type the field type that hides the password in the quotes.'),
     ask: L3("type ichiga yozing: password", 'Впиши в type: password', 'Type in type: password'),
-    ok: L3("Parol yana nuqtalar ortiga bekinib oldi, futbolchilarning sirini endi hech kim ko'rmaydi!", 'Отлично! Пароль снова спрятался за точками!', 'Great! The password is hidden behind dots again!'),
+    ok: L3("Parol yana nuqtalar ortiga bekinib oldi, futbolchilarning sirini endi yondagi hech kim ko'rmaydi! Faqat esda tuting: darsda parol misol uchun, haqiqiy parolingizni hech qayerga yozmang.", 'Отлично! Пароль снова спрятался за точками! Только помни: в уроке пароль для примера, настоящий пароль никуда не вводи.', 'Great! The password is hidden behind dots again! Just remember: in the lesson the password is only an example, never type your real password anywhere.'),
     hints: [
       L3("Maydon qanaqa bo'lishini brauzerga type aytadi. Parol qatoridagi bo'sh qo'shtirnoqni ko'ryapsizmi?", 'Каким будет поле, говорит type. Найди пустые кавычки.', 'type says what the field is like. Find the empty quotes.'),
       L3("Bo'sh qo'shtirnoqqa uchta so'zdan biri yoziladi: text, password yoki number. Qaysi biri harflarni nuqtaga aylantiradi?", 'Видов три: text, password и number. Какой из них показывает точки? Посмотри на список рядом.', 'There are three types: text, password and number. Which one shows dots? Look at the list next to it.'),
@@ -216,7 +216,7 @@ const C = {
   },
   t2: {
     eyebrow: L3("Shaxmat", 'Шахматы', 'Chess'),
-    say: L3("Futbolchilarning paroli xavfsiz, endi shaxmatchilar navbati. Bu anketada Ism degan yozuv bor-u, uning maydoni butunlay o'chib ketibdi. Maydon qanaqa bo'lishini type aytadi, kulrang ishorani esa placeholder yozadi. Qani, ikkalasini bitta input qatoriga yig'ib yozing-chi. input tegini yopmaysiz: u yolg'iz yuradi.",
+    say: L3("Futbolchilarning paroli endi nuqtalar ortida. Endi shaxmatchilar navbati. Bu anketada Ism degan yozuv bor-u, uning maydoni butunlay o'chib ketibdi. Maydon qanaqa bo'lishini type aytadi, kulrang ishorani esa placeholder yozadi. Qani, ikkalasini bitta input qatoriga yig'ib yozing-chi. input tegini yopmaysiz: u yolg'iz yuradi.",
       'Футбол готов, теперь шахматы. В этой анкете подпись «Имя» есть, а строка с полем стёрлась целиком. Напиши в пустой строке всё поле: тег input, в type — text, а в placeholder — серая подсказка. Помнишь, input не закрывается.',
       'Football is done, now chess. This form has the name caption, but the field line got erased completely. Write the whole field in the empty row: the input tag, text in type, and a grey hint in placeholder. Remember, input doesn’t close.'),
     ask: L3("input qatori: type «text», placeholder «Ismingiz»", 'Строка input: type «text», placeholder «Твоё имя»', 'input line: type “text”, placeholder “Your name”'),

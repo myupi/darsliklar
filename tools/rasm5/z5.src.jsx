@@ -157,7 +157,7 @@ const C = {
       L3("To'p rasmining fayli pastdagi ro'yxatda turibdi, uni nomidan tanib olasiz.", 'Файл с фото мяча есть в списке файлов.', 'The ball photo file is in the list of files.'),
       L3("Kerakli fayl top.jpg deb nomlangan. Shuni qo'shtirnoq ichiga yozing.", 'Имя файла — top.jpg. Впиши его в кавычки.', 'The file name is top.jpg. Type it in the quotes.')
     ],
-    ok: L3("To'p rasmi chiqdi, chunki brauzer siz yozgan faylni topdi!", 'Огонь! Фото мяча на месте. Браузер нашёл файл, который ты написал.', 'Awesome! The ball photo is there. The browser found the file you typed.'),
+    ok: L3("To'p rasmi chiqdi, chunki brauzer siz yozgan faylni topdi!", 'Огонь! Фото мяча на месте. Браузер нашёл файл с этим именем.', 'Awesome! The ball photo is there. The browser found the file you typed.'),
     ask: L3("Qo'shtirnoq ichiga rasm fayli nomini yozing", 'Впиши в кавычки имя файла картинки', 'Type the picture file name in the quotes')
   },
   s4: {

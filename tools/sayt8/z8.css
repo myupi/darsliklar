@@ -423,3 +423,13 @@
 }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z8-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z8-s5 .kz-br.z8-br { aspect-ratio: auto !important; }
+/* Аудит 28.11.2026: на телефоне подписи тегов в окнах были 5,5 px, а значок «Inspektor» закрывал подпись header.
+   Подпись тега — не мельче 9 px; значок — слева (подписи тегов стоят справа); «до/после» на высоком телефоне —
+   карточки во всю ширину и крупнее (под ними было пустое место). */
+.r28 .z8-reg-tag { font-size: max(.6em, 9px); }
+.z8-insp-badge { right: auto; left: 4px; }
+@media (max-width: 759px) and (min-height: 700px) {
+  .r28 .z8-ba { width: 100%; }
+  .r28 .z8-ba .z8-card { width: 100%; }
+  .r28 .z8-ba .z8-card .z8-mini { font-size: 13px; }
+}

@@ -197,9 +197,9 @@ const C = {
     sayText: L3("Qarang, bu parol maydoni. Lekin bu yerda type qiymati text bo'lib turibdi, shuning uchun parol hammaga ochiq ko'rinadi. Yoningizda o'tirgan odam ham uni bemalol o'qib oladi.",
       'Вот поле пароля. Но значение type — text, поэтому пароль виден всем. Его прочтёт даже тот, кто сидит рядом.',
       'Here’s a password field. But the type value is text, so the password is visible to everyone. Even the person sitting next to you can read it.'),
-    sayPass: L3("Endi text o'rniga password qo'yamiz. Ana, qarang: harflar nuqtaga aylandi! Maydonga yozilgan parol o'zgarmadi, u shunchaki ko'rinmay qoldi.",
-      'Теперь ставим значение password, то есть «пароль». Смотри, буквы спрятались за точками. То, что написано в поле, не изменилось, просто не видно.',
-      'Now we set the value to password. Look, the letters are hidden behind dots. What’s typed in the field didn’t change; you just can’t see it.'),
+    sayPass: L3("Endi text o'rniga password qo'yamiz. Ana, qarang: harflar nuqtaga aylandi! Maydonga yozilgan parol o'zgarmadi, u shunchaki ko'rinmay qoldi. Nuqtalar parolni faqat yoningizdagilarning ko'zidan yashiradi. Darsda parol faqat misol uchun: haqiqiy parolingizni hech qayerga yozmang.",
+      'Теперь ставим значение password, то есть «пароль». Смотри, буквы спрятались за точками. То, что написано в поле, не изменилось, просто не видно. Точки прячут пароль только от чужих глаз рядом. В уроке пароль только для примера: настоящий пароль никуда не вводи.',
+      'Now we set the value to password. Look, the letters are hidden behind dots. What’s typed in the field didn’t change; you just can’t see it. The dots only hide the password from people looking at your screen. In the lesson the password is just an example: never type your real password anywhere.'),
     sayNum: L3("Keyin yosh uchun maydon yasaymiz va type qiymatiga number qo'yamiz. Bunaqa maydonga faqat son yozsa bo'ladi, harflar esa yozilmaydi. Yoniga ham qarang-chi: kichkina strelkalar chiqibdi! Ular sonni bittaga oshiradi yoki kamaytiradi.",
       'А теперь поле для возраста со значением number, то есть «число». В такое поле пишутся только цифры, буквы не вводятся. А справа появились маленькие стрелки: они прибавляют или убавляют число на один.',
       'Now a field for age with the value number. Only digits can be typed in a field like this; letters won’t go in. And small arrows appeared on the right: they make the number one bigger or smaller.'),
@@ -457,7 +457,7 @@ const C = {
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Ukamga to'g'ri javob aytdim: «Harflarni nuqtalarga type password aylantiradi, placeholder esa faqat kulrang ishora». Mana, o'sha sahifa: parol maydonida placeholder turibdi, ichida Parol degan so'z. Yozishni boshlashim bilan so'z yo'qoldi, parolning o'zi esa hammaga ochiq ko'rinib qoldi. Ukam bilib oldi, men ham.",
+      { text: L3("Kecha shoshilib adashgan ekanman. Endi ukamga to'g'ri javob aytdim: «Harflarni nuqtalarga type password aylantiradi, placeholder esa faqat kulrang ishora». Mana, o'sha sahifa: parol maydonida placeholder turibdi, ichida Parol degan so'z. Yozishni boshlashim bilan so'z yo'qoldi, parolning o'zi esa hammaga ochiq ko'rinib qoldi. Ukam bilib oldi, men ham.",
         'Вернёмся к загадке. Помнишь, я добавил полю пароля placeholder со словом «Пароль»? Увы, я ошибся. placeholder — только серая подсказка. Когда я начал вводить пароль, подсказка исчезла, а пароль остался виден всем. Спрятать пароль за точками может только type password.',
         'Back to our riddle. Remember, I added placeholder with the word “Password” to a password field? Sadly, I was wrong. placeholder is only a grey hint. When I started typing the password, the hint disappeared and the password stayed visible to everyone. Only type password can hide a password behind dots.'), k: 'riddle' },
       { text: L3("Endi sizning anketangizga qarang! Unda o'zingiz o'ylab topgan savol ham, kulrang ishorangiz ham turibdi.", 'Смотри, это твоя анкета! В ней твой вопрос и твоя подсказка.', 'Look, this is your form! It has your question and your hint.'), k: null },

@@ -46,7 +46,7 @@ export default {
         uz: "Endi sirni ochamiz. Esingizdami, men qadamlarning oldiga raqamlarni qo'lda yozgan edim? Sahifaga qarang: birinchi qadam oldida ikkita raqam turibdi, bir va yana bir! Ol raqamni o'zi qo'yar ekan, men yozganim uning yoniga qo'shilib ketibdi. Demak, ol ichida raqamni qo'lda yozmaymiz.",
         ru: 'Вернёмся к загадке. Помнишь, я сам вписал номер перед каждым шагом? Смотри, что вышло: перед первым шагом два номера, один и ещё раз один. ol ставит номера сам, а мои встали рядом с ними. Значит, в ol номера руками не пишут.',
         en: 'Back to our riddle. Remember, I typed a number in front of each step myself? Look what happened: the first step has two numbers, one and one again. ol adds numbers by itself, and mine landed right next to them. So you never type numbers by hand in ol.' } },
-      { k: null, text: { uz: "Mana, o'zingiz tuzgan retsept sahifasi!", ru: 'А вот страница с рецептом, которую ты собрал!', en: 'And here is the recipe page you put together!' } },
+      { k: null, text: { uz: "Mana, o'zingiz tuzgan retsept sahifasi!", ru: 'А вот твоя страница с рецептом!', en: 'And here is the recipe page you put together!' } },
       { k: 'ul', text: {
         uz: "Mahsulotlar ul ichida turibdi: har birining oldida nuqta bor, tartibi esa muhim emas.",
         ru: 'Продукты лежат в ul: у каждого точка, а порядок не важен.',

@@ -7479,7 +7479,7 @@ b16Merge(C, {
       'Это код. По нему браузер собирает страницу. Смотри, как он его читает!',
       'This is code. The browser builds the page from it. Watch how it reads it!'),
     read1: L3('Sezdingizmi? Brauzer kodni xuddi biz kitob o‘qigandek o‘qiyapti.',
-      'Заметил? Браузер читает код так же, как ты читаешь книжку.',
+      'Видишь? Браузер читает код так же, как ты читаешь книжку.',
       'Did you notice? The browser reads code the way you read a book.'),
     read2: L3('Har bir qatorni chapdan o‘ngga qarab o‘qiydi.', 'Каждую строчку — слева направо.', 'Each line from left to right.'),
     read3: L3('Qatorlarni esa tepadan pastga, bittalab o‘qiydi.', 'А строчки — сверху вниз, одну за другой.', 'And the lines from top to bottom, one after another.'),

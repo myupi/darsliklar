@@ -9384,8 +9384,10 @@ function lexA8(src) {
     if (inner.charAt(0) === '\\') { out.push({ k: 'bad', why: 'backslash', bad: raw }); continue; }
     const close = inner.charAt(0) === '/';
     const body = (close ? inner.slice(1) : inner).trim();
-    const nm = /^[^\s=]+/.exec(body);
+    const nm = /^[^\s=\/]+/.exec(body);
     const name = (nm ? nm[0] : body).toLowerCase();
+    // «< p>», «</ p>» (аудит 28.11.2026): с пробелом после уголка браузер видит текст, а не тег — подсказываем тег без пробела.
+    if (/^<\/?\s/.test(raw) && A8_KNOWN.indexOf(name) >= 0) { out.push({ k: 'bad', why: 'typo', bad: raw, near: '<' + (close ? '/' : '') + name + '>' }); continue; }
     if (A8_KNOWN.indexOf(name) >= 0) {
       const tok = { k: close ? 'close' : 'open', name, raw };
       if (!close) Object.assign(tok, a8Attrs(name, body.slice(name.length)));
@@ -9405,6 +9407,8 @@ function lexA8(src) {
 // noEq, noQuote, attrTypo (другое имя, например placehoder), attrNone.
 const A8_ATTRS = { a: ['href'], img: ['src', 'alt'] };
 function a8Attrs(name, rest) {
+  // «<img … />», «<input … />» (аудит 28.11.2026): косая перед «>» у тегов без пары — верная запись, не атрибут.
+  if (name === 'img' || name === 'input') rest = String(rest || '').replace(/\s*\/\s*$/, '');
   const attrs = {};
   let attrErr = null;
   const re = /\s*([^\s="']+)(\s*=\s*(?:"([^"]*)("?)|'([^']*)('?)|([^\s"']*)))?/g;
@@ -13991,4 +13995,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Телефон: пока открыта панель ошибки или подсказки, «Проверить» в ряду символов под ней не нажимается — прячем,
    ученик закрывает панель («Попробовать ещё» / «Понятно»). Валидатор IT (B07, 15.11.2026): кнопка под панелью. */
 @media (max-width: 759px) { .b-stage.has-sheet.is-sheet-hint .key-go { visibility: hidden; } }
+/* Аудит 28.11.2026: подпись тега — не мельче 9 px; значок «Inspektor» слева, чтобы не закрывать подписи тегов справа. */
+.r28 .a8-reg-tag { font-size: max(.6em, 9px); }
+.r28 .a8-insp-badge { right: auto; left: 4px; }
 `;
